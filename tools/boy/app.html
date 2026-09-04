@@ -1404,34 +1404,6 @@
     bishop: createBallTopper
   };
 
-  // A small checkered pedestal every chess-styled character stands on —
-  // added to the outer group (not the breathing pivot) so it stays rigid.
-  // Cheapest, strongest "this is a board game" signal there is: every
-  // character gets one, not just the pieces with fancy toppers. Sits on
-  // GROUND_SURFACE_Y, not y=0 — the ground tile's own top surface is
-  // already up there (see makeTile's positioning), so anchoring at y=0
-  // would bury it entirely under the grass.
-  function createPieceBase(size) {
-    size = size || 0.72;
-    var g = new THREE.Group();
-    var border = new THREE.Mesh(
-      new THREE.BoxGeometry(size, 0.05, size),
-      new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.6 })
-    );
-    border.position.y = GROUND_SURFACE_Y + 0.025;
-    border.receiveShadow = true;
-    g.add(border);
-    var inset = size - 0.09;
-    var tile = new THREE.Mesh(
-      new THREE.BoxGeometry(inset, 0.052, inset),
-      new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.5 })
-    );
-    tile.position.y = GROUND_SURFACE_Y + 0.026;
-    tile.receiveShadow = true;
-    g.add(tile);
-    return g;
-  }
-
   // Generic adult NPC — same low-poly-diorama vocabulary as the player,
   // but taller proportions and customizable clothing/hair so Mom, Dad, and
   // every future townsperson can share one builder.
@@ -1451,7 +1423,6 @@
       var pieceType = opts.pieceType || 'pawn';
       var pieceBuilder = PIECE_BODY_BUILDERS[pieceType] || createPawnBody;
       pivot.add(pieceBuilder(topColor, bottomColor));
-      g.add(createPieceBase());
     } else {
       var body = new THREE.Mesh(
         new THREE.CapsuleGeometry(0.27, 0.5, 4, 8),
@@ -1529,7 +1500,6 @@
 
     if (isChess) {
       pivot.add(createPawnBody(0x2f6fb0, 0x3a2a20));
-      g.add(createPieceBase());
     } else {
       body = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.42, 4, 8), tunicMat);
       body.position.y = 0.5;
