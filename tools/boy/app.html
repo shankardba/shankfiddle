@@ -536,15 +536,32 @@
           isFamily: true,
           dialogue: {
             childhood: "\"An A-minus. Do you know what that tells me? That you stopped trying the moment it got hard.\"",
+            // Each beat is a distinct, real thing he noticed you do — see
+            // talkToNpc()'s isFamily branch: respect only grows by reaching
+            // a NEW one of these, never by hearing the same one twice.
+            earning_respect: [
+              "\"You practiced again without me telling you to. Good.\"",
+              "\"Farmer Jono says you're reliable. That's not nothing, coming from him.\"",
+              "\"You fixed the gate without being asked. I saw that.\"",
+              "\"...I don't say this enough. I'm proud of the effort you're putting in.\""
+            ],
             // The earning_respect -> diagnosis reveal, delivered right here
             // at home before he leaves for the Hospital — see the trigger
             // in talkToNpc().
             diagnosis: "\"...I'm not as strong as I used to be. But I'm glad you're here.\"",
-            hospice: "\"It's good to be home. Don't fuss over me too much — just sit with me a while.\"",
+            hospice: [
+              "\"It's good to be home. Don't fuss over me too much — just sit with me a while.\"",
+              "\"You read to me yesterday. I don't remember the story, but I remember your voice.\"",
+              "\"I'm tired today. But you're here. That's enough.\""
+            ],
             // His last line, delivered once as the hospice -> grief trigger
             // fires — see talkToNpc(). He's presentDuring hospice only, so
             // by the next visit here he's simply gone.
             grief: "\"...You've become someone I'm proud of. Take care of your mother for me.\""
+          },
+          careMessages: {
+            earning_respect: 'Dad noticed the effort. 🏡 +1 family respect',
+            hospice: 'You sat with Dad through hospice, every day it mattered. 🏡 +1 family respect'
           },
           // Home only through 'hospice' — at the Hospital for 'diagnosis'
           // (see that level below), gone for good from 'grief' on.
@@ -557,11 +574,32 @@
           isFamily: true,
           dialogue: {
             childhood: "\"Your father's right. In this house, 'good enough' isn't. We didn't raise you to be ordinary.\"",
+            // Each beat is a distinct, real thing she noticed — see
+            // talkToNpc()'s isFamily branch: respect only grows by reaching
+            // a NEW one of these, never by hearing the same one twice.
+            earning_respect: [
+              "\"You cleared the table without me asking. Thank you.\"",
+              "\"I heard you've been helping Elsie at the shop. That matters more than you know.\"",
+              "\"You checked in on me today just because. That's rare in a boy your age.\"",
+              "\"I know your father is hard on you. I see how hard you're trying anyway.\""
+            ],
             diagnosis: "\"I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know.\"",
-            hospice: "\"Having him home is better, even like this. Thank you for helping me take care of him.\"",
-            grief: "\"Some days the house feels too quiet. But you're still here. That's not nothing.\"",
+            hospice: [
+              "\"Having him home is better, even like this. Thank you for helping me take care of him.\"",
+              "\"You've learned how to give him his medicine without being asked. I don't know how you grew up so fast.\"",
+              "\"Some nights I don't think I could do this without you here.\""
+            ],
+            grief: [
+              "\"Some days the house feels too quiet. But you're still here. That's not nothing.\"",
+              "\"You've been getting up early, taking care of things before I even ask. I see it.\""
+            ],
             // The grief -> duty trigger's reveal — see talkToNpc().
             duty: "\"It's just the two of us now. We're building something new out of what we lost — I'm proud of who you've become in the middle of it.\""
+          },
+          careMessages: {
+            earning_respect: 'Mom noticed the effort. 🏡 +1 family respect',
+            hospice: 'You helped Mom carry hospice, day after day. 🏡 +1 family respect',
+            grief: 'You started carrying weight at home without being asked. 🕯️ +1 family respect'
           }
         }
       },
@@ -1127,7 +1165,7 @@
   // — indexes an array `dialogue` value's caregiving beats; separate from
   // the cumulative story.respect total (see talkToNpc's isFamily branch).
   var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, hasCar: false };
-  var CAR_FAMILY_RESPECT_THRESHOLD = 4;
+  var CAR_FAMILY_RESPECT_THRESHOLD = 3;
   // Community reputation gained once an NPC's whole `missions` chain is
   // finished — same idea as a job's per-visit `reputation`, but paid out
   // once, in full, as the reward for mastering what that mentor teaches.
@@ -1139,10 +1177,17 @@
   // is "you were there for the whole of it." The last one, rebuilding with
   // just Mom, is scoped to her alone rather than the family sum, since
   // Dad's own respect is frozen once he's gone.
-  var DIAGNOSIS_FAMILY_RESPECT_THRESHOLD = 8;
-  var HOSPICE_FAMILY_RESPECT_THRESHOLD = 12;
-  var FAREWELL_FAMILY_RESPECT_THRESHOLD = 18;
-  var REBUILD_MOM_RESPECT_THRESHOLD = 10;
+  //
+  // Calibrated against what's actually earnable through real, distinct
+  // tasks (see talkToNpc's isFamily branch — no more free respect from
+  // repeating a conversation), with some slack so a chapter's tasks don't
+  // all need to be found to progress. As more family tasks get written
+  // for a chapter, its max grows — these can climb to match; they're not
+  // sacred numbers, just today's calibration.
+  var DIAGNOSIS_FAMILY_RESPECT_THRESHOLD = 9;
+  var HOSPICE_FAMILY_RESPECT_THRESHOLD = 16;
+  var FAREWELL_FAMILY_RESPECT_THRESHOLD = 24;
+  var REBUILD_MOM_RESPECT_THRESHOLD = 16;
   function familyRespect() { return (story.respect.dad || 0) + (story.respect.mom || 0); }
 
   // absentFrom marks a character gone starting at that chapter and for
@@ -2406,20 +2451,31 @@
       openDialogue(dialogueFor(def, chapterVisit), def.name);
       if (def.isFamily) {
         story.chapterTalks[chapterTalkKey] = chapterVisit + 1;
-        story.respect[famKey] = (story.respect[famKey] || 0) + 1;
-        // Care missions: reaching the LAST line of this chapter's array is
-        // a concrete act (waiting out a whole hospital visit, driving Mom
-        // home), not just another line of small talk — worth a one-time
-        // bonus, milestoned the same way a challenge's `learned` flag is.
+        // Respect is earned by reaching a NEW beat of this chapter's
+        // dialogue — a distinct caregiving moment, e.g. "you fixed the
+        // gate" or "you sat with him" — never by repeating one you've
+        // already heard. A plain string is one beat; an array is that
+        // many. Once you've heard them all, talking is still welcome
+        // (the last line just repeats), but it stops growing respect
+        // until a new chapter gives this person something new to do.
         var chapterDialogue = def.dialogue && def.dialogue[story.chapter];
+        var beatCount = Array.isArray(chapterDialogue) ? chapterDialogue.length : (chapterDialogue ? 1 : 0);
+        if (chapterVisit < beatCount) {
+          story.respect[famKey] = (story.respect[famKey] || 0) + 1;
+          if (!story.hasCar) showToast('Family respect: ' + familyRespect() + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD, 1600);
+        }
+        // Care missions: finishing a whole multi-beat arc (not just a
+        // single line) is a concrete completed act — waiting out a whole
+        // hospital visit, driving Mom home — worth an extra one-time
+        // bonus on top of its own beat, milestoned like a challenge's
+        // `learned` flag.
         var careKey = 'care_' + chapterTalkKey;
-        if (Array.isArray(chapterDialogue) && chapterVisit === chapterDialogue.length - 1 && !story.learned[careKey]) {
+        if (beatCount > 1 && chapterVisit === beatCount - 1 && !story.learned[careKey]) {
           story.learned[careKey] = true;
           story.respect[famKey] += 1;
           var careMessage = def.careMessages && def.careMessages[story.chapter];
           showToast(careMessage || 'Family respect +1 💛', 2400);
         }
-        if (!story.hasCar) showToast('Family respect: ' + familyRespect() + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD, 1600);
       }
       return;
     }
