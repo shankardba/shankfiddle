@@ -125,6 +125,41 @@
   }
   @keyframes blink { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 
+  #car-menu {
+    display: none;
+    left: 50%; bottom: 8%;
+    transform: translateX(-50%);
+    width: min(88vw, 420px);
+    background: rgba(8,6,10,0.92);
+    border: 1px solid rgba(240,168,60,0.55);
+    border-radius: 14px;
+    padding: 18px 22px 14px;
+    color: #f7ece9;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  }
+  #car-menu.open { display: block; }
+  .car-menu-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    color: #ffd27a;
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
+  #car-menu-list { display: flex; flex-direction: column; gap: 8px; }
+  #car-menu-list button {
+    text-align: left;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(240,168,60,0.3);
+    background: rgba(240,168,60,0.06);
+    color: #f7ece9;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  #car-menu-list button:hover { border-color: #ffd27a; background: rgba(240,168,60,0.14); }
+
   #tools-btn {
     top: 16px; left: 50%; transform: translateX(-50%);
     width: 40px; height: 40px;
@@ -297,6 +332,11 @@
     <div class="prompt">&#9660; space to close</div>
   </div>
   <div id="toast" class="hud"></div>
+  <div id="car-menu" class="hud">
+    <div class="car-menu-title">Drive to&hellip;</div>
+    <div id="car-menu-list"></div>
+    <div class="prompt">&#9660; space to close</div>
+  </div>
   <div id="shankfiddle-credit">Boy — a shankFiddle production</div>
 
   <div class="touch-controls" id="dpad">
@@ -347,11 +387,22 @@
   //              for several distinct exits.
   //           any other letter used as a key in this level's `npcs` — a
   //              named character. See `npcs` below.
+  //           C  the car — one per game, wherever it's placed. Once earned
+  //              (see CAR_FAMILY_RESPECT_THRESHOLD), interacting with it from
+  //              anywhere opens a menu to drive straight to any other
+  //              level, no matter how far or disconnected — this is how a
+  //              new level avoids needing a portal wired into an existing
+  //              map at all: it only needs to exist in LEVELS.
   //
   // signs:  array of dialogue strings, matched to 'S' tiles in scan order.
   // exits:  { '<digit>': { to: '<level id>', x: <tx>, y: <ty> } } — arrival
   //         tile in the destination level, in that level's own coordinates.
   // npcs:   { '<letter>': {
+  //             id: 'dad',    // stable key into story.respect — every NPC
+  //                           // worth tracking a relationship with should
+  //                           // have one (falls back to name.toLowerCase()
+  //                           // if omitted, but don't rely on that for
+  //                           // names that collide once lowercased).
   //             name: 'Mom',
   //             appearance: { top, bottom, skin, hair, hairStyle, skirt },
   //             // skin defaults to SKIN_LIGHT (everyone else in the world);
@@ -359,24 +410,48 @@
   //             // literal since this data runs before those are defined.
   //             dialogue: { childhood: '...', diagnosis: '...', ... },
   //             absentFrom: 'grief',  // gone starting this chapter onward
+  //             isFamily: true,  // every conversation (whatever line plays)
+  //                               // also raises story.respect[id] — see the
+  //                               // three-tier respect model below.
   //             challenge: {            // optional — makes talking to this
   //               key: 'violin',        // NPC a repeatable respect grind
-  //               threshold: 3,         // instead of static dialogue
-  //               progressLines: ['...', '...', '...'],
-  //               completeLine: '...',
-  //               learnedMessage: 'You learned the Violin! 🎻'  // shown once
+  //               threshold: 3,         // (progress is tracked under this
+  //               progressLines: ['...', '...', '...'],  // NPC's own id,
+  //               completeLine: '...',                    // same as any
+  //               learnedMessage: 'You learned the Violin! 🎻'  // other individual respect)
   //             },
   //             job: {                  // optional — instead of dialogue or
   //               pay: 5,               // a challenge, an indefinitely
-  //               reputation: 1,        // repeatable source of money and/or
-  //               lines: ['...', '...'] // general reputation. A random line
-  //             }                       // plays each time; no threshold.
+  //               reputation: 1,        // repeatable source of money, this
+  //               community: 'clearing',// NPC's individual respect, AND
+  //               lines: ['...', '...'] // their community's respect. A
+  //             }                       // random line plays; no threshold.
   //           } }
   //         dialogue is looked up for the CURRENT story chapter, falling
   //         back to the closest earlier chapter that has a line — so a
   //         character only needs new dialogue for the chapters where what
   //         they say actually changes. An NPC with `challenge` or `job`
   //         ignores `dialogue` entirely — see talkToNpc().
+  //
+  // ---- the three-tier respect model ----
+  // Respect is never one flat number — it's modeled at three distinct
+  // scopes, each with its own calculus, because "the town trusts you" and
+  // "Dad trusts you" and "you're good at violin" are genuinely different
+  // things that should be able to move independently:
+  //   individual — story.respect[npcId]: your standing with ONE specific
+  //     person. Every NPC with a stable `id` gets their own counter here —
+  //     a challenge's progress (story.respect[challenge.key]) IS that
+  //     teacher's individual respect for you; a job or isFamily NPC's `id`
+  //     works the same way.
+  //   family — familyRespect(), a derived SUM of specific individuals
+  //     (currently dad + mom), not its own stored counter. Nothing resets
+  //     it independently of the people it's made of; it just reads them.
+  //   community — story.communityRespect[communityId]: a pool shared by
+  //     everyone who works or lives in that community (job.community),
+  //     separate from any single relationship within it. Different
+  //     communities (once more than one exists) accrue this independently.
+  // money stays a single global number on purpose — it's fungible and
+  // portable in a way respect at any of these scopes deliberately isn't.
   // ========================================================================
   var LEVELS = [
     {
@@ -395,8 +470,10 @@
       ],
       npcs: {
         D: {
+          id: 'dad',
           name: 'Dad',
           appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'short', skin: 0xa9714a },
+          isFamily: true,
           dialogue: {
             childhood: "\"An A-minus. Do you know what that tells me? That you stopped trying the moment it got hard.\"",
             diagnosis: "\"...I'm not as strong as I used to be. But I'm glad you're here.\""
@@ -404,8 +481,10 @@
           absentFrom: 'grief'
         },
         M: {
+          id: 'mom',
           name: 'Mom',
           appearance: { top: 0xa8536b, bottom: 0x3a2a35, hairStyle: 'long', skirt: true, skin: 0xa9714a },
+          isFamily: true,
           dialogue: {
             childhood: "\"Your father's right. In this house, 'good enough' isn't. We didn't raise you to be ordinary.\""
           }
@@ -427,7 +506,7 @@
         "#....=========....#",
         "1.,......@.......$2",
         "#...~~~.....o,,.o.#",
-        "#..~~~~~..F.K.....#",
+        "#..~~~~~..F.K...C.#",
         "#...~~~.......b...#",
         "#.$.........o...$.#",
         "#..$.,,.......,S..#",
@@ -454,11 +533,13 @@
           }
         },
         F: {
+          id: 'farmer_jono',
           name: 'Farmer Jono',
           appearance: { top: 0x6f7d4a, bottom: 0x4a3a28, hairStyle: 'short', hair: 0x8a6a3a },
           job: {
             pay: 5,
             reputation: 1,
+            community: 'clearing',
             lines: [
               "\"Grab that hoe, we've got rows to weed.\"",
               "\"Fields don't tend themselves. Thanks for the help.\"",
@@ -467,11 +548,13 @@
           }
         },
         K: {
+          id: 'elsie',
           name: 'Elsie',
           appearance: { top: 0x3f6b6b, bottom: 0x2a2a30, hairStyle: 'long', hair: 0xd8d0b0 },
           job: {
             pay: 3,
             reputation: 1,
+            community: 'clearing',
             lines: [
               "\"Welcome back! Everything's fresh today.\"",
               "\"Help me restock the shelves and I'll make it worth your while.\"",
@@ -598,13 +681,17 @@
   // currently advances it past 'childhood' — that's the next piece to build.
   // 'duty' is the story's final state: respect fully earned.
   var CHAPTERS = ['childhood', 'earning_respect', 'diagnosis', 'grief', 'duty'];
-  // respect: per-challenge progress (see npcs.<letter>.challenge below),
-  // keyed by challenge id, e.g. respect.violin = 2.
+  // See "the three-tier respect model" above LEVELS for what respect vs.
+  // communityRespect vs. familyRespect() each mean and why they're separate.
+  // respect: individual standing per NPC id, e.g. respect.dad, respect.violin.
   // learned: which challenges have been completed, e.g. learned.violin = true.
-  // money / reputation: earned from jobs (see npcs.<letter>.job below) —
-  // reputation is general community standing, distinct from the
-  // per-teacher respect a challenge tracks.
-  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, reputation: 0 };
+  // communityRespect: per-community standing, e.g. communityRespect.clearing.
+  // money: global, fungible — not scoped to any individual or community.
+  // hasCar: earned at the village's car once familyRespect() clears
+  // CAR_FAMILY_RESPECT_THRESHOLD — see findNearbyCar()/handleAction().
+  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, hasCar: false };
+  var CAR_FAMILY_RESPECT_THRESHOLD = 4;
+  function familyRespect() { return (story.respect.dad || 0) + (story.respect.mom || 0); }
 
   // absentFrom marks a character gone starting at that chapter and for
   // every chapter after it (not just that one) — once someone is gone from
@@ -646,7 +733,7 @@
     var exits = levelDef.exits || {};
     var npcs = levelDef.npcs || {};
     var obstacles = new Set();
-    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], signs: [], houseTiles: [], portals: [], npcs: [] };
+    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], signs: [], houseTiles: [], portals: [], npcs: [], car: null };
     var groundKinds = [];
     var playerStart = { x: 1, y: 1 };
 
@@ -674,6 +761,7 @@
           case 'S': obstacles.add(key(x, y)); features.signs.push({ x: x, y: y, message: (levelDef.signs || [])[features.signs.length] || 'A weathered sign, worn smooth by rain.' }); break;
           case ',': features.flowers.push({ x: x, y: y }); break;
           case '$': features.shards.push({ x: x, y: y, collected: false }); break;
+          case 'C': obstacles.add(key(x, y)); features.car = { x: x, y: y }; break;
           case '@': playerStart = { x: x, y: y }; break;
         }
       }
@@ -914,6 +1002,45 @@
     return g;
   }
 
+  function createCar() {
+    var g = new THREE.Group();
+    var bodyMat = new THREE.MeshStandardMaterial({ color: 0xd6432f, roughness: 0.4, metalness: 0.3 });
+
+    var body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.32, 0.55), bodyMat);
+    body.position.y = 0.34;
+    body.castShadow = true;
+    g.add(body);
+
+    var cabin = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.28, 0.48), bodyMat);
+    cabin.position.set(-0.05, 0.62, 0);
+    cabin.castShadow = true;
+    g.add(cabin);
+
+    var glassMat = new THREE.MeshStandardMaterial({ color: 0x9fd8e8, emissive: 0x1a3038, emissiveIntensity: 0.3, roughness: 0.2 });
+    var windshield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.42), glassMat);
+    windshield.position.set(0.22, 0.62, 0);
+    g.add(windshield);
+
+    var wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+    var wheelGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.1, 12);
+    [[-0.32, 0.3], [-0.32, -0.3], [0.32, 0.3], [0.32, -0.3]].forEach(function (pos) {
+      var wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(pos[0], 0.14, pos[1]);
+      wheel.castShadow = true;
+      g.add(wheel);
+    });
+
+    var lightMat = new THREE.MeshStandardMaterial({ color: 0xfff3c0, emissive: 0xffcf6b, emissiveIntensity: 0.8 });
+    [0.24, -0.24].forEach(function (z) {
+      var headlight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.1), lightMat);
+      headlight.position.set(0.5, 0.34, z);
+      g.add(headlight);
+    });
+
+    return g;
+  }
+
   // Generic adult NPC — same low-poly-diorama vocabulary as the player,
   // but taller proportions and customizable clothing/hair so Mom, Dad, and
   // every future townsperson can share one builder.
@@ -1077,6 +1204,14 @@
       n.obj = obj;
     });
 
+    if (w.features.car) {
+      var carPos = worldPos(w, w.features.car.x, w.features.car.y);
+      var carObj = createCar();
+      carObj.position.set(carPos.x, 0, carPos.z);
+      group.add(carObj);
+      w.features.car.obj = carObj;
+    }
+
     return { group: group, waterTiles: waterTiles };
   }
 
@@ -1175,8 +1310,10 @@
     sun.shadow.camera.updateProjectionMatrix();
 
     renderShardCount();
+    renderStats();
     dialogueOpen = false;
     closeDialogue();
+    closeCarMenu();
 
     // Snap instantly rather than lerping — panning across the old map on
     // the way to the new one would look broken.
@@ -1226,11 +1363,13 @@
 
   var moneyCountText = document.getElementById('money-count-text');
   var reputationCountText = document.getElementById('reputation-count-text');
+  // Shows respect for whichever community you're currently standing in —
+  // not a cross-community sum, since those pools are deliberately separate.
+  // Called once loadLevel() has set `world`; see there.
   function renderStats() {
     moneyCountText.textContent = story.money;
-    reputationCountText.textContent = story.reputation;
+    reputationCountText.textContent = story.communityRespect[world.id] || 0;
   }
-  renderStats();
 
   var dialogueEl = document.getElementById('dialogue');
   var dialogueSpeakerEl = document.getElementById('dialogue-speaker');
@@ -1343,18 +1482,62 @@
     return null;
   }
 
+  function findNearbyCar() {
+    var car = world.features.car;
+    if (!car) return null;
+    var dx = Math.abs(car.x - player.tileX), dy = Math.abs(car.y - player.tileY);
+    return dx + dy <= 1 ? car : null;
+  }
+
+  // The car is the fast-travel mechanism: once earned, it can reach any
+  // level in LEVELS directly — a new level needs no portal wired into an
+  // existing map to be reachable, just an entry in LEVELS.
+  var carMenuOpen = false;
+  var carMenuEl = document.getElementById('car-menu');
+  var carMenuListEl = document.getElementById('car-menu-list');
+  function openCarMenu() {
+    carMenuListEl.innerHTML = '';
+    LEVELS.forEach(function (lvl, i) {
+      if (lvl.id === world.id) return;
+      var btn = document.createElement('button');
+      btn.textContent = lvl.name;
+      btn.addEventListener('click', function () {
+        closeCarMenu();
+        loadLevel(i);
+      });
+      carMenuListEl.appendChild(btn);
+    });
+    carMenuEl.classList.add('open');
+    carMenuOpen = true;
+  }
+  function closeCarMenu() {
+    carMenuEl.classList.remove('open');
+    carMenuOpen = false;
+  }
+
   // NPCs with a `challenge` turn talking into a repeatable respect grind
   // instead of a static line: each conversation nudges story.respect[key]
   // up by one (with a line reacting to where you're at) until it reaches
   // the threshold, at which point story.learned[key] is set once and the
   // completion line plays from then on.
+  // Stable key into story.respect for an NPC — prefer their declared `id`;
+  // falling back to a lowercased name is a convenience for quick NPCs, not
+  // a guarantee (two NPCs named the same would collide), so give any NPC
+  // whose individual respect actually matters a real `id`.
+  function npcRespectKey(def) { return def.id || def.name.toLowerCase(); }
+
   function talkToNpc(npc) {
     var def = npc.def;
 
     if (def.job) {
       var job = def.job;
+      var jobKey = npcRespectKey(def);
       story.money += job.pay || 0;
-      if (job.reputation) story.reputation += job.reputation;
+      story.respect[jobKey] = (story.respect[jobKey] || 0) + 1;
+      if (job.reputation) {
+        var communityId = job.community || world.id;
+        story.communityRespect[communityId] = (story.communityRespect[communityId] || 0) + job.reputation;
+      }
       renderStats();
       var jobLine = job.lines[Math.floor(rand(0, job.lines.length))];
       openDialogue(jobLine, def.name);
@@ -1366,7 +1549,15 @@
     }
 
     var ch = def.challenge;
-    if (!ch) { openDialogue(dialogueFor(def), def.name); return; }
+    if (!ch) {
+      openDialogue(dialogueFor(def), def.name);
+      if (def.isFamily) {
+        var famKey = npcRespectKey(def);
+        story.respect[famKey] = (story.respect[famKey] || 0) + 1;
+        if (!story.hasCar) showToast('Family respect: ' + familyRespect() + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD, 1600);
+      }
+      return;
+    }
 
     var have = story.respect[ch.key] || 0;
     if (have >= ch.threshold) {
@@ -1392,7 +1583,23 @@
 
   function handleAction() {
     ensureAudio();
+    if (carMenuOpen) { closeCarMenu(); return; }
     if (dialogueOpen) { closeDialogue(); return; }
+
+    var car = findNearbyCar();
+    if (car) {
+      if (story.hasCar) { openCarMenu(); return; }
+      var famRespect = familyRespect();
+      if (famRespect >= CAR_FAMILY_RESPECT_THRESHOLD) {
+        story.hasCar = true;
+        openDialogue('Dad tosses you the keys. "Don\'t make us regret this." Mom just smiles.');
+        showToast('You can drive now! 🚗 Visit the car anytime to travel between towns.', 2800);
+      } else {
+        openDialogue('"This old car won\'t start until Mom and Dad trust you behind the wheel." (' + famRespect + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD + ' family respect)');
+      }
+      return;
+    }
+
     var npc = findNearbyNpc();
     if (npc) { talkToNpc(npc); return; }
     var sign = findNearbySign();
@@ -1485,7 +1692,7 @@
           checkShardPickup();
           checkPortal();
         }
-      } else if (!dialogueOpen) {
+      } else if (!dialogueOpen && !carMenuOpen) {
         var dir = pressedDirs[pressedDirs.length - 1];
         if (dir) attemptMove(dir);
         var breathe = 1 + Math.sin(t * 2.4) * 0.015;
