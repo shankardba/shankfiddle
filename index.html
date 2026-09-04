@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>shankFiddle — Musician · Philosopher · Artist</title>
+<meta name="description" content="shankFiddle — music, philosophy, and interactive sound tools by Shankar Srinivasan.">
+<link rel="icon" href="assets/images/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="navbar">
+    <a href="#top" class="logo-group">
+      <img src="assets/images/logo.png" alt="shankFiddle" class="logo-mark">
+      <span class="logo-word">shankFiddle</span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#about">About</a></li>
+      <li><a href="#tools">Tools</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+</header>
+
+<section class="hero" id="top">
+  <div class="hero-content">
+    <img src="assets/images/logo.png" alt="shankFiddle logo" class="hero-logo">
+    <h1 class="glow-gold">shankFiddle</h1>
+    <p class="hero-roles">Musician <span>·</span> Philosopher <span>·</span> Artist</p>
+    <p class="tagline">Sound is thought made audible — this is where I keep both.</p>
+    <div class="hero-buttons">
+      <a href="#tools" class="btn btn-primary">Explore the Tools</a>
+      <a href="#about" class="btn btn-outline">About Me</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="about">
+  <div class="container about-grid">
+    <div class="about-portrait">
+      <img src="assets/images/treble-photo.jpg" alt="Light-painted treble clef">
+    </div>
+    <div class="about-text">
+      <p class="eyebrow">About</p>
+      <h2 class="section-title">Notes, Questions, and the Space Between</h2>
+      <p>
+        I'm <strong>Shankar Srinivasan</strong> — a musician first, but never only that.
+        My work moves between the fretboard and the page, between a tuned string and an
+        untuned question. <em>(Placeholder bio — replace with your real story.)</em>
+      </p>
+      <p>
+        Musically I work across composition, improvisation, and sound design — building
+        instruments as often as I play them. Philosophically I'm drawn to the questions
+        that don't resolve cleanly: what a chord "means," why a pattern feels inevitable,
+        where structure ends and intuition begins.
+      </p>
+      <p>
+        This site is also a workshop. The tools below are small instruments I've built —
+        for exploring harmony, patching synthesis, and watching structure emerge from
+        simple rules. They're as much a part of the work as any recording.
+      </p>
+      <div class="pillars">
+        <div class="pillar">
+          <h3>Music</h3>
+          <p>Composition, improvisation, and sound design across acoustic and electronic instruments.</p>
+        </div>
+        <div class="pillar">
+          <h3>Philosophy</h3>
+          <p>Essays and ideas at the edge of aesthetics, structure, and perception.</p>
+        </div>
+        <div class="pillar">
+          <h3>Art</h3>
+          <p>Visual and generative work — fractals, patterns, and other forms thought takes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="tools">
+  <div class="container">
+    <p class="eyebrow">Interactive</p>
+    <h2 class="section-title">Tools &amp; Instruments</h2>
+    <p class="section-subtitle">
+      A small, growing collection of interactive pieces — half music theory, half art,
+      built to explore rather than just explain.
+    </p>
+    <div class="tools-grid">
+      <a href="tools/circle-of-fifths/" class="tool-card">
+        <span class="tool-icon">🎼</span>
+        <h3>Circle of Fifths</h3>
+        <p>A rotating chord wheel with staff notation, guitar/ukulele charts, and playable audio for every key.</p>
+        <span class="launch">Open the wheel</span>
+      </a>
+      <a href="tools/synth/" class="tool-card">
+        <span class="tool-icon">🎛️</span>
+        <h3>Modular Synth</h3>
+        <p>A patchable modular synthesizer in the browser — VCOs, filters, envelopes, and a keyboard to play them with.</p>
+        <span class="launch">Start patching</span>
+      </a>
+      <a href="tools/fractal/" class="tool-card">
+        <span class="tool-icon">🌀</span>
+        <h3>Fractal Explorer</h3>
+        <p>An interactive fractal renderer — pan, zoom, and randomize across a dozen generative algorithms.</p>
+        <span class="launch">Explore the fractal</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="contact">
+  <div class="container">
+    <p class="eyebrow">Contact</p>
+    <h2 class="section-title">Get in Touch</h2>
+    <p class="section-subtitle">For bookings, collaborations, or just to talk about chords and Kant.</p>
+    <div class="contact-wrap">
+      <a href="mailto:hello@shankfiddle.com" class="contact-email">hello@shankfiddle.com</a>
+      <div class="social-links">
+        <a href="#" target="_blank" rel="noopener">Instagram</a>
+        <a href="#" target="_blank" rel="noopener">Bandcamp</a>
+        <a href="#" target="_blank" rel="noopener">YouTube</a>
+        <a href="https://github.com/shankardba" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  &copy; 2026 Shankar Srinivasan — shankFiddle. All rights reserved.
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
