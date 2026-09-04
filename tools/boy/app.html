@@ -469,7 +469,7 @@
   //                 item: 'carrot',      // — UNLESS `harvest` is set, in
   //                 need: 5,             // which case talking pays out
   //                 itemLabel: 'carrots',// only once story.produce[item]
-  //                 needLine: '"..."'    // (built by walking over that
+  //                 needLine: '...'      // (built by walking over that
   //               },                    // item's map tiles — see 'c'/'r'
   //                                     // in the map legend and
   //                                     // checkCropPickup()) reaches
@@ -496,7 +496,7 @@
   //               reputation: 2,        // SPENDS story.money instead of
   //               community: 'clearing',// earning it. Below `cost`, talking
   //               lines: ['...'],       // just shows `needLine` and nothing
-  //               needLine: '"..."'     // is charged. This is how buying a
+  //               needLine: '...'       // is charged. This is how buying a
   //             }                       // hungry kid lunch becomes the
   //                                     // community noticing and respecting
   //                                     // you for it, not just a line of
@@ -564,29 +564,29 @@
           appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'short', skin: 0xa9714a, pieceType: 'king' },
           isFamily: true,
           dialogue: {
-            childhood: "\"An A-minus. Do you know what that tells me? That you stopped trying the moment it got hard.\"",
+            childhood: "An A-minus. Do you know what that tells me? That you stopped trying the moment it got hard.",
             // Each beat is a distinct, real thing he noticed you do — see
             // talkToNpc()'s isFamily branch: respect only grows by reaching
             // a NEW one of these, never by hearing the same one twice.
             earning_respect: [
-              "\"You practiced again without me telling you to. Good.\"",
-              "\"Farmer Jono says you're reliable. That's not nothing, coming from him.\"",
-              "\"You fixed the gate without being asked. I saw that.\"",
-              "\"...I don't say this enough. I'm proud of the effort you're putting in.\""
+              "You practiced again without me telling you to. Good.",
+              "Farmer Jono says you're reliable. That's not nothing, coming from him.",
+              "You fixed the gate without being asked. I saw that.",
+              "...I don't say this enough. I'm proud of the effort you're putting in."
             ],
             // The earning_respect -> diagnosis reveal, delivered right here
             // at home before he leaves for the Hospital — see the trigger
             // in talkToNpc().
-            diagnosis: "\"...I'm not as strong as I used to be. But I'm glad you're here.\"",
+            diagnosis: "...I'm not as strong as I used to be. But I'm glad you're here.",
             hospice: [
-              "\"It's good to be home. Don't fuss over me too much — just sit with me a while.\"",
-              "\"You read to me yesterday. I don't remember the story, but I remember your voice.\"",
-              "\"I'm tired today. But you're here. That's enough.\""
+              "It's good to be home. Don't fuss over me too much — just sit with me a while.",
+              "You read to me yesterday. I don't remember the story, but I remember your voice.",
+              "I'm tired today. But you're here. That's enough."
             ],
             // His last line, delivered once as the hospice -> grief trigger
             // fires — see talkToNpc(). He's presentDuring hospice only, so
             // by the next visit here he's simply gone.
-            grief: "\"...You've become someone I'm proud of. Take care of your mother for me.\""
+            grief: "...You've become someone I'm proud of. Take care of your mother for me."
           },
           careMessages: {
             earning_respect: 'Dad noticed the effort. 🏡 +1 family respect',
@@ -602,28 +602,28 @@
           appearance: { top: 0xa8536b, bottom: 0x3a2a35, hairStyle: 'long', skirt: true, skin: 0xa9714a, pieceType: 'queen' },
           isFamily: true,
           dialogue: {
-            childhood: "\"Your father's right. In this house, 'good enough' isn't. We didn't raise you to be ordinary.\"",
+            childhood: "Your father's right. In this house, 'good enough' isn't. We didn't raise you to be ordinary.",
             // Each beat is a distinct, real thing she noticed — see
             // talkToNpc()'s isFamily branch: respect only grows by reaching
             // a NEW one of these, never by hearing the same one twice.
             earning_respect: [
-              "\"You cleared the table without me asking. Thank you.\"",
-              "\"I heard you've been helping Elsie at the shop. That matters more than you know.\"",
-              "\"You checked in on me today just because. That's rare in a boy your age.\"",
-              "\"I know your father is hard on you. I see how hard you're trying anyway.\""
+              "You cleared the table without me asking. Thank you.",
+              "I heard you've been helping Elsie at the shop. That matters more than you know.",
+              "You checked in on me today just because. That's rare in a boy your age.",
+              "I know your father is hard on you. I see how hard you're trying anyway."
             ],
-            diagnosis: "\"I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know.\"",
+            diagnosis: "I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know.",
             hospice: [
-              "\"Having him home is better, even like this. Thank you for helping me take care of him.\"",
-              "\"You've learned how to give him his medicine without being asked. I don't know how you grew up so fast.\"",
-              "\"Some nights I don't think I could do this without you here.\""
+              "Having him home is better, even like this. Thank you for helping me take care of him.",
+              "You've learned how to give him his medicine without being asked. I don't know how you grew up so fast.",
+              "Some nights I don't think I could do this without you here."
             ],
             grief: [
-              "\"Some days the house feels too quiet. But you're still here. That's not nothing.\"",
-              "\"You've been getting up early, taking care of things before I even ask. I see it.\""
+              "Some days the house feels too quiet. But you're still here. That's not nothing.",
+              "You've been getting up early, taking care of things before I even ask. I see it."
             ],
             // The grief -> duty trigger's reveal — see talkToNpc().
-            duty: "\"It's just the two of us now. We're building something new out of what we lost — I'm proud of who you've become in the middle of it.\""
+            duty: "It's just the two of us now. We're building something new out of what we lost — I'm proud of who you've become in the middle of it."
           },
           careMessages: {
             earning_respect: 'Mom noticed the effort. 🏡 +1 family respect',
@@ -666,11 +666,11 @@
             key: 'violin',
             threshold: 3,
             progressLines: [
-              "\"Hold the bow properly! Wrist loose, not limp. Again.\"",
-              "\"...Better. You might not be hopeless after all.\"",
-              "\"One more session. Prove to me you're serious.\""
+              "Hold the bow properly! Wrist loose, not limp. Again.",
+              "...Better. You might not be hopeless after all.",
+              "One more session. Prove to me you're serious."
             ],
-            completeLine: "\"Alright. You've earned it — I'll teach you the violin, properly this time.\"",
+            completeLine: "Alright. You've earned it — I'll teach you the violin, properly this time.",
             learnedMessage: 'You learned the Violin! 🎻',
             link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
@@ -684,8 +684,8 @@
             trust: {
               need: 2,
               lines: [
-                "\"You're the new kid hanging around the fields, huh? Watch where you step.\"",
-                "\"...Alright. You keep showing up, you don't get underfoot. Maybe I can use you.\""
+                "You're the new kid hanging around the fields, huh? Watch where you step.",
+                "...Alright. You keep showing up, you don't get underfoot. Maybe I can use you."
               ]
             },
             tiers: [
@@ -697,12 +697,12 @@
                   item: 'carrot',
                   need: 5,
                   itemLabel: 'carrots',
-                  needLine: "\"Rows won't pick themselves — bring me 5 carrots and I'll pay you for the work.\""
+                  needLine: "Rows won't pick themselves — bring me 5 carrots and I'll pay you for the work."
                 },
                 lines: [
-                  "\"Now that's a haul. Good hands.\"",
-                  "\"Fields don't tend themselves. Thanks for the help.\"",
-                  "\"Good hands. Come back anytime there's more to pick.\""
+                  "Now that's a haul. Good hands.",
+                  "Fields don't tend themselves. Thanks for the help.",
+                  "Good hands. Come back anytime there's more to pick."
                 ]
               },
               {
@@ -713,12 +713,12 @@
                   item: 'seedrow',
                   need: 3,
                   itemLabel: 'rows planted',
-                  needLine: "\"You've earned more than picking. Plant 3 rows for me and I'll pay you properly this time.\""
+                  needLine: "You've earned more than picking. Plant 3 rows for me and I'll pay you properly this time."
                 },
                 lines: [
-                  "\"Straight rows, good spacing. You've got a real feel for this now.\"",
-                  "\"That's a farmer's work, not a kid's chore. I mean that.\"",
-                  "\"Half this field is yours as much as mine at this point.\""
+                  "Straight rows, good spacing. You've got a real feel for this now.",
+                  "That's a farmer's work, not a kid's chore. I mean that.",
+                  "Half this field is yours as much as mine at this point."
                 ]
               }
             ]
@@ -733,8 +733,8 @@
             trust: {
               need: 2,
               lines: [
-                "\"Careful with the shelves! ...You're the one who's been around lately, aren't you.\"",
-                "\"You've been polite every time you've come in. That's worth something to me.\""
+                "Careful with the shelves! ...You're the one who's been around lately, aren't you.",
+                "You've been polite every time you've come in. That's worth something to me."
               ]
             },
             tiers: [
@@ -746,12 +746,12 @@
                   item: 'basket',
                   need: 5,
                   itemLabel: 'baskets',
-                  needLine: "\"Shelves don't restock themselves — bring me 5 baskets from the storeroom and I'll make it worth your while.\""
+                  needLine: "Shelves don't restock themselves — bring me 5 baskets from the storeroom and I'll make it worth your while."
                 },
                 lines: [
-                  "\"Welcome back! Everything's fresh today.\"",
-                  "\"That'll keep the shelves full a while. Thank you.\"",
-                  "\"You're becoming a familiar face around here.\""
+                  "Welcome back! Everything's fresh today.",
+                  "That'll keep the shelves full a while. Thank you.",
+                  "You're becoming a familiar face around here."
                 ]
               },
               {
@@ -762,12 +762,12 @@
                   item: 'crate',
                   need: 3,
                   itemLabel: 'imported crates',
-                  needLine: "\"I trust you with the good stuff now — bring in 3 of the imported crates and I'll pay you properly.\""
+                  needLine: "I trust you with the good stuff now — bring in 3 of the imported crates and I'll pay you properly."
                 },
                 lines: [
-                  "\"Careful hands with the fine goods. I knew I could trust you with these.\"",
-                  "\"Half my customers ask for you by name now.\"",
-                  "\"You've earned a real cut of this, not just pocket change.\""
+                  "Careful hands with the fine goods. I knew I could trust you with these.",
+                  "Half my customers ask for you by name now.",
+                  "You've earned a real cut of this, not just pocket change."
                 ]
               }
             ]
@@ -782,11 +782,11 @@
             reputation: 2,
             community: 'clearing',
             lines: [
-              "\"Thank you! I didn't eat much today.\"",
-              "\"You always share when you've got it. People notice that.\"",
-              "\"My stomach was so loud. Thank you, thank you.\""
+              "Thank you! I didn't eat much today.",
+              "You always share when you've got it. People notice that.",
+              "My stomach was so loud. Thank you, thank you."
             ],
-            needLine: "\"...I'm okay. I'm not that hungry.\" (he clearly is — but you're out of money to help)"
+            needLine: "...I'm okay. I'm not that hungry. (he clearly is — but you're out of money to help)"
           }
         }
       },
@@ -825,11 +825,11 @@
             key: 'piano',
             threshold: 3,
             progressLines: [
-              "\"Fingers curved, not flat! You're playing piano, not slapping a table.\"",
-              "\"That's almost a melody. Almost.\"",
-              "\"Once more, and mean it this time.\""
+              "Fingers curved, not flat! You're playing piano, not slapping a table.",
+              "That's almost a melody. Almost.",
+              "Once more, and mean it this time."
             ],
-            completeLine: "\"There. Now you're actually playing. I'll teach you properly from here.\"",
+            completeLine: "There. Now you're actually playing. I'll teach you properly from here.",
             learnedMessage: 'You learned the Piano! 🎹',
             link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
@@ -859,11 +859,11 @@
             key: 'guitar',
             threshold: 3,
             progressLines: [
-              "\"Nah man, you're strangling those strings. Loosen up.\"",
-              "\"Okay okay, that had a groove to it.\"",
-              "\"One more run-through and I'll know you're serious.\""
+              "Nah man, you're strangling those strings. Loosen up.",
+              "Okay okay, that had a groove to it.",
+              "One more run-through and I'll know you're serious."
             ],
-            completeLine: "\"Alright, you've got heart. Let's actually learn some guitar.\"",
+            completeLine: "Alright, you've got heart. Let's actually learn some guitar.",
             learnedMessage: 'You learned the Guitar! 🎸',
             link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
@@ -893,11 +893,11 @@
             key: 'flute',
             threshold: 3,
             progressLines: [
-              "\"Breathe from your stomach, not your chest. Try again.\"",
-              "\"That was almost peaceful. Almost.\"",
-              "\"Once more, with your whole breath this time.\""
+              "Breathe from your stomach, not your chest. Try again.",
+              "That was almost peaceful. Almost.",
+              "Once more, with your whole breath this time."
             ],
-            completeLine: "\"Beautiful. Now let's really teach you the flute.\"",
+            completeLine: "Beautiful. Now let's really teach you the flute.",
             learnedMessage: 'You learned the Flute! 🎶',
             link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
@@ -929,10 +929,10 @@
               key: 'fractal_navigate',
               threshold: 2,
               progressLines: [
-                "\"Numbers aren't the boring part, son. Look closer.\"",
-                "\"Try dragging the whole picture. Zoom in until it stops looking like anything.\""
+                "Numbers aren't the boring part, son. Look closer.",
+                "Try dragging the whole picture. Zoom in until it stops looking like anything."
               ],
-              completeLine: "\"There. You just found self-similarity with your own hands. Go get lost in it.\"",
+              completeLine: "There. You just found self-similarity with your own hands. Go get lost in it.",
               learnedMessage: 'You learned to navigate fractals! 🔍',
               link: { href: '../fractal/', label: 'Pan and zoom into the fractal →' }
             },
@@ -940,10 +940,10 @@
               key: 'fractal_algorithms',
               threshold: 2,
               progressLines: [
-                "\"The Mandelbrot set is just the beginning. There's a whole family of these equations.\"",
-                "\"Switch the algorithm. Burning Ship, Newton, Nova — same rules, different worlds.\""
+                "The Mandelbrot set is just the beginning. There's a whole family of these equations.",
+                "Switch the algorithm. Burning Ship, Newton, Nova — same rules, different worlds."
               ],
-              completeLine: "\"See? Change one equation and the whole universe rearranges itself.\"",
+              completeLine: "See? Change one equation and the whole universe rearranges itself.",
               learnedMessage: 'You learned to switch fractal algorithms! 🌀',
               link: { href: '../fractal/', label: 'Try a different algorithm →' }
             },
@@ -951,10 +951,10 @@
               key: 'fractal_julia',
               threshold: 2,
               progressLines: [
-                "\"Now flip it — Julia sets. Every point in the Mandelbrot set is its own little universe.\"",
-                "\"Move your mouse over it. Watch the seed change everything, live.\""
+                "Now flip it — Julia sets. Every point in the Mandelbrot set is its own little universe.",
+                "Move your mouse over it. Watch the seed change everything, live."
               ],
-              completeLine: "\"That's the trick nobody tells you: infinity was never far away.\"",
+              completeLine: "That's the trick nobody tells you: infinity was never far away.",
               learnedMessage: 'You learned Julia sets! 🌌',
               link: { href: '../fractal/', label: 'Explore a Julia set →' }
             },
@@ -962,15 +962,15 @@
               key: 'fractal_color',
               threshold: 2,
               progressLines: [
-                "\"Now make it yours. Push the iterations up — the edges get stranger.\"",
-                "\"Pick your colors. A fractal with no palette is just math homework.\""
+                "Now make it yours. Push the iterations up — the edges get stranger.",
+                "Pick your colors. A fractal with no palette is just math homework."
               ],
-              completeLine: "\"You're not just doing my homework anymore. You're exploring.\"",
+              completeLine: "You're not just doing my homework anymore. You're exploring.",
               learnedMessage: 'You learned to shape fractals! 🎨',
               link: { href: '../fractal/', label: 'Tune the color and detail →' }
             }
           ],
-          dialogue: { default: "\"Still coming back to stare at infinity? Good. That means it's working.\"" }
+          dialogue: { default: "Still coming back to stare at infinity? Good. That means it's working." }
         }
       },
       exits: { '1': { to: 'clearing', x: 4, y: 1 } }
@@ -999,10 +999,10 @@
               key: 'synth_oscillator',
               threshold: 2,
               progressLines: [
-                "\"First things first — meet the oscillator. It's just a wave. Everything else is opinion.\"",
-                "\"Now patch the keyboard into it. One volt per octave. Play something.\""
+                "First things first — meet the oscillator. It's just a wave. Everything else is opinion.",
+                "Now patch the keyboard into it. One volt per octave. Play something."
               ],
-              completeLine: "\"Good. You just built an instrument out of electricity. Coffee's on me.\"",
+              completeLine: "Good. You just built an instrument out of electricity. Coffee's on me.",
               learnedMessage: 'You learned the oscillator! 〰️',
               link: { href: '../synth/', label: 'Meet the oscillator and keyboard →' }
             },
@@ -1010,10 +1010,10 @@
               key: 'synth_envelope',
               threshold: 2,
               progressLines: [
-                "\"A wave that never stops is just noise. Give it a shape — attack, decay, sustain, release.\"",
-                "\"Patch the envelope into the VCA. That's the difference between a tone and a note.\""
+                "A wave that never stops is just noise. Give it a shape — attack, decay, sustain, release.",
+                "Patch the envelope into the VCA. That's the difference between a tone and a note."
               ],
-              completeLine: "\"There it is. You just gave sound a beginning and an end.\"",
+              completeLine: "There it is. You just gave sound a beginning and an end.",
               learnedMessage: 'You learned envelopes! 📈',
               link: { href: '../synth/', label: 'Shape a note with an envelope →' }
             },
@@ -1021,10 +1021,10 @@
               key: 'synth_filter',
               threshold: 2,
               progressLines: [
-                "\"Now the fun part. Run it through a filter and sweep the cutoff — that's a lead sound.\"",
-                "\"Patch an LFO into the cutoff. Slow wobble, fast wobble — that's modulation.\""
+                "Now the fun part. Run it through a filter and sweep the cutoff — that's a lead sound.",
+                "Patch an LFO into the cutoff. Slow wobble, fast wobble — that's modulation."
               ],
-              completeLine: "\"You just discovered why every DJ in the 90s bought one of these.\"",
+              completeLine: "You just discovered why every DJ in the 90s bought one of these.",
               learnedMessage: 'You learned filters & modulation! 🌊',
               link: { href: '../synth/', label: 'Sweep a filter →' }
             },
@@ -1032,10 +1032,10 @@
               key: 'synth_fm',
               threshold: 2,
               progressLines: [
-                "\"Modulation doesn't stop at the filter. Patch one oscillator into another's pitch — that's FM.\"",
-                "\"Try it on the amplitude instead. Same idea — that's AM, tremolo's cousin.\""
+                "Modulation doesn't stop at the filter. Patch one oscillator into another's pitch — that's FM.",
+                "Try it on the amplitude instead. Same idea — that's AM, tremolo's cousin."
               ],
-              completeLine: "\"Congratulations, you just made a bell out of two triangle waves.\"",
+              completeLine: "Congratulations, you just made a bell out of two triangle waves.",
               learnedMessage: 'You learned FM & AM synthesis! 🔔',
               link: { href: '../synth/', label: 'Patch some FM →' }
             },
@@ -1043,10 +1043,10 @@
               key: 'synth_noise',
               threshold: 2,
               progressLines: [
-                "\"Not everything needs a pitch. Patch in the noise source — that's your drums right there.\"",
-                "\"Now layer it. Mix a few voices together. A patch is a band if you let it be.\""
+                "Not everything needs a pitch. Patch in the noise source — that's your drums right there.",
+                "Now layer it. Mix a few voices together. A patch is a band if you let it be."
               ],
-              completeLine: "\"That's the whole secret. Layering is composing.\"",
+              completeLine: "That's the whole secret. Layering is composing.",
               learnedMessage: 'You learned noise & layering! 🥁',
               link: { href: '../synth/', label: 'Layer some noise in →' }
             },
@@ -1054,15 +1054,15 @@
               key: 'synth_patching',
               threshold: 2,
               progressLines: [
-                "\"Last lesson. Patch the output back into itself. Careful — this is where it gets chaotic.\"",
-                "\"Now use everything. Every module, every cable. See what happens.\""
+                "Last lesson. Patch the output back into itself. Careful — this is where it gets chaotic.",
+                "Now use everything. Every module, every cable. See what happens."
               ],
-              completeLine: "\"That's not a mistake, that's a modular synthesizer. Now go make noise.\"",
+              completeLine: "That's not a mistake, that's a modular synthesizer. Now go make noise.",
               learnedMessage: 'You learned self-patching! ⚡',
               link: { href: '../synth/', label: 'Patch everything at once →' }
             }
           ],
-          dialogue: { default: "\"Still here? Good, the coffee's fresh. Go patch something weird.\"" }
+          dialogue: { default: "Still here? Good, the coffee's fresh. Go patch something weird." }
         }
       },
       exits: { '1': { to: 'clearing', x: 15, y: 1 } }
@@ -1091,10 +1091,10 @@
               key: 'theory_wheel',
               threshold: 2,
               progressLines: [
-                "\"Every key has its place on this wheel. Find your tonic — the home note — and the rest will follow.\"",
-                "\"Turn the wheel. Feel how the subdominant and dominant sit on either side of home.\""
+                "Every key has its place on this wheel. Find your tonic — the home note — and the rest will follow.",
+                "Turn the wheel. Feel how the subdominant and dominant sit on either side of home."
               ],
-              completeLine: "\"You have found your way home in twelve keys, not just one. That is no small thing.\"",
+              completeLine: "You have found your way home in twelve keys, not just one. That is no small thing.",
               learnedMessage: 'You learned the Circle of Fifths! 🎼',
               link: { href: '../circle-of-fifths/', label: 'Turn the wheel yourself →' }
             },
@@ -1102,10 +1102,10 @@
               key: 'theory_minor',
               threshold: 2,
               progressLines: [
-                "\"Every major key carries a shadow — its relative minor. Same notes, a different home.\"",
-                "\"Listen to the harmonic minor. Raise one note, and the whole mood turns.\""
+                "Every major key carries a shadow — its relative minor. Same notes, a different home.",
+                "Listen to the harmonic minor. Raise one note, and the whole mood turns."
               ],
-              completeLine: "\"Light and shadow, both. Now you hear the whole wheel, not just half of it.\"",
+              completeLine: "Light and shadow, both. Now you hear the whole wheel, not just half of it.",
               learnedMessage: 'You learned minor keys! 🌘',
               link: { href: '../circle-of-fifths/', label: 'Find a relative minor →' }
             },
@@ -1113,10 +1113,10 @@
               key: 'theory_progressions',
               threshold: 2,
               progressLines: [
-                "\"Chords alone are just words. String them together and you have a sentence — a progression.\"",
-                "\"Try the four you'll use for the rest of your life: I-IV-V-I. Then play with the tempo.\""
+                "Chords alone are just words. String them together and you have a sentence — a progression.",
+                "Try the four you'll use for the rest of your life: I-IV-V-I. Then play with the tempo."
               ],
-              completeLine: "\"Now you are not just naming chords. You are telling a story with them.\"",
+              completeLine: "Now you are not just naming chords. You are telling a story with them.",
               learnedMessage: 'You learned chord progressions! 🎵',
               link: { href: '../circle-of-fifths/', label: 'Play a progression →' }
             },
@@ -1124,10 +1124,10 @@
               key: 'theory_extensions',
               threshold: 2,
               progressLines: [
-                "\"A triad is the truth. A seventh is the truth with a little more feeling.\"",
-                "\"Add the ninth, if you dare. It should feel like a question, not a mistake.\""
+                "A triad is the truth. A seventh is the truth with a little more feeling.",
+                "Add the ninth, if you dare. It should feel like a question, not a mistake."
               ],
-              completeLine: "\"Color, at last. You did not break the rule — you extended it.\"",
+              completeLine: "Color, at last. You did not break the rule — you extended it.",
               learnedMessage: 'You learned 7ths and 9ths! 🎨',
               link: { href: '../circle-of-fifths/', label: 'Stack a 7th or 9th →' }
             },
@@ -1135,15 +1135,15 @@
               key: 'theory_charts',
               threshold: 2,
               progressLines: [
-                "\"Theory is not just for the ear. Read it on the staff. Read it on the guitar. Read it on the ukulele.\"",
-                "\"Switch the clef. The same chord looks different depending on where you stand.\""
+                "Theory is not just for the ear. Read it on the staff. Read it on the guitar. Read it on the ukulele.",
+                "Switch the clef. The same chord looks different depending on where you stand."
               ],
-              completeLine: "\"Now you can carry this with you, on any instrument, in any key. That was the whole lesson.\"",
+              completeLine: "Now you can carry this with you, on any instrument, in any key. That was the whole lesson.",
               learnedMessage: 'You learned to read every chart! 📖',
               link: { href: '../circle-of-fifths/', label: 'Read the guitar and staff charts →' }
             }
           ],
-          dialogue: { default: "\"The wheel will still be turning when you return. It always is.\"" }
+          dialogue: { default: "The wheel will still be turning when you return. It always is." }
         }
       },
       exits: { '1': { to: 'clearing', x: 4, y: 13 } }
@@ -1176,12 +1176,12 @@
             key: 'research',
             threshold: 4,
             progressLines: [
-              "\"Sterile technique first. Touch that flask again with ungloved hands and we start over.\"",
-              "\"Careful — reverse transcriptase is temperamental. Keep it on ice until the last second.\"",
-              "\"Now we amplify. Watch the primers, watch the cycles — RT-PCR doesn't forgive sloppy hands.\"",
-              "\"The mice are next. Gentle, deliberate, respectful — this is the real work now.\""
+              "Sterile technique first. Touch that flask again with ungloved hands and we start over.",
+              "Careful — reverse transcriptase is temperamental. Keep it on ice until the last second.",
+              "Now we amplify. Watch the primers, watch the cycles — RT-PCR doesn't forgive sloppy hands.",
+              "The mice are next. Gentle, deliberate, respectful — this is the real work now."
             ],
-            completeLine: "\"You've got real hands for this. Cell culture, RT-PCR, the animal work — you've earned a place at this bench.\"",
+            completeLine: "You've got real hands for this. Cell culture, RT-PCR, the animal work — you've earned a place at this bench.",
             learnedMessage: 'You learned molecular biology research! 🧬'
           },
           absentFrom: 'diagnosis'
@@ -1196,13 +1196,13 @@
             // talkToNpc()'s isFamily branch. Waiting out the last one is
             // the "waiting in the hospital room with sick Dad" mission.
             diagnosis: [
-              "\"The doctors keep using words I don't like. But you're here — that's what matters today.\"",
-              "\"You don't have to say anything. Just sit. I like knowing you're close by.\"",
-              "\"You stayed the whole afternoon again. I noticed. Thank you.\""
+              "The doctors keep using words I don't like. But you're here — that's what matters today.",
+              "You don't have to say anything. Just sit. I like knowing you're close by.",
+              "You stayed the whole afternoon again. I noticed. Thank you."
             ],
             // The diagnosis -> hospice reveal, delivered here as he's
             // cleared to go home — see the trigger in talkToNpc().
-            hospice: "\"They think I'll do better at home now. I'd like that — I'd like to sleep in my own bed again.\""
+            hospice: "They think I'll do better at home now. I'd like that — I'd like to sleep in my own bed again."
           },
           careMessages: { diagnosis: 'You waited with Dad through the whole visit. 🏥 +1 family respect' },
           // Here for 'diagnosis' only — home for 'hospice' (see the Home
@@ -1218,9 +1218,9 @@
             // Reaching the last line is the "driving Mom home" mission —
             // see careMessages below and talkToNpc()'s isFamily branch.
             diagnosis: [
-              "\"They're calling it a glioblastoma. I looked it up before they told me not to. He's sleeping now — I haven't left his side much.\"",
-              "\"I haven't been home in two days. I don't even remember what day it is anymore.\"",
-              "\"You drove me home last night. I slept for the first time in a week. Thank you for that.\""
+              "They're calling it a glioblastoma. I looked it up before they told me not to. He's sleeping now — I haven't left his side much.",
+              "I haven't been home in two days. I don't even remember what day it is anymore.",
+              "You drove me home last night. I slept for the first time in a week. Thank you for that."
             ]
           },
           careMessages: { diagnosis: 'You drove Mom home to rest. 🚗 +1 family respect' },
@@ -1233,7 +1233,7 @@
           name: 'Nurse Odalys',
           appearance: { top: 0xdfe6ea, bottom: 0xc7ced2, hairStyle: 'long', hair: 0x3a2f28, pieceType: 'bishop' },
           dialogue: {
-            diagnosis: "\"He's resting. Visits like this do him more good than the medicine does, some days.\""
+            diagnosis: "He's resting. Visits like this do him more good than the medicine does, some days."
           },
           presentFrom: 'diagnosis'
         }
@@ -2587,7 +2587,7 @@
         if (haveProduce < tier.harvest.need) {
           openDialogue(
             tier.harvest.needLine ||
-              ('"Bring me ' + tier.harvest.need + ' ' + tier.harvest.itemLabel + ' and I\'ll pay you for it." (' + haveProduce + ' / ' + tier.harvest.need + ')'),
+              ('Bring me ' + tier.harvest.need + ' ' + tier.harvest.itemLabel + ' and I\'ll pay you for it. (' + haveProduce + ' / ' + tier.harvest.need + ')'),
             def.name
           );
           return;
@@ -2617,7 +2617,7 @@
     if (def.kindness) {
       var kindness = def.kindness;
       if (story.money < kindness.cost) {
-        openDialogue(kindness.needLine || "\"...\"", def.name);
+        openDialogue(kindness.needLine || "...", def.name);
         return;
       }
       story.money -= kindness.cost;
