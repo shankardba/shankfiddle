@@ -444,6 +444,18 @@
   //                                     // pointing a music challenge at the
   //                                     // Circle of Fifths. Omit for a
   //                                     // challenge with no matching tool.
+  //             missions: [ /* same shape as one `challenge`, in order */ ],
+  //             // optional — an ORDERED chain of challenge-shaped steps for
+  //             // an NPC who teaches something with real stages (each step
+  //             // its own key/threshold/progressLines/completeLine/link).
+  //             // story.missionStep[id] tracks which step is current; each
+  //             // step's completeLine plays once, then the NEXT step's
+  //             // progressLines start on the following conversation — no
+  //             // separate unlock condition. Once every step is done,
+  //             // talking falls through to `dialogue` (give these NPCs a
+  //             // `dialogue.default` closing line) and the community they
+  //             // stand in (world.id) gains MISSION_MASTERY_REPUTATION.
+  //             // Use `challenge` instead for a single-stage skill.
   //             job: {                  // optional — instead of dialogue or
   //               pay: 5,               // a challenge, an indefinitely
   //               reputation: 1,        // repeatable source of money, this
@@ -541,7 +553,7 @@
       id: 'clearing',
       name: 'The Clearing',
       map: [
-        "###########3#######",
+        "####5######3###6###",
         "#........$........#",
         "#..o..,,..Vb...o..#",
         "#....=========....#",
@@ -555,7 +567,7 @@
         "#...~~~.......b...#",
         "#.$.........o...$.#",
         "#..$.,,.......,S..#",
-        "#########4#########"
+        "####7####4#########"
       ],
       signs: [
         "A crooked signpost: \"Six Light Shards sleep in this clearing. Gather them all to wake the grove.\"",
@@ -613,7 +625,10 @@
         '1': { to: 'hollow', x: 9, y: 4 },
         '2': { to: 'home', x: 5, y: 7 },
         '3': { to: 'riverside', x: 5, y: 7 },
-        '4': { to: 'meadow', x: 5, y: 7 }
+        '4': { to: 'meadow', x: 5, y: 7 },
+        '5': { to: 'schoolhouse', x: 5, y: 7 },
+        '6': { to: 'studio', x: 5, y: 7 },
+        '7': { to: 'conservatory', x: 5, y: 1 }
       }
     },
     {
@@ -722,6 +737,249 @@
       exits: { '1': { to: 'clearing', x: 9, y: 13 } }
     },
     {
+      id: 'schoolhouse',
+      name: 'The Schoolhouse',
+      map: [
+        "###########",
+        "#..o...o..#",
+        "#.........#",
+        "#...$.$...#",
+        "#....W....#",
+        "#.........#",
+        "#....@....#",
+        "#..o...o..#",
+        "#####1#####"
+      ],
+      npcs: {
+        W: {
+          id: 'wainwright',
+          name: 'Mr. Wainwright',
+          appearance: { top: 0x5a4a35, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xb8b8b8, pieceType: 'rook' },
+          missions: [
+            {
+              key: 'fractal_navigate',
+              threshold: 2,
+              progressLines: [
+                "\"Numbers aren't the boring part, son. Look closer.\"",
+                "\"Try dragging the whole picture. Zoom in until it stops looking like anything.\""
+              ],
+              completeLine: "\"There. You just found self-similarity with your own hands. Go get lost in it.\"",
+              learnedMessage: 'You learned to navigate fractals! 🔍',
+              link: { href: '../fractal/', label: 'Pan and zoom into the fractal →' }
+            },
+            {
+              key: 'fractal_algorithms',
+              threshold: 2,
+              progressLines: [
+                "\"The Mandelbrot set is just the beginning. There's a whole family of these equations.\"",
+                "\"Switch the algorithm. Burning Ship, Newton, Nova — same rules, different worlds.\""
+              ],
+              completeLine: "\"See? Change one equation and the whole universe rearranges itself.\"",
+              learnedMessage: 'You learned to switch fractal algorithms! 🌀',
+              link: { href: '../fractal/', label: 'Try a different algorithm →' }
+            },
+            {
+              key: 'fractal_julia',
+              threshold: 2,
+              progressLines: [
+                "\"Now flip it — Julia sets. Every point in the Mandelbrot set is its own little universe.\"",
+                "\"Move your mouse over it. Watch the seed change everything, live.\""
+              ],
+              completeLine: "\"That's the trick nobody tells you: infinity was never far away.\"",
+              learnedMessage: 'You learned Julia sets! 🌌',
+              link: { href: '../fractal/', label: 'Explore a Julia set →' }
+            },
+            {
+              key: 'fractal_color',
+              threshold: 2,
+              progressLines: [
+                "\"Now make it yours. Push the iterations up — the edges get stranger.\"",
+                "\"Pick your colors. A fractal with no palette is just math homework.\""
+              ],
+              completeLine: "\"You're not just doing my homework anymore. You're exploring.\"",
+              learnedMessage: 'You learned to shape fractals! 🎨',
+              link: { href: '../fractal/', label: 'Tune the color and detail →' }
+            }
+          ],
+          dialogue: { default: "\"Still coming back to stare at infinity? Good. That means it's working.\"" }
+        }
+      },
+      exits: { '1': { to: 'clearing', x: 4, y: 1 } }
+    },
+    {
+      id: 'studio',
+      name: "Professor Coffee's Studio",
+      map: [
+        "###########",
+        "#..o...o..#",
+        "#.........#",
+        "#...$.$...#",
+        "#....C....#",
+        "#.........#",
+        "#....@....#",
+        "#..o...o..#",
+        "#####1#####"
+      ],
+      npcs: {
+        C: {
+          id: 'coffee',
+          name: 'Professor Coffee',
+          appearance: { top: 0x3a6b52, bottom: 0x2a2a30, hairStyle: 'short', hair: 0x2a2018, pieceType: 'bishop' },
+          missions: [
+            {
+              key: 'synth_oscillator',
+              threshold: 2,
+              progressLines: [
+                "\"First things first — meet the oscillator. It's just a wave. Everything else is opinion.\"",
+                "\"Now patch the keyboard into it. One volt per octave. Play something.\""
+              ],
+              completeLine: "\"Good. You just built an instrument out of electricity. Coffee's on me.\"",
+              learnedMessage: 'You learned the oscillator! 〰️',
+              link: { href: '../synth/', label: 'Meet the oscillator and keyboard →' }
+            },
+            {
+              key: 'synth_envelope',
+              threshold: 2,
+              progressLines: [
+                "\"A wave that never stops is just noise. Give it a shape — attack, decay, sustain, release.\"",
+                "\"Patch the envelope into the VCA. That's the difference between a tone and a note.\""
+              ],
+              completeLine: "\"There it is. You just gave sound a beginning and an end.\"",
+              learnedMessage: 'You learned envelopes! 📈',
+              link: { href: '../synth/', label: 'Shape a note with an envelope →' }
+            },
+            {
+              key: 'synth_filter',
+              threshold: 2,
+              progressLines: [
+                "\"Now the fun part. Run it through a filter and sweep the cutoff — that's a lead sound.\"",
+                "\"Patch an LFO into the cutoff. Slow wobble, fast wobble — that's modulation.\""
+              ],
+              completeLine: "\"You just discovered why every DJ in the 90s bought one of these.\"",
+              learnedMessage: 'You learned filters & modulation! 🌊',
+              link: { href: '../synth/', label: 'Sweep a filter →' }
+            },
+            {
+              key: 'synth_fm',
+              threshold: 2,
+              progressLines: [
+                "\"Modulation doesn't stop at the filter. Patch one oscillator into another's pitch — that's FM.\"",
+                "\"Try it on the amplitude instead. Same idea — that's AM, tremolo's cousin.\""
+              ],
+              completeLine: "\"Congratulations, you just made a bell out of two triangle waves.\"",
+              learnedMessage: 'You learned FM & AM synthesis! 🔔',
+              link: { href: '../synth/', label: 'Patch some FM →' }
+            },
+            {
+              key: 'synth_noise',
+              threshold: 2,
+              progressLines: [
+                "\"Not everything needs a pitch. Patch in the noise source — that's your drums right there.\"",
+                "\"Now layer it. Mix a few voices together. A patch is a band if you let it be.\""
+              ],
+              completeLine: "\"That's the whole secret. Layering is composing.\"",
+              learnedMessage: 'You learned noise & layering! 🥁',
+              link: { href: '../synth/', label: 'Layer some noise in →' }
+            },
+            {
+              key: 'synth_patching',
+              threshold: 2,
+              progressLines: [
+                "\"Last lesson. Patch the output back into itself. Careful — this is where it gets chaotic.\"",
+                "\"Now use everything. Every module, every cable. See what happens.\""
+              ],
+              completeLine: "\"That's not a mistake, that's a modular synthesizer. Now go make noise.\"",
+              learnedMessage: 'You learned self-patching! ⚡',
+              link: { href: '../synth/', label: 'Patch everything at once →' }
+            }
+          ],
+          dialogue: { default: "\"Still here? Good, the coffee's fresh. Go patch something weird.\"" }
+        }
+      },
+      exits: { '1': { to: 'clearing', x: 15, y: 1 } }
+    },
+    {
+      id: 'conservatory',
+      name: 'The Conservatory',
+      map: [
+        "#####1#####",
+        "#..o...o..#",
+        "#.........#",
+        "#...$.$...#",
+        "#....E....#",
+        "#.........#",
+        "#....@....#",
+        "#..o...o..#",
+        "###########"
+      ],
+      npcs: {
+        E: {
+          id: 'sir_earth',
+          name: 'Sir Earth',
+          appearance: { top: 0x2a2a5a, bottom: 0x1f1f2a, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'queen' },
+          missions: [
+            {
+              key: 'theory_wheel',
+              threshold: 2,
+              progressLines: [
+                "\"Every key has its place on this wheel. Find your tonic — the home note — and the rest will follow.\"",
+                "\"Turn the wheel. Feel how the subdominant and dominant sit on either side of home.\""
+              ],
+              completeLine: "\"You have found your way home in twelve keys, not just one. That is no small thing.\"",
+              learnedMessage: 'You learned the Circle of Fifths! 🎼',
+              link: { href: '../circle-of-fifths/', label: 'Turn the wheel yourself →' }
+            },
+            {
+              key: 'theory_minor',
+              threshold: 2,
+              progressLines: [
+                "\"Every major key carries a shadow — its relative minor. Same notes, a different home.\"",
+                "\"Listen to the harmonic minor. Raise one note, and the whole mood turns.\""
+              ],
+              completeLine: "\"Light and shadow, both. Now you hear the whole wheel, not just half of it.\"",
+              learnedMessage: 'You learned minor keys! 🌘',
+              link: { href: '../circle-of-fifths/', label: 'Find a relative minor →' }
+            },
+            {
+              key: 'theory_progressions',
+              threshold: 2,
+              progressLines: [
+                "\"Chords alone are just words. String them together and you have a sentence — a progression.\"",
+                "\"Try the four you'll use for the rest of your life: I-IV-V-I. Then play with the tempo.\""
+              ],
+              completeLine: "\"Now you are not just naming chords. You are telling a story with them.\"",
+              learnedMessage: 'You learned chord progressions! 🎵',
+              link: { href: '../circle-of-fifths/', label: 'Play a progression →' }
+            },
+            {
+              key: 'theory_extensions',
+              threshold: 2,
+              progressLines: [
+                "\"A triad is the truth. A seventh is the truth with a little more feeling.\"",
+                "\"Add the ninth, if you dare. It should feel like a question, not a mistake.\""
+              ],
+              completeLine: "\"Color, at last. You did not break the rule — you extended it.\"",
+              learnedMessage: 'You learned 7ths and 9ths! 🎨',
+              link: { href: '../circle-of-fifths/', label: 'Stack a 7th or 9th →' }
+            },
+            {
+              key: 'theory_charts',
+              threshold: 2,
+              progressLines: [
+                "\"Theory is not just for the ear. Read it on the staff. Read it on the guitar. Read it on the ukulele.\"",
+                "\"Switch the clef. The same chord looks different depending on where you stand.\""
+              ],
+              completeLine: "\"Now you can carry this with you, on any instrument, in any key. That was the whole lesson.\"",
+              learnedMessage: 'You learned to read every chart! 📖',
+              link: { href: '../circle-of-fifths/', label: 'Read the guitar and staff charts →' }
+            }
+          ],
+          dialogue: { default: "\"The wheel will still be turning when you return. It always is.\"" }
+        }
+      },
+      exits: { '1': { to: 'clearing', x: 4, y: 13 } }
+    },
+    {
       // One physical building, two very different reasons to be in it —
       // Mom's research lab during 'earning_respect' gives way to Dad's
       // ward for 'diagnosis' only (presentDuring below) — he goes home to
@@ -814,8 +1072,14 @@
   // money: global, fungible — not scoped to any individual or community.
   // hasCar: earned at the village's car once familyRespect() clears
   // CAR_FAMILY_RESPECT_THRESHOLD — see findNearbyCar()/handleAction().
-  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, hasCar: false };
+  // missionStep: per-NPC progress through a `missions` chain, e.g.
+  // missionStep.wainwright = 2 means steps 0 and 1 are done, step 2 is current.
+  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, hasCar: false };
   var CAR_FAMILY_RESPECT_THRESHOLD = 4;
+  // Community reputation gained once an NPC's whole `missions` chain is
+  // finished — same idea as a job's per-visit `reputation`, but paid out
+  // once, in full, as the reward for mastering what that mentor teaches.
+  var MISSION_MASTERY_REPUTATION = 3;
   // Each threshold below gates one scripted chapter turn — see the four
   // checks in talkToNpc(). They only climb: earning the car is "they trust
   // you to drive," diagnosis is "you kept showing up after that," hospice
@@ -1956,7 +2220,15 @@
       return;
     }
 
+    // An NPC with `missions` resolves to whichever step is current, exactly
+    // like a single `challenge`, from here down — this is the only place
+    // that needs to know missions are a chain at all.
     var ch = def.challenge;
+    var missionIdx = -1;
+    if (!ch && def.missions) {
+      missionIdx = story.missionStep[def.id] || 0;
+      if (missionIdx < def.missions.length) ch = def.missions[missionIdx];
+    }
     if (!ch) {
       // Four scripted chapter turns, each gated behind continued care —
       // see the thresholds above. setChapter() runs first in every case,
@@ -1998,6 +2270,13 @@
       // can go practice what the teacher just taught; a challenge with no
       // matching tool (e.g. the research bench) just omits `link`.
       openDialogue(ch.completeLine, def.name, ch.link || null);
+      if (missionIdx >= 0) {
+        story.missionStep[def.id] = missionIdx + 1;
+        if (story.missionStep[def.id] >= def.missions.length) {
+          story.communityRespect[world.id] = (story.communityRespect[world.id] || 0) + MISSION_MASTERY_REPUTATION;
+          renderStats();
+        }
+      }
       return;
     }
 
