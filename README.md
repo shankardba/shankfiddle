@@ -11,18 +11,32 @@ index.html                   Home page (hero, about, tools grid, contact)
 css/styles.css                Shared site styling — dark/gold/magenta theme
 js/main.js                    Mobile nav toggle
 assets/images/                Logo + brand photography
-tools/circle-of-fifths/       Copy of circle-of-fifths-chord-wheel.html
-tools/synth/                  Copy of modular-synth-widget/index.html
-tools/fractal/                Copy of fractal-widget/index.html
+tools/circle-of-fifths/
+  index.html                  shankFiddle-branded wrapper (top bar + iframe)
+  app.html                     Unmodified copy of circle-of-fifths-chord-wheel.html
+tools/synth/
+  index.html                  Wrapper
+  app.html                     Unmodified copy of modular-synth-widget/index.html
+tools/fractal/
+  index.html                  Wrapper
+  app.html                     Unmodified copy of fractal-widget/index.html
 ```
 
-Each tool page is a straight copy of its source repo's HTML file with one
-addition: a small "← shankFiddle" link back to the home page's Tools
-section, styled to match that tool's own UI. Everything else in those
-files is untouched — if you improve a tool, edit it in its own repo
-(`~/fractal-widget`, `~/modular-synth-widget`,
-`~/circle-of-fifths-chord-wheel`) and re-copy the file here, re-adding the
-back-link if it's not preserved by your edit.
+Each tool lives in an iframe (`app.html`) inside a small shankFiddle-branded
+wrapper page (`index.html`) — a thin top bar with a "← shankFiddle" link
+back to the home page's Tools section, the tool's name, and a "Full
+screen ↗" link that opens `app.html` directly with no iframe/chrome
+around it. `app.html` is always an untouched copy straight from the
+tool's own repo — to pull in updates, just re-copy the file:
+
+```bash
+cp ~/fractal-widget/index.html tools/fractal/app.html
+cp ~/modular-synth-widget/index.html tools/synth/app.html
+cp ~/circle-of-fifths-chord-wheel/circle-of-fifths-chord-wheel.html tools/circle-of-fifths/app.html
+```
+
+No need to touch the wrapper `index.html` files when a tool updates —
+they never change.
 
 ## Run locally
 
