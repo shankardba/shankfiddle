@@ -1000,7 +1000,16 @@
     return mesh;
   }
 
-  function groundColorFor(c) {
+  // levelId opts into a level-specific palette — right now just the
+  // Hospital, whose courtyard should read as clinical/white rather than as
+  // another grassy village, since it's the one place that isn't.
+  function groundColorFor(c, levelId) {
+    if (levelId === 'hospital') {
+      if (c === '=') return new THREE.Color(0xcfd6d9).offsetHSL(rand(-0.01, 0.01), 0, rand(-0.02, 0.02));
+      if (c === '~') return new THREE.Color(0x3aa0c9);
+      // pale clinical ground, with per-tile jitter for a hand-painted look
+      return new THREE.Color(0xeef1f2).offsetHSL(rand(-0.005, 0.005), rand(-0.02, 0.02), rand(-0.02, 0.015));
+    }
     if (c === '=') return new THREE.Color(0xC9A876).offsetHSL(rand(-0.01, 0.01), 0, rand(-0.03, 0.02));
     if (c === '~') return new THREE.Color(0x3aa0c9);
     // grass base, with per-tile jitter for a hand-painted look
@@ -1091,19 +1100,23 @@
   // Sized from tile-index deltas only (no world-origin lookup), so it can
   // be built before the level that owns it has become the active world.
   // buildWorldGroup positions the returned group afterward.
-  function createHouse(tiles) {
+  // theme: 'clinical' swaps the cozy cottage palette (tan walls, terracotta
+  // roof, wood door) for a pale, institutional one — used for the Hospital,
+  // the one building that shouldn't look like a village home.
+  function createHouse(tiles, theme) {
     var minX = Math.min.apply(null, tiles.map(function (t) { return t.x; }));
     var maxX = Math.max.apply(null, tiles.map(function (t) { return t.x; }));
     var minY = Math.min.apply(null, tiles.map(function (t) { return t.y; }));
     var maxY = Math.max.apply(null, tiles.map(function (t) { return t.y; }));
     var width = (maxX - minX) * TILE + TILE * 0.92;
     var depth = (maxY - minY) * TILE + TILE * 0.92;
+    var clinical = theme === 'clinical';
 
     var g = new THREE.Group();
     var wallH = 1.7;
     var walls = new THREE.Mesh(
       new THREE.BoxGeometry(width, wallH, depth),
-      new THREE.MeshStandardMaterial({ color: 0xE4C79A, roughness: 0.85 })
+      new THREE.MeshStandardMaterial({ color: clinical ? 0xf5f7f8 : 0xE4C79A, roughness: clinical ? 0.6 : 0.85 })
     );
     walls.position.y = wallH / 2;
     walls.castShadow = true;
@@ -1112,7 +1125,7 @@
 
     var roof = new THREE.Mesh(
       new THREE.ConeGeometry(Math.max(width, depth) * 0.78, 1.15, 4),
-      new THREE.MeshStandardMaterial({ color: 0xB5432E, roughness: 0.75 })
+      new THREE.MeshStandardMaterial({ color: clinical ? 0xc7d1d4 : 0xB5432E, roughness: 0.75 })
     );
     roof.rotation.y = Math.PI / 4;
     roof.position.y = wallH + 0.5;
@@ -1121,7 +1134,7 @@
 
     var door = new THREE.Mesh(
       new THREE.BoxGeometry(0.6, 1.05, 0.06),
-      new THREE.MeshStandardMaterial({ color: 0x5b3620 })
+      new THREE.MeshStandardMaterial({ color: clinical ? 0x9aa7ac : 0x5b3620 })
     );
     door.position.set(0, 0.52, depth / 2 + 0.03);
     g.add(door);
@@ -1572,7 +1585,7 @@
         var ch = w.groundKinds[gy][gx];
         var isPortal = w.exitChars.has(ch);
         var thickness = ch === '~' ? 0.16 : 0.3;
-        var color = isPortal ? PORTAL_TILE_COLOR : groundColorFor(ch);
+        var color = isPortal ? PORTAL_TILE_COLOR : groundColorFor(ch, w.id);
         var tileMesh = makeTile(color, thickness);
         var pos = worldPos(w, gx, gy);
         tileMesh.position.set(pos.x, thickness / -2 + (ch === '~' ? 0.02 : GROUND_SURFACE_Y), pos.z);
@@ -1605,7 +1618,7 @@
       var hMinY = Math.min.apply(null, w.features.houseTiles.map(function (t) { return t.y; }));
       var hMaxY = Math.max.apply(null, w.features.houseTiles.map(function (t) { return t.y; }));
       var hc1 = worldPos(w, hMinX, hMinY), hc2 = worldPos(w, hMaxX, hMaxY);
-      var house = createHouse(w.features.houseTiles);
+      var house = createHouse(w.features.houseTiles, w.id === 'hospital' ? 'clinical' : undefined);
       house.position.set((hc1.x + hc2.x) / 2, 0, (hc1.z + hc2.z) / 2);
       group.add(house);
     }
