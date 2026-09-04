@@ -462,12 +462,30 @@
   //               community: 'clearing',// NPC's individual respect, AND
   //               lines: ['...', '...'] // their community's respect. A
   //             }                       // random line plays; no threshold.
+  //             kindness: {             // optional — job's mirror image: a
+  //               cost: 3,              // repeatable act of generosity that
+  //               reputation: 2,        // SPENDS story.money instead of
+  //               community: 'clearing',// earning it. Below `cost`, talking
+  //               lines: ['...'],       // just shows `needLine` and nothing
+  //               needLine: '"..."'     // is charged. This is how buying a
+  //             }                       // hungry kid lunch becomes the
+  //                                     // community noticing and respecting
+  //                                     // you for it, not just a line of
+  //                                     // dialogue — see talkToNpc().
   //           } }
   //         dialogue is looked up for the CURRENT story chapter, falling
   //         back to the closest earlier chapter that has a line — so a
   //         character only needs new dialogue for the chapters where what
-  //         they say actually changes. An NPC with `challenge` or `job`
-  //         ignores `dialogue` entirely — see talkToNpc().
+  //         they say actually changes. Its value is normally a string, but
+  //         for an isFamily NPC it may instead be an ARRAY of lines — a
+  //         sequence of caregiving beats for that chapter (see Mom and
+  //         Dad's Hospital dialogue below) that advance one per visit;
+  //         reaching the LAST line is a concrete act (driving Mom home,
+  //         waiting out a whole hospital visit) worth a one-time bonus —
+  //         give the NPC a matching `careMessages: { diagnosis: '...' }`
+  //         entry for the toast that names it. An NPC with `challenge`,
+  //         `job`, or `kindness` ignores `dialogue` entirely — see
+  //         talkToNpc().
   //
   // ---- the three-tier respect model ----
   // Respect is never one flat number — it's modeled at three distinct
@@ -565,7 +583,7 @@
         "#...~~~.....o,,.o.#",
         "#..~~~~~..F.K...C.#",
         "#...~~~.......b...#",
-        "#.$.........o...$.#",
+        "#Y$.........o...$.#",
         "#..$.,,.......,S..#",
         "####7####4#########"
       ],
@@ -618,6 +636,22 @@
               "\"Help me restock the shelves and I'll make it worth your while.\"",
               "\"You're becoming a familiar face around here.\""
             ]
+          }
+        },
+        Y: {
+          id: 'hungry_kid',
+          name: 'Milo',
+          appearance: { top: 0x8a6a4a, bottom: 0x5a4a35, hairStyle: 'short', hair: 0x3a2a20, pieceType: 'pawn' },
+          kindness: {
+            cost: 3,
+            reputation: 2,
+            community: 'clearing',
+            lines: [
+              "\"Thank you! I didn't eat much today.\"",
+              "\"You always share when you've got it. People notice that.\"",
+              "\"My stomach was so loud. Thank you, thank you.\""
+            ],
+            needLine: "\"...I'm okay. I'm not that hungry.\" (he clearly is — but you're out of money to help)"
           }
         }
       },
@@ -1023,11 +1057,19 @@
           appearance: { top: 0xb9c2c9, bottom: 0x8a9096, hairStyle: 'short', skin: 0xa9714a, pieceType: 'king' },
           isFamily: true,
           dialogue: {
-            diagnosis: "\"The doctors keep using words I don't like. But you're here — that's what matters today.\"",
+            // A caregiving arc, not a static line — see dialogueFor() and
+            // talkToNpc()'s isFamily branch. Waiting out the last one is
+            // the "waiting in the hospital room with sick Dad" mission.
+            diagnosis: [
+              "\"The doctors keep using words I don't like. But you're here — that's what matters today.\"",
+              "\"You don't have to say anything. Just sit. I like knowing you're close by.\"",
+              "\"You stayed the whole afternoon again. I noticed. Thank you.\""
+            ],
             // The diagnosis -> hospice reveal, delivered here as he's
             // cleared to go home — see the trigger in talkToNpc().
             hospice: "\"They think I'll do better at home now. I'd like that — I'd like to sleep in my own bed again.\""
           },
+          careMessages: { diagnosis: 'You waited with Dad through the whole visit. 🏥 +1 family respect' },
           // Here for 'diagnosis' only — home for 'hospice' (see the Home
           // level above), and after that, gone.
           presentDuring: ['diagnosis']
@@ -1038,8 +1080,15 @@
           appearance: { top: 0xa8536b, bottom: 0x3a2a35, hairStyle: 'long', skirt: true, skin: 0xa9714a, pieceType: 'queen' },
           isFamily: true,
           dialogue: {
-            diagnosis: "\"He's sleeping. I haven't left his side much... it helps, having you here too.\""
+            // Reaching the last line is the "driving Mom home" mission —
+            // see careMessages below and talkToNpc()'s isFamily branch.
+            diagnosis: [
+              "\"They're calling it a glioblastoma. I looked it up before they told me not to. He's sleeping now — I haven't left his side much.\"",
+              "\"I haven't been home in two days. I don't even remember what day it is anymore.\"",
+              "\"You drove me home last night. I slept for the first time in a week. Thank you for that.\""
+            ]
           },
+          careMessages: { diagnosis: 'You drove Mom home to rest. 🚗 +1 family respect' },
           // At his bedside for 'diagnosis' only — she's simply back at
           // home the rest of the time, same as always.
           presentDuring: ['diagnosis']
@@ -1074,7 +1123,10 @@
   // CAR_FAMILY_RESPECT_THRESHOLD — see findNearbyCar()/handleAction().
   // missionStep: per-NPC progress through a `missions` chain, e.g.
   // missionStep.wainwright = 2 means steps 0 and 1 are done, step 2 is current.
-  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, hasCar: false };
+  // chapterTalks: per-id-per-chapter visit count, e.g. chapterTalks['dad:diagnosis']
+  // — indexes an array `dialogue` value's caregiving beats; separate from
+  // the cumulative story.respect total (see talkToNpc's isFamily branch).
+  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, hasCar: false };
   var CAR_FAMILY_RESPECT_THRESHOLD = 4;
   // Community reputation gained once an NPC's whole `missions` chain is
   // finished — same idea as a job's per-visit `reputation`, but paid out
@@ -1118,10 +1170,15 @@
     }
     return false;
   }
-  function dialogueFor(npcDef) {
+  // visitCount indexes an ARRAY dialogue value (a sequence of caregiving
+  // beats for the current chapter, e.g. Mom's diagnosis lines) the same
+  // way a challenge's progressLines cycle by `have` — a plain string
+  // value ignores it entirely, so most NPCs never need to know it exists.
+  function dialogueFor(npcDef, visitCount) {
     var idx = CHAPTERS.indexOf(story.chapter);
     for (var i = idx; i >= 0; i--) {
-      if (npcDef.dialogue[CHAPTERS[i]]) return npcDef.dialogue[CHAPTERS[i]];
+      var raw = npcDef.dialogue[CHAPTERS[i]];
+      if (raw) return Array.isArray(raw) ? raw[Math.min(visitCount || 0, raw.length - 1)] : raw;
     }
     return npcDef.dialogue.default || '...';
   }
@@ -2288,6 +2345,26 @@
       return;
     }
 
+    // An NPC with `kindness` is a repeatable act of generosity, not a
+    // skill to learn or a wage to earn — you spend money, not gain it,
+    // and the community notices: this is how "no combat, only
+    // communication" pays out materially, not just in conversation.
+    if (def.kindness) {
+      var kindness = def.kindness;
+      if (story.money < kindness.cost) {
+        openDialogue(kindness.needLine || "\"...\"", def.name);
+        return;
+      }
+      story.money -= kindness.cost;
+      var kindCommunity = kindness.community || world.id;
+      story.communityRespect[kindCommunity] = (story.communityRespect[kindCommunity] || 0) + (kindness.reputation || 0);
+      renderStats();
+      var kindLine = kindness.lines[Math.floor(rand(0, kindness.lines.length))];
+      openDialogue(kindLine, def.name);
+      showToast('-' + kindness.cost + ' 💰   +' + (kindness.reputation || 0) + ' respect', 1800);
+      return;
+    }
+
     // An NPC with `missions` resolves to whichever step is current, exactly
     // like a single `challenge`, from here down — this is the only place
     // that needs to know missions are a chain at all.
@@ -2319,10 +2396,29 @@
         // Rebuilding, just the two of them — at home.
         setChapter('duty');
       }
-      openDialogue(dialogueFor(def), def.name);
+      var famKey = npcRespectKey(def);
+      // Scoped to id+chapter, separate from story.respect's cumulative
+      // total (which is already well past 0 by the time 'diagnosis'
+      // starts — the chapter-turn thresholds above see to that) — this is
+      // just which beat of THIS chapter's dialogue array you're on.
+      var chapterTalkKey = famKey + ':' + story.chapter;
+      var chapterVisit = story.chapterTalks[chapterTalkKey] || 0;
+      openDialogue(dialogueFor(def, chapterVisit), def.name);
       if (def.isFamily) {
-        var famKey = npcRespectKey(def);
+        story.chapterTalks[chapterTalkKey] = chapterVisit + 1;
         story.respect[famKey] = (story.respect[famKey] || 0) + 1;
+        // Care missions: reaching the LAST line of this chapter's array is
+        // a concrete act (waiting out a whole hospital visit, driving Mom
+        // home), not just another line of small talk — worth a one-time
+        // bonus, milestoned the same way a challenge's `learned` flag is.
+        var chapterDialogue = def.dialogue && def.dialogue[story.chapter];
+        var careKey = 'care_' + chapterTalkKey;
+        if (Array.isArray(chapterDialogue) && chapterVisit === chapterDialogue.length - 1 && !story.learned[careKey]) {
+          story.learned[careKey] = true;
+          story.respect[famKey] += 1;
+          var careMessage = def.careMessages && def.careMessages[story.chapter];
+          showToast(careMessage || 'Family respect +1 💛', 2400);
+        }
         if (!story.hasCar) showToast('Family respect: ' + familyRespect() + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD, 1600);
       }
       return;
