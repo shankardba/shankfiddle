@@ -377,6 +377,10 @@
   //              scanning the grid top-to-bottom, left-to-right) — plain
   //              environmental flavor text, not a character
   //           $  collectible Light Shard
+  //           c  carrot — a job tier's harvest good, see `job.tiers`
+  //           r  basket — same idea as 'c', a different tier's harvest good
+  //           p  seed row — an advanced (higher-tier) harvest good
+  //           e  crate — an advanced (higher-tier) harvest good
   //           @  player start (used when this level loads with no explicit
   //              spawn override, i.e. as the first level, or via loadLevel
   //              with no spawn argument)
@@ -460,8 +464,33 @@
   //               pay: 5,               // a challenge, an indefinitely
   //               reputation: 1,        // repeatable source of money, this
   //               community: 'clearing',// NPC's individual respect, AND
-  //               lines: ['...', '...'] // their community's respect. A
-  //             }                       // random line plays; no threshold.
+  //               lines: ['...', '...'],// their community's respect. A
+  //               harvest: {             // random line plays; no threshold
+  //                 item: 'carrot',      // — UNLESS `harvest` is set, in
+  //                 need: 5,             // which case talking pays out
+  //                 itemLabel: 'carrots',// only once story.produce[item]
+  //                 needLine: '"..."'    // (built by walking over that
+  //               },                    // item's map tiles — see 'c'/'r'
+  //                                     // in the map legend and
+  //                                     // checkCropPickup()) reaches
+  //                                     // `need`; below that, `needLine`
+  //                                     // plays and nothing is paid. This
+  //                                     // is what makes a job an actual
+  //                                     // task instead of paid small talk.
+  //               trust: {              // optional — below `need` respect,
+  //                 need: 2,            // talking doesn't offer ANY paid
+  //                 lines: ['...','...']// work at all, just this many
+  //               },                    // bounded getting-to-know-you
+  //                                     // beats (+1 respect each, capped —
+  //                                     // same rule as isFamily below).
+  //               tiers: [ /* {minRespect, pay, reputation, harvest,      */
+  //                 /* lines} objects */ // optional — an ordered ladder of
+  //               ]                     // better-paid work: talking always
+  //             }                       // uses the highest tier your
+  //                                     // current respect qualifies for.
+  //                                     // Omit for a single flat job (uses
+  //                                     // pay/harvest/lines above as its
+  //                                     // only tier).
   //             kindness: {             // optional — job's mirror image: a
   //               cost: 3,              // repeatable act of generosity that
   //               reputation: 2,        // SPENDS story.money instead of
@@ -618,11 +647,11 @@
         "#..S.=..HHH..=..$.#",
         "#....=========....#",
         "1.,......@.......$2",
-        "#...~~~.....o,,.o.#",
+        "#...~~~..cccorr.o.#",
         "#..~~~~~..F.K...C.#",
-        "#...~~~.......b...#",
-        "#Y$.........o...$.#",
-        "#..$.,,.......,S..#",
+        "#...~~~..cc.rrb...#",
+        "#Y$.........or..$.#",
+        "#..$.,,ppp.eee,S..#",
         "####7####4#########"
       ],
       signs: [
@@ -651,13 +680,47 @@
           name: 'Farmer Jono',
           appearance: { top: 0x6f7d4a, bottom: 0x4a3a28, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'rook' },
           job: {
-            pay: 5,
-            reputation: 1,
             community: 'clearing',
-            lines: [
-              "\"Grab that hoe, we've got rows to weed.\"",
-              "\"Fields don't tend themselves. Thanks for the help.\"",
-              "\"Good hands. Come back anytime there's work.\""
+            trust: {
+              need: 2,
+              lines: [
+                "\"You're the new kid hanging around the fields, huh? Watch where you step.\"",
+                "\"...Alright. You keep showing up, you don't get underfoot. Maybe I can use you.\""
+              ]
+            },
+            tiers: [
+              {
+                minRespect: 2,
+                pay: 5,
+                reputation: 1,
+                harvest: {
+                  item: 'carrot',
+                  need: 5,
+                  itemLabel: 'carrots',
+                  needLine: "\"Rows won't pick themselves — bring me 5 carrots and I'll pay you for the work.\""
+                },
+                lines: [
+                  "\"Now that's a haul. Good hands.\"",
+                  "\"Fields don't tend themselves. Thanks for the help.\"",
+                  "\"Good hands. Come back anytime there's more to pick.\""
+                ]
+              },
+              {
+                minRespect: 6,
+                pay: 14,
+                reputation: 2,
+                harvest: {
+                  item: 'seedrow',
+                  need: 3,
+                  itemLabel: 'rows planted',
+                  needLine: "\"You've earned more than picking. Plant 3 rows for me and I'll pay you properly this time.\""
+                },
+                lines: [
+                  "\"Straight rows, good spacing. You've got a real feel for this now.\"",
+                  "\"That's a farmer's work, not a kid's chore. I mean that.\"",
+                  "\"Half this field is yours as much as mine at this point.\""
+                ]
+              }
             ]
           }
         },
@@ -666,13 +729,47 @@
           name: 'Elsie',
           appearance: { top: 0x3f6b6b, bottom: 0x2a2a30, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'bishop' },
           job: {
-            pay: 3,
-            reputation: 1,
             community: 'clearing',
-            lines: [
-              "\"Welcome back! Everything's fresh today.\"",
-              "\"Help me restock the shelves and I'll make it worth your while.\"",
-              "\"You're becoming a familiar face around here.\""
+            trust: {
+              need: 2,
+              lines: [
+                "\"Careful with the shelves! ...You're the one who's been around lately, aren't you.\"",
+                "\"You've been polite every time you've come in. That's worth something to me.\""
+              ]
+            },
+            tiers: [
+              {
+                minRespect: 2,
+                pay: 3,
+                reputation: 1,
+                harvest: {
+                  item: 'basket',
+                  need: 5,
+                  itemLabel: 'baskets',
+                  needLine: "\"Shelves don't restock themselves — bring me 5 baskets from the storeroom and I'll make it worth your while.\""
+                },
+                lines: [
+                  "\"Welcome back! Everything's fresh today.\"",
+                  "\"That'll keep the shelves full a while. Thank you.\"",
+                  "\"You're becoming a familiar face around here.\""
+                ]
+              },
+              {
+                minRespect: 6,
+                pay: 10,
+                reputation: 2,
+                harvest: {
+                  item: 'crate',
+                  need: 3,
+                  itemLabel: 'imported crates',
+                  needLine: "\"I trust you with the good stuff now — bring in 3 of the imported crates and I'll pay you properly.\""
+                },
+                lines: [
+                  "\"Careful hands with the fine goods. I knew I could trust you with these.\"",
+                  "\"Half my customers ask for you by name now.\"",
+                  "\"You've earned a real cut of this, not just pocket change.\""
+                ]
+              }
             ]
           }
         },
@@ -1164,7 +1261,9 @@
   // chapterTalks: per-id-per-chapter visit count, e.g. chapterTalks['dad:diagnosis']
   // — indexes an array `dialogue` value's caregiving beats; separate from
   // the cumulative story.respect total (see talkToNpc's isFamily branch).
-  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, hasCar: false };
+  // produce: harvested-but-not-yet-delivered goods by item, e.g.
+  // produce.carrot — see checkCropPickup() and a job's `harvest` field.
+  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, hasCar: false };
   var CAR_FAMILY_RESPECT_THRESHOLD = 3;
   // Community reputation gained once an NPC's whole `missions` chain is
   // finished — same idea as a job's per-visit `reputation`, but paid out
@@ -1271,7 +1370,7 @@
     var exits = levelDef.exits || {};
     var npcs = levelDef.npcs || {};
     var obstacles = new Set();
-    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], signs: [], houseTiles: [], portals: [], npcs: [], car: null };
+    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], car: null };
     var groundKinds = [];
     var playerStart = { x: 1, y: 1 };
 
@@ -1299,6 +1398,10 @@
           case 'S': obstacles.add(key(x, y)); features.signs.push({ x: x, y: y, message: (levelDef.signs || [])[features.signs.length] || 'A weathered sign, worn smooth by rain.' }); break;
           case ',': features.flowers.push({ x: x, y: y }); break;
           case '$': features.shards.push({ x: x, y: y, collected: false }); break;
+          case 'c': features.crops.push({ x: x, y: y, collected: false, item: 'carrot' }); break;
+          case 'r': features.crops.push({ x: x, y: y, collected: false, item: 'basket' }); break;
+          case 'p': features.crops.push({ x: x, y: y, collected: false, item: 'seedrow' }); break;
+          case 'e': features.crops.push({ x: x, y: y, collected: false, item: 'crate' }); break;
           case 'C': obstacles.add(key(x, y)); features.car = { x: x, y: y }; break;
           case '@': playerStart = { x: x, y: y }; break;
         }
@@ -1598,6 +1701,75 @@
     light.position.y = 0.55;
     g.add(light);
     g.userData.spin = mesh;
+    return g;
+  }
+
+  // A job's `harvest` requirement — walk over one of these to add to
+  // story.produce[item], the same way a shard adds to the level puzzle,
+  // except these feed a job turn-in instead: see checkCropPickup() and
+  // talkToNpc()'s job branch.
+  function createCrop(item) {
+    var g = new THREE.Group();
+    if (item === 'basket') {
+      var basket = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.22, 0.16, 0.28, 8),
+        new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.9 })
+      );
+      basket.position.y = 0.16;
+      basket.castShadow = true;
+      g.add(basket);
+      var goods = new THREE.Mesh(
+        new THREE.SphereGeometry(0.14, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xd6432f, roughness: 0.6 })
+      );
+      goods.position.y = 0.32;
+      goods.castShadow = true;
+      g.add(goods);
+    } else if (item === 'crate') {
+      var crate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.32, 0.28, 0.32),
+        new THREE.MeshStandardMaterial({ color: 0x7a5a35, roughness: 0.9 })
+      );
+      crate.position.y = 0.16;
+      crate.castShadow = true;
+      g.add(crate);
+      var band = new THREE.Mesh(
+        new THREE.BoxGeometry(0.34, 0.05, 0.34),
+        new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.9 })
+      );
+      band.position.y = 0.16;
+      g.add(band);
+    } else if (item === 'seedrow') {
+      var mound = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.08, 0.22),
+        new THREE.MeshStandardMaterial({ color: 0x5a3f28, roughness: 0.95 })
+      );
+      mound.position.y = 0.06;
+      mound.castShadow = true;
+      g.add(mound);
+      var sproutMat = new THREE.MeshStandardMaterial({ color: 0x6fbf5a, roughness: 0.8 });
+      for (var si = 0; si < 3; si++) {
+        var sprout = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.14, 5), sproutMat);
+        sprout.position.set(-0.12 + si * 0.12, 0.15, 0);
+        g.add(sprout);
+      }
+    } else {
+      var root = new THREE.Mesh(
+        new THREE.ConeGeometry(0.09, 0.32, 6),
+        new THREE.MeshStandardMaterial({ color: 0xe8792f, roughness: 0.6 })
+      );
+      root.position.y = 0.16;
+      root.rotation.x = Math.PI;
+      root.castShadow = true;
+      g.add(root);
+      var leafMat = new THREE.MeshStandardMaterial({ color: 0x4f9a4a, roughness: 0.8 });
+      for (var i = 0; i < 3; i++) {
+        var leaf = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.22, 5), leafMat);
+        leaf.position.set(Math.cos(i * 2.1) * 0.04, 0.42, Math.sin(i * 2.1) * 0.04);
+        leaf.rotation.z = (i - 1) * 0.3;
+        g.add(leaf);
+      }
+    }
     return g;
   }
 
@@ -1991,7 +2163,7 @@
     function place(list, builder) {
       list.forEach(function (f) {
         var p = worldPos(w, f.x, f.y);
-        var obj = builder();
+        var obj = builder(f);
         obj.position.x += p.x;
         obj.position.z += p.z;
         group.add(obj);
@@ -2022,6 +2194,7 @@
     }
 
     place(w.features.shards, createShard);
+    place(w.features.crops, function (f) { return createCrop(f.item); });
 
     w.features.npcs.forEach(function (n) {
       var p = worldPos(w, n.x, n.y);
@@ -2374,18 +2547,65 @@
     if (def.job) {
       var job = def.job;
       var jobKey = npcRespectKey(def);
-      story.money += job.pay || 0;
-      story.respect[jobKey] = (story.respect[jobKey] || 0) + 1;
-      if (job.reputation) {
-        var communityId = job.community || world.id;
-        story.communityRespect[communityId] = (story.communityRespect[communityId] || 0) + job.reputation;
+      var jobRespect = story.respect[jobKey] || 0;
+
+      // A job with `trust` doesn't hand you any paid work at all until
+      // you've earned a base level of respect first — a short, BOUNDED
+      // getting-to-know-you exchange (same rule as everywhere else: a new
+      // line is a distinct beat worth +1 respect once, never free
+      // repetition — see talkToNpc's isFamily branch for the original).
+      if (job.trust && jobRespect < job.trust.need) {
+        var trustKey = jobKey + ':trust';
+        var trustVisit = story.chapterTalks[trustKey] || 0;
+        var trustLines = job.trust.lines;
+        openDialogue(trustLines[Math.min(trustVisit, trustLines.length - 1)], def.name);
+        if (trustVisit < trustLines.length) {
+          story.chapterTalks[trustKey] = trustVisit + 1;
+          story.respect[jobKey] = jobRespect + 1;
+        }
+        return;
+      }
+
+      // Once trusted, the highest tier your respect qualifies for is the
+      // work on offer — maturing at a job means graduating to better-paid
+      // tasks, not doing the entry-level chore forever. `tiers` is
+      // optional; a job without one just uses its own top-level
+      // pay/harvest/lines as a single implicit tier.
+      var tier = job;
+      if (job.tiers) {
+        tier = job.tiers[0];
+        for (var ti = 0; ti < job.tiers.length; ti++) {
+          if (jobRespect >= job.tiers[ti].minRespect) tier = job.tiers[ti];
+        }
+      }
+
+      // A tier with `harvest` isn't paid for showing up — go collect the
+      // goods (checkCropPickup) first. Below the requirement, talking
+      // just tells you what's still needed; nothing is charged or paid.
+      if (tier.harvest) {
+        var haveProduce = story.produce[tier.harvest.item] || 0;
+        if (haveProduce < tier.harvest.need) {
+          openDialogue(
+            tier.harvest.needLine ||
+              ('"Bring me ' + tier.harvest.need + ' ' + tier.harvest.itemLabel + ' and I\'ll pay you for it." (' + haveProduce + ' / ' + tier.harvest.need + ')'),
+            def.name
+          );
+          return;
+        }
+        story.produce[tier.harvest.item] = haveProduce - tier.harvest.need;
+      }
+      story.money += tier.pay || 0;
+      story.respect[jobKey] = jobRespect + 1;
+      if (tier.reputation) {
+        var communityId = tier.community || job.community || world.id;
+        story.communityRespect[communityId] = (story.communityRespect[communityId] || 0) + tier.reputation;
       }
       renderStats();
-      var jobLine = job.lines[Math.floor(rand(0, job.lines.length))];
+      var jobLine = tier.lines[Math.floor(rand(0, tier.lines.length))];
       openDialogue(jobLine, def.name);
       var parts = [];
-      if (job.pay) parts.push('+' + job.pay + ' 💰');
-      if (job.reputation) parts.push('+' + job.reputation + ' respect');
+      if (tier.pay) parts.push('+' + tier.pay + ' 💰');
+      if (tier.reputation) parts.push('+' + tier.reputation + ' respect');
       if (parts.length) showToast(parts.join('   '), 1600);
       return;
     }
@@ -2578,6 +2798,33 @@
     });
   }
 
+  var CROP_LABELS = {
+    carrot: { name: 'Carrot', emoji: '🥕' },
+    basket: { name: 'Basket', emoji: '🧺' },
+    seedrow: { name: 'Row planted', emoji: '🌱' },
+    crate: { name: 'Crate', emoji: '📦' }
+  };
+
+  // A job's harvest requirement, picked up the same way a shard is —
+  // walk onto the tile. Unlike shards these feed story.produce (global,
+  // persists across level loads) rather than a per-level puzzle count,
+  // and the field only regrows on the next loadLevel() (leave and come
+  // back) rather than respawning in place — simplest way to make the job
+  // repeatable without a real day/growth-cycle simulation.
+  function checkCropPickup() {
+    world.features.crops.forEach(function (c) {
+      if (c.collected) return;
+      if (c.x === player.tileX && c.y === player.tileY) {
+        c.collected = true;
+        c.obj.visible = false;
+        story.produce[c.item] = (story.produce[c.item] || 0) + 1;
+        sfxPickup();
+        var label = CROP_LABELS[c.item] || { name: c.item, emoji: '' };
+        showToast(label.emoji + ' ' + label.name + ' (' + story.produce[c.item] + ')', 1200);
+      }
+    });
+  }
+
   function checkPortal() {
     var portals = world.features.portals;
     for (var i = 0; i < portals.length; i++) {
@@ -2619,6 +2866,7 @@
             player.obj.userData.legR.rotation.x = 0;
           }
           checkShardPickup();
+          checkCropPickup();
           checkPortal();
         }
       } else if (!dialogueOpen && !carMenuOpen) {
