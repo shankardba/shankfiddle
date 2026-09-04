@@ -877,6 +877,12 @@
   }
 
   var TILE = 2;
+  // Top surface of a standard (non-water) ground tile — see makeTile's
+  // positioning in buildWorldGroup. Characters are placed at y=0 (their own
+  // local origin), so anything meant to sit visibly ON the ground rather
+  // than embedded in it — like the chess-piece pedestal tile below — needs
+  // this offset.
+  var GROUND_SURFACE_Y = 0.15;
 
   function key(tx, ty) { return tx + ',' + ty; }
   function rand(a, b) { return a + Math.random() * (b - a); }
@@ -1385,6 +1391,34 @@
     bishop: createBallTopper
   };
 
+  // A small checkered pedestal every chess-styled character stands on —
+  // added to the outer group (not the breathing pivot) so it stays rigid.
+  // Cheapest, strongest "this is a board game" signal there is: every
+  // character gets one, not just the pieces with fancy toppers. Sits on
+  // GROUND_SURFACE_Y, not y=0 — the ground tile's own top surface is
+  // already up there (see makeTile's positioning), so anchoring at y=0
+  // would bury it entirely under the grass.
+  function createPieceBase(size) {
+    size = size || 0.72;
+    var g = new THREE.Group();
+    var border = new THREE.Mesh(
+      new THREE.BoxGeometry(size, 0.05, size),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.6 })
+    );
+    border.position.y = GROUND_SURFACE_Y + 0.025;
+    border.receiveShadow = true;
+    g.add(border);
+    var inset = size - 0.09;
+    var tile = new THREE.Mesh(
+      new THREE.BoxGeometry(inset, 0.052, inset),
+      new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.5 })
+    );
+    tile.position.y = GROUND_SURFACE_Y + 0.026;
+    tile.receiveShadow = true;
+    g.add(tile);
+    return g;
+  }
+
   // Generic adult NPC — same low-poly-diorama vocabulary as the player,
   // but taller proportions and customizable clothing/hair so Mom, Dad, and
   // every future townsperson can share one builder.
@@ -1399,10 +1433,12 @@
     var pivot = new THREE.Group();
     g.add(pivot);
 
-    if (CHARACTER_STYLE === 'chess') {
+    var isChess = CHARACTER_STYLE === 'chess';
+    if (isChess) {
       var pieceType = opts.pieceType || 'pawn';
       var pieceBuilder = PIECE_BODY_BUILDERS[pieceType] || createPawnBody;
       pivot.add(pieceBuilder(topColor, bottomColor));
+      g.add(createPieceBase());
     } else {
       var body = new THREE.Mesh(
         new THREE.CapsuleGeometry(0.27, 0.5, 4, 8),
@@ -1429,7 +1465,14 @@
       }
     }
 
-    var head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 14, 12), new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 }));
+    // Shrunk well below life-size proportions in chess mode on purpose — a
+    // human-sized head on top of a piece-shaped body read as "a person
+    // standing on a fancy plinth," not as a chess piece. A small head
+    // perched atop a much bigger turned body is the actual piece silhouette
+    // (think finial, not head), while still carrying skin tone and hair so
+    // family/identity stays legible.
+    var headRadius = isChess ? 0.16 : 0.23;
+    var head = new THREE.Mesh(new THREE.SphereGeometry(headRadius, 14, 12), new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 }));
     head.position.y = 1.28;
     head.castShadow = true;
     pivot.add(head);
@@ -1437,15 +1480,15 @@
     var hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 });
     var hair;
     if (opts.hairStyle === 'long') {
-      hair = new THREE.Mesh(new THREE.SphereGeometry(0.25, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.8), hairMat);
+      hair = new THREE.Mesh(new THREE.SphereGeometry(headRadius + (isChess ? 0.014 : 0.02), 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.8), hairMat);
       hair.position.y = 1.24;
     } else {
-      hair = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
+      hair = new THREE.Mesh(new THREE.SphereGeometry(headRadius + (isChess ? 0.008 : 0.01), 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
       hair.position.y = 1.32;
     }
     pivot.add(hair);
 
-    if (CHARACTER_STYLE === 'chess') {
+    if (isChess) {
       var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceType];
       if (topperBuilder) {
         var topper = topperBuilder(opts.pieceAccent || 0xf0a83c);
@@ -1473,6 +1516,7 @@
 
     if (isChess) {
       pivot.add(createPawnBody(0x2f6fb0, 0x3a2a20));
+      g.add(createPieceBase());
     } else {
       body = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.42, 4, 8), tunicMat);
       body.position.y = 0.5;
@@ -1491,16 +1535,19 @@
       pivot.add(legR);
     }
 
-    var head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 12), skinMat);
+    // Same shrink-the-head reasoning as createHuman() — see the comment
+    // there.
+    var playerHeadRadius = isChess ? 0.17 : 0.24;
+    var head = new THREE.Mesh(new THREE.SphereGeometry(playerHeadRadius, 14, 12), skinMat);
     head.position.y = 0.98;
     head.castShadow = true;
     pivot.add(head);
 
-    var hair = new THREE.Mesh(new THREE.SphereGeometry(0.255, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
+    var hair = new THREE.Mesh(new THREE.SphereGeometry(playerHeadRadius + (isChess ? 0.011 : 0.015), 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
     hair.position.y = 1.0;
     pivot.add(hair);
 
-    var scarf = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.06, 8, 12), scarfMat);
+    var scarf = new THREE.Mesh(new THREE.TorusGeometry(isChess ? 0.16 : 0.22, isChess ? 0.045 : 0.06, 8, 12), scarfMat);
     scarf.rotation.x = Math.PI / 2;
     scarf.position.y = isChess ? 0.93 : 0.78;
     pivot.add(scarf);
@@ -1528,7 +1575,7 @@
         var color = isPortal ? PORTAL_TILE_COLOR : groundColorFor(ch);
         var tileMesh = makeTile(color, thickness);
         var pos = worldPos(w, gx, gy);
-        tileMesh.position.set(pos.x, thickness / -2 + (ch === '~' ? 0.02 : 0.15), pos.z);
+        tileMesh.position.set(pos.x, thickness / -2 + (ch === '~' ? 0.02 : GROUND_SURFACE_Y), pos.z);
         group.add(tileMesh);
         if (ch === '~') waterTiles.push({ mesh: tileMesh, phase: rand(0, Math.PI * 2), baseY: tileMesh.position.y });
       }
