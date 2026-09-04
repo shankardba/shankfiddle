@@ -1264,15 +1264,29 @@
     return mesh;
   }
 
-  // levelId opts into a level-specific palette — right now just the
-  // Hospital, whose courtyard should read as clinical/white rather than as
-  // another grassy village, since it's the one place that isn't.
+  // Every indoor location gets its own vibe: wall (replaces the outdoor
+  // tree ring around '#'), floor (this level's base ground tile), prop
+  // (replaces decorative rocks), and bg (scene background/fog while
+  // inside — loadLevel swaps it in and out so indoors never shows the
+  // outdoor sky). A level id with no entry here is outdoor/village as
+  // before. Hospital's palette predates this registry (it shipped its own
+  // clinical white first) — its floor values are carried over unchanged.
+  var INTERIOR_THEMES = {
+    hospital: { wall: 0xe3e8ea, floor: 0xeef1f2, prop: 0xc7d1d4, bg: 0xdfe6e8 },
+    schoolhouse: { wall: 0x8a6a45, floor: 0xd8bd8a, prop: 0x2f4a3a, bg: 0x3a2e20 },
+    studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20 },
+    conservatory: { wall: 0x4a2030, floor: 0x2a1420, prop: 0xc9a24a, bg: 0x241018 }
+  };
+
+  // levelId opts into a level-specific palette via INTERIOR_THEMES; a
+  // level with no entry there stays the grassy outdoor default.
   function groundColorFor(c, levelId) {
-    if (levelId === 'hospital') {
-      if (c === '=') return new THREE.Color(0xcfd6d9).offsetHSL(rand(-0.01, 0.01), 0, rand(-0.02, 0.02));
-      if (c === '~') return new THREE.Color(0x3aa0c9);
-      // pale clinical ground, with per-tile jitter for a hand-painted look
-      return new THREE.Color(0xeef1f2).offsetHSL(rand(-0.005, 0.005), rand(-0.02, 0.02), rand(-0.02, 0.015));
+    var theme = INTERIOR_THEMES[levelId];
+    if (theme) {
+      if (levelId === 'hospital' && c === '=') return new THREE.Color(0xcfd6d9).offsetHSL(rand(-0.01, 0.01), 0, rand(-0.02, 0.02));
+      if (levelId === 'hospital' && c === '~') return new THREE.Color(0x3aa0c9);
+      // per-tile jitter for a hand-painted look
+      return new THREE.Color(theme.floor).offsetHSL(rand(-0.005, 0.005), rand(-0.02, 0.02), rand(-0.02, 0.015));
     }
     if (c === '=') return new THREE.Color(0xC9A876).offsetHSL(rand(-0.01, 0.01), 0, rand(-0.03, 0.02));
     if (c === '~') return new THREE.Color(0x3aa0c9);
@@ -1317,6 +1331,38 @@
     });
     g.scale.setScalar(rand(0.92, 1.1));
     g.rotation.y = rand(0, Math.PI * 2);
+    return g;
+  }
+
+  // Indoor counterpart to createTree() — a plain interior wall block for
+  // an INTERIOR_THEMES level's '#' border, so it reads as a room instead
+  // of a tree-ringed clearing.
+  function createInteriorWall(color) {
+    var g = new THREE.Group();
+    var mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(TILE * 0.98, 1.9, TILE * 0.98),
+      new THREE.MeshStandardMaterial({ color: color, roughness: 0.8 })
+    );
+    mesh.position.y = 0.95;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    g.add(mesh);
+    return g;
+  }
+
+  // Indoor counterpart to createRock() — a plain furniture-block stand-in
+  // for an INTERIOR_THEMES level's 'o' decoration.
+  function createInteriorProp(color) {
+    var g = new THREE.Group();
+    var mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.55, 0.55),
+      new THREE.MeshStandardMaterial({ color: color, roughness: 0.6 })
+    );
+    mesh.position.y = 0.275;
+    mesh.rotation.y = rand(0, Math.PI * 2);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    g.add(mesh);
     return g;
   }
 
@@ -1387,12 +1433,24 @@
     walls.receiveShadow = true;
     g.add(walls);
 
-    var roof = new THREE.Mesh(
-      new THREE.ConeGeometry(Math.max(width, depth) * 0.78, 1.15, 4),
-      new THREE.MeshStandardMaterial({ color: clinical ? 0xc7d1d4 : 0xB5432E, roughness: 0.75 })
-    );
-    roof.rotation.y = Math.PI / 4;
-    roof.position.y = wallH + 0.5;
+    // A peaked roof reads as "a house" — right for a village cottage, wrong
+    // for a mass sitting inside the Hospital's own interior, so clinical
+    // gets a flat capped ceiling slab instead of the cottage's cone.
+    var roof = clinical
+      ? new THREE.Mesh(
+          new THREE.BoxGeometry(width * 1.06, 0.18, depth * 1.06),
+          new THREE.MeshStandardMaterial({ color: 0xc7d1d4, roughness: 0.6 })
+        )
+      : new THREE.Mesh(
+          new THREE.ConeGeometry(Math.max(width, depth) * 0.78, 1.15, 4),
+          new THREE.MeshStandardMaterial({ color: 0xB5432E, roughness: 0.75 })
+        );
+    if (clinical) {
+      roof.position.y = wallH + 0.09;
+    } else {
+      roof.rotation.y = Math.PI / 4;
+      roof.position.y = wallH + 0.5;
+    }
     roof.castShadow = true;
     g.add(roof);
 
@@ -1839,10 +1897,14 @@
       });
     }
 
-    place(w.features.trees, createTree);
-    place(w.features.rocks, createRock);
+    // An INTERIOR_THEMES level swaps the outdoor tree ring and rock
+    // decorations for plain walls/furniture in its own palette, and drops
+    // flowers entirely — none of that reads as "indoors" otherwise.
+    var interiorTheme = INTERIOR_THEMES[w.id];
+    place(w.features.trees, interiorTheme ? function () { return createInteriorWall(interiorTheme.wall); } : createTree);
+    place(w.features.rocks, interiorTheme ? function () { return createInteriorProp(interiorTheme.prop); } : createRock);
     place(w.features.bushes, createBush);
-    place(w.features.flowers, createFlower);
+    if (!interiorTheme) place(w.features.flowers, createFlower);
     place(w.features.signs, createSignPost);
     place(w.features.portals, createPortalMarker);
 
@@ -1952,6 +2014,12 @@
     newWorld.waterTiles = built.waterTiles;
     newWorld.shardsCollected = 0;
     newWorld.maxShards = newWorld.totalShards;
+
+    // Indoors never shows the outdoor sky — swap the background/fog color
+    // to this level's own interior tone, or back to SKY_COLOR outdoors.
+    var bgColor = (INTERIOR_THEMES[levelDef.id] || { bg: SKY_COLOR }).bg;
+    scene.background = new THREE.Color(bgColor);
+    scene.fog.color.set(bgColor);
 
     if (world) {
       scene.remove(world.group);
