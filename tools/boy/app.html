@@ -404,7 +404,13 @@
   //                           // if omitted, but don't rely on that for
   //                           // names that collide once lowercased).
   //             name: 'Mom',
-  //             appearance: { top, bottom, skin, hair, hairStyle, skirt },
+  //             appearance: { top, bottom, skin, hair, hairStyle, skirt,
+  //               pieceType, pieceAccent },
+  //             // pieceType: 'pawn'|'king'|'queen'|'rook'|'bishop' — which
+  //             // chess piece this NPC's body renders as when
+  //             // CHARACTER_STYLE === 'chess' (defaults to 'pawn'; ignored
+  //             // entirely in 'human' style). pieceAccent optionally colors
+  //             // the king/queen/bishop head accessory (defaults gold).
   //             // skin defaults to SKIN_LIGHT (everyone else in the world);
   //             // Boy's family uses SKIN_BROWN (0xa9714a) — pass it as the
   //             // literal since this data runs before those are defined.
@@ -472,7 +478,7 @@
         D: {
           id: 'dad',
           name: 'Dad',
-          appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'short', skin: 0xa9714a },
+          appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'short', skin: 0xa9714a, pieceType: 'king' },
           isFamily: true,
           dialogue: {
             childhood: "\"An A-minus. Do you know what that tells me? That you stopped trying the moment it got hard.\"",
@@ -483,7 +489,7 @@
         M: {
           id: 'mom',
           name: 'Mom',
-          appearance: { top: 0xa8536b, bottom: 0x3a2a35, hairStyle: 'long', skirt: true, skin: 0xa9714a },
+          appearance: { top: 0xa8536b, bottom: 0x3a2a35, hairStyle: 'long', skirt: true, skin: 0xa9714a, pieceType: 'queen' },
           isFamily: true,
           dialogue: {
             childhood: "\"Your father's right. In this house, 'good enough' isn't. We didn't raise you to be ordinary.\""
@@ -519,7 +525,7 @@
       npcs: {
         V: {
           name: 'Maestro Alden',
-          appearance: { top: 0x6b2338, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xc9c9c9 },
+          appearance: { top: 0x6b2338, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xc9c9c9, pieceType: 'bishop' },
           challenge: {
             key: 'violin',
             threshold: 3,
@@ -535,7 +541,7 @@
         F: {
           id: 'farmer_jono',
           name: 'Farmer Jono',
-          appearance: { top: 0x6f7d4a, bottom: 0x4a3a28, hairStyle: 'short', hair: 0x8a6a3a },
+          appearance: { top: 0x6f7d4a, bottom: 0x4a3a28, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'rook' },
           job: {
             pay: 5,
             reputation: 1,
@@ -550,7 +556,7 @@
         K: {
           id: 'elsie',
           name: 'Elsie',
-          appearance: { top: 0x3f6b6b, bottom: 0x2a2a30, hairStyle: 'long', hair: 0xd8d0b0 },
+          appearance: { top: 0x3f6b6b, bottom: 0x2a2a30, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'bishop' },
           job: {
             pay: 3,
             reputation: 1,
@@ -590,7 +596,7 @@
       npcs: {
         P: {
           name: 'Ms. Whitfield',
-          appearance: { top: 0x2a4a3a, bottom: 0x1f2a2a, hairStyle: 'long', hair: 0xb8b8b8 },
+          appearance: { top: 0x2a4a3a, bottom: 0x1f2a2a, hairStyle: 'long', hair: 0xb8b8b8, pieceType: 'queen' },
           challenge: {
             key: 'piano',
             threshold: 3,
@@ -623,7 +629,7 @@
       npcs: {
         G: {
           name: 'Jax',
-          appearance: { top: 0x3a5a8a, bottom: 0x8a7a5a, hairStyle: 'short', hair: 0x2a2018 },
+          appearance: { top: 0x3a5a8a, bottom: 0x8a7a5a, hairStyle: 'short', hair: 0x2a2018, pieceType: 'rook' },
           challenge: {
             key: 'guitar',
             threshold: 3,
@@ -656,7 +662,7 @@
       npcs: {
         F: {
           name: 'Sora',
-          appearance: { top: 0xc9a84a, bottom: 0x5a4a3a, hairStyle: 'long', hair: 0x4a2f22 },
+          appearance: { top: 0xc9a84a, bottom: 0x5a4a3a, hairStyle: 'long', hair: 0x4a2f22, pieceType: 'queen' },
           challenge: {
             key: 'flute',
             threshold: 3,
@@ -841,6 +847,16 @@
   // appearance explicitly overrides it.
   var SKIN_LIGHT = 0xe8b58c;
   var SKIN_BROWN = 0xa9714a;
+
+  // Character body style toggle. 'chess' renders every character's torso
+  // as a chess-piece pedestal (shape driven by appearance.pieceType — see
+  // the npcs legend above LEVELS); 'human' renders the original capsule
+  // body + legs. Head, hair, and all appearance colors are unchanged by
+  // this switch either way — the "costume" stays the same, only the body
+  // underneath it changes. Flip this one constant to change every
+  // character in the game at once; change one NPC's own `pieceType` to
+  // change just them.
+  var CHARACTER_STYLE = 'chess';
 
   function createTree() {
     var g = new THREE.Group();
@@ -1041,6 +1057,174 @@
     return g;
   }
 
+  // ----------------------------------------------------------------------
+  // Chess-piece bodies — replace the capsule-torso-and-legs body when
+  // CHARACTER_STYLE === 'chess'. Each returns a pedestal shaped and sized
+  // to reach up near where the (unchanged) head sits; head/hair/scarf are
+  // still built by createHuman/createPlayer on top of whichever body they
+  // get, so a character's costume colors carry over unchanged either way.
+  // ----------------------------------------------------------------------
+  function createPawnBody(topColor, bottomColor) {
+    var g = new THREE.Group();
+    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
+    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.55 });
+    var base = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.24, 0.08, 14), baseMat);
+    base.position.y = 0.04;
+    base.castShadow = true;
+    g.add(base);
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.82, 14), bodyMat);
+    body.position.y = 0.08 + 0.41;
+    body.castShadow = true;
+    g.add(body);
+    var collar = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 8, 14), baseMat);
+    collar.rotation.x = Math.PI / 2;
+    collar.position.y = 0.08 + 0.82;
+    g.add(collar);
+    return g;
+  }
+
+  function createKingBody(topColor, bottomColor) {
+    var g = new THREE.Group();
+    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
+    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.5 });
+    var base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.1, 16), baseMat);
+    base.position.y = 0.05;
+    base.castShadow = true;
+    g.add(base);
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.26, 1.05, 16), bodyMat);
+    body.position.y = 0.1 + 0.525;
+    body.castShadow = true;
+    g.add(body);
+    var shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.19, 0.1, 16), baseMat);
+    shoulder.position.y = 0.1 + 1.05;
+    shoulder.castShadow = true;
+    g.add(shoulder);
+    return g;
+  }
+
+  function createQueenBody(topColor, bottomColor) {
+    var g = new THREE.Group();
+    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
+    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.5 });
+    var base = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.1, 16), baseMat);
+    base.position.y = 0.05;
+    base.castShadow = true;
+    g.add(base);
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.24, 1.1, 16), bodyMat);
+    body.position.y = 0.1 + 0.55;
+    body.castShadow = true;
+    g.add(body);
+    return g;
+  }
+
+  function createRookBody(topColor, bottomColor) {
+    var g = new THREE.Group();
+    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
+    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.55 });
+    var base = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.3, 0.1, 16), baseMat);
+    base.position.y = 0.05;
+    base.castShadow = true;
+    g.add(base);
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.0, 16), bodyMat);
+    body.position.y = 0.1 + 0.5;
+    body.castShadow = true;
+    g.add(body);
+    var rimY = 0.1 + 1.0 + 0.05;
+    var teeth = 6;
+    for (var i = 0; i < teeth; i++) {
+      var a = (i / teeth) * Math.PI * 2;
+      var tooth = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.1, 0.06), bodyMat);
+      tooth.position.set(Math.cos(a) * 0.22, rimY, Math.sin(a) * 0.22);
+      tooth.lookAt(0, rimY, 0);
+      tooth.castShadow = true;
+      g.add(tooth);
+    }
+    return g;
+  }
+
+  function createBishopBody(topColor, bottomColor) {
+    var g = new THREE.Group();
+    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
+    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.5 });
+    var base = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.1, 16), baseMat);
+    base.position.y = 0.05;
+    base.castShadow = true;
+    g.add(base);
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.22, 1.05, 16), bodyMat);
+    body.position.y = 0.1 + 0.525;
+    body.castShadow = true;
+    g.add(body);
+    var notch = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.2), baseMat);
+    notch.position.y = 0.1 + 1.0;
+    notch.rotation.z = Math.PI / 6;
+    g.add(notch);
+    return g;
+  }
+
+  var PIECE_BODY_BUILDERS = {
+    pawn: createPawnBody,
+    king: createKingBody,
+    queen: createQueenBody,
+    rook: createRookBody,
+    bishop: createBishopBody
+  };
+
+  // Small accessories worn on top of the head to distinguish the taller
+  // pieces further — pawn and rook (and bishop, whose body already tapers
+  // to a point) don't get one.
+  function createCrossTopper(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.55, roughness: 0.3, emissive: color, emissiveIntensity: 0.18 });
+    var band = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.08, 16), mat);
+    band.position.y = 0.04;
+    band.castShadow = true;
+    g.add(band);
+    var vert = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.34, 0.08), mat);
+    vert.position.y = 0.08 + 0.17;
+    vert.castShadow = true;
+    var horiz = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.09, 0.09), mat);
+    horiz.position.y = 0.08 + 0.24;
+    horiz.castShadow = true;
+    g.add(vert, horiz);
+    return g;
+  }
+
+  function createCrownTopper(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.55, roughness: 0.3, emissive: color, emissiveIntensity: 0.18 });
+    var band = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.09, 16), mat);
+    band.position.y = 0.045;
+    band.castShadow = true;
+    g.add(band);
+    var spikes = 6;
+    for (var i = 0; i < spikes; i++) {
+      var a = (i / spikes) * Math.PI * 2;
+      var spike = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 8), mat);
+      spike.position.set(Math.cos(a) * 0.15, 0.09 + 0.1, Math.sin(a) * 0.15);
+      spike.castShadow = true;
+      g.add(spike);
+    }
+    var jewel = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), mat);
+    jewel.position.y = 0.09 + 0.22;
+    g.add(jewel);
+    return g;
+  }
+
+  function createBallTopper(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.3 });
+    var ball = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), mat);
+    ball.position.y = 0.08; // crown/cross sit lower now (right on the head); keep the bishop's finial floating where it was
+    g.add(ball);
+    return g;
+  }
+
+  var PIECE_TOPPER_BUILDERS = {
+    king: createCrossTopper,
+    queen: createCrownTopper,
+    bishop: createBallTopper
+  };
+
   // Generic adult NPC — same low-poly-diorama vocabulary as the player,
   // but taller proportions and customizable clothing/hair so Mom, Dad, and
   // every future townsperson can share one builder.
@@ -1055,13 +1239,35 @@
     var pivot = new THREE.Group();
     g.add(pivot);
 
-    var body = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.27, 0.5, 4, 8),
-      new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.7 })
-    );
-    body.position.y = 0.63;
-    body.castShadow = true;
-    pivot.add(body);
+    if (CHARACTER_STYLE === 'chess') {
+      var pieceType = opts.pieceType || 'pawn';
+      var pieceBuilder = PIECE_BODY_BUILDERS[pieceType] || createPawnBody;
+      pivot.add(pieceBuilder(topColor, bottomColor));
+    } else {
+      var body = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.27, 0.5, 4, 8),
+        new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.7 })
+      );
+      body.position.y = 0.63;
+      body.castShadow = true;
+      pivot.add(body);
+
+      if (opts.skirt) {
+        var skirt = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.4, 10), new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.75 }));
+        skirt.position.y = 0.22;
+        skirt.castShadow = true;
+        pivot.add(skirt);
+      } else {
+        var legGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.42, 8);
+        var legMat = new THREE.MeshStandardMaterial({ color: bottomColor });
+        [-0.13, 0.13].forEach(function (lx) {
+          var leg = new THREE.Mesh(legGeo, legMat);
+          leg.position.set(lx, 0.21, 0);
+          leg.castShadow = true;
+          pivot.add(leg);
+        });
+      }
+    }
 
     var head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 14, 12), new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 }));
     head.position.y = 1.28;
@@ -1079,20 +1285,13 @@
     }
     pivot.add(hair);
 
-    if (opts.skirt) {
-      var skirt = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.4, 10), new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.75 }));
-      skirt.position.y = 0.22;
-      skirt.castShadow = true;
-      pivot.add(skirt);
-    } else {
-      var legGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.42, 8);
-      var legMat = new THREE.MeshStandardMaterial({ color: bottomColor });
-      [-0.13, 0.13].forEach(function (lx) {
-        var leg = new THREE.Mesh(legGeo, legMat);
-        leg.position.set(lx, 0.21, 0);
-        leg.castShadow = true;
-        pivot.add(leg);
-      });
+    if (CHARACTER_STYLE === 'chess') {
+      var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceType];
+      if (topperBuilder) {
+        var topper = topperBuilder(opts.pieceAccent || 0xf0a83c);
+        topper.position.y = head.position.y + 0.19;
+        pivot.add(topper);
+      }
     }
 
     g.userData = { pivot: pivot, idlePhase: rand(0, Math.PI * 2) };
@@ -1109,10 +1308,28 @@
     var pivot = new THREE.Group();
     g.add(pivot);
 
-    var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.42, 4, 8), tunicMat);
-    body.position.y = 0.5;
-    body.castShadow = true;
-    pivot.add(body);
+    var body = null, legL = null, legR = null;
+    var isChess = CHARACTER_STYLE === 'chess';
+
+    if (isChess) {
+      pivot.add(createPawnBody(0x2f6fb0, 0x3a2a20));
+    } else {
+      body = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.42, 4, 8), tunicMat);
+      body.position.y = 0.5;
+      body.castShadow = true;
+      pivot.add(body);
+
+      var legGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.34, 8);
+      var legMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20 });
+      legL = new THREE.Mesh(legGeo, legMat);
+      legL.position.set(-0.12, 0.17, 0);
+      legL.castShadow = true;
+      pivot.add(legL);
+      legR = new THREE.Mesh(legGeo, legMat);
+      legR.position.set(0.12, 0.17, 0);
+      legR.castShadow = true;
+      pivot.add(legR);
+    }
 
     var head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 12), skinMat);
     head.position.y = 0.98;
@@ -1125,20 +1342,12 @@
 
     var scarf = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.06, 8, 12), scarfMat);
     scarf.rotation.x = Math.PI / 2;
-    scarf.position.y = 0.78;
+    scarf.position.y = isChess ? 0.93 : 0.78;
     pivot.add(scarf);
 
-    var legGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.34, 8);
-    var legMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20 });
-    var legL = new THREE.Mesh(legGeo, legMat);
-    legL.position.set(-0.12, 0.17, 0);
-    legL.castShadow = true;
-    pivot.add(legL);
-    var legR = new THREE.Mesh(legGeo, legMat);
-    legR.position.set(0.12, 0.17, 0);
-    legR.castShadow = true;
-    pivot.add(legR);
-
+    // Pawn is the smallest, plainest piece by design — no topper. Leg
+    // refs stay null in chess mode; the walk-swing animation guards for
+    // that and skips itself (a piece doesn't need a leg-cycle to glide).
     g.userData = { pivot: pivot, legL: legL, legR: legR, body: body, head: head };
     return g;
   }
@@ -1681,14 +1890,18 @@
         player.obj.position.x = player.from.x + (player.to.x - player.from.x) * frac;
         player.obj.position.z = player.from.z + (player.to.z - player.from.z) * frac;
         player.obj.position.y = Math.sin(frac * Math.PI) * 0.16;
-        var swing = Math.sin(frac * Math.PI * 2) * 0.5;
-        player.obj.userData.legL.rotation.x = swing;
-        player.obj.userData.legR.rotation.x = -swing;
+        if (player.obj.userData.legL) {
+          var swing = Math.sin(frac * Math.PI * 2) * 0.5;
+          player.obj.userData.legL.rotation.x = swing;
+          player.obj.userData.legR.rotation.x = -swing;
+        }
         if (frac >= 1) {
           player.isMoving = false;
           player.obj.position.y = 0;
-          player.obj.userData.legL.rotation.x = 0;
-          player.obj.userData.legR.rotation.x = 0;
+          if (player.obj.userData.legL) {
+            player.obj.userData.legL.rotation.x = 0;
+            player.obj.userData.legR.rotation.x = 0;
+          }
           checkShardPickup();
           checkPortal();
         }
