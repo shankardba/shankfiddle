@@ -415,7 +415,20 @@
   //             // Boy's family uses SKIN_BROWN (0xa9714a) — pass it as the
   //             // literal since this data runs before those are defined.
   //             dialogue: { childhood: '...', diagnosis: '...', ... },
-  //             absentFrom: 'grief',  // gone starting this chapter onward
+  //             presentFrom: 'diagnosis',  // absent BEFORE this chapter —
+  //             absentFrom: 'grief',       // and gone FROM this chapter on.
+  //             // Both are optional and independent, so the same map tile
+  //             // (e.g. one letter in the Hospital's npcs) can be handed
+  //             // off between different characters as the story moves —
+  //             // a lab supervisor absentFrom 'diagnosis' vacates the spot
+  //             // a nurse presentFrom 'diagnosis' then fills.
+  //             presentDuring: ['childhood', 'hospice'],  // for a character
+  //             // who is present, then gone, then present again — a single
+  //             // contiguous presentFrom/absentFrom range can't express
+  //             // that, so presentDuring is an explicit chapter whitelist
+  //             // instead; give an NPC one or the other, not both. Dad
+  //             // uses this: home for childhood/earning_respect, away at
+  //             // the Hospital for diagnosis, home again for hospice.
   //             isFamily: true,  // every conversation (whatever line plays)
   //                               // also raises story.respect[id] — see the
   //                               // three-tier respect model below.
@@ -424,8 +437,13 @@
   //               threshold: 3,         // (progress is tracked under this
   //               progressLines: ['...', '...', '...'],  // NPC's own id,
   //               completeLine: '...',                    // same as any
-  //               learnedMessage: 'You learned the Violin! 🎻'  // other individual respect)
-  //             },
+  //               learnedMessage: 'You learned the Violin! 🎻',  // other individual respect)
+  //               link: { href: '...', label: '...' }  // optional — shown
+  //             },                      // as a clickable link under
+  //                                     // completeLine once learned, e.g.
+  //                                     // pointing a music challenge at the
+  //                                     // Circle of Fifths. Omit for a
+  //                                     // challenge with no matching tool.
   //             job: {                  // optional — instead of dialogue or
   //               pay: 5,               // a challenge, an indefinitely
   //               reputation: 1,        // repeatable source of money, this
@@ -458,6 +476,12 @@
   //     communities (once more than one exists) accrue this independently.
   // money stays a single global number on purpose — it's fungible and
   // portable in a way respect at any of these scopes deliberately isn't.
+  //
+  // A level itself may optionally set `availableFrom: '<chapter>'` — until
+  // story.chapter has reached (or passed) that chapter, the level is left
+  // out of the car's destination menu. The Hospital below uses this so it
+  // only appears once the story reaches 'diagnosis'; it isn't wired to any
+  // walking exit at all, so the car is the only way in or out of it.
   // ========================================================================
   var LEVELS = [
     {
@@ -482,9 +506,19 @@
           isFamily: true,
           dialogue: {
             childhood: "\"An A-minus. Do you know what that tells me? That you stopped trying the moment it got hard.\"",
-            diagnosis: "\"...I'm not as strong as I used to be. But I'm glad you're here.\""
+            // The earning_respect -> diagnosis reveal, delivered right here
+            // at home before he leaves for the Hospital — see the trigger
+            // in talkToNpc().
+            diagnosis: "\"...I'm not as strong as I used to be. But I'm glad you're here.\"",
+            hospice: "\"It's good to be home. Don't fuss over me too much — just sit with me a while.\"",
+            // His last line, delivered once as the hospice -> grief trigger
+            // fires — see talkToNpc(). He's presentDuring hospice only, so
+            // by the next visit here he's simply gone.
+            grief: "\"...You've become someone I'm proud of. Take care of your mother for me.\""
           },
-          absentFrom: 'grief'
+          // Home only through 'hospice' — at the Hospital for 'diagnosis'
+          // (see that level below), gone for good from 'grief' on.
+          presentDuring: ['childhood', 'earning_respect', 'hospice']
         },
         M: {
           id: 'mom',
@@ -492,7 +526,12 @@
           appearance: { top: 0xa8536b, bottom: 0x3a2a35, hairStyle: 'long', skirt: true, skin: 0xa9714a, pieceType: 'queen' },
           isFamily: true,
           dialogue: {
-            childhood: "\"Your father's right. In this house, 'good enough' isn't. We didn't raise you to be ordinary.\""
+            childhood: "\"Your father's right. In this house, 'good enough' isn't. We didn't raise you to be ordinary.\"",
+            diagnosis: "\"I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know.\"",
+            hospice: "\"Having him home is better, even like this. Thank you for helping me take care of him.\"",
+            grief: "\"Some days the house feels too quiet. But you're still here. That's not nothing.\"",
+            // The grief -> duty trigger's reveal — see talkToNpc().
+            duty: "\"It's just the two of us now. We're building something new out of what we lost — I'm proud of who you've become in the middle of it.\""
           }
         }
       },
@@ -535,7 +574,8 @@
               "\"One more session. Prove to me you're serious.\""
             ],
             completeLine: "\"Alright. You've earned it — I'll teach you the violin, properly this time.\"",
-            learnedMessage: 'You learned the Violin! 🎻'
+            learnedMessage: 'You learned the Violin! 🎻',
+            link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
         },
         F: {
@@ -606,7 +646,8 @@
               "\"Once more, and mean it this time.\""
             ],
             completeLine: "\"There. Now you're actually playing. I'll teach you properly from here.\"",
-            learnedMessage: 'You learned the Piano! 🎹'
+            learnedMessage: 'You learned the Piano! 🎹',
+            link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
         }
       },
@@ -639,7 +680,8 @@
               "\"One more run-through and I'll know you're serious.\""
             ],
             completeLine: "\"Alright, you've got heart. Let's actually learn some guitar.\"",
-            learnedMessage: 'You learned the Guitar! 🎸'
+            learnedMessage: 'You learned the Guitar! 🎸',
+            link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
         }
       },
@@ -672,11 +714,88 @@
               "\"Once more, with your whole breath this time.\""
             ],
             completeLine: "\"Beautiful. Now let's really teach you the flute.\"",
-            learnedMessage: 'You learned the Flute! 🎶'
+            learnedMessage: 'You learned the Flute! 🎶',
+            link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
         }
       },
       exits: { '1': { to: 'clearing', x: 9, y: 13 } }
+    },
+    {
+      // One physical building, two very different reasons to be in it —
+      // Mom's research lab during 'earning_respect' gives way to Dad's
+      // ward for 'diagnosis' only (presentDuring below) — he goes home to
+      // hospice after that, so by 'hospice' this building is quiet again.
+      id: 'hospital',
+      name: 'Hospital',
+      availableFrom: 'earning_respect',
+      map: [
+        "###########",
+        "#..HHHHH..#",
+        "#..HHHHH..#",
+        "#..HHHHH..#",
+        "#....@....#",
+        "#.o..L..o.#",
+        "#..N..MD..#",
+        "#,...C...,#",
+        "###########"
+      ],
+      npcs: {
+        L: {
+          id: 'lab_supervisor',
+          name: 'Dr. Voss',
+          appearance: { top: 0xe4e8ea, bottom: 0x3a4148, hairStyle: 'short', hair: 0x6a6a6a, pieceType: 'bishop' },
+          challenge: {
+            key: 'research',
+            threshold: 4,
+            progressLines: [
+              "\"Sterile technique first. Touch that flask again with ungloved hands and we start over.\"",
+              "\"Careful — reverse transcriptase is temperamental. Keep it on ice until the last second.\"",
+              "\"Now we amplify. Watch the primers, watch the cycles — RT-PCR doesn't forgive sloppy hands.\"",
+              "\"The mice are next. Gentle, deliberate, respectful — this is the real work now.\""
+            ],
+            completeLine: "\"You've got real hands for this. Cell culture, RT-PCR, the animal work — you've earned a place at this bench.\"",
+            learnedMessage: 'You learned molecular biology research! 🧬'
+          },
+          absentFrom: 'diagnosis'
+        },
+        D: {
+          id: 'dad',
+          name: 'Dad',
+          appearance: { top: 0xb9c2c9, bottom: 0x8a9096, hairStyle: 'short', skin: 0xa9714a, pieceType: 'king' },
+          isFamily: true,
+          dialogue: {
+            diagnosis: "\"The doctors keep using words I don't like. But you're here — that's what matters today.\"",
+            // The diagnosis -> hospice reveal, delivered here as he's
+            // cleared to go home — see the trigger in talkToNpc().
+            hospice: "\"They think I'll do better at home now. I'd like that — I'd like to sleep in my own bed again.\""
+          },
+          // Here for 'diagnosis' only — home for 'hospice' (see the Home
+          // level above), and after that, gone.
+          presentDuring: ['diagnosis']
+        },
+        M: {
+          id: 'mom',
+          name: 'Mom',
+          appearance: { top: 0xa8536b, bottom: 0x3a2a35, hairStyle: 'long', skirt: true, skin: 0xa9714a, pieceType: 'queen' },
+          isFamily: true,
+          dialogue: {
+            diagnosis: "\"He's sleeping. I haven't left his side much... it helps, having you here too.\""
+          },
+          // At his bedside for 'diagnosis' only — she's simply back at
+          // home the rest of the time, same as always.
+          presentDuring: ['diagnosis']
+        },
+        N: {
+          id: 'nurse',
+          name: 'Nurse Odalys',
+          appearance: { top: 0xdfe6ea, bottom: 0xc7ced2, hairStyle: 'long', hair: 0x3a2f28, pieceType: 'bishop' },
+          dialogue: {
+            diagnosis: "\"He's resting. Visits like this do him more good than the medicine does, some days.\""
+          },
+          presentFrom: 'diagnosis'
+        }
+      }
     }
   ];
 
@@ -686,7 +805,7 @@
   // reloading the current level is what moves the story forward; nothing
   // currently advances it past 'childhood' — that's the next piece to build.
   // 'duty' is the story's final state: respect fully earned.
-  var CHAPTERS = ['childhood', 'earning_respect', 'diagnosis', 'grief', 'duty'];
+  var CHAPTERS = ['childhood', 'earning_respect', 'diagnosis', 'hospice', 'grief', 'duty'];
   // See "the three-tier respect model" above LEVELS for what respect vs.
   // communityRespect vs. familyRespect() each mean and why they're separate.
   // respect: individual standing per NPC id, e.g. respect.dad, respect.violin.
@@ -697,16 +816,43 @@
   // CAR_FAMILY_RESPECT_THRESHOLD — see findNearbyCar()/handleAction().
   var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, hasCar: false };
   var CAR_FAMILY_RESPECT_THRESHOLD = 4;
+  // Each threshold below gates one scripted chapter turn — see the four
+  // checks in talkToNpc(). They only climb: earning the car is "they trust
+  // you to drive," diagnosis is "you kept showing up after that," hospice
+  // is "you kept showing up through the hospital stay," and the farewell
+  // is "you were there for the whole of it." The last one, rebuilding with
+  // just Mom, is scoped to her alone rather than the family sum, since
+  // Dad's own respect is frozen once he's gone.
+  var DIAGNOSIS_FAMILY_RESPECT_THRESHOLD = 8;
+  var HOSPICE_FAMILY_RESPECT_THRESHOLD = 12;
+  var FAREWELL_FAMILY_RESPECT_THRESHOLD = 18;
+  var REBUILD_MOM_RESPECT_THRESHOLD = 10;
   function familyRespect() { return (story.respect.dad || 0) + (story.respect.mom || 0); }
 
   // absentFrom marks a character gone starting at that chapter and for
   // every chapter after it (not just that one) — once someone is gone from
   // the story, later chapters shouldn't accidentally bring them back.
+  // presentFrom is the mirror image: gone in every chapter BEFORE the given
+  // one. Together they let one map tile change hands between characters as
+  // the chapter changes — e.g. the Hospital's lab supervisor (absentFrom
+  // 'diagnosis') giving way to Dad and the nurse (both presentFrom
+  // 'diagnosis') without any change to the level's map or tile layout.
   function npcAbsent(npcDef) {
-    if (!npcDef.absentFrom) return false;
+    // presentDuring is an explicit whitelist for a character who isn't
+    // present for one contiguous stretch of chapters — see the doc above
+    // LEVELS. It fully replaces the presentFrom/absentFrom range check
+    // below when given, rather than combining with it.
+    if (npcDef.presentDuring) return npcDef.presentDuring.indexOf(story.chapter) === -1;
     var curIdx = CHAPTERS.indexOf(story.chapter);
-    var fromIdx = CHAPTERS.indexOf(npcDef.absentFrom);
-    return fromIdx !== -1 && curIdx >= fromIdx;
+    if (npcDef.presentFrom) {
+      var presentIdx = CHAPTERS.indexOf(npcDef.presentFrom);
+      if (presentIdx !== -1 && curIdx < presentIdx) return true;
+    }
+    if (npcDef.absentFrom) {
+      var absentIdx = CHAPTERS.indexOf(npcDef.absentFrom);
+      if (absentIdx !== -1 && curIdx >= absentIdx) return true;
+    }
+    return false;
   }
   function dialogueFor(npcDef) {
     var idx = CHAPTERS.indexOf(story.chapter);
@@ -714,6 +860,20 @@
       if (npcDef.dialogue[CHAPTERS[i]]) return npcDef.dialogue[CHAPTERS[i]];
     }
     return npcDef.dialogue.default || '...';
+  }
+
+  // Chapters only ever move forward. Rebuilds the current level in place
+  // (same tile, no travel) so absentFrom/dialogue/car-menu changes tied to
+  // the new chapter take effect immediately rather than on the next level
+  // change. Safe to call mid-conversation — callers that also want to show
+  // a dialogue line for the new chapter should call this first, then open
+  // the dialogue, since it's what makes dialogueFor() see the new chapter.
+  function setChapter(newChapter) {
+    var newIdx = CHAPTERS.indexOf(newChapter);
+    var curIdx = CHAPTERS.indexOf(story.chapter);
+    if (newIdx <= curIdx) return;
+    story.chapter = newChapter;
+    loadLevel(LEVEL_INDEX[world.id], { x: player.tileX, y: player.tileY });
   }
 
   var TILE = 2;
@@ -1488,6 +1648,10 @@
 
   function loadLevel(index, spawnOverride) {
     var levelDef = LEVELS[index];
+    // First step outside Home, into the village — respect-earning begins.
+    if (levelDef.id === 'clearing' && story.chapter === 'childhood') {
+      story.chapter = 'earning_respect';
+    }
     var newWorld = parseLevel(levelDef);
     var built = buildWorldGroup(newWorld);
     newWorld.group = built.group;
@@ -1706,8 +1870,13 @@
   var carMenuListEl = document.getElementById('car-menu-list');
   function openCarMenu() {
     carMenuListEl.innerHTML = '';
+    var curChapterIdx = CHAPTERS.indexOf(story.chapter);
     LEVELS.forEach(function (lvl, i) {
       if (lvl.id === world.id) return;
+      if (lvl.availableFrom) {
+        var fromIdx = CHAPTERS.indexOf(lvl.availableFrom);
+        if (fromIdx === -1 || curChapterIdx < fromIdx) return;
+      }
       var btn = document.createElement('button');
       btn.textContent = lvl.name;
       btn.addEventListener('click', function () {
@@ -1759,6 +1928,27 @@
 
     var ch = def.challenge;
     if (!ch) {
+      // Four scripted chapter turns, each gated behind continued care —
+      // see the thresholds above. setChapter() runs first in every case,
+      // so the very same dialogueFor(def) call below that plays ordinary
+      // lines picks up each reveal automatically once the chapter flips.
+      if (def.id === 'dad' && story.chapter === 'earning_respect' && story.hasCar &&
+          familyRespect() >= DIAGNOSIS_FAMILY_RESPECT_THRESHOLD) {
+        // Diagnosis reveal, at home — he leaves for the Hospital from here.
+        setChapter('diagnosis');
+      } else if (def.id === 'dad' && story.chapter === 'diagnosis' &&
+          familyRespect() >= HOSPICE_FAMILY_RESPECT_THRESHOLD) {
+        // Cleared to go home to hospice — at the Hospital bedside.
+        setChapter('hospice');
+      } else if (def.id === 'dad' && story.chapter === 'hospice' &&
+          familyRespect() >= FAREWELL_FAMILY_RESPECT_THRESHOLD) {
+        // His last line, at home — he's gone for good after this.
+        setChapter('grief');
+      } else if (def.id === 'mom' && story.chapter === 'grief' &&
+          (story.respect.mom || 0) >= REBUILD_MOM_RESPECT_THRESHOLD) {
+        // Rebuilding, just the two of them — at home.
+        setChapter('duty');
+      }
       openDialogue(dialogueFor(def), def.name);
       if (def.isFamily) {
         var famKey = npcRespectKey(def);
@@ -1774,13 +1964,10 @@
         story.learned[ch.key] = true;
         showToast(ch.learnedMessage || ('You learned ' + ch.key + '!'), 2800);
       }
-      // Every challenge here is a musical instrument — once a teacher has
-      // taken you on, every later visit nudges you toward the Circle of
-      // Fifths to actually practice what they're teaching.
-      openDialogue(ch.completeLine, def.name, {
-        href: TOOL_LINKS.circleOfFifths.href,
-        label: 'Practice your scales in the Circle of Fifths →'
-      });
+      // A music challenge points its `link` at the Circle of Fifths so you
+      // can go practice what the teacher just taught; a challenge with no
+      // matching tool (e.g. the research bench) just omits `link`.
+      openDialogue(ch.completeLine, def.name, ch.link || null);
       return;
     }
 
