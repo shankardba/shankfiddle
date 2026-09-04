@@ -1,7 +1,7 @@
 # shankFiddle — Website
 
 Personal site for Shankar Srinivasan (shankFiddle) — musician, philosopher,
-artist. Single-page site (Hero / About / Tools / Contact) plus three
+artist. Single-page site (Hero / About / Tools / Contact) plus four
 interactive sub-pages pulled in from their own standalone repos.
 
 ## Structure
@@ -20,6 +20,9 @@ tools/synth/
 tools/fractal/
   index.html                  Wrapper
   app.html                     Unmodified copy of fractal-widget/index.html
+tools/boy/
+  index.html                  Wrapper
+  app.html                     Unmodified copy of boy-game/index.html
 ```
 
 Each tool lives in an iframe (`app.html`) inside a small shankFiddle-branded
@@ -33,6 +36,7 @@ tool's own repo — to pull in updates, just re-copy the file:
 cp ~/fractal-widget/index.html tools/fractal/app.html
 cp ~/modular-synth-widget/index.html tools/synth/app.html
 cp ~/circle-of-fifths-chord-wheel/circle-of-fifths-chord-wheel.html tools/circle-of-fifths/app.html
+cp ~/boy-game/index.html tools/boy/app.html
 ```
 
 No need to touch the wrapper `index.html` files when a tool updates —
