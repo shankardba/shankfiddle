@@ -160,6 +160,42 @@
   }
   #car-menu-list button:hover { border-color: #ffd27a; background: rgba(240,168,60,0.14); }
 
+  /* A `goal` mission step opens its tool right here, in-game, rather than
+     a new tab — the whole point is watching for the tool's own
+     postMessage confirming the task was actually done. */
+  #tool-frame-overlay {
+    position: fixed; inset: 0; z-index: 40;
+    display: none; flex-direction: column;
+    background: #05070a;
+  }
+  #tool-frame-overlay.open { display: flex; }
+  #tool-frame-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    background: rgba(5,7,10,0.95);
+    border-bottom: 1px solid rgba(240,168,60,0.4);
+  }
+  #tool-frame-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #ffd27a;
+    letter-spacing: 0.3px;
+  }
+  #tool-frame-close {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(240,168,60,0.4);
+    background: rgba(240,168,60,0.06);
+    color: #f7ece9;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #tool-frame-close:hover { border-color: #ffd27a; background: rgba(240,168,60,0.14); }
+  #tool-frame { flex: 1 1 auto; width: 100%; border: none; background: #fff; }
+
   #tools-btn {
     top: 16px; left: 50%; transform: translateX(-50%);
     width: 40px; height: 40px;
@@ -337,6 +373,13 @@
     <div id="car-menu-list"></div>
     <div class="prompt">&#9660; space to close</div>
   </div>
+  <div id="tool-frame-overlay">
+    <div id="tool-frame-bar">
+      <span id="tool-frame-title"></span>
+      <button id="tool-frame-close" title="Close">&times;</button>
+    </div>
+    <iframe id="tool-frame" allow="autoplay"></iframe>
+  </div>
   <div id="shankfiddle-credit">Boy — a shankFiddle production</div>
 
   <div class="touch-controls" id="dpad">
@@ -460,6 +503,22 @@
   //             // `dialogue.default` closing line) and the community they
   //             // stand in (world.id) gains MISSION_MASTERY_REPUTATION.
   //             // Use `challenge` instead for a single-stage skill.
+  //             //
+  //             // A step (in `missions`, or a standalone `challenge`) can
+  //             // swap `threshold`/`progressLines` for `goal` instead:
+  //             //   goal: { tool: 'fractal', id: 'zoom', href: '../fractal/app.html',
+  //             //           linkLabel: 'Pan and zoom into the fractal →' },
+  //             //   introLine: '...',  // shown the first time, opens the
+  //             // }                    // tool in-game (see openToolFrame())
+  //             // A `goal` step earns NOTHING for talking, ever — talking
+  //             // just explains the task and (re)opens the tool. The point
+  //             // is only awarded once the tool itself calls
+  //             // `parent.postMessage({ source: 'boy-tool', tool, goal },
+  //             // '*')`, matched against GOAL_INDEX and recorded in
+  //             // story.goalDone[key] — see that listener and the sibling
+  //             // tools' own instrumentation for what each `id` detects.
+  //             // Next time you talk, `completeLine` plays and the mission
+  //             // advances exactly like a threshold step completing.
   //             job: {                  // optional — instead of dialogue or
   //               pay: 5,               // a challenge, an indefinitely
   //               reputation: 1,        // repeatable source of money, this
@@ -927,47 +986,31 @@
           missions: [
             {
               key: 'fractal_navigate',
-              threshold: 2,
-              progressLines: [
-                "Numbers aren't the boring part, son. Look closer.",
-                "Try dragging the whole picture. Zoom in until it stops looking like anything."
-              ],
+              introLine: "Numbers aren't the boring part, son. Look closer. Go on — zoom in until it stops looking like anything.",
               completeLine: "There. You just found self-similarity with your own hands. Go get lost in it.",
               learnedMessage: 'You learned to navigate fractals! 🔍',
-              link: { href: '../fractal/', label: 'Pan and zoom into the fractal →' }
+              goal: { tool: 'fractal', id: 'zoom', href: '../fractal/app.html', linkLabel: 'Pan and zoom into the fractal →' }
             },
             {
               key: 'fractal_algorithms',
-              threshold: 2,
-              progressLines: [
-                "The Mandelbrot set is just the beginning. There's a whole family of these equations.",
-                "Switch the algorithm. Burning Ship, Newton, Nova — same rules, different worlds."
-              ],
+              introLine: "The Mandelbrot set is just the beginning. There's a whole family of these equations — switch it. Burning Ship, Newton, Nova, whatever catches your eye.",
               completeLine: "See? Change one equation and the whole universe rearranges itself.",
               learnedMessage: 'You learned to switch fractal algorithms! 🌀',
-              link: { href: '../fractal/', label: 'Try a different algorithm →' }
+              goal: { tool: 'fractal', id: 'algorithm', href: '../fractal/app.html', linkLabel: 'Try a different algorithm →' }
             },
             {
               key: 'fractal_julia',
-              threshold: 2,
-              progressLines: [
-                "Now flip it — Julia sets. Every point in the Mandelbrot set is its own little universe.",
-                "Move your mouse over it. Watch the seed change everything, live."
-              ],
+              introLine: "Now flip it — Julia sets. Every point in the Mandelbrot set is its own little universe. Turn Julia mode on and see for yourself.",
               completeLine: "That's the trick nobody tells you: infinity was never far away.",
               learnedMessage: 'You learned Julia sets! 🌌',
-              link: { href: '../fractal/', label: 'Explore a Julia set →' }
+              goal: { tool: 'fractal', id: 'julia', href: '../fractal/app.html', linkLabel: 'Explore a Julia set →' }
             },
             {
               key: 'fractal_color',
-              threshold: 2,
-              progressLines: [
-                "Now make it yours. Push the iterations up — the edges get stranger.",
-                "Pick your colors. A fractal with no palette is just math homework."
-              ],
+              introLine: "Now make it yours. Push the iterations up, pick your own colors — a fractal with no palette is just math homework.",
               completeLine: "You're not just doing my homework anymore. You're exploring.",
               learnedMessage: 'You learned to shape fractals! 🎨',
-              link: { href: '../fractal/', label: 'Tune the color and detail →' }
+              goal: { tool: 'fractal', id: 'color', href: '../fractal/app.html', linkLabel: 'Tune the color and detail →' }
             }
           ],
           dialogue: { default: "Still coming back to stare at infinity? Good. That means it's working." }
@@ -997,69 +1040,45 @@
           missions: [
             {
               key: 'synth_oscillator',
-              threshold: 2,
-              progressLines: [
-                "First things first — meet the oscillator. It's just a wave. Everything else is opinion.",
-                "Now patch the keyboard into it. One volt per octave. Play something."
-              ],
+              introLine: "First things first — meet the oscillator. It's just a wave. Patch the keyboard into it, one volt per octave, and play something.",
               completeLine: "Good. You just built an instrument out of electricity. Coffee's on me.",
               learnedMessage: 'You learned the oscillator! 〰️',
-              link: { href: '../synth/', label: 'Meet the oscillator and keyboard →' }
+              goal: { tool: 'synth', id: 'oscillator_keyboard', href: '../synth/app.html', linkLabel: 'Meet the oscillator and keyboard →' }
             },
             {
               key: 'synth_envelope',
-              threshold: 2,
-              progressLines: [
-                "A wave that never stops is just noise. Give it a shape — attack, decay, sustain, release.",
-                "Patch the envelope into the VCA. That's the difference between a tone and a note."
-              ],
+              introLine: "A wave that never stops is just noise. Give it a shape — patch an envelope into the VCA. That's the difference between a tone and a note.",
               completeLine: "There it is. You just gave sound a beginning and an end.",
               learnedMessage: 'You learned envelopes! 📈',
-              link: { href: '../synth/', label: 'Shape a note with an envelope →' }
+              goal: { tool: 'synth', id: 'envelope_vca', href: '../synth/app.html', linkLabel: 'Shape a note with an envelope →' }
             },
             {
               key: 'synth_filter',
-              threshold: 2,
-              progressLines: [
-                "Now the fun part. Run it through a filter and sweep the cutoff — that's a lead sound.",
-                "Patch an LFO into the cutoff. Slow wobble, fast wobble — that's modulation."
-              ],
+              introLine: "Now the fun part. Add a filter, then patch an LFO into its cutoff — slow wobble, fast wobble, that's modulation.",
               completeLine: "You just discovered why every DJ in the 90s bought one of these.",
               learnedMessage: 'You learned filters & modulation! 🌊',
-              link: { href: '../synth/', label: 'Sweep a filter →' }
+              goal: { tool: 'synth', id: 'filter_mod', href: '../synth/app.html', linkLabel: 'Sweep a filter →' }
             },
             {
               key: 'synth_fm',
-              threshold: 2,
-              progressLines: [
-                "Modulation doesn't stop at the filter. Patch one oscillator into another's pitch — that's FM.",
-                "Try it on the amplitude instead. Same idea — that's AM, tremolo's cousin."
-              ],
+              introLine: "Modulation doesn't stop at the filter. Patch one oscillator into another's pitch — that's FM, and it's the good stuff.",
               completeLine: "Congratulations, you just made a bell out of two triangle waves.",
               learnedMessage: 'You learned FM & AM synthesis! 🔔',
-              link: { href: '../synth/', label: 'Patch some FM →' }
+              goal: { tool: 'synth', id: 'fm_am', href: '../synth/app.html', linkLabel: 'Patch some FM →' }
             },
             {
               key: 'synth_noise',
-              threshold: 2,
-              progressLines: [
-                "Not everything needs a pitch. Patch in the noise source — that's your drums right there.",
-                "Now layer it. Mix a few voices together. A patch is a band if you let it be."
-              ],
+              introLine: "Not everything needs a pitch. Patch the noise source into the mix alongside something else — a patch is a band if you let it be.",
               completeLine: "That's the whole secret. Layering is composing.",
               learnedMessage: 'You learned noise & layering! 🥁',
-              link: { href: '../synth/', label: 'Layer some noise in →' }
+              goal: { tool: 'synth', id: 'noise_layer', href: '../synth/app.html', linkLabel: 'Layer some noise in →' }
             },
             {
               key: 'synth_patching',
-              threshold: 2,
-              progressLines: [
-                "Last lesson. Patch the output back into itself. Careful — this is where it gets chaotic.",
-                "Now use everything. Every module, every cable. See what happens."
-              ],
+              introLine: "Last lesson. Patch something back into itself, or just wire up everything you've got. Careful — this is where it gets chaotic.",
               completeLine: "That's not a mistake, that's a modular synthesizer. Now go make noise.",
               learnedMessage: 'You learned self-patching! ⚡',
-              link: { href: '../synth/', label: 'Patch everything at once →' }
+              goal: { tool: 'synth', id: 'self_patch', href: '../synth/app.html', linkLabel: 'Patch everything at once →' }
             }
           ],
           dialogue: { default: "Still here? Good, the coffee's fresh. Go patch something weird." }
@@ -1089,58 +1108,38 @@
           missions: [
             {
               key: 'theory_wheel',
-              threshold: 2,
-              progressLines: [
-                "Every key has its place on this wheel. Find your tonic — the home note — and the rest will follow.",
-                "Turn the wheel. Feel how the subdominant and dominant sit on either side of home."
-              ],
+              introLine: "Every key has its place on this wheel. Find your tonic — the home note — and turn the wheel until you feel where it sits.",
               completeLine: "You have found your way home in twelve keys, not just one. That is no small thing.",
               learnedMessage: 'You learned the Circle of Fifths! 🎼',
-              link: { href: '../circle-of-fifths/', label: 'Turn the wheel yourself →' }
+              goal: { tool: 'circleOfFifths', id: 'wheel', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel yourself →' }
             },
             {
               key: 'theory_minor',
-              threshold: 2,
-              progressLines: [
-                "Every major key carries a shadow — its relative minor. Same notes, a different home.",
-                "Listen to the harmonic minor. Raise one note, and the whole mood turns."
-              ],
+              introLine: "Every major key carries a shadow — its relative minor. Switch to minor and listen for how the whole mood turns.",
               completeLine: "Light and shadow, both. Now you hear the whole wheel, not just half of it.",
               learnedMessage: 'You learned minor keys! 🌘',
-              link: { href: '../circle-of-fifths/', label: 'Find a relative minor →' }
+              goal: { tool: 'circleOfFifths', id: 'minor', href: '../circle-of-fifths/app.html', linkLabel: 'Find a relative minor →' }
             },
             {
               key: 'theory_progressions',
-              threshold: 2,
-              progressLines: [
-                "Chords alone are just words. String them together and you have a sentence — a progression.",
-                "Try the four you'll use for the rest of your life: I-IV-V-I. Then play with the tempo."
-              ],
+              introLine: "Chords alone are just words. String them together and you have a sentence — pick a progression and press play.",
               completeLine: "Now you are not just naming chords. You are telling a story with them.",
               learnedMessage: 'You learned chord progressions! 🎵',
-              link: { href: '../circle-of-fifths/', label: 'Play a progression →' }
+              goal: { tool: 'circleOfFifths', id: 'progression', href: '../circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
             },
             {
               key: 'theory_extensions',
-              threshold: 2,
-              progressLines: [
-                "A triad is the truth. A seventh is the truth with a little more feeling.",
-                "Add the ninth, if you dare. It should feel like a question, not a mistake."
-              ],
+              introLine: "A triad is the truth. A seventh is the truth with a little more feeling — turn on 7ths, or the 9ths if you dare.",
               completeLine: "Color, at last. You did not break the rule — you extended it.",
               learnedMessage: 'You learned 7ths and 9ths! 🎨',
-              link: { href: '../circle-of-fifths/', label: 'Stack a 7th or 9th →' }
+              goal: { tool: 'circleOfFifths', id: 'extensions', href: '../circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
             },
             {
               key: 'theory_charts',
-              threshold: 2,
-              progressLines: [
-                "Theory is not just for the ear. Read it on the staff. Read it on the guitar. Read it on the ukulele.",
-                "Switch the clef. The same chord looks different depending on where you stand."
-              ],
+              introLine: "Theory is not just for the ear. Switch the chart to guitar or ukulele, or change the clef — read it a different way.",
               completeLine: "Now you can carry this with you, on any instrument, in any key. That was the whole lesson.",
               learnedMessage: 'You learned to read every chart! 📖',
-              link: { href: '../circle-of-fifths/', label: 'Read the guitar and staff charts →' }
+              goal: { tool: 'circleOfFifths', id: 'charts', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
             }
           ],
           dialogue: { default: "The wheel will still be turning when you return. It always is." }
@@ -1263,7 +1262,10 @@
   // the cumulative story.respect total (see talkToNpc's isFamily branch).
   // produce: harvested-but-not-yet-delivered goods by item, e.g.
   // produce.carrot — see checkCropPickup() and a job's `harvest` field.
-  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, hasCar: false };
+  // goalDone: a mission step's `key`, once its `goal` has actually been
+  // verified inside the sibling tool itself — see the postMessage
+  // listener (GOAL_INDEX) below and talkToNpc's mission-step branch.
+  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false };
   var CAR_FAMILY_RESPECT_THRESHOLD = 3;
   // Community reputation gained once an NPC's whole `missions` chain is
   // finished — same idea as a job's per-visit `reputation`, but paid out
@@ -2277,6 +2279,38 @@
   var LEVEL_INDEX = {};
   LEVELS.forEach(function (lvl, i) { LEVEL_INDEX[lvl.id] = i; });
 
+  // GOAL_INDEX['<tool>:<goal id>'] -> { key, npcName } — built once from
+  // every mission/challenge step with a `goal`, so the postMessage
+  // listener below can turn a tool's "I saw you do X" into "which mission
+  // key was that for, and whose name goes in the toast." See the `goal`
+  // field's doc comment above LEVELS.
+  var GOAL_INDEX = {};
+  LEVELS.forEach(function (lvl) {
+    if (!lvl.npcs) return;
+    Object.keys(lvl.npcs).forEach(function (letter) {
+      var npc = lvl.npcs[letter];
+      var steps = npc.missions || (npc.challenge ? [npc.challenge] : []);
+      steps.forEach(function (step) {
+        if (step.goal) GOAL_INDEX[step.goal.tool + ':' + step.goal.id] = { key: step.key, npcName: npc.name };
+      });
+    });
+  });
+
+  // A sibling tool running in #tool-frame posts this when the player
+  // does the SPECIFIC thing a mission step asked for — never on merely
+  // opening the tool. Matched against GOAL_INDEX; story.goalDone[key] is
+  // what talkToNpc's `goal` branch actually checks (see there for why
+  // this doesn't just complete the step immediately: you still have to
+  // go tell the teacher, same as every other mission in this game).
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.source !== 'boy-tool') return;
+    var entry = GOAL_INDEX[e.data.tool + ':' + e.data.goal];
+    if (!entry || story.goalDone[entry.key]) return;
+    story.goalDone[entry.key] = true;
+    showToast('✓ Task complete! Go tell ' + entry.npcName + '.', 2600);
+    setTimeout(closeToolFrame, 1400);
+  });
+
   function loadLevel(index, spawnOverride) {
     var levelDef = LEVELS[index];
     // First step outside Home, into the village — respect-earning begins.
@@ -2388,7 +2422,10 @@
   var dialogueOpen = false;
   // link: optional { href, label } — used to point a conversation at one of
   // the sibling shankFiddle tools (see the music challenges' tie-in to the
-  // Circle of Fifths in talkToNpc).
+  // Circle of Fifths in talkToNpc). link.frame: { tool, id } instead opens
+  // that tool right here in-game (see openToolFrame()) rather than a new
+  // tab — used by a `goal` mission step, since the point of opening it is
+  // to watch for the tool's own postMessage confirming the task was done.
   function openDialogue(text, speaker, link) {
     dialogueSpeakerEl.textContent = speaker || '';
     dialogueSpeakerEl.style.display = speaker ? 'block' : 'none';
@@ -2396,10 +2433,18 @@
     if (link) {
       dialogueLinkEl.innerHTML = '';
       var a = document.createElement('a');
-      a.href = link.href;
-      a.target = '_blank';
-      a.rel = 'noopener';
       a.textContent = link.label;
+      if (link.frame) {
+        a.href = '#';
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          openToolFrame(link.href, link.label);
+        });
+      } else {
+        a.href = link.href;
+        a.target = '_blank';
+        a.rel = 'noopener';
+      }
       dialogueLinkEl.appendChild(a);
       dialogueLinkEl.style.display = 'block';
     } else {
@@ -2412,6 +2457,24 @@
     dialogueEl.classList.remove('open');
     dialogueOpen = false;
   }
+
+  var toolFrameOverlayEl = document.getElementById('tool-frame-overlay');
+  var toolFrameEl = document.getElementById('tool-frame');
+  var toolFrameTitleEl = document.getElementById('tool-frame-title');
+  var toolFrameOpen = false;
+  function openToolFrame(href, title) {
+    closeDialogue();
+    toolFrameTitleEl.textContent = title || '';
+    toolFrameEl.src = href;
+    toolFrameOverlayEl.classList.add('open');
+    toolFrameOpen = true;
+  }
+  function closeToolFrame() {
+    toolFrameOverlayEl.classList.remove('open');
+    toolFrameEl.src = 'about:blank';
+    toolFrameOpen = false;
+  }
+  document.getElementById('tool-frame-close').addEventListener('click', closeToolFrame);
 
   var toastEl = document.getElementById('toast');
   var toastTimer = null;
@@ -2443,6 +2506,10 @@
   }
 
   window.addEventListener('keydown', function (e) {
+    if (toolFrameOpen) {
+      if (e.key === 'Escape') closeToolFrame();
+      return;
+    }
     var dir = dirFromEvent(e);
     if (dir) { pushDir(dir); setFacing(dir); e.preventDefault(); }
     else if (isActionKey(e)) { handleAction(); e.preventDefault(); }
@@ -2700,8 +2767,11 @@
       return;
     }
 
-    var have = story.respect[ch.key] || 0;
-    if (have >= ch.threshold) {
+    // Shared by both a threshold step and a goal step below: the
+    // completeLine, the learned-once toast, and advancing a `missions`
+    // chain (with its mastery bonus on the very last step) all work the
+    // same way regardless of how the step got earned.
+    function completeMissionStep() {
       if (!story.learned[ch.key]) {
         story.learned[ch.key] = true;
         showToast(ch.learnedMessage || ('You learned ' + ch.key + '!'), 2800);
@@ -2717,6 +2787,30 @@
           renderStats();
         }
       }
+    }
+
+    // A `goal` step earns nothing for talking, ever — see the doc comment
+    // above LEVELS. Talking just explains the task (introLine) and opens
+    // the tool; the postMessage listener below is what actually sets
+    // story.goalDone[ch.key], the moment the tool itself verifies you did
+    // the specific thing, not just visited.
+    if (ch.goal) {
+      if (story.goalDone[ch.key]) {
+        if (!story.learned[ch.key]) story.respect[ch.key] = (story.respect[ch.key] || 0) + 1;
+        completeMissionStep();
+        return;
+      }
+      openDialogue(ch.introLine, def.name, {
+        href: ch.goal.href,
+        label: ch.goal.linkLabel || 'Open the tool →',
+        frame: { tool: ch.goal.tool, id: ch.goal.id }
+      });
+      return;
+    }
+
+    var have = story.respect[ch.key] || 0;
+    if (have >= ch.threshold) {
+      completeMissionStep();
       return;
     }
 
@@ -2727,6 +2821,7 @@
   }
 
   function handleAction() {
+    if (toolFrameOpen) return;
     ensureAudio();
     if (carMenuOpen) { closeCarMenu(); return; }
     if (dialogueOpen) { closeDialogue(); return; }
@@ -2869,7 +2964,7 @@
           checkCropPickup();
           checkPortal();
         }
-      } else if (!dialogueOpen && !carMenuOpen) {
+      } else if (!dialogueOpen && !carMenuOpen && !toolFrameOpen) {
         var dir = pressedDirs[pressedDirs.length - 1];
         if (dir) attemptMove(dir);
         var breathe = 1 + Math.sin(t * 2.4) * 0.015;

@@ -978,6 +978,18 @@
     </svg>`;
   }
 
+  // Notifies a parent page embedding this tool in an iframe (e.g. the Boy
+  // game) that the player did a specific thing, not just opened the tool.
+  // Sent at most once per goal id per page load. Harmless no-op when not
+  // embedded — postMessage to a same-window parent (i.e. no parent at
+  // all) just talks to itself and nobody's listening.
+  const sentGoals = {};
+  function sendBoyGoal(goal) {
+    if (sentGoals[goal]) return;
+    sentGoals[goal] = true;
+    window.parent.postMessage({ source: 'boy-tool', tool: 'circleOfFifths', goal: goal }, '*');
+  }
+
   let keyIndex = 0;
   let mode = 'major'; // 'major' or 'minor' — which ring is currently the tonic
   const N = 12;
@@ -1120,6 +1132,8 @@
   };
 
   function render(animate){
+    if (keyIndex !== 0) sendBoyGoal('wheel');
+    if (mode !== 'major') sendBoyGoal('minor');
     const gRot = document.getElementById('rotgroup');
     const angle = -keyIndex*30;
     gRot.style.transition = animate ? 'transform 0.6s cubic-bezier(.4,0,.2,1)' : 'none';
@@ -1578,6 +1592,7 @@
       updatePlayButton();
     } else {
       isPlaying = true;
+      sendBoyGoal('progression');
       updatePlayButton();
       scheduleProgression();
     }
@@ -1609,6 +1624,7 @@
 
   document.getElementById('seventhsToggle').addEventListener('change', (e)=>{
     useSevenths = e.target.checked;
+    if (useSevenths) sendBoyGoal('extensions');
     const key = order[((keyIndex%N)+N)%N];
     buildLegend(key);
     buildKeyStaff(key);
@@ -1622,6 +1638,7 @@
   // useSevenths, so this is purely a display concern, not a fallback).
   document.getElementById('advancedToggle').addEventListener('change', (e)=>{
     advancedMode = e.target.checked;
+    if (advancedMode) sendBoyGoal('extensions');
     const seventhsBox = document.getElementById('seventhsToggle');
     if(advancedMode){
       useSevenths = true;
@@ -1637,6 +1654,7 @@
 
   document.getElementById('notationSelect').addEventListener('change', (e)=>{
     notationView = e.target.value;
+    if (notationView !== 'staff') sendBoyGoal('charts');
     buildLegend(order[((keyIndex%N)+N)%N]);
   });
 
@@ -1645,6 +1663,7 @@
       document.querySelectorAll('.clef-buttons .clef-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       currentClef = btn.dataset.clef;
+      if (currentClef !== 'treble') sendBoyGoal('charts');
       const key = order[((keyIndex%N)+N)%N];
       buildLegend(key);
       buildKeyStaff(key);

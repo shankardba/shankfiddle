@@ -573,6 +573,19 @@
     rotation: 0,
     relax: 1.0
   };
+
+  // Notifies a parent page embedding this tool in an iframe (e.g. the
+  // Boy game) that the player did a specific thing, not just opened the
+  // tool. Sent at most once per goal id per page load. Harmless no-op
+  // when not embedded — postMessage to a same-window parent (i.e. no
+  // parent at all) just talks to itself and nobody's listening.
+  const sentGoals = {};
+  function sendBoyGoal(goal) {
+    if (sentGoals[goal]) return;
+    sentGoals[goal] = true;
+    window.parent.postMessage({ source: 'boy-tool', tool: 'fractal', goal: goal }, '*');
+  }
+
   const NEWTON = 13, NOVA = 12;
   const defaults = {
     0: { center: [-0.5, 0.0], zoom: 0.4 },    // Mandelbrot
@@ -658,6 +671,7 @@
     state.zoom *= factor;
     state.center[0] = w[0] - (px - canvas.width/2) / canvas.height / state.zoom;
     state.center[1] = w[1] - (canvas.height/2 - py) / canvas.height / state.zoom;
+    if (state.zoom > 0.8) sendBoyGoal('zoom'); // 2x the HUD's own "1.0x" (0.4)
     render();
   }
 
@@ -819,6 +833,7 @@
 
   modeSelect.addEventListener('change', () => {
     state.mode = parseInt(modeSelect.value, 10);
+    if (state.mode !== 0) sendBoyGoal('algorithm');
     if(state.mode === NEWTON && state.juliaMode){
       state.juliaMode = false;
       juliaModeToggle.classList.remove('on');
@@ -831,6 +846,7 @@
 
   juliaModeToggle.addEventListener('click', () => {
     state.juliaMode = !state.juliaMode;
+    if (state.juliaMode) sendBoyGoal('julia');
     juliaModeToggle.classList.toggle('on', state.juliaMode);
     applyModeVisibility();
     updateView();
@@ -934,6 +950,7 @@
     if(!sw) return;
     setActiveSwatch(parseInt(sw.dataset.p, 10));
     state.palette = parseInt(sw.dataset.p, 10);
+    if (state.palette !== 0) sendBoyGoal('color');
     render();
   });
 
@@ -941,6 +958,7 @@
   const iterVal = document.getElementById('iterVal');
   iterSlider.addEventListener('input', () => {
     state.maxIter = parseInt(iterSlider.value, 10);
+    if (state.maxIter !== 300) sendBoyGoal('color');
     iterVal.textContent = state.maxIter;
     render();
   });

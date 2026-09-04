@@ -800,6 +800,41 @@ let outputModule = null;
 
 function getModule(id){ return modules.find(m=>m.id===id); }
 
+// Notifies a parent page embedding this tool in an iframe (e.g. the Boy
+// game) that the player did a specific thing, not just opened the tool.
+// Sent at most once per goal id per page load. Harmless no-op when not
+// embedded — postMessage to a same-window parent (i.e. no parent at all)
+// just talks to itself and nobody's listening.
+const sentGoals = {};
+function sendBoyGoal(goal) {
+  if (sentGoals[goal]) return;
+  sentGoals[goal] = true;
+  window.parent.postMessage({ source: 'boy-tool', tool: 'synth', goal: goal }, '*');
+}
+function isPatched(fromType, toType) {
+  return connections.some(c => {
+    const fm = getModule(c.from.moduleId), tm = getModule(c.to.moduleId);
+    return fm && tm && fm.type === fromType && tm.type === toType;
+  });
+}
+function checkBoyGoals(conn) {
+  if (conn.from.moduleId === conn.to.moduleId) sendBoyGoal('self_patch');
+  if (connections.length >= 6) sendBoyGoal('self_patch');
+  if (isPatched('keyboard', 'vco')) sendBoyGoal('oscillator_keyboard');
+  if (isPatched('adsr', 'vca')) sendBoyGoal('envelope_vca');
+  if (isPatched('vco', 'vco')) sendBoyGoal('fm_am');
+  if (modules.some(m => m.type === 'vcf') && connections.some(c => {
+    const fm = getModule(c.from.moduleId), tm = getModule(c.to.moduleId);
+    return fm && tm && fm.type === 'lfo' && tm.type === 'vcf' && c.to.port === 'CUTOFF';
+  })) sendBoyGoal('filter_mod');
+  if (outputModule) {
+    const soundInputs = connections.filter(c => c.to.moduleId === outputModule.id && (c.to.port === 'IN1' || c.to.port === 'IN2'));
+    const hasNoise = soundInputs.some(c => getModule(c.from.moduleId).type === 'noise');
+    const hasOther = soundInputs.some(c => getModule(c.from.moduleId).type !== 'noise');
+    if (hasNoise && hasOther) sendBoyGoal('noise_layer');
+  }
+}
+
 const NOTE_SEMITONES = { 'C':0,'C#':1,'D':2,'D#':3,'E':4,'F':5,'F#':6,'G':7,'G#':8,'A':9,'A#':10,'B':11,'C2':12 };
 function noteFreq(semitone, octave){
   const midi = 12*(octave+1) + semitone; // C4 (octave=4, semitone=0) is MIDI 60
@@ -1360,6 +1395,7 @@ function makeConnection(fromModuleId, fromPort, toModuleId, toPort){
 
   const conn = { id: connId, from:{moduleId:fromModuleId,port:fromPort}, to:{moduleId:toModuleId,port:toPort}, wireEl:wire, hitEl:hit, gradEl:grad };
   connections.push(conn);
+  checkBoyGoals(conn);
   refreshJackBadges();
   requestCableRefresh();
   return conn;
