@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flute · Sax · Trumpet — Circle of Fifths</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #17130f;
+    --panel: #efe6cf;
+    --panel-dim: #e6dabd;
+    --ink: #2b2118;
+    --ink-soft: #6b5f4e;
+    --brass: #b8863b;
+    --brass-light: #d8b876;
+    --gold-tonic: #d1a437;
+    --blue-iv: #6f93ab;
+    --green-v: #7fa178;
+    --muted: #9c9075;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--panel);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+  }
+  .stage{
+    max-width:600px; margin:0 auto; padding:36px 20px 84px;
+    display:flex; flex-direction:column; align-items:center; gap:28px;
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:clamp(28px,5vw,38px);
+    margin:0; color:var(--panel); text-align:center; letter-spacing:0.2px;
+  }
+  .sub{
+    margin:0; text-align:center; color:var(--muted); font-size:14.5px;
+    max-width:38ch; line-height:1.5;
+  }
+  .controls{
+    display:flex; align-items:center; gap:18px;
+  }
+  .rot-btn{
+    width:42px; height:42px; border-radius:50%; border:1.5px solid var(--brass);
+    background:transparent; color:var(--brass-light); font-size:17px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:background 0.15s, color 0.15s;
+  }
+  .rot-btn:hover{ background:var(--brass); color:var(--bg); }
+  .keydisplay{ text-align:center; min-width:170px; }
+  .keydisplay .cap{ font-size:12.5px; color:var(--muted); margin:0 0 2px; }
+  .keydisplay .name{
+    font-family:'Fraunces', serif; font-weight:700; font-size:30px; color:var(--brass-light);
+    line-height:1.1;
+  }
+  .wheel-wrap{ position:relative; width:100%; max-width:460px; }
+  .pointer{
+    position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+    width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent;
+    border-top:15px solid var(--brass-light); filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4));
+  }
+  svg{ width:100%; height:auto; display:block; overflow:visible; }
+  .legend-wrap{ width:100%; }
+  .legend-head{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;
+  }
+  .legend-head .lbl{ font-size:14px; color:var(--muted); }
+  .prog-select{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .prog-controls-row{ margin-bottom:12px; }
+  .play-prog{
+    font-family:'Inter', sans-serif; font-size:12.5px; border:1px solid var(--brass);
+    color:var(--brass-light); background:transparent; border-radius:16px; padding:6px 14px;
+    cursor:pointer; transition:background 0.15s, color 0.15s;
+  }
+  .play-prog:hover{ background:var(--brass); color:var(--bg); }
+  .prog-controls{ display:flex; align-items:center; gap:11px; }
+  .loop-toggle{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); cursor:pointer; user-select:none; }
+  .switch{ position:relative; width:32px; height:18px; flex:none; }
+  .switch input{ opacity:0; width:0; height:0; position:absolute; }
+  .switch .slider{ position:absolute; inset:0; background:#453a28; border-radius:20px; transition:background 0.15s; }
+  .switch .slider:before{ content:""; position:absolute; height:13px; width:13px; left:2.5px; top:2.5px; background:#efe6cf; border-radius:50%; transition:transform 0.15s; }
+  .switch input:checked + .slider{ background:var(--brass); }
+  .switch input:checked + .slider:before{ transform:translateX(14px); }
+  .tempo-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; font-size:12px; color:var(--muted); }
+  .tempo-row input[type="range"]{
+    flex:1; -webkit-appearance:none; appearance:none; height:4px; border-radius:2px;
+    background:#453a28; outline:none; cursor:pointer;
+  }
+  .tempo-row input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:var(--brass-light); cursor:pointer; border:none;
+  }
+  .tempo-row input[type="range"]::-moz-range-thumb{
+    width:15px; height:15px; border-radius:50%; background:var(--brass-light); cursor:pointer; border:none;
+  }
+  .tempo-row .bpm-val{ min-width:60px; text-align:right; color:var(--brass-light); font-variant-numeric:tabular-nums; }
+  .clef-row{ display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:12px; color:var(--muted); }
+  .key-staff-row{
+    width:100%; background:var(--panel); border-radius:10px;
+    padding:10px 8px 4px; margin-bottom:12px;
+  }
+  .key-staff-row svg{ width:100%; height:auto; display:block; }
+  .clef-btn{
+    font-family:'Inter', sans-serif; font-size:11.5px; border:1px solid var(--brass);
+    background:transparent; color:var(--brass-light); border-radius:12px; padding:4px 11px;
+    cursor:pointer; transition:background 0.15s, color 0.15s;
+  }
+  .clef-btn:hover, .clef-btn.active{ background:var(--brass); color:var(--bg); }
+  .instrument-row{
+    display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted);
+  }
+  .view-select{
+    font-family:'Inter', sans-serif; font-size:13px; border:1px solid var(--brass);
+    background:var(--bg); color:var(--brass-light); border-radius:8px; padding:5px 10px;
+    cursor:pointer;
+  }
+  .view-select:hover{ background:var(--brass); color:var(--bg); }
+  .view-select:focus{ outline:2px solid var(--brass-light); outline-offset:1px; }
+  .transpose-warning{
+    max-width:44ch; text-align:center; font-size:12.5px; line-height:1.5;
+    color:#f0c869; background:rgba(184,134,59,0.14);
+    border:1px solid rgba(184,134,59,0.45); border-radius:10px;
+    padding:9px 14px; margin:0;
+  }
+  .tone-legend{
+    position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
+    z-index:50;
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+    gap:6px 16px;
+    background:var(--bg);
+    border:1px solid rgba(184,134,59,0.45); border-radius:20px;
+    padding:7px 14px;
+    font-size:11.5px; color:var(--muted);
+    box-shadow:0 4px 14px rgba(0,0,0,0.45);
+    max-width:calc(100vw - 32px);
+  }
+  .tone-legend .item{ display:flex; align-items:center; gap:5px; }
+  .tone-legend .dot{
+    width:10px; height:10px; border-radius:50%; flex-shrink:0;
+    border:1.5px solid; box-sizing:border-box;
+  }
+  .legend-grid{
+    display:grid; grid-template-columns:repeat(4, 1fr); gap:9px;
+  }
+  @media (max-width:480px){ .legend-grid{ grid-template-columns:repeat(2,1fr); gap:8px; } }
+  .chord-card{
+    background:var(--panel); border-radius:10px; padding:8px 4px 9px;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    border:1px solid rgba(0,0,0,0.08);
+  }
+  .chord-card .rn{ font-size:11px; font-weight:600; }
+  .chord-card .section-label{
+    font-size:7.5px; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-soft);
+    opacity:0.7; margin:3px 0 0;
+  }
+  .chord-card .staff{ width:100%; max-width:96px; margin:1px 0; }
+  .flute-row{ display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-end; gap:3px; margin:2px 0; }
+  .flute-note{ display:flex; flex-direction:column; align-items:center; gap:1px; }
+  .flute-note .flute-fingering{ width:15px; height:auto; display:block; }
+  .flute-note .valve-fingering{ width:17px; height:auto; display:block; }
+  .flute-note .flute-label{ font-size:8px; font-weight:600; line-height:1; }
+  .chord-card .cn{ font-family:'Fraunces', serif; font-size:16px; font-weight:700; color:var(--ink); }
+  .chord-card .nn{ font-size:8.5px; color:var(--ink-soft); text-align:center; line-height:1.3; }
+  .chord-card button{
+    margin-top:2px; border:none; background:none; cursor:pointer; font-size:12px;
+    color:var(--ink-soft); opacity:0.75; padding:2px 6px;
+  }
+  .chord-card button:hover{ opacity:1; }
+  .foot{ font-size:12px; color:var(--muted); text-align:center; max-width:40ch; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <h1 id="mainTitle">Flute Diatonic Circles</h1>
+  <p class="sub" id="subtitle">The circle of fifths, spelled out for flute. Click the outer ring for a major key, the inner ring for its relative minor — every diatonic chord shows its notation and its flute fingerings side by side.</p>
+
+  <div class="instrument-row">
+    <label for="instrumentSelect">instrument</label>
+    <select id="instrumentSelect" class="view-select">
+      <option value="flute" selected>Flute</option>
+      <option value="saxophone">Alto Saxophone</option>
+      <option value="trumpet">Trumpet</option>
+    </select>
+  </div>
+
+  <p class="transpose-warning" id="transposeWarning" hidden></p>
+
+  <div class="controls">
+    <button class="rot-btn" id="btnLeft" aria-label="Previous key">&#8592;</button>
+    <div class="keydisplay">
+      <p class="cap">current key</p>
+      <div class="name" id="keyName">C major</div>
+    </div>
+    <button class="rot-btn" id="btnRight" aria-label="Next key">&#8594;</button>
+  </div>
+
+  <button class="play-prog" id="randomizeBtn">&#127922; randomize</button>
+
+  <div class="wheel-wrap">
+    <div class="pointer"></div>
+    <svg id="wheel" viewBox="0 0 480 480"></svg>
+  </div>
+
+  <div class="legend-wrap">
+    <div class="legend-head">
+      <span class="lbl">Diatonic chords in this key</span>
+    </div>
+
+    <div class="prog-select">
+      <button class="clef-btn active" data-prog="1451">I&ndash;IV&ndash;V&ndash;I</button>
+      <button class="clef-btn" data-prog="251">ii&ndash;V&ndash;I</button>
+      <button class="clef-btn" data-prog="1625">I&ndash;vi&ndash;ii&ndash;V</button>
+      <button class="clef-btn" id="circleX2Btn" data-prog="circlex2">full circle x2</button>
+    </div>
+
+    <div class="legend-head prog-controls-row">
+      <label class="loop-toggle">
+        <span class="switch"><input type="checkbox" id="loopToggle" checked><span class="slider"></span></span>
+        loop
+      </label>
+      <button class="play-prog" id="playProg">&#9658; play I&ndash;IV&ndash;V&ndash;I</button>
+    </div>
+
+    <div class="clef-row">
+      <label class="loop-toggle">
+        <span class="switch"><input type="checkbox" id="seventhsToggle"><span class="slider"></span></span>
+        7ths
+      </label>
+      <label class="loop-toggle">
+        <span class="switch"><input type="checkbox" id="advancedToggle"><span class="slider"></span></span>
+        9ths
+      </label>
+    </div>
+
+    <div class="tempo-row">
+      <span>tempo</span>
+      <input type="range" id="bpmSlider" min="40" max="208" step="1" value="90">
+      <span class="bpm-val" id="bpmLabel">90 BPM</span>
+    </div>
+
+    <div class="key-staff-row" id="keyStaffRow"></div>
+
+    <div class="tone-legend" id="toneLegend">
+      <span class="item"><span class="dot" data-tone="0"></span>Root</span>
+      <span class="item"><span class="dot" data-tone="1"></span>3rd</span>
+      <span class="item"><span class="dot" data-tone="2"></span>5th</span>
+      <span class="item"><span class="dot" data-tone="3"></span>7th</span>
+    </div>
+
+    <div class="legend-grid" id="legend"></div>
+  </div>
+
+  <p class="foot" id="footNote">Click any wedge &mdash; outer for major, inner for minor &mdash; to make it the tonic, or use the arrows. Tap the small &#9658; on a chord card to hear it. On each fingering diagram, a filled circle is a covered hole/pressed key, an open circle is uncovered &mdash; the left thumb's B key stays down throughout.</p>
+</div>
+
+<script>
+(function(){
+  const order = ['C','G','D','A','E','B','Gb','Db','Ab','Eb','Bb','F'];
+  const data = {
+    C:  {I:['C','E','G'],    ii:['D','F','A'],    iii:['E','G','B'],    IV:['F','A','C'],    V:['G','B','D'],    vi:['A','C','E'],    vii:['B','D','F']},
+    G:  {I:['G','B','D'],    ii:['A','C','E'],    iii:['B','D','F#'],   IV:['C','E','G'],    V:['D','F#','A'],   vi:['E','G','B'],    vii:['F#','A','C']},
+    D:  {I:['D','F#','A'],   ii:['E','G','B'],    iii:['F#','A','C#'],  IV:['G','B','D'],    V:['A','C#','E'],   vi:['B','D','F#'],   vii:['C#','E','G']},
+    A:  {I:['A','C#','E'],   ii:['B','D','F#'],   iii:['C#','E','G#'],  IV:['D','F#','A'],   V:['E','G#','B'],   vi:['F#','A','C#'],  vii:['G#','B','D']},
+    E:  {I:['E','G#','B'],   ii:['F#','A','C#'],  iii:['G#','B','D#'],  IV:['A','C#','E'],   V:['B','D#','F#'],  vi:['C#','E','G#'],  vii:['D#','F#','A']},
+    B:  {I:['B','D#','F#'],  ii:['C#','E','G#'],  iii:['D#','F#','A#'], IV:['E','G#','B'],   V:['F#','A#','C#'], vi:['G#','B','D#'],  vii:['A#','C#','E']},
+    Gb: {I:['Gb','Bb','Db'], ii:['Ab','Cb','Eb'], iii:['Bb','Db','F'],  IV:['Cb','Eb','Gb'], V:['Db','F','Ab'],  vi:['Eb','Gb','Bb'], vii:['F','Ab','Cb']},
+    Db: {I:['Db','F','Ab'],  ii:['Eb','Gb','Bb'], iii:['F','Ab','C'],   IV:['Gb','Bb','Db'], V:['Ab','C','Eb'],  vi:['Bb','Db','F'],  vii:['C','Eb','Gb']},
+    Ab: {I:['Ab','C','Eb'],  ii:['Bb','Db','F'],  iii:['C','Eb','G'],   IV:['Db','F','Ab'],  V:['Eb','G','Bb'],  vi:['F','Ab','C'],   vii:['G','Bb','Db']},
+    Eb: {I:['Eb','G','Bb'],  ii:['F','Ab','C'],   iii:['G','Bb','D'],   IV:['Ab','C','Eb'],  V:['Bb','D','F'],   vi:['C','Eb','G'],   vii:['D','F','Ab']},
+    Bb: {I:['Bb','D','F'],   ii:['C','Eb','G'],   iii:['D','F','A'],    IV:['Eb','G','Bb'],  V:['F','A','C'],    vi:['G','Bb','D'],   vii:['A','C','Eb']},
+    F:  {I:['F','A','C'],    ii:['G','Bb','D'],   iii:['A','C','E'],    IV:['Bb','D','F'],   V:['C','E','G'],    vi:['D','F','A'],    vii:['E','G','Bb']}
+  };
+  const minorLabel = {C:'Am',G:'Em',D:'Bm',A:'F#m',E:'C#m',B:'G#m',Gb:'Ebm',Db:'Bbm',Ab:'Fm',Eb:'Cm',Bb:'Gm',F:'Dm'};
+
+  // --- seventh & ninth chords ---
+  // Every diatonic triad's root is one of the 7 scale tones, so the 7th
+  // above any chord's root is always the root of the chord one step below
+  // it in the I-ii-iii-IV-V-vi-vii cycle, and (stacking one more third) the
+  // 9th is always the root of the chord one step *above* it. No new
+  // spelling data needed for either.
+  let useSevenths = false;
+  let advancedMode = false; // "Advanced mode": 9th chords, supersedes useSevenths
+  const romanOrder = ['I','ii','iii','IV','V','vi','vii'];
+  // vii's 7th/9th is half-diminished (a diminished triad + a *minor*
+  // 7th/9th, not a fully-diminished 7th \u2014 this app never builds one of
+  // those), so it gets the half-diminished "\u00F8" symbol rather than \u00B0,
+  // which is reserved for the plain diminished triad.
+  const seventhSuffix = { I:'maj7', IV:'maj7', V:'7', vii:'\u00F87' };
+  const ninthSuffix = { I:'maj9', IV:'maj9', V:'9', vii:'\u00F89' };
+  function seventhNote(key, r){
+    const idx = romanOrder.indexOf(r);
+    const prevRoman = romanOrder[(idx - 1 + 7) % 7];
+    return data[key][prevRoman][0];
+  }
+  function ninthNote(key, r){
+    const idx = romanOrder.indexOf(r);
+    const nextRoman = romanOrder[(idx + 1) % 7];
+    return data[key][nextRoman][0];
+  }
+  function getChordNotes(key, r){
+    const triad = data[key][r];
+    if(advancedMode) return [...triad, seventhNote(key, r), ninthNote(key, r)];
+    return useSevenths ? [...triad, seventhNote(key, r)] : triad;
+  }
+
+  // --- minor mode ---
+  // Natural minor is just the relative major's 7 pitches relabeled: minor
+  // chord N (0-indexed i,ii,III,iv,v,VI,VII) is exactly major chord (N+5)%7
+  // in the I-ii-iii-IV-V-vi-vii cycle — no new spelling data needed. On top
+  // of that, standard harmonic-minor practice raises the natural 7th scale
+  // degree to the leading tone for the chords that use it as a chord tone
+  // (III, v->V, VII->vii°); the tonic keeps its natural flat 7.
+  const minorRomanBase = ['i','ii','III','iv','v','VI','VII'];
+  function minorNaturalTriad(majKey, mr){
+    const mi = minorRomanBase.indexOf(mr);
+    return data[majKey][romanOrder[(mi + 5) % 7]];
+  }
+  function raiseSemitone(note){
+    const letter = note[0], acc = note.slice(1);
+    if(acc === '') return letter + '#';
+    if(acc === 'b') return letter;
+    if(acc === '#') return letter + '##'; // rare (only G# minor needs this)
+    return note;
+  }
+  function leadingToneFor(majKey){
+    return raiseSemitone(data[majKey].V[0]); // major's V root = minor's natural flat-7
+  }
+  function minorChordTones(majKey, mr){
+    const triad = [...minorNaturalTriad(majKey, mr)];
+    const lt = leadingToneFor(majKey);
+    if(mr === 'III') triad[2] = lt;      // III's 5th is the natural 7th -> becomes III+ (augmented)
+    else if(mr === 'v') triad[1] = lt;   // v's 3rd is the natural 7th -> becomes V (major, dominant)
+    else if(mr === 'VII') triad[0] = lt; // VII's root is the natural 7th -> becomes vii° (diminished)
+    return triad;
+  }
+  function minorSeventhNote(majKey, mr){
+    const mi = minorRomanBase.indexOf(mr);
+    return minorNaturalTriad(majKey, minorRomanBase[(mi - 1 + 7) % 7])[0];
+  }
+  function minorNinthNote(majKey, mr){
+    // The 9th of a chord is the root of the next chord up the cycle — for
+    // every degree except VI, that's a plain natural-minor note. VI's
+    // upper neighbor is VII, whose root is harmonic minor's *raised*
+    // leading tone (see minorChordTones/leadingToneFor above): stacking
+    // VI's own natural triad up through the actual scale in use lands on
+    // that raised tone, not natural VII's flat root, e.g. F6/9 in A minor
+    // is F-A-C-E-G# (from A harmonic minor), not F-A-C-E-G.
+    if(mr === 'VI') return leadingToneFor(majKey);
+    const mi = minorRomanBase.indexOf(mr);
+    return minorNaturalTriad(majKey, minorRomanBase[(mi + 1) % 7])[0];
+  }
+  function getMinorChordNotes(majKey, mr){
+    const triad = minorChordTones(majKey, mr);
+    if(advancedMode) return [...triad, minorSeventhNote(majKey, mr), minorNinthNote(majKey, mr)];
+    return useSevenths ? [...triad, minorSeventhNote(majKey, mr)] : triad;
+  }
+  const minorInfo = {
+    i:   { roman: 'i',         qualitySuffix: 'm' },
+    ii:  { roman: 'ii\u00B0',  qualitySuffix: '\u00B0' },
+    III: { roman: 'III+',      qualitySuffix: '+' },
+    iv:  { roman: 'iv',        qualitySuffix: 'm' },
+    v:   { roman: 'V',         qualitySuffix: '' },
+    VI:  { roman: 'VI',        qualitySuffix: '' },
+    VII: { roman: 'vii\u00B0', qualitySuffix: '\u00B0' }
+  };
+  // ii and VII are half-diminished, not fully-diminished, once extended \u2014
+  // same reasoning as vii's seventhSuffix/ninthSuffix above.
+  // VII is built on the *raised* leading tone (harmonic minor), so its
+  // 7th stacks in minor 3rds all the way up \u2014 genuinely fully diminished
+  // (\u00B07), unlike ii (built on the untouched natural 2nd degree) which is
+  // half-diminished like major's vii. Don't "fix" VII to match ii \u2014
+  // they're different chord qualities, not a typo.
+  const minorSeventhSuffix = { i:'m7', ii:'\u00F87', III:'maj7\u266F5', iv:'m7', v:'7', VI:'maj7', VII:'\u00B07' };
+  // VI's 9th is itself the raised leading tone (see minorNinthNote above),
+  // not a natural 9th, so its name shows the alteration directly \u2014
+  // "maj\u266F9" \u2014 rather than the plain "maj9" every other unaltered-9th
+  // degree gets.
+  // v's 9th is the natural minor 6th degree, a half step above the V root
+  // (e.g. A minor: E7's 9th is F, not F#) \u2014 that's a *minor* 9th, so the
+  // chord is really V7\u266D9, not a plain "9" (which would imply a major
+  // 9th/whole step, i.e. F#). This holds in every minor key: the stacked-
+  // thirds 9th always lands on harmonic minor's b6 scale degree.
+  // VII's 9th is the tonic \u2014 and by definition a leading tone sits one
+  // half step *below* the tonic, so VII's root-to-9th interval is always
+  // a half step too (e.g. A minor: G#\u00B07's 9th is A, not A#). Same \u266D9
+  // fix as v, for the same structural reason. (This 9th does NOT continue
+  // the symmetric minor-3rd stack that gives VII its \u00B07 \u2014 that would land
+  // back on the root \u2014 it's the diatonic neighbor tone, same rule as
+  // every other degree.)
+  const minorNinthSuffix = { i:'m9', ii:'\u00F89', III:'maj9\u266F5', iv:'m9', v:'7\u266D9', VI:'maj\u266F9', VII:'\u00B0\u266D9' };
+  // Same tonic-green/subdominant-blue/dominant-gold scheme as romanColor()
+  // (defined further down — function declarations hoist).
+  function romanColorMinor(mr){
+    if(mr==='i') return '#4a7c46';
+    if(mr==='iv') return '#3b6b85';
+    if(mr==='v') return '#a9791f';
+    return '#7a705f';
+  }
+  const degreeToRoman = {
+    major: {1:'I',2:'ii',3:'iii',4:'IV',5:'V',6:'vi',7:'vii'},
+    minor: {1:'i',2:'ii',3:'III',4:'iv',5:'v',6:'VI',7:'VII'}
+  };
+  function chordNotesForDegree(key, deg){
+    return mode === 'major'
+      ? getChordNotes(key, degreeToRoman.major[deg])
+      : getMinorChordNotes(key, degreeToRoman.minor[deg]);
+  }
+  // Roman numeral as actually displayed for the current mode — upper-case
+  // for major/augmented chords, lower-case for minor/diminished, matching
+  // the case convention used in the notation.
+  // ii° switches to the half-diminished "iiø" the moment it's shown
+  // extended (7th or 9th) rather than as a bare triad — same
+  // half-diminished-vs-diminished distinction as minorSeventhSuffix/
+  // minorNinthSuffix above, just for the numeral instead of the
+  // chord-name suffix. VII stays "vii°" in both states since it's
+  // genuinely fully diminished when extended, not half — same chord
+  // quality either way, so no symbol swap. Major's vii never gets a
+  // symbol here at all (only its chord name does), so it's untouched.
+  function degreeRomanLabel(deg){
+    if(mode === 'major') return degreeToRoman.major[deg];
+    const mr = degreeToRoman.minor[deg];
+    if(mr === 'ii' && (useSevenths || advancedMode)) return 'iiø';
+    return minorInfo[mr].roman;
+  }
+  // Same function-color coding buildLegend() gives each chord card,
+  // keyed off the same raw (un-suffixed) roman numeral — romanColor()
+  // is defined further down, but function declarations hoist.
+  function degreeColor(deg){
+    return mode === 'major'
+      ? romanColor(degreeToRoman.major[deg])
+      : romanColorMinor(degreeToRoman.minor[deg]);
+  }
+
+  // --- progressions ---
+  // `beats` lets a chord hold longer than one step, e.g. the resolving I
+  // at the end of ii-V-I taking the full phrase's cadence.
+  // "full circle x2" is the descending-fifth root motion (each chord's
+  // root a fifth below the last) run through all 7 diatonic degrees
+  // twice — 1-4-7-3-6-2-5 covers every degree exactly once, landing on
+  // 5 (not back on 1) at the end of each lap; the final entry is the
+  // tonic held two beats (tied, same as ii-V-I's resolving I) to
+  // actually close it back to 1.
+  const circleDegrees = [1,4,7,3,6,2,5];
+  const fullCircleX2Degrees = [
+    ...circleDegrees.map(deg => ({deg, beats:1})),
+    ...circleDegrees.map(deg => ({deg, beats:1})),
+    {deg:1, beats:2}
+  ];
+  const progressions = {
+    '1451': { degrees: [{deg:1,beats:1},{deg:4,beats:1},{deg:5,beats:1},{deg:1,beats:1}] },
+    '251':  { degrees: [{deg:2,beats:1},{deg:5,beats:1},{deg:1,beats:2}] },
+    '1625': { degrees: [{deg:1,beats:1},{deg:6,beats:1},{deg:2,beats:1},{deg:5,beats:1}] },
+    'circlex2': { label: 'full circle x2', degrees: fullCircleX2Degrees }
+  };
+  let currentProgression = '1451';
+  // Label built fresh from the current mode's roman numerals, so it reads
+  // e.g. "I–IV–V–I" in major but "i–iv–V–i" in minor — unless the
+  // progression carries a fixed `label` (too long to spell out as roman
+  // numerals on a button, like full circle x2's 15 steps), which always
+  // wins and doesn't change with mode.
+  function progressionLabel(progKey){
+    const prog = progressions[progKey];
+    if(prog.label) return prog.label;
+    return prog.degrees
+      .map(step => degreeRomanLabel(step.deg))
+      .join('\u2013');
+  }
+
+  // --- staff notation helpers ---
+  // Flute, sax, and trumpet parts are all written in treble clef, so
+  // unlike the original circle-of-fifths tool this doesn't offer an
+  // alto/bass clef switch — treble is the only option, so `currentClef`
+  // never changes after this.
+  const currentClef = 'treble';
+  const letterIdx = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
+  // reference note = the staff's bottom line, plus the octave chosen for a
+  // chord's root so triads sit close to the staff rather than needing lots
+  // of ledger lines.
+  const clefRef = {
+    treble: {letter:'E', oct:4, rootOctave:4}
+  };
+  const clefGlyph = { treble: '\u{1D11E}' };
+
+  // For a given letter, find the octave placement whose staff position lands
+  // closest to the middle line — independently per note, so a triad can stay
+  // inside the staff even at the cost of a register jump between its tones.
+  function bestPos(letterChar, refAbs){
+    const li = letterIdx[letterChar];
+    let best = null;
+    for(let O=0; O<=9; O++){
+      const pos = O*7 + li - refAbs;
+      const dist = Math.abs(pos - 4);
+      if(best === null || dist < best.dist) best = {pos, dist};
+    }
+    return best.pos;
+  }
+
+  // Chord-tone highlight colors, shared by every chord chart (staff,
+  // guitar, ukulele) so the three can't drift apart. `notes` is always
+  // built as [root, third, fifth, seventh, ...] regardless of
+  // quality/extension (see `data`/getChordNotes()/getMinorChordNotes()),
+  // so "index 2 is the fifth" holds even for altered tones (diminished,
+  // augmented) — no separate interval lookup needed. Four vivid, clearly
+  // distinct hues: root green, third orange, fifth gold, seventh purple.
+  // Third and seventh are deliberately **not** blue — blue means
+  // "subdominant/IV" everywhere else in this app (wheel highlight,
+  // romanColor's IV/ii), and reusing it for "third of any chord" would
+  // collide with that established meaning (a chord's third has nothing
+  // to do with scale-degree IV). Brighter/more saturated than the app's
+  // other muted-earthy accents on purpose — these mark specific
+  // noteheads/dots against a plain background and need to read at a
+  // glance, not blend in tastefully. Ninth (index 4) intentionally stays
+  // unhighlighted: root/third/fifth/seventh define a chord's quality,
+  // the ninth is just color on top of an already-complete chord.
+  //
+  // Every accented tone gets a distinctly darker border of the same
+  // hue (~35% brightness — deliberately closer to black than to the
+  // fill, so the rim reads as a clear dark outline at a glance rather
+  // than a subtly-different shade of the same color), not just a plain
+  // outline — yellow especially reads poorly against the cream
+  // background without one, and matching that treatment across all four
+  // keeps them reading as one family.
+  const ROOT_FILL = '#2fa84f', ROOT_BORDER = '#103a1b';
+  const THIRD_FILL = '#e8681a', THIRD_BORDER = '#512409';
+  const FIFTH_FILL = '#e8ad0e', FIFTH_BORDER = '#513c04';
+  const SEVENTH_FILL = '#9142c4', SEVENTH_BORDER = '#321744';
+
+  // notes[] index -> {fill, border}, or null for tones that stay
+  // unhighlighted (ninths and beyond). Centralizes the root/third/
+  // fifth/seventh -> color mapping so the three chart views (which each
+  // have their own default fill/stroke for un-accented tones) can't
+  // assign different colors to the same scale degree.
+  function chordToneAccent(i){
+    if(i===0) return { fill: ROOT_FILL, border: ROOT_BORDER };
+    if(i===1) return { fill: THIRD_FILL, border: THIRD_BORDER };
+    if(i===2) return { fill: FIFTH_FILL, border: FIFTH_BORDER };
+    if(i===3) return { fill: SEVENTH_FILL, border: SEVENTH_BORDER };
+    return null;
+  }
+
+  // Renders one chord's noteheads/accidentals/ledger-lines/stem, stacked
+  // on a column centered at x. Shared by staffSVG (one chord, one column)
+  // and keyStaffSVG (all of the key's chords, one column each, on a
+  // single continuous staff) so the two views can't drift apart.
+  function chordColumn(notes, refAbs, x, bottomY, spacing){
+    const positions = notes.map(n => bestPos(n[0], refAbs));
+    const ys = positions.map(p => bottomY - p*(spacing/2));
+
+    // Notes a "second" apart (adjacent line/space) would sit on top of each
+    // other — offset one of each such pair to the side, alternating so a
+    // chain of seconds zig-zags left/right rather than stacking up.
+    const xOffset = new Array(notes.length).fill(0);
+    const bySide = notes.map((_,i)=>i).sort((a,b)=> positions[a]-positions[b]);
+    for(let k=1;k<bySide.length;k++){
+      const prev = bySide[k-1], curr = bySide[k];
+      if(Math.abs(positions[curr]-positions[prev]) === 1){
+        xOffset[curr] = xOffset[prev] <= 0 ? 11 : -11;
+      }
+    }
+    const xs = xOffset.map(o => x + o);
+
+    let ledgerSvg = '';
+    positions.forEach((pos,i)=>{
+      const nx = xs[i];
+      if(pos < 0){
+        const n = Math.floor(-pos/2);
+        for(let k=1;k<=n;k++){
+          const ly = bottomY - (-2*k)*(spacing/2);
+          ledgerSvg += `<line x1="${nx-8}" y1="${ly}" x2="${nx+8}" y2="${ly}" stroke="#2b2118" stroke-width="1"/>`;
+        }
+      } else if(pos > 8){
+        const n = Math.floor((pos-8)/2);
+        for(let k=1;k<=n;k++){
+          const ly = bottomY - (8+2*k)*(spacing/2);
+          ledgerSvg += `<line x1="${nx-8}" y1="${ly}" x2="${nx+8}" y2="${ly}" stroke="#2b2118" stroke-width="1"/>`;
+        }
+      }
+    });
+
+    let noteSvg = '';
+    notes.forEach((n,i)=>{
+      const accent = chordToneAccent(i);
+      const fill = accent ? accent.fill : 'none';
+      const stroke = accent ? accent.border : '#2b2118';
+      const nx = xs[i];
+      const accStr = n.slice(1);
+      const acc = accStr === '#' ? '\u266F' : accStr === 'b' ? '\u266D' : accStr === '##' ? '\u266F\u266F' : '';
+      if(acc) noteSvg += `<text x="${nx-21}" y="${ys[i]}" dominant-baseline="central" font-size="11" fill="${stroke}">${acc}</text>`;
+      noteSvg += `<ellipse cx="${nx}" cy="${ys[i]}" rx="6" ry="4" fill="${fill}" stroke="${stroke}" stroke-width="${accent ? 2 : 1.5}"/>`;
+    });
+
+    // one shared stem for the stacked chord: direction follows the tone
+    // farthest from the middle line (pos 4). The stem stays on the main
+    // column; offset noteheads sit beside it.
+    const yTop = Math.min(...ys), yBottom = Math.max(...ys);
+    const distAbove = Math.max(...positions) - 4;
+    const distBelow = 4 - Math.min(...positions);
+    const stemUp = distBelow >= distAbove;
+    const stemExtra = 28;
+    const stemX = stemUp ? x + 6 : x - 6;
+    const stemSvg = stemUp
+      ? `<line x1="${stemX}" y1="${yBottom}" x2="${stemX}" y2="${yTop - stemExtra}" stroke="#2b2118" stroke-width="1.4"/>`
+      : `<line x1="${stemX}" y1="${yTop}" x2="${stemX}" y2="${yBottom + stemExtra}" stroke="#2b2118" stroke-width="1.4"/>`;
+
+    return { noteSvg, ledgerSvg, stemSvg, xs, ys };
+  }
+
+  function staffSVG(notes, clef){
+    const ref = clefRef[clef];
+    const refAbs = ref.oct*7 + letterIdx[ref.letter];
+    const bottomY = 58, spacing = 8;
+    const { noteSvg, ledgerSvg, stemSvg } = chordColumn(notes, refAbs, 50, bottomY, spacing);
+
+    const lines = [0,1,2,3,4].map(i=>{
+      const ly = bottomY - i*spacing;
+      return `<line x1="30" y1="${ly}" x2="76" y2="${ly}" stroke="#2b2118" stroke-width="1"/>`;
+    }).join('');
+    const topY = bottomY - 4*spacing;
+    const barlines = `<line x1="30" y1="${bottomY}" x2="30" y2="${topY}" stroke="#2b2118" stroke-width="1"/>
+      <line x1="76" y1="${bottomY}" x2="76" y2="${topY}" stroke="#2b2118" stroke-width="1"/>`;
+
+    return `<svg class="staff" viewBox="0 -16 92 104" xmlns="http://www.w3.org/2000/svg">
+      ${lines}
+      ${barlines}
+      <text x="7" y="53" font-size="30" fill="#2b2118">${clefGlyph[clef]}</text>
+      ${ledgerSvg}
+      ${stemSvg}
+      ${noteSvg}
+    </svg>`;
+  }
+
+  // All of the progression's chords spelled out on one continuous staff
+  // (one barred "measure" per step), for the row between the "7th
+  // chords"/"9ths" toggles and the chart-view dropdown. Same per-chord
+  // column layout as
+  // staffSVG (46 units wide — identical to that function's 30-to-76
+  // chord box — just repeated left to right with a shared barline
+  // between each), so this view and the per-card staff view can never
+  // spell a chord differently.
+  //
+  // `cells` is [{notes, tie}], where tie=true means this step is a
+  // sustained repeat of the next cell's identical chord (e.g. ii-V-I's
+  // two-beat resolving I) rather than a new chord — rendered as another
+  // bar of the same chord tied across the barline, not silently doubled
+  // or left looking like a re-strike.
+  //
+  // `steps` is [{roman, color, startCol, span}], one entry per
+  // progression step (not per cell/beat) — a held chord's roman numeral
+  // is centered under its whole tied span rather than repeated per bar.
+  function keyStaffSVG(cells, clef, steps){
+    const ref = clefRef[clef];
+    const refAbs = ref.oct*7 + letterIdx[ref.letter];
+    const bottomY = 58, spacing = 8, cellW = 46, startX = 30;
+    const n = cells.length;
+
+    let noteSvg = '', ledgerSvg = '', stemSvg = '', tieSvg = '';
+    const cols = cells.map((cell, ci)=>{
+      const x = startX + cellW*ci + cellW/2;
+      const col = chordColumn(cell.notes, refAbs, x, bottomY, spacing);
+      noteSvg += col.noteSvg; ledgerSvg += col.ledgerSvg; stemSvg += col.stemSvg;
+      return col;
+    });
+
+    const middleY = bottomY - 4*(spacing/2);
+    const noteRx = 6;
+    cells.forEach((cell, ci)=>{
+      if(!cell.tie || ci+1 >= n) return;
+      const a = cols[ci], b = cols[ci+1];
+      cell.notes.forEach((_, k)=>{
+        const y = a.ys[k];
+        const dir = y <= middleY ? -1 : 1; // bulge away from the middle line
+        const x1 = a.xs[k] + noteRx + 1, x2 = b.xs[k] - noteRx - 1;
+        const midX = (x1+x2)/2;
+        tieSvg += `<path d="M ${x1} ${y} Q ${midX} ${y + dir*6} ${x2} ${y}" fill="none" stroke="#2b2118" stroke-width="1.2"/>`;
+      });
+    });
+
+    const rightEdge = startX + cellW*n;
+    const lines = [0,1,2,3,4].map(i=>{
+      const ly = bottomY - i*spacing;
+      return `<line x1="${startX}" y1="${ly}" x2="${rightEdge}" y2="${ly}" stroke="#2b2118" stroke-width="1"/>`;
+    }).join('');
+    const topY = bottomY - 4*spacing;
+    const barlines = Array.from({length: n+1}, (_,i)=>{
+      const bx = startX + cellW*i;
+      return `<line x1="${bx}" y1="${bottomY}" x2="${bx}" y2="${topY}" stroke="#2b2118" stroke-width="${i===n ? 2 : 1}"/>`;
+    }).join('');
+
+    const labelSvg = steps.map(st=>{
+      const labelX = startX + cellW*st.startCol + cellW*st.span/2;
+      return `<text x="${labelX}" y="${bottomY+16}" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="${st.color}">${st.roman}</text>`;
+    }).join('');
+
+    return `<svg class="staff" viewBox="0 -16 ${rightEdge+4} 104" xmlns="http://www.w3.org/2000/svg">
+      ${lines}
+      ${barlines}
+      <text x="7" y="53" font-size="30" fill="#2b2118">${clefGlyph[clef]}</text>
+      ${ledgerSvg}
+      ${stemSvg}
+      ${tieSvg}
+      ${noteSvg}
+      ${labelSvg}
+    </svg>`;
+  }
+
+  // --- flute fingering charts ---
+  // Unlike the guitar/ukulele engines this replaced, a flute can't sound
+  // a whole chord at once — so instead of one diagram per chord, this
+  // renders one small fingering diagram per NOTE in the chord, arranged
+  // in a row (see fluteChartRow below). Fingerings are keyed by pitch
+  // class (0-11), not by spelled note name, using the same noteToPC()
+  // the chord-tone accent lookup relies on elsewhere in this app — so
+  // "G##" and "A" resolve to the identical fingering without a second
+  // enharmonic table.
+  const BASE_PC = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+  function noteToPC(note){
+    const letter = note[0], acc = note.slice(1);
+    let pc = BASE_PC[letter];
+    for(const ch of acc) pc += (ch === '#') ? 1 : -1;
+    return ((pc % 12) + 12) % 12;
+  }
+
+  // Standard Boehm-flute "basic" fingerings for the first octave (C4-B4),
+  // sourced from the Woodwind Fingering Guide's basic first-octave chart
+  // (wfg.woodwind.org/flute/fl_bas_1.html) — the same fingerings taught
+  // in every beginner method book. lh/rh are the three main tone holes
+  // per hand (index/middle/ring, 1 = covered); gsharp and eb are the
+  // small side keys worked by the left and right pinkies; footCsharp/
+  // footC are the foot-joint keys. The left thumb's B key is held down
+  // for every note in this range (it only lifts for alternate fingerings
+  // this chart doesn't use), so it isn't tracked as a variable here — see
+  // the page's footer note instead. Bb4 uses the standard "1+1" fingering
+  // (thumb B key plus both index fingers) rather than the alternate
+  // thumb-Bb fingering, matching that source's own "Basic" pick among
+  // the three fingerings it lists for the note.
+  const FLUTE_FINGERING = [
+    /* C  */ { lh:[1,1,1], gsharp:0, rh:[1,1,1], eb:0, footCsharp:0, footC:1 },
+    /* C# */ { lh:[1,1,1], gsharp:0, rh:[1,1,1], eb:0, footCsharp:1, footC:0 },
+    /* D  */ { lh:[1,1,1], gsharp:0, rh:[1,1,1], eb:0, footCsharp:0, footC:0 },
+    /* D# */ { lh:[1,1,1], gsharp:0, rh:[1,1,1], eb:1, footCsharp:0, footC:0 },
+    /* E  */ { lh:[1,1,1], gsharp:0, rh:[1,1,0], eb:1, footCsharp:0, footC:0 },
+    /* F  */ { lh:[1,1,1], gsharp:0, rh:[1,0,0], eb:1, footCsharp:0, footC:0 },
+    /* F# */ { lh:[1,1,1], gsharp:0, rh:[0,0,1], eb:1, footCsharp:0, footC:0 },
+    /* G  */ { lh:[1,1,1], gsharp:0, rh:[0,0,0], eb:1, footCsharp:0, footC:0 },
+    /* G# */ { lh:[1,1,1], gsharp:1, rh:[0,0,0], eb:1, footCsharp:0, footC:0 },
+    /* A  */ { lh:[1,1,0], gsharp:0, rh:[0,0,0], eb:1, footCsharp:0, footC:0 },
+    /* A# */ { lh:[1,0,0], gsharp:0, rh:[1,0,0], eb:1, footCsharp:0, footC:0 },
+    /* B  */ { lh:[1,0,0], gsharp:0, rh:[0,0,0], eb:1, footCsharp:0, footC:0 }
+  ];
+
+  // One note's fingering, drawn as a small vertical diagram (embouchure
+  // end up, foot joint down): three left-hand holes, the G# side key,
+  // three right-hand holes, the Eb side key, then the two foot-joint
+  // keys. Colored by the same chordToneAccent() the staff notation
+  // uses — here it tints the WHOLE diagram (every hole, open or closed)
+  // rather than picking out one hole, since on a monophonic instrument
+  // this whole diagram already represents exactly one chord tone, unlike
+  // a guitar/ukulele string which is one of several sounding at once.
+  function fluteFingeringSVG(note, toneIndex){
+    const fing = FLUTE_FINGERING[noteToPC(note)];
+    const accent = chordToneAccent(toneIndex);
+    const fill = accent ? accent.fill : '#2b2118';
+    const stroke = accent ? accent.border : '#2b2118';
+    const mainX = 15, leftX = 6, rightX = 24;
+    const hole = (cx, cy, r, closed) => closed
+      ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>`
+      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${stroke}" stroke-width="1.3"/>`;
+    let svg = `<line x1="${mainX}" y1="3" x2="${mainX}" y2="113" stroke="#c9b98c" stroke-width="2"/>`;
+    svg += hole(mainX, 8, 4.5, fing.lh[0]);
+    svg += hole(mainX, 20, 4.5, fing.lh[1]);
+    svg += hole(mainX, 32, 4.5, fing.lh[2]);
+    svg += hole(leftX, 40, 2.8, fing.gsharp);
+    svg += hole(mainX, 54, 4.5, fing.rh[0]);
+    svg += hole(mainX, 66, 4.5, fing.rh[1]);
+    svg += hole(mainX, 78, 4.5, fing.rh[2]);
+    svg += hole(rightX, 86, 2.8, fing.eb);
+    svg += hole(mainX, 98, 3.8, fing.footCsharp);
+    svg += hole(mainX, 110, 3.8, fing.footC);
+    return `<svg class="flute-fingering" viewBox="0 0 30 118" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  }
+
+  // --- saxophone fingering charts ---
+  // Standard Boehm-saxophone "basic" fingerings for one octave (C4-B4),
+  // sourced from the Woodwind Fingering Guide's basic first-octave sax
+  // chart (wfg.woodwind.org/sax/sax_bas_1.html) — the same fingerings
+  // for alto, tenor, soprano, and baritone (the source's own text: "the
+  // same on all sizes of saxophone... unless specified otherwise"), so
+  // this one table covers the "Alto Saxophone" option. lh/rh are the
+  // three main tone holes per hand; gsharp and lowCsharp are two of the
+  // left pinky's four spatula keys (the other two, low B and low Bb,
+  // are below this octave's range so aren't needed here); sideC and
+  // sideEb are right-hand side keys; bisBb is the "bis" key used for
+  // the basic Bb fingering (pressed together with RH1). C4/C#4 keeping
+  // the side C key held and C#4 needing the low C# spatula even though
+  // it's the note *above* C4 both look like typos but are real,
+  // well-documented quirks of saxophone fingering, not flute-style
+  // "open one more hole per semitone" — confirmed against the source's
+  // own key-state images, not just its shorthand notation column.
+  const SAX_FINGERING = [
+    /* C  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,1,1], sideC:1, sideEb:0, bisBb:0 },
+    /* C# */ { lh:[1,1,1], gsharp:0, lowCsharp:1, rh:[1,1,1], sideC:1, sideEb:0, bisBb:0 },
+    /* D  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,1,1], sideC:0, sideEb:0, bisBb:0 },
+    /* D# */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,1,1], sideC:0, sideEb:1, bisBb:0 },
+    /* E  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,1,0], sideC:0, sideEb:0, bisBb:0 },
+    /* F  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,0,0], sideC:0, sideEb:0, bisBb:0 },
+    /* F# */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[0,1,0], sideC:0, sideEb:0, bisBb:0 },
+    /* G  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:0 },
+    /* G# */ { lh:[1,1,1], gsharp:1, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:0 },
+    /* A  */ { lh:[1,1,0], gsharp:0, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:0 },
+    /* A# */ { lh:[1,1,0], gsharp:0, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:1 },
+    /* B  */ { lh:[1,0,0], gsharp:0, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:0 }
+  ];
+
+  // Same vertical layout idea as the flute diagram (embouchure end up),
+  // with two extra left-pinky keys (G#, low C#) and three extra
+  // right-side keys (bis Bb, side Eb, side C) alongside the six main
+  // holes — more auxiliary keys than flute because saxophone's left and
+  // right pinky clusters simply have more of them.
+  function saxFingeringSVG(note, toneIndex){
+    const fing = SAX_FINGERING[noteToPC(note)];
+    const accent = chordToneAccent(toneIndex);
+    const fill = accent ? accent.fill : '#2b2118';
+    const stroke = accent ? accent.border : '#2b2118';
+    const mainX = 15, leftX = 6, rightX = 24;
+    const hole = (cx, cy, r, closed) => closed
+      ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>`
+      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${stroke}" stroke-width="1.3"/>`;
+    let svg = `<line x1="${mainX}" y1="3" x2="${mainX}" y2="100" stroke="#c9b98c" stroke-width="2"/>`;
+    svg += hole(mainX, 8, 4.5, fing.lh[0]);
+    svg += hole(mainX, 20, 4.5, fing.lh[1]);
+    svg += hole(mainX, 32, 4.5, fing.lh[2]);
+    svg += hole(leftX, 37, 2.6, fing.gsharp);
+    svg += hole(leftX, 46, 2.6, fing.lowCsharp);
+    svg += hole(rightX, 55, 2.6, fing.bisBb);
+    svg += hole(mainX, 60, 4.5, fing.rh[0]);
+    svg += hole(mainX, 72, 4.5, fing.rh[1]);
+    svg += hole(mainX, 84, 4.5, fing.rh[2]);
+    svg += hole(rightX, 89, 2.6, fing.sideEb);
+    svg += hole(rightX, 98, 2.6, fing.sideC);
+    return `<svg class="flute-fingering" viewBox="0 0 30 105" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  }
+
+  // --- trumpet valve charts ---
+  // Standard Bb-trumpet valve combinations for one chromatic octave,
+  // universal knowledge among trumpet players and cross-checked here
+  // against several independently-published fingerings (C=open, F=1,
+  // Bb=1, D=1-3, E=1-2, A=1-2, B=2 all confirmed) rather than a single
+  // source. Valve fingerings don't change with octave (unlike flute/sax,
+  // where the whole chart repeats by pitch class only within one
+  // octave), so this table is genuinely valid at any octave. See the
+  // page's transposition warning: trumpet is a Bb instrument, so this
+  // shows the fingering for the CONCERT pitch letter name displayed
+  // (not transposed up a major 2nd for a written trumpet part).
+  const TRUMPET_FINGERING = [
+    /* C  */ [],
+    /* C# */ [1,2,3],
+    /* D  */ [1,3],
+    /* D# */ [2,3],
+    /* E  */ [1,2],
+    /* F  */ [1],
+    /* F# */ [2],
+    /* G  */ [],
+    /* G# */ [2,3],
+    /* A  */ [1,2],
+    /* A# */ [1],
+    /* B  */ [2]
+  ];
+
+  // Three valve buttons stacked top to bottom (valve 1, 2, 3) rather than
+  // side by side — narrower than a horizontal row, so a whole chord's
+  // worth of these still lines up in one row per card next to the
+  // flute/sax diagrams (which are already vertical for the same reason)
+  // instead of forcing the card wider. Filled in the chord tone's accent
+  // color when pressed. Unlike the woodwind hole diagrams, an unpressed
+  // valve doesn't get an accent-colored outline — there's no "which
+  // hole" ambiguity to resolve on a 3-valve chart, so only the pressed
+  // valves need to stand out.
+  function trumpetValveSVG(note, toneIndex){
+    const pressed = new Set(TRUMPET_FINGERING[noteToPC(note)]);
+    const accent = chordToneAccent(toneIndex);
+    const fill = accent ? accent.fill : '#2b2118';
+    const stroke = accent ? accent.border : '#2b2118';
+    const ys = [10, 27, 44];
+    let svg = '';
+    ys.forEach((y, i) => {
+      const isPressed = pressed.has(i+1);
+      svg += `<circle cx="10" cy="${y}" r="7" fill="${isPressed ? fill : 'none'}" stroke="${isPressed ? stroke : '#8a7a5c'}" stroke-width="1.6"/>`;
+      svg += `<text x="10" y="${y+3}" text-anchor="middle" font-size="8" font-weight="700" fill="${isPressed ? '#fff8e8' : '#8a7a5c'}">${i+1}</text>`;
+    });
+    return `<svg class="valve-fingering" viewBox="0 0 20 54" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  }
+
+  // --- instrument selection ---
+  // One shared dispatcher so buildLegend() doesn't need to know which
+  // instrument is active — it just asks for "the fingering diagram" and
+  // "the fingering section's label" and gets whichever instrument is
+  // currently selected. `warning` is the transposition notice shown
+  // above the wheel for the two transposing instruments; flute (in
+  // concert C already) has none. Every chord/fingering shown stays in
+  // concert pitch regardless of instrument — these apps intentionally
+  // do NOT transpose the displayed notes for Bb/Eb instruments, so the
+  // warning is what tells a sax or trumpet player that what's on screen
+  // isn't what would appear in their written part.
+  const INSTRUMENTS = {
+    flute: { label: 'Flute', svg: fluteFingeringSVG, warning: null },
+    saxophone: {
+      label: 'Alto Saxophone', svg: saxFingeringSVG,
+      warning: 'Alto Saxophone is an E♭ transposing instrument. Chords and fingerings below are shown in concert pitch (what you’d hear), not transposed for a written alto sax part — to read this from a transposed alto part, add a major 6th to every note shown (e.g. concert C is written A).'
+    },
+    trumpet: {
+      label: 'Trumpet', svg: trumpetValveSVG,
+      warning: 'Trumpet is a B♭ transposing instrument. Chords and fingerings below are shown in concert pitch (what you’d hear), not transposed for a written trumpet part — to read this from a transposed trumpet part, add a major 2nd to every note shown (e.g. concert C is written D).'
+    }
+  };
+  let currentInstrument = 'flute';
+
+  // A whole chord's worth of fingering diagrams, one per note, each
+  // labeled with its letter name in the same accent color as its
+  // diagram — laid out left to right in chord-tone order (root, third,
+  // fifth, then any 7th/9th) so it reads in the same order as the note
+  // list already printed under the chord name.
+  function fluteChartRow(notes){
+    const svgFor = INSTRUMENTS[currentInstrument].svg;
+    return notes.map((n, i) => {
+      const accent = chordToneAccent(i);
+      const color = accent ? accent.fill : '#2b2118';
+      return `<div class="flute-note">${svgFor(n, i)}<span class="flute-label" style="color:${color}">${n.replace('b','♭')}</span></div>`;
+    }).join('');
+  }
+
+  // Notifies a parent page embedding this tool in an iframe (e.g. the Boy
+  // game) that the player did a specific thing, not just opened the tool.
+  // Sent at most once per goal id per page load. Harmless no-op when not
+  // embedded — postMessage to a same-window parent (i.e. no parent at
+  // all) just talks to itself and nobody's listening.
+  const sentGoals = {};
+  function sendBoyGoal(goal) {
+    if (sentGoals[goal]) return;
+    sentGoals[goal] = true;
+    window.parent.postMessage({ source: 'boy-tool', tool: 'fluteCircleOfFifths', goal: goal }, '*');
+  }
+
+  let keyIndex = 0;
+  let mode = 'major'; // 'major' or 'minor' — which ring is currently the tonic
+  const N = 12;
+  const cx = 240, cy = 240;
+  const rOuterOut = 224, rOuterIn = 150, rInnerOut = 150, rInnerIn = 84;
+  const svgns = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('wheel');
+
+  function polar(r, angleDeg){
+    const a = (angleDeg - 90) * Math.PI/180;
+    return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  }
+  function wedgePath(rIn, rOut, a0, a1){
+    const [x0o,y0o] = polar(rOut, a0), [x1o,y1o] = polar(rOut, a1);
+    const [x0i,y0i] = polar(rIn, a0), [x1i,y1i] = polar(rIn, a1);
+    const large = (a1 - a0) > 180 ? 1 : 0;
+    return `M ${x0o} ${y0o} A ${rOut} ${rOut} 0 ${large} 1 ${x1o} ${y1o} L ${x1i} ${y1i} A ${rIn} ${rIn} 0 ${large} 0 ${x0i} ${y0i} Z`;
+  }
+
+  function buildWheel(){
+    svg.innerHTML = '';
+    const defs = document.createElementNS(svgns,'defs');
+    defs.innerHTML = `<radialGradient id="faceGrad" cx="50%" cy="45%" r="70%">
+        <stop offset="0%" stop-color="#f5edd6"/>
+        <stop offset="100%" stop-color="#e3d6ac"/>
+      </radialGradient>`;
+    svg.appendChild(defs);
+
+    const bezel = document.createElementNS(svgns,'circle');
+    bezel.setAttribute('cx',cx); bezel.setAttribute('cy',cy); bezel.setAttribute('r', rOuterOut+10);
+    bezel.setAttribute('fill','url(#faceGrad)'); bezel.setAttribute('stroke','#8a6a34'); bezel.setAttribute('stroke-width','2');
+    svg.appendChild(bezel);
+
+    for(let i=0;i<N;i++){
+      const [tx,ty] = polar(rOuterOut+2, i*30);
+      const tick = document.createElementNS(svgns,'circle');
+      tick.setAttribute('cx',tx); tick.setAttribute('cy',ty); tick.setAttribute('r','2');
+      tick.setAttribute('fill','#8a6a34');
+      svg.appendChild(tick);
+    }
+
+    const gRot = document.createElementNS(svgns,'g');
+    gRot.setAttribute('id','rotgroup');
+    svg.appendChild(gRot);
+
+    for(let i=0;i<N;i++){
+      const a0 = i*30 - 15, a1 = i*30 + 15;
+      const key = order[i];
+
+      const pOuter = document.createElementNS(svgns,'path');
+      pOuter.setAttribute('d', wedgePath(rOuterIn, rOuterOut, a0, a1));
+      pOuter.setAttribute('fill', '#f5edd6');
+      pOuter.setAttribute('stroke', '#c9b98c');
+      pOuter.setAttribute('stroke-width','1');
+      pOuter.dataset.key = key;
+      pOuter.dataset.idx = i;
+      pOuter.style.cursor = 'pointer';
+      pOuter.classList.add('wedge-major');
+      gRot.appendChild(pOuter);
+
+      const pInner = document.createElementNS(svgns,'path');
+      pInner.setAttribute('d', wedgePath(rInnerIn, rInnerOut, a0, a1));
+      pInner.setAttribute('fill', '#ede1bd');
+      pInner.setAttribute('stroke', '#c9b98c');
+      pInner.setAttribute('stroke-width','1');
+      pInner.dataset.idx = i;
+      pInner.classList.add('wedge-minor');
+      pInner.style.cursor = 'pointer';
+      gRot.appendChild(pInner);
+
+      const [lx, ly] = polar((rOuterIn+rOuterOut)/2, i*30);
+      const t1 = document.createElementNS(svgns,'text');
+      t1.setAttribute('x', lx); t1.setAttribute('y', ly+2);
+      t1.setAttribute('text-anchor','middle');
+      t1.setAttribute('font-family','Fraunces, serif');
+      t1.setAttribute('font-size','20'); t1.setAttribute('font-weight','700');
+      t1.setAttribute('fill','#2b2118');
+      t1.style.pointerEvents = 'none';
+      t1.textContent = key.replace('b','\u266d');
+      t1.dataset.idx = i;
+      t1.classList.add('wedge-major-label');
+      gRot.appendChild(t1);
+
+      const [mx, my] = polar((rInnerIn+rInnerOut)/2, i*30);
+      const t2 = document.createElementNS(svgns,'text');
+      t2.setAttribute('x', mx); t2.setAttribute('y', my+2);
+      t2.setAttribute('text-anchor','middle');
+      t2.setAttribute('font-family','Fraunces, serif');
+      t2.setAttribute('font-size','14'); t2.setAttribute('font-weight','600');
+      t2.setAttribute('fill','#4a3f2e');
+      t2.style.pointerEvents = 'none';
+      t2.textContent = minorLabel[key].replace(/m$/,'').replace('b','\u266d');
+      t2.dataset.idx = i;
+      t2.classList.add('wedge-minor-label');
+      gRot.appendChild(t2);
+    }
+
+    const hub = document.createElementNS(svgns,'circle');
+    hub.setAttribute('cx',cx); hub.setAttribute('cy',cy); hub.setAttribute('r', rInnerIn-8);
+    hub.setAttribute('fill','#f5edd6'); hub.setAttribute('stroke','#b8863b'); hub.setAttribute('stroke-width','2.5');
+    gRot.appendChild(hub);
+
+    svg.querySelectorAll('.wedge-major').forEach(el=>{
+      el.addEventListener('click', ()=> setKey(parseInt(el.dataset.idx,10), 'major'));
+    });
+    svg.querySelectorAll('.wedge-minor').forEach(el=>{
+      el.addEventListener('click', ()=> setKey(parseInt(el.dataset.idx,10), 'minor'));
+    });
+
+    render(false);
+  }
+
+  // Compact seventh-chord-quality glyph shown on each diatonic wheel
+  // wedge (wheel labels only — the chord cards below keep their own
+  // spelled-out "maj7"/"m7" names). Real jazz lead-sheet shorthand: Δ for
+  // major 7th, a dash for a plain minor 7th, bare "7" for dominant, ø for
+  // half-diminished, ° for fully-diminished. Derived from the *existing*
+  // seventhSuffix/minorSeventhSuffix text (e.g. 'maj7♯5' -> 'Δ♯5' for
+  // minor's III+) rather than a second per-degree table, so the wheel
+  // glyph and the card's spelled-out name can't disagree about quality.
+  function wheelSeventhSymbol(suffix){
+    if(suffix.startsWith('maj7')) return 'Δ' + suffix.slice(4);
+    if(suffix === 'm7') return '–';
+    if(suffix === '7') return '7';
+    if(suffix === 'ø7') return 'ø';
+    if(suffix === '°7') return '°';
+    return '';
+  }
+
+  // Which roman-numeral degree sits at a given wheel offset from the
+  // tonic, keyed by mode — the same offsets already established for
+  // coloring (see the long comment in render() below): -1/0/+1 are
+  // IV/I/V (or iv/i/v) in both modes, but the other four differ because
+  // of how the inner ring is indexed by its relative major (see that
+  // comment for the derivation). Wedges at an offset not listed here
+  // aren't diatonic in the current key and get no symbol.
+  const wedgeRomanByOffset = {
+    major: { '-1':'IV', '0':'I', '1':'V', '2':'ii', '3':'vi', '4':'iii', '5':'vii' },
+    minor: { '-1':'iv', '0':'i', '1':'v', '2':'ii', '-4':'VI', '-3':'III', '5':'VII' }
+  };
+
+  function render(animate){
+    if (keyIndex !== 0) sendBoyGoal('wheel');
+    if (mode !== 'major') sendBoyGoal('minor');
+    const gRot = document.getElementById('rotgroup');
+    const angle = -keyIndex*30;
+    gRot.style.transition = animate ? 'transform 0.6s cubic-bezier(.4,0,.2,1)' : 'none';
+    gRot.setAttribute('transform', `rotate(${angle} ${cx} ${cy})`);
+
+    gRot.querySelectorAll('text').forEach(t=>{
+      const x = t.getAttribute('x'), y = t.getAttribute('y');
+      t.setAttribute('transform', `rotate(${-angle} ${x} ${y})`);
+    });
+
+    const iTonic = ((keyIndex%N)+N)%N;
+    const iIV = ((keyIndex-1)%N+N)%N;
+    const iV = ((keyIndex+1)%N+N)%N;
+
+    // Tonic is green throughout the app (root notehead, guitar root dot,
+    // tonic roman numerals); dominant is gold, subdominant is blue —
+    // matching romanColor()/romanColorMinor(). Only the ring matching the
+    // *active* mode gets colored at all: the other ring stays fully
+    // background regardless of position, rather than showing a muted
+    // echo of the same three wedges. That's deliberate — coloring both
+    // rings at once made every key look like it was highlighting seven
+    // wedges instead of three.
+    //
+    // The remaining 4 diatonic roots (the chords that exist in the key but
+    // aren't I/IV/V) get a neutral tan so they read as "in this key"
+    // without competing with the three functional colors.
+    //
+    // In MAJOR mode the outer ring is indexed directly by pitch (wedge idx
+    // === that pitch's own circle-of-fifths position), so the key's 7
+    // diatonic roots are simply the contiguous arc tonic-1..tonic+5, and
+    // ii/vi/iii/vii land at +2/+3/+4/+5.
+    //
+    // In MINOR mode the inner ring is indexed by its *relative major*'s
+    // position (wedge idx X shows minorLabel[order[X]], the relative
+    // minor of the pitch whose own circle-of-fifths slot is X) — the
+    // minor tonic and its relative major share a wheel angle, which is
+    // why iTonic/iIV/iV already work unchanged for both modes. But a
+    // diatonic pitch's *own* minor-label slot sits 3 positions
+    // counter-clockwise from where that same pitch sits on the outer
+    // (major) ring, so the arc doesn't come out as +2..+5 here — working
+    // it through (relative major's own tonic sits at this same iTonic
+    // angle, its diatonic arc is tonic-1..tonic+5 in outer-ring terms,
+    // and each of those 7 pitches' *inner* slot is outer-slot minus 3)
+    // gives offsets of -4/-3/-2/-1/0/+1/+2 for natural minor: -1/0/+1 are
+    // the already-handled iv/i/v, and the other three untouched-quality
+    // degrees — VI, III, ii — land at -4/-3/+2.
+    //
+    // The 4th (natural VII, at -2) is where harmonic minor's raised
+    // leading tone matters (see minorSeventhSuffix/raiseSemitone and the
+    // "Minor keys" note above): the rest of the app already builds vii°
+    // on the *raised* 7th degree, not the natural one, so the wheel
+    // should highlight that same raised root, not the natural-minor G.
+    // Sharpening a pitch moves it +7 in circle-of-fifths terms, which
+    // shifts its inner-ring slot by the same +7, landing the raised VII
+    // at -2+7 = +5 instead of -2. Confirmed against both A minor (raised
+    // VII = G#, wedge labeled "G#m") and E minor (raised VII = D#,
+    // enharmonic wedge labeled "E♭m") — both sit at tonic+5.
+    const highlight = { tonic:'#b3cbac', sub:'#a9c2d4', dom:'#d1a437', diatonic:'#e2cf9c' };
+    const otherOffsets = mode === 'major' ? [2,3,4,5] : [-4,-3,2,5];
+    const iOthers = new Set(otherOffsets.map(o => ((iTonic+o)%N+N)%N));
+
+    svg.querySelectorAll('.wedge-major').forEach(el=>{
+      const idx = parseInt(el.dataset.idx,10);
+      if(mode === 'major' && idx===iTonic) el.setAttribute('fill', highlight.tonic);
+      else if(mode === 'major' && idx===iIV) el.setAttribute('fill', highlight.sub);
+      else if(mode === 'major' && idx===iV) el.setAttribute('fill', highlight.dom);
+      else if(mode === 'major' && iOthers.has(idx)) el.setAttribute('fill', highlight.diatonic);
+      else el.setAttribute('fill','#f5edd6');
+    });
+    svg.querySelectorAll('.wedge-minor').forEach(el=>{
+      const idx = parseInt(el.dataset.idx,10);
+      if(mode === 'minor' && idx===iTonic) el.setAttribute('fill', highlight.tonic);
+      else if(mode === 'minor' && idx===iIV) el.setAttribute('fill', highlight.sub);
+      else if(mode === 'minor' && idx===iV) el.setAttribute('fill', highlight.dom);
+      else if(mode === 'minor' && iOthers.has(idx)) el.setAttribute('fill', highlight.diatonic);
+      else el.setAttribute('fill','#ede1bd');
+    });
+
+    // Wheel wedge labels default to a bare note name, no quality
+    // indicator at all — the inner ring's old always-on "...m" was
+    // misleading as a baseline (it's a fixed *position* identifier, "the
+    // relative minor found at this wheel angle", not a claim about what
+    // chord is actually there) and duplicated the seventh-quality glyph
+    // below once one applies. Diatonic wedges (same iTonic/iIV/iV/
+    // iOthers scope as the coloring above, active ring only) get a
+    // compact jazz-shorthand glyph appended instead (see
+    // wheelSeventhSymbol above): Δ/–/7/ø/° fully carries minor-vs-major-
+    // vs-dominant-vs-diminished on its own, so there's never a need for a
+    // separate "m" — "A–" (i, minor 7th) and "FΔ" (VI, major 7th) use the
+    // same bare-letter-plus-glyph shape.
+    svg.querySelectorAll('.wedge-major-label').forEach(t=>{
+      const idx = parseInt(t.dataset.idx,10);
+      const base = order[idx].replace('b','♭');
+      let off = ((idx-iTonic)%N+N)%N; if(off>6) off-=N;
+      const roman = mode === 'major' ? wedgeRomanByOffset.major[String(off)] : null;
+      t.textContent = roman ? base + wheelSeventhSymbol(seventhSuffix[roman] || 'm7') : base;
+    });
+    svg.querySelectorAll('.wedge-minor-label').forEach(t=>{
+      const idx = parseInt(t.dataset.idx,10);
+      const base = minorLabel[order[idx]].replace(/m$/,'').replace('b','♭');
+      let off = ((idx-iTonic)%N+N)%N; if(off>6) off-=N;
+      const roman = mode === 'minor' ? wedgeRomanByOffset.minor[String(off)] : null;
+      t.textContent = roman ? base + wheelSeventhSymbol(minorSeventhSuffix[roman]) : base;
+    });
+
+    const key = order[iTonic];
+    if(mode === 'major'){
+      document.getElementById('keyName').textContent = key.replace('b','\u266d') + ' major';
+    } else {
+      document.getElementById('keyName').textContent = minorLabel[key].replace(/m$/,'').replace('b','\u266d') + ' minor';
+    }
+    updateProgButtonLabels();
+    updatePlayButton();
+    buildLegend(key);
+    buildKeyStaff(key);
+  }
+
+  // The always-on staff line between the "7th chords" and "guitar
+  // chords" toggles: spells out the currently-selected progression (not
+  // all 7 diatonic chords) — one column per beat, repeats included, in
+  // the same order the play button plays them, each labeled with its
+  // function (roman numeral) rather than a letter chord name, and
+  // mode-aware the same way the chord cards are (degreeRomanLabel/
+  // degreeColor already handle upper/lower-case and ii°/III+ etc. for
+  // minor). Pulls from the same progressions/chordNotesForDegree data
+  // scheduleProgression() uses, so this can't disagree with what "play"
+  // actually plays. A step held for more than one beat (e.g. ii-V-I's
+  // two-beat resolving I) becomes that many bars of the same chord,
+  // tied, with its roman numeral centered under the whole tied span —
+  // not one bar looking identical to every one-beat chord next to it,
+  // and not a repeated label on every bar of one held chord.
+  function buildKeyStaff(key){
+    const cells = [], steps = [];
+    progressions[currentProgression].degrees.forEach(step=>{
+      const notes = chordNotesForDegree(key, step.deg);
+      const startCol = cells.length;
+      for(let b=0; b<step.beats; b++) cells.push({ notes, tie: b < step.beats-1 });
+      steps.push({ roman: degreeRomanLabel(step.deg), color: degreeColor(step.deg), startCol, span: step.beats });
+    });
+    document.getElementById('keyStaffRow').innerHTML = keyStaffSVG(cells, currentClef, steps);
+  }
+
+  // Colored by harmonic function, matching the wheel: tonic-function
+  // (I, vi) green like the tonic wedge and every root notehead;
+  // subdominant-function (IV, ii) blue like the subdominant wedge;
+  // dominant-function (V, iii) gold like the dominant wedge.
+  function romanColor(r){
+    if(r==='I') return '#4a7c46';
+    if(r==='IV') return '#3b6b85';
+    if(r==='V') return '#a9791f';
+    if(r==='vi') return '#557c52';
+    if(r==='ii') return '#4d7690';
+    if(r==='iii') return '#8a6a1f';
+    return '#7a705f';
+  }
+
+  function buildLegend(key){
+    const legend = document.getElementById('legend');
+    legend.innerHTML = '';
+    // Cards run in circle-of-fourths order (each chord a fourth above/
+    // fifth below the last: I-IV-vii-iii-vi-ii-V-back to I) rather than
+    // scale-degree order, so adjacent cards are the ones that actually
+    // resolve into each other — the same relationship "full circle x2"
+    // plays through as a progression.
+    [1,4,7,3,6,2,5].forEach(deg=>{
+      let roman, notes, name, color;
+      if(mode === 'major'){
+        roman = degreeToRoman.major[deg];
+        notes = getChordNotes(key, roman);
+        const isDim = roman==='vii';
+        const isMinor = !isDim && roman === roman.toLowerCase();
+        if(advancedMode){
+          name = notes[0].replace('b','\u266d') + (ninthSuffix[roman] || 'm9');
+        } else if(useSevenths){
+          name = notes[0].replace('b','\u266d') + (seventhSuffix[roman] || 'm7');
+        } else {
+          name = isDim ? notes[0].replace('b','\u266d')+'\u00B0' : (isMinor ? notes[0].replace('b','\u266d')+'m' : notes[0].replace('b','\u266d'));
+        }
+        color = romanColor(roman);
+      } else {
+        const mr = degreeToRoman.minor[deg];
+        notes = getMinorChordNotes(key, mr);
+        roman = degreeRomanLabel(deg);
+        name = advancedMode
+          ? notes[0].replace('b','\u266d') + (minorNinthSuffix[mr] || 'm9')
+          : useSevenths
+            ? notes[0].replace('b','\u266d') + (minorSeventhSuffix[mr] || 'm7')
+            : notes[0].replace('b','\u266d') + minorInfo[mr].qualitySuffix;
+        color = romanColorMinor(mr);
+      }
+      const card = document.createElement('div');
+      card.className = 'chord-card';
+      const staffChart = staffSVG(notes, currentClef);
+      const fluteRow = fluteChartRow(notes);
+      card.innerHTML = `
+        <div class="rn" style="color:${color}">${roman}</div>
+        <div class="section-label">Notation</div>
+        ${staffChart}
+        <div class="section-label">${INSTRUMENTS[currentInstrument].label} fingering</div>
+        <div class="flute-row">${fluteRow}</div>
+        <div class="cn">${name}</div>
+        <div class="nn">${notes.map(n=>n.replace('b','\u266d')).join(' \u2013 ')}</div>
+        <button data-notes="${notes.join(',')}">&#9658;</button>
+      `;
+      legend.appendChild(card);
+    });
+    legend.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=> { playChord(btn.dataset.notes.split(',')); checkAudioUnlocked(); });
+    });
+  }
+
+  function setKey(idx, newMode){
+    keyIndex = idx;
+    if(newMode) mode = newMode;
+    render(true);
+  }
+  document.getElementById('btnLeft').addEventListener('click', ()=>{
+    keyIndex = ((keyIndex-1)%N+N)%N; render(true);
+  });
+  document.getElementById('btnRight').addEventListener('click', ()=>{
+    keyIndex = ((keyIndex+1)%N+N)%N; render(true);
+  });
+
+  // Randomizes the key (any of the 12 wedges, major or minor) and the
+  // progression (any of the .prog-select buttons, full circle x2
+  // included). Doesn't touch the sevenths/advanced toggles — whatever
+  // note density is currently selected stays as-is.
+  document.getElementById('randomizeBtn').addEventListener('click', ()=>{
+    keyIndex = Math.floor(Math.random()*N);
+    mode = Math.random() < 0.5 ? 'major' : 'minor';
+    render(true);
+
+    const availableProgs = Array.from(document.querySelectorAll('.prog-select .clef-btn'));
+    const pick = availableProgs[Math.floor(Math.random()*availableProgs.length)];
+    selectProgression(pick.dataset.prog);
+  });
+
+  let actx, masterFilter;
+  function getCtx(){
+    if(!actx){
+      actx = new (window.AudioContext||window.webkitAudioContext)();
+      masterFilter = actx.createBiquadFilter();
+      masterFilter.type = 'lowpass';
+      masterFilter.frequency.value = 4200;
+      masterFilter.Q.value = 0.3;
+
+      // A hard-knee limiter as the final safety net. Additive synthesis
+      // (5 harmonics per note) stacked across up to 7 simultaneous voices
+      // in 9th-chord mode (35 oscillators) can sum to peaks well past
+      // 0dBFS — this catches those transients before they hit the
+      // speakers instead of letting the DAC hard-clip them.
+      const limiter = actx.createDynamicsCompressor();
+      limiter.threshold.value = -3;
+      limiter.knee.value = 2;
+      limiter.ratio.value = 16;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.2;
+
+      masterFilter.connect(limiter);
+      limiter.connect(actx.destination);
+    }
+    // iOS Safari always creates AudioContext in a 'suspended' state and
+    // silently drops any audio scheduled on it until something explicitly
+    // resumes it from inside a real user-gesture handler. Cheap no-op if
+    // already running.
+    if(actx.state === 'suspended'){
+      actx.resume();
+    }
+    return actx;
+  }
+
+  // Belt-and-suspenders unlock: resume/create the context on the very
+  // first touch/click anywhere on the page, in addition to the specific
+  // play-button handlers. iOS Safari's rules about which exact gesture
+  // counts can be finicky, so this widens the net rather than relying on
+  // only one entry point.
+  ['touchend','pointerdown','click'].forEach(evt=>{
+    document.addEventListener(evt, ()=> getCtx(), {once:true, passive:true});
+  });
+
+  // Visible fallback so audio failures are diagnosable on a phone instead
+  // of silently doing nothing — if a play action doesn't leave the
+  // context 'running' shortly after, show a one-line hint instead of
+  // failing invisibly. Cleared automatically once audio is confirmed
+  // working.
+  function showAudioHint(msg){
+    let el = document.getElementById('audioHint');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'audioHint';
+      el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:#3a2f22;color:#f5edd6;font:13px/1.4 Inter,sans-serif;text-align:center;z-index:9999;';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideAudioHint(){
+    const el = document.getElementById('audioHint');
+    if(el) el.style.display = 'none';
+  }
+  function checkAudioUnlocked(){
+    setTimeout(()=>{
+      if(!actx){ return; }
+      if(actx.state === 'running'){
+        hideAudioHint();
+      } else {
+        showAudioHint('No sound? Check your phone isn’t on silent/mute and the volume is up, then tap play again.');
+      }
+    }, 400);
+  }
+
+  // Debug helper for remote inspection (e.g. iPhone Safari connected to a
+  // Mac's Web Inspector) — actx/masterFilter are closed over, not global,
+  // so there's otherwise no way to inspect them from the console.
+  window.__cofDebug = function(){
+    return {
+      hasAudioContext: typeof (window.AudioContext||window.webkitAudioContext) !== 'undefined',
+      actxCreated: !!actx,
+      actxState: actx ? actx.state : null,
+      sampleRate: actx ? actx.sampleRate : null,
+      baseLatency: actx ? actx.baseLatency : null
+    };
+  };
+  const noteFreq = {C:261.63,'C#':277.18,Db:277.18,D:293.66,'D#':311.13,Eb:311.13,E:329.63,F:349.23,'F#':369.99,Gb:369.99,G:392.00,'G#':415.30,Ab:415.30,A:440.00,'A#':466.16,Bb:466.16,B:493.88,Cb:493.88};
+
+  // Close-position voicing: each note independently picks whichever octave
+  // lands it nearest a central reference pitch (rather than stacking
+  // strictly ascending from the root). This keeps the whole chord clustered
+  // in one register, the same idea used for the staff notation, and is
+  // fine with two voices "crossing" if that keeps things closer together.
+  function voiceChord(notes){
+    const REF = 349.23; // F4, roughly the center of the noteFreq table's span
+    return notes.map(n=>{
+      let f = noteFreq[n] !== undefined ? noteFreq[n] : 440;
+      while(f < REF/Math.SQRT2) f *= 2;
+      while(f > REF*Math.SQRT2) f /= 2;
+      return f;
+    });
+  }
+
+  // Piano-ish voice: a handful of harmonics with a fast attack and
+  // progressively faster-decaying overtones, softened by a lowpass filter.
+  // `velocity` scales the whole note's gain (default 1) — used to bring
+  // the sub-bass layer in under the rest of the chord.
+  function playPianoNote(freq, startTime, duration, ctx, velocity){
+    const vel = velocity !== undefined ? velocity : 1;
+    const harmonics = [
+      {mult:1, gain:1.00, decay:duration*1.00},
+      {mult:2, gain:0.55, decay:duration*0.70},
+      {mult:3, gain:0.30, decay:duration*0.50},
+      {mult:4, gain:0.16, decay:duration*0.35},
+      {mult:5, gain:0.09, decay:duration*0.25}
+    ];
+    harmonics.forEach(h=>{
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq*h.mult;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, startTime);
+      g.gain.linearRampToValueAtTime(h.gain*0.22*vel, startTime+0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, startTime + h.decay);
+      osc.connect(g); g.connect(masterFilter);
+      osc.start(startTime); osc.stop(startTime + h.decay + 0.05);
+    });
+  }
+
+  function playChord(notes, startAt, duration){
+    const ctx = getCtx();
+    const now = startAt !== undefined ? startAt : ctx.currentTime;
+    const dur = duration !== undefined ? duration : 2.0;
+    const freqs = voiceChord(notes);
+    const bassRoot = freqs[0] / 2; // root, an octave below the close voicing, to make root motion audible
+    const subBass = bassRoot / 2; // another octave below that, at half volume, to add low-end weight without drowning out the chord
+    // A 9th chord (5 tones) plus the two bass layers is 7 simultaneous
+    // notes against a triad's 5 — more than the limiter alone should have
+    // to absorb. Scale every voice in this chord down together as note
+    // count grows, referenced to the triad (5-voice) case at full volume,
+    // so triads/7ths/9ths land at consistent perceived loudness instead
+    // of denser chords just being louder. The 75%/50% bass/sub-bass
+    // balance stays relative to this, not replaced by it.
+    const balance = Math.min(1, 5 / (freqs.length + 2));
+    freqs.forEach(f => playPianoNote(f, now, dur, ctx, balance));
+    playPianoNote(bassRoot, now, dur, ctx, 0.75*balance);
+    playPianoNote(subBass, now, dur, ctx, 0.5*balance);
+  }
+
+  let isPlaying = false;
+  let loopEnabled = true; // matches the loopToggle checkbox's default-checked state
+  let timeoutIds = [];
+  let bpm = 90;
+
+  const bpmSlider = document.getElementById('bpmSlider');
+  const bpmLabel = document.getElementById('bpmLabel');
+  bpmSlider.addEventListener('input', (e)=>{
+    bpm = parseInt(e.target.value, 10);
+    bpmLabel.textContent = bpm + ' BPM';
+  });
+
+  function updatePlayButton(){
+    document.getElementById('playProg').innerHTML = isPlaying
+      ? '&#9632; stop'
+      : `&#9658; play ${progressionLabel(currentProgression)}`;
+  }
+
+  function updateProgButtonLabels(){
+    document.querySelectorAll('.prog-select .clef-btn').forEach(btn=>{
+      btn.textContent = progressionLabel(btn.dataset.prog);
+    });
+  }
+
+  // Each chord holds for two beats at the selected tempo rather than one —
+  // a playback-only pacing choice, independent of the beats-per-degree
+  // multiplier below and of the notation (which doesn't encode rhythm).
+  const PLAYBACK_BEATS_PER_CHORD = 2;
+
+  function scheduleProgression(){
+    const iTonic = ((keyIndex%N)+N)%N;
+    const key = order[iTonic];
+    const stepMs = (60000 / bpm) * PLAYBACK_BEATS_PER_CHORD;
+    const baseDur = Math.max(1.8, (60/bpm) * 1.8 * PLAYBACK_BEATS_PER_CHORD);
+    let elapsedMs = 0;
+    progressions[currentProgression].degrees.forEach(step=>{
+      const chordNotes = chordNotesForDegree(key, step.deg);
+      const dur = baseDur * step.beats;
+      timeoutIds.push(setTimeout(()=> playChord(chordNotes, undefined, dur), elapsedMs));
+      elapsedMs += stepMs * step.beats;
+    });
+    timeoutIds.push(setTimeout(()=>{
+      if(isPlaying && loopEnabled){
+        scheduleProgression();
+      } else {
+        isPlaying = false;
+        updatePlayButton();
+      }
+    }, elapsedMs));
+  }
+
+  document.getElementById('playProg').addEventListener('click', ()=>{
+    // Unlock/resume the AudioContext synchronously inside this click
+    // handler. Every chord in a progression is scheduled via setTimeout
+    // (including the first), so without this, iOS Safari never sees a
+    // direct user-gesture call into the Web Audio API and the whole
+    // progression plays silently.
+    getCtx();
+    checkAudioUnlocked();
+    if(isPlaying){
+      isPlaying = false;
+      timeoutIds.forEach(id => clearTimeout(id));
+      timeoutIds = [];
+      updatePlayButton();
+    } else {
+      isPlaying = true;
+      sendBoyGoal('progression');
+      updatePlayButton();
+      scheduleProgression();
+    }
+  });
+
+  document.getElementById('loopToggle').addEventListener('change', (e)=>{
+    loopEnabled = e.target.checked;
+  });
+
+  // Shared by the prog-select buttons' own click handler and by the
+  // randomize button.
+  function selectProgression(progKey){
+    document.querySelectorAll('.prog-select .clef-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.prog === progKey);
+    });
+    currentProgression = progKey;
+    if(isPlaying){
+      isPlaying = false;
+      timeoutIds.forEach(id => clearTimeout(id));
+      timeoutIds = [];
+    }
+    updatePlayButton();
+    buildKeyStaff(order[((keyIndex%N)+N)%N]);
+  }
+
+  document.querySelectorAll('.prog-select .clef-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> selectProgression(btn.dataset.prog));
+  });
+
+  document.getElementById('seventhsToggle').addEventListener('change', (e)=>{
+    useSevenths = e.target.checked;
+    if (useSevenths) sendBoyGoal('extensions');
+    const key = order[((keyIndex%N)+N)%N];
+    buildLegend(key);
+    buildKeyStaff(key);
+  });
+
+  // Advanced mode (9th chords) supersedes the 7th-chords toggle — a 9th
+  // is a stacked 7th plus one more third, so it doesn't make sense to
+  // show a 9th without the 7th. Force+lock the 7th toggle on while
+  // advanced mode is on, so its displayed state stays truthful (and
+  // getChordNotes()/getMinorChordNotes() check advancedMode before
+  // useSevenths, so this is purely a display concern, not a fallback).
+  document.getElementById('advancedToggle').addEventListener('change', (e)=>{
+    advancedMode = e.target.checked;
+    if (advancedMode) sendBoyGoal('extensions');
+    const seventhsBox = document.getElementById('seventhsToggle');
+    if(advancedMode){
+      useSevenths = true;
+      seventhsBox.checked = true;
+      seventhsBox.disabled = true;
+    } else {
+      seventhsBox.disabled = false;
+    }
+    const key = order[((keyIndex%N)+N)%N];
+    buildLegend(key);
+    buildKeyStaff(key);
+  });
+
+  // Swaps the page's instrument-flavored copy (title, subtitle, footer
+  // note) and shows/hides the transposition warning to match whichever
+  // instrument is selected — separate from buildLegend()/buildKeyStaff(),
+  // which redraw the actual chord content, since none of this text
+  // depends on the current key/progression.
+  const footNoteByInstrument = {
+    flute: 'Click any wedge — outer for major, inner for minor — to make it the tonic, or use the arrows. Tap the small ▶ on a chord card to hear it. On each fingering diagram, a filled circle is a covered hole/pressed key, an open circle is uncovered — the left thumb’s B key stays down throughout.',
+    saxophone: 'Click any wedge — outer for major, inner for minor — to make it the tonic, or use the arrows. Tap the small ▶ on a chord card to hear it. On each fingering diagram, a filled circle is a covered hole/pressed key, an open circle is uncovered.',
+    trumpet: 'Click any wedge — outer for major, inner for minor — to make it the tonic, or use the arrows. Tap the small ▶ on a chord card to hear it. On each valve diagram, a filled circle is a pressed valve.'
+  };
+  function updateInstrumentUI(){
+    const info = INSTRUMENTS[currentInstrument];
+    document.getElementById('mainTitle').textContent = info.label + ' Diatonic Circles';
+    document.getElementById('subtitle').textContent = `The circle of fifths, spelled out for ${info.label.toLowerCase()}. Click the outer ring for a major key, the inner ring for its relative minor — every diatonic chord shows its notation and its ${info.label.toLowerCase()} fingerings side by side.`;
+    document.getElementById('footNote').textContent = footNoteByInstrument[currentInstrument];
+    const warningEl = document.getElementById('transposeWarning');
+    if(info.warning){
+      warningEl.textContent = info.warning;
+      warningEl.hidden = false;
+    } else {
+      warningEl.hidden = true;
+    }
+  }
+  document.getElementById('instrumentSelect').addEventListener('change', (e)=>{
+    currentInstrument = e.target.value;
+    if (currentInstrument !== 'flute') sendBoyGoal('charts');
+    updateInstrumentUI();
+    buildLegend(order[((keyIndex%N)+N)%N]);
+  });
+
+  // Populated from chordToneAccent() rather than duplicating hex values
+  // in the markup, so the sticky legend can't drift from the actual
+  // chart colors if they change.
+  document.querySelectorAll('#toneLegend .dot').forEach(dot=>{
+    const accent = chordToneAccent(parseInt(dot.dataset.tone, 10));
+    dot.style.background = accent.fill;
+    dot.style.borderColor = accent.border;
+  });
+
+  buildWheel();
+})();
+</script>
+</body>
+</html>

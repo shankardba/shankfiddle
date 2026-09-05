@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Violin Scale Bugs — Major &amp; Minor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #241012;
+    --panel: #f3e6d8;
+    --panel-dim: #ead9c6;
+    --ink: #2b1614;
+    --ink-soft: #7a5a52;
+    --wood: #9a3f3f;
+    --wood-light: #d68f83;
+    --gold: #d4a63c;
+    --gold-light: #e8c878;
+    --muted: #a08a80;
+    --ladybug: #c62828;
+    --spider: #3c3436;
+    --mantis: #4c7a4a;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--panel);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+  }
+  .stage{
+    max-width:600px; margin:0 auto; padding:36px 20px 84px;
+    display:flex; flex-direction:column; align-items:center; gap:26px;
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:clamp(26px,5vw,36px);
+    margin:0; color:var(--panel); text-align:center; letter-spacing:0.2px;
+  }
+  .sub{
+    margin:0; text-align:center; color:var(--muted); font-size:14.5px;
+    max-width:42ch; line-height:1.5;
+  }
+  .row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .key-btn, .mode-btn{
+    font-family:'Inter', sans-serif; font-size:14px; font-weight:600;
+    border:1.5px solid var(--wood); background:transparent; color:var(--wood-light);
+    border-radius:20px; padding:7px 16px; cursor:pointer; transition:background 0.15s, color 0.15s;
+  }
+  .key-btn:hover, .mode-btn:hover{ background:var(--wood); color:var(--bg); }
+  .key-btn.active, .mode-btn.active{ background:var(--gold); border-color:var(--gold); color:var(--bg); }
+  .scale-name{
+    font-family:'Fraunces', serif; font-weight:700; font-size:26px; color:var(--gold-light);
+    text-align:center;
+  }
+  .play-btn{
+    font-family:'Inter', sans-serif; font-size:13px; font-weight:600; border:1px solid var(--gold);
+    color:var(--gold-light); background:transparent; border-radius:18px; padding:8px 18px;
+    cursor:pointer; transition:background 0.15s, color 0.15s;
+  }
+  .play-btn:hover{ background:var(--gold); color:var(--bg); }
+
+  .strings-wrap{
+    width:100%; display:flex; flex-direction:column; gap:20px;
+  }
+  .string-row{
+    background:var(--panel); border-radius:14px; padding:16px 14px 14px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .string-label{
+    font-size:12px; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-soft);
+    font-weight:600;
+  }
+  .positions{
+    display:flex; align-items:flex-start; overflow-x:auto; padding-bottom:4px;
+  }
+  .pos{
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    flex:0 0 56px; width:56px;
+  }
+  .pos.playing .finger{ box-shadow:0 0 0 4px rgba(212,166,60,0.5); }
+  .pos .finger{
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces', serif; font-weight:700; font-size:15px;
+    background:var(--wood); color:var(--panel); border:2px solid var(--ink);
+    transition:box-shadow 0.15s;
+  }
+  .pos .finger.open{ background:var(--panel); color:var(--ink); border-color:var(--wood); }
+  .pos .note{ font-size:13.5px; font-weight:600; color:var(--ink); }
+  .pos .degree{ font-size:10.5px; color:var(--ink-soft); }
+  .segment{
+    flex:0 0 68px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    padding-top:6px; gap:2px;
+  }
+  .segment .bar{
+    width:100%; height:2px; background:var(--ink-soft); opacity:0.4; margin-top:8px;
+  }
+  .segment.half .bar{ opacity:0; }
+  .segment .bug-icon{ width:24px; height:24px; flex-shrink:0; }
+  .segment .bug-label{
+    font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px;
+    color:var(--ink-soft); text-align:center; max-width:64px;
+  }
+  .segment.whole .step-label{ font-size:9px; color:var(--ink-soft); opacity:0.6; margin-top:2px; }
+
+  .bug-summary{
+    font-size:14px; color:var(--gold-light); display:flex; align-items:center; gap:8px;
+  }
+  .bug-summary .bug-icon{ width:22px; height:22px; }
+
+  .panel{
+    width:100%; background:var(--panel-dim); border-radius:12px; padding:14px 16px;
+    color:var(--ink); font-size:13.5px; line-height:1.55;
+  }
+  .panel h2{
+    font-family:'Fraunces', serif; font-size:15px; margin:0 0 8px; color:var(--wood);
+  }
+  .legend-panel .legend-item{
+    display:flex; align-items:center; gap:10px; margin-bottom:8px;
+  }
+  .legend-panel .legend-item:last-child{ margin-bottom:0; }
+  .legend-panel .bug-icon{ width:28px; height:28px; flex-shrink:0; }
+  .legend-panel .legend-text b{ display:block; font-size:13px; }
+  .legend-panel .legend-text span{ font-size:12px; color:var(--ink-soft); }
+
+  .why-panel p{ margin:0 0 8px; }
+  .why-panel p:last-child{ margin-bottom:0; }
+  .why-panel .callout{
+    background:rgba(154,63,63,0.1); border:1px solid rgba(154,63,63,0.3); border-radius:8px;
+    padding:8px 10px; margin-top:8px; font-size:12.5px;
+  }
+
+  .foot{ font-size:12px; color:var(--muted); text-align:center; max-width:42ch; line-height:1.5; }
+
+  @media (max-width:420px){
+    .pos{ flex-basis:46px; width:46px; }
+    .pos .finger{ width:28px; height:28px; font-size:13px; }
+    .segment{ flex-basis:56px; }
+    .segment .bug-label{ font-size:8.5px; }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <h1>Violin Scale Bugs</h1>
+  <p class="sub">Each key has its own beginner fingering on two strings — some start on an open string, some don't. Wherever the half step lands between two actual fingers, there's a bug; each finger-pair has its own.</p>
+
+  <div class="row">
+    <button class="key-btn" data-key="G">G</button>
+    <button class="key-btn" data-key="D">D</button>
+    <button class="key-btn active" data-key="A">A</button>
+    <button class="key-btn" data-key="E">E</button>
+  </div>
+  <div class="row">
+    <button class="mode-btn active" data-mode="major">Major</button>
+    <button class="mode-btn" data-mode="minor">Natural minor</button>
+  </div>
+
+  <div class="scale-name" id="scaleName">A Major</div>
+  <button class="play-btn" id="playBtn">&#9658; play scale</button>
+
+  <div class="strings-wrap" id="stringsWrap"></div>
+
+  <div class="bug-summary" id="bugSummary"></div>
+
+  <div class="panel legend-panel">
+    <h2>Bug legend</h2>
+    <div class="legend-item">
+      <span class="bug-icon" id="legendMantis"></span>
+      <span class="legend-text"><b>Mantis</b><span>1st &amp; 2nd finger sit a half step apart</span></span>
+    </div>
+    <div class="legend-item">
+      <span class="bug-icon" id="legendSpider"></span>
+      <span class="legend-text"><b>Spider</b><span>2nd &amp; 3rd finger sit a half step apart</span></span>
+    </div>
+    <div class="legend-item">
+      <span class="bug-icon" id="legendLadybug"></span>
+      <span class="legend-text"><b>Ladybug</b><span>3rd &amp; 4th finger sit a half step apart</span></span>
+    </div>
+  </div>
+
+  <div class="panel why-panel" id="whyPanel"></div>
+
+  <p class="foot">Tap a key or mode to see its scale. The number under each note is its scale degree — watch how the 3rd, 6th and 7th change between major and minor. The open circle is an open string, never a bug — only a half step between two actual fingers gets one.</p>
+</div>
+
+<script>
+(function(){
+  // --- scale data ---
+  // Each key's one-octave scale is fingered across two strings, in one of
+  // two ways depending on the key:
+  //
+  // G and D start each tetrachord on the OPEN string (the simplest, most
+  // common beginner fingering), then fingers 1-2-3 walk up to the 4th
+  // scale degree of that tetrachord — the open-to-finger-1 gap is never a
+  // bug (it isn't between two fingers), so only 2 finger-to-finger gaps
+  // exist per string here.
+  //
+  // A and E use NO open string at all: finger 1 lands a whole step above
+  // the open note of the string below the scale's usual "home" string
+  // (e.g. A major: finger 1 on the G string is A, not open A). That's the
+  // only way to fit A and E into an all-fingered frame — G has no string
+  // below it to finger from, and D would need a nonexistent "C string", so
+  // both instead use the open-string style. This gives 3 finger-to-finger
+  // gaps per string (1-2, 2-3, 3-4).
+  //
+  // Either way, the BUG depends only on which finger-pair (if any) carries
+  // the half step — not on the key itself. Shift the same finger shape to
+  // a different starting note (e.g. Ab instead of A, using "low" finger
+  // placements) and the bug is unchanged.
+  const SCALES = {
+    G: {
+      major: {
+        lower: { string: 'G', positions: [{f:'open',n:'G'},{f:1,n:'A'},{f:2,n:'B'},{f:3,n:'C'}] },
+        upper: { string: 'D', positions: [{f:'open',n:'D'},{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G'}] }
+      },
+      minor: {
+        lower: { string: 'G', positions: [{f:'open',n:'G'},{f:1,n:'A'},{f:2,n:'Bb'},{f:3,n:'C'}] },
+        upper: { string: 'D', positions: [{f:'open',n:'D'},{f:1,n:'Eb'},{f:2,n:'F'},{f:3,n:'G'}] }
+      }
+    },
+    D: {
+      major: {
+        lower: { string: 'D', positions: [{f:'open',n:'D'},{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G'}] },
+        upper: { string: 'A', positions: [{f:'open',n:'A'},{f:1,n:'B'},{f:2,n:'C#'},{f:3,n:'D'}] }
+      },
+      minor: {
+        lower: { string: 'D', positions: [{f:'open',n:'D'},{f:1,n:'E'},{f:2,n:'F'},{f:3,n:'G'}] },
+        upper: { string: 'A', positions: [{f:'open',n:'A'},{f:1,n:'Bb'},{f:2,n:'C'},{f:3,n:'D'}] }
+      }
+    },
+    A: {
+      major: {
+        lower: { string: 'G', positions: [{f:1,n:'A'},{f:2,n:'B'},{f:3,n:'C#'},{f:4,n:'D'}] },
+        upper: { string: 'D', positions: [{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G#'},{f:4,n:'A'}] }
+      },
+      minor: {
+        lower: { string: 'G', positions: [{f:1,n:'A'},{f:2,n:'B'},{f:3,n:'C'},{f:4,n:'D'}] },
+        upper: { string: 'D', positions: [{f:1,n:'E'},{f:2,n:'F'},{f:3,n:'G'},{f:4,n:'A'}] }
+      }
+    },
+    E: {
+      major: {
+        lower: { string: 'D', positions: [{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G#'},{f:4,n:'A'}] },
+        upper: { string: 'A', positions: [{f:1,n:'B'},{f:2,n:'C#'},{f:3,n:'D#'},{f:4,n:'E'}] }
+      },
+      minor: {
+        lower: { string: 'D', positions: [{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G'},{f:4,n:'A'}] },
+        upper: { string: 'A', positions: [{f:1,n:'B'},{f:2,n:'C'},{f:3,n:'D'},{f:4,n:'E'}] }
+      }
+    }
+  };
+  // Octave (scientific pitch notation) for each position, per key — the
+  // same regardless of major/minor (an accidental never changes which
+  // octave a letter falls in). Hardcoded since there are only 4 keys, to
+  // keep the letter-to-octave-wrap logic (which only changes at C) out of
+  // the rendering code entirely.
+  const OCTAVES = {
+    G: { lower: [3,3,3,4], upper: [4,4,4,4] },
+    D: { lower: [4,4,4,4], upper: [4,4,5,5] },
+    A: { lower: [3,3,4,4], upper: [4,4,4,4] },
+    E: { lower: [4,4,4,4], upper: [4,5,5,5] }
+  };
+
+  // Which bug lives on a half step between two ADJACENT FINGER NUMBERS
+  // (never involving the open string — that gap is just labeled "half
+  // step" with no bug, since it isn't between two fingers).
+  const BUG_BY_FINGER_PAIR = { 1: 'mantis', 2: 'spider', 3: 'ladybug' };
+  const BUG_COLOR = { mantis: 'var(--mantis)', spider: 'var(--spider)', ladybug: 'var(--ladybug)' };
+  const BUG_LABEL = { mantis: 'Mantis', spider: 'Spider', ladybug: 'Ladybug' };
+
+  const LETTER_PC = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+  function pitchClass(note){
+    let pc = LETTER_PC[note[0]];
+    for(const ch of note.slice(1)) pc += (ch === '#') ? 1 : -1;
+    return ((pc % 12) + 12) % 12;
+  }
+  // Semitone distance from noteA up to noteB, assuming a small ascending
+  // step (1 = half step, 2 = whole step) — true for every gap in a major
+  // or natural minor tetrachord.
+  function stepSize(noteA, noteB){
+    return ((pitchClass(noteB) - pitchClass(noteA) + 12) % 12);
+  }
+
+  // Scale degree numbers get a flat sign in natural minor for the 3rd, 6th,
+  // and 7th — the exact three degrees that distinguish minor from major.
+  const FLATTED_DEGREES = [3,6,7];
+
+  function bugIconSVG(type, size){
+    size = size || 26;
+    if(type === 'ladybug'){
+      return `<svg viewBox="0 0 32 32" width="${size}" height="${size}">
+        <ellipse cx="16" cy="19" rx="11" ry="9" fill="${BUG_COLOR.ladybug}" stroke="#2b1614" stroke-width="1.4"/>
+        <line x1="16" y1="10" x2="16" y2="28" stroke="#2b1614" stroke-width="1.2"/>
+        <circle cx="11" cy="16" r="1.8" fill="#2b1614"/>
+        <circle cx="21" cy="16" r="1.8" fill="#2b1614"/>
+        <circle cx="11" cy="23" r="1.8" fill="#2b1614"/>
+        <circle cx="21" cy="23" r="1.8" fill="#2b1614"/>
+        <ellipse cx="16" cy="9" rx="6.5" ry="5" fill="#2b1614"/>
+        <line x1="12" y1="4" x2="9" y2="1" stroke="#2b1614" stroke-width="1.1"/>
+        <line x1="20" y1="4" x2="23" y2="1" stroke="#2b1614" stroke-width="1.1"/>
+      </svg>`;
+    }
+    if(type === 'spider'){
+      return `<svg viewBox="0 0 32 32" width="${size}" height="${size}">
+        <ellipse cx="16" cy="19" rx="6" ry="7.5" fill="${BUG_COLOR.spider}" stroke="#000" stroke-width="1"/>
+        <circle cx="16" cy="10" r="4.2" fill="${BUG_COLOR.spider}" stroke="#000" stroke-width="1"/>
+        <g stroke="${BUG_COLOR.spider}" stroke-width="1.6" fill="none">
+          <path d="M11 14 Q4 12 2 6"/>
+          <path d="M11 17 Q3 17 1 13"/>
+          <path d="M11 21 Q3 23 2 28"/>
+          <path d="M11 24 Q4 27 3 31"/>
+          <path d="M21 14 Q28 12 30 6"/>
+          <path d="M21 17 Q29 17 31 13"/>
+          <path d="M21 21 Q29 23 30 28"/>
+          <path d="M21 24 Q28 27 29 31"/>
+        </g>
+      </svg>`;
+    }
+    // mantis: elongated body, triangular head, two raised forelegs "praying"
+    return `<svg viewBox="0 0 32 32" width="${size}" height="${size}">
+      <g stroke="${BUG_COLOR.mantis}" stroke-width="1.6" fill="none">
+        <path d="M16 30 L14 6"/>
+        <path d="M14 24 Q6 22 4 26"/>
+        <path d="M14 24 Q22 22 24 26"/>
+        <path d="M14 15 Q7 13 5 9"/>
+        <path d="M14 15 Q21 13 23 9"/>
+      </g>
+      <ellipse cx="15" cy="14" rx="3.4" ry="9" fill="${BUG_COLOR.mantis}" stroke="#1f3a1e" stroke-width="1"/>
+      <path d="M14 5 L11 -1 L17 -1 Z" fill="${BUG_COLOR.mantis}" stroke="#1f3a1e" stroke-width="1" transform="translate(0,3)"/>
+      <circle cx="12.5" cy="6.5" r="0.8" fill="#1f3a1e"/>
+      <circle cx="17" cy="6.5" r="0.8" fill="#1f3a1e"/>
+    </svg>`;
+  }
+
+  function noteToMidi(noteName, octave){
+    return (octave + 1) * 12 + pitchClass(noteName);
+  }
+  function midiToFreq(midi){ return 440 * Math.pow(2, (midi - 69) / 12); }
+  function noteLabel(n){ return n.replace('#','♯').replace('b','♭'); }
+
+  let audioCtx = null;
+  function playTone(freq, startTime, dur){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.22, startTime + 0.02);
+    gain.gain.linearRampToValueAtTime(0.22, startTime + dur - 0.05);
+    gain.gain.linearRampToValueAtTime(0, startTime + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + dur);
+  }
+
+  // Notifies a parent page embedding this tool in an iframe (e.g. the Boy
+  // game) that the player did a specific thing. Sent at most once per goal
+  // id per page load. Harmless no-op when not embedded.
+  const sentGoals = {};
+  function sendBoyGoal(goal){
+    if(sentGoals[goal]) return;
+    sentGoals[goal] = true;
+    window.parent.postMessage({ source: 'boy-tool', tool: 'violinScales', goal: goal }, '*');
+  }
+
+  let currentKey = 'A';
+  let currentMode = 'major';
+  let firstKeyChange = true, firstModeChange = true, firstPlay = true;
+
+  function buildTetrachord(half, tetra, octaves){
+    const positions = tetra.positions.map((p, i) => ({
+      finger: p.f,
+      note: p.n,
+      octave: octaves[i],
+      degree: half === 'lower' ? i + 1 : i + 5
+    }));
+    return { string: tetra.string, positions };
+  }
+
+  function render(){
+    const scale = SCALES[currentKey][currentMode];
+    const octaves = OCTAVES[currentKey];
+    const lower = buildTetrachord('lower', scale.lower, octaves.lower);
+    const upper = buildTetrachord('upper', scale.upper, octaves.upper);
+
+    document.getElementById('scaleName').textContent =
+      currentKey + (currentMode === 'major' ? ' Major' : ' Natural Minor');
+
+    const wrap = document.getElementById('stringsWrap');
+    wrap.innerHTML = '';
+    const bugsFound = [];
+    [lower, upper].forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'string-row';
+      const label = document.createElement('div');
+      label.className = 'string-label';
+      label.textContent = entry.string + ' string';
+      row.appendChild(label);
+
+      const posWrap = document.createElement('div');
+      posWrap.className = 'positions';
+
+      entry.positions.forEach((p, i) => {
+        const posEl = document.createElement('div');
+        posEl.className = 'pos';
+        posEl.dataset.midi = noteToMidi(p.note, p.octave);
+        const degreeLabel = (currentMode === 'minor' && FLATTED_DEGREES.includes(p.degree))
+          ? '♭' + p.degree : String(p.degree);
+        const isOpen = p.finger === 'open';
+        posEl.innerHTML = `
+          <div class="finger${isOpen ? ' open' : ''}">${isOpen ? 'O' : p.finger}</div>
+          <div class="note">${noteLabel(p.note)}</div>
+          <div class="degree">${degreeLabel}</div>`;
+        posWrap.appendChild(posEl);
+
+        if(i < entry.positions.length - 1){
+          const next = entry.positions[i + 1];
+          const isHalf = stepSize(p.note, next.note) === 1;
+          // A bug only exists between two actual fingers, adjacent by
+          // number — never on the open-string gap, even if that gap
+          // happens to be the half step (see the natural-minor case where
+          // this hides one bug entirely).
+          const bug = (!isOpen && next.finger !== 'open' && next.finger === p.finger + 1 && isHalf)
+            ? BUG_BY_FINGER_PAIR[p.finger] : null;
+          const seg = document.createElement('div');
+          seg.className = 'segment ' + (isHalf ? 'half' : 'whole');
+          if(bug){
+            bugsFound.push(bug);
+            seg.innerHTML = `<span class="bug-icon">${bugIconSVG(bug, 26)}</span><span class="bug-label">${BUG_LABEL[bug]}</span>`;
+          } else {
+            seg.innerHTML = `<div class="bar"></div><div class="step-label">${isHalf ? 'half step' : 'whole step'}</div>`;
+          }
+          posWrap.appendChild(seg);
+        }
+      });
+
+      row.appendChild(posWrap);
+      wrap.appendChild(row);
+    });
+
+    const summary = document.getElementById('bugSummary');
+    summary.innerHTML = bugsFound.map(b => `${bugIconSVG(b,22)} <span>${BUG_LABEL[b]}</span>`).join('&nbsp;&nbsp;')
+      + (bugsFound.length < 2 ? ' <span style="opacity:0.7">(the other half step sits right off the open string — no bug there)</span>' : '');
+
+    const why = document.getElementById('whyPanel');
+    if(currentMode === 'major'){
+      why.innerHTML = `<h2>Why major sounds the way it does</h2>
+        <p>Major keeps every scale degree natural (unraised, unlowered) — a bright, open sound. Shift the same finger shape to any starting note and the bug travels with it: this key's fingering puts the half step between the <b>${lastMajorFingerPair()}</b>, on both strings.</p>`;
+    } else {
+      why.innerHTML = `<h2>Why minor sounds the way it does</h2>
+        <p>Natural minor lowers the 3rd, 6th, and 7th scale degrees (♭3, ♭6, ♭7) compared to major — that's the darker color you hear. It also moves where the half steps fall compared to major's fingering.</p>
+        <div class="callout">That ♭7 is called the <b>subtonic</b> — a whole step below the octave, so the scale doesn't pull strongly back to the tonic. Raise it a half step and it becomes a <b>leading tone</b> (like major's 7th) that does pull back hard — that's what a harmonic minor scale does. This app sticks to natural minor for now.</p>`;
+    }
+
+    function lastMajorFingerPair(){
+      const pairs = { mantis: '1st & 2nd finger', spider: '2nd & 3rd finger', ladybug: '3rd & 4th finger' };
+      return bugsFound.length ? pairs[bugsFound[0]] : 'open string';
+    }
+  }
+
+  function playScale(){
+    const wrap = document.getElementById('stringsWrap');
+    const posEls = Array.from(wrap.querySelectorAll('.pos'));
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    const noteDur = 0.42, gap = 0.45;
+    posEls.forEach((el, i) => {
+      const midi = parseFloat(el.dataset.midi);
+      const t = now + i * gap;
+      playTone(midiToFreq(midi), t, noteDur);
+      setTimeout(() => {
+        posEls.forEach(p => p.classList.remove('playing'));
+        el.classList.add('playing');
+        if(i === posEls.length - 1) setTimeout(() => el.classList.remove('playing'), noteDur * 1000);
+      }, i * gap * 1000);
+    });
+    if(firstPlay){ firstPlay = false; sendBoyGoal('play_scale'); }
+  }
+
+  document.querySelectorAll('.key-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.key-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentKey = btn.dataset.key;
+      render();
+      if(firstKeyChange){ firstKeyChange = false; sendBoyGoal('key_change'); }
+    });
+  });
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMode = btn.dataset.mode;
+      render();
+      if(currentMode === 'minor' && firstModeChange){ firstModeChange = false; sendBoyGoal('mode_change'); }
+    });
+  });
+  document.getElementById('playBtn').addEventListener('click', playScale);
+
+  document.getElementById('legendMantis').innerHTML = bugIconSVG('mantis', 28);
+  document.getElementById('legendSpider').innerHTML = bugIconSVG('spider', 28);
+  document.getElementById('legendLadybug').innerHTML = bugIconSVG('ladybug', 28);
+
+  render();
+})();
+</script>
+</body>
+</html>
