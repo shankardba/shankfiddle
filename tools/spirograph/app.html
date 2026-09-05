@@ -1583,20 +1583,52 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
   function randInt(lo,hi){ return Math.floor(lo + Math.random()*(hi-lo+1)); }
   function randFloat(lo,hi){ return lo + Math.random()*(hi-lo); }
 
+  // The period T is literally how many loops the curve makes before it closes — a big T
+  // means a dense tangle of overlapping loops, a small one a clean, sparse figure. The
+  // 34 curated presets range T=4..56 (avg ~17), so that's the target band for "delicate."
+  function computePeriod(n0,n1,n2,n3, extraOn, n4, n5){
+    const a = n1 / gcd(n0,n1);
+    const b = (n1*n3) / gcd(n0*n2, n1*n3);
+    let T = lcm(a,b);
+    if(extraOn){
+      const c = (n1*n3*n5) / gcd(n0*n2*n4, n1*n3*n5);
+      T = lcm(T, c);
+    }
+    return T;
+  }
+
+  // Below, each randomizer generates a few dozen candidate gear sets and keeps the one
+  // with the smallest period — random n0..n5 chosen independently are coprime-ish (and
+  // hence high-period) far more often than not, which is what was making "Randomize"
+  // look cluttered. Rejection sampling against maxT is cheap (just gcd/lcm, no curve
+  // built) so this costs nothing perceptible and reliably lands in a "neat" range
+  // instead of leaving it to chance.
+
   // ---- per-section randomizers (mirrors the fractal explorer's per-category buttons) ----
   function randomizeGearsOnly(){
-    const n1 = randInt(40, 220);
-    const n0 = n1 + randInt(8, 90);
-    const n2 = Math.max(4, Math.round(n1 * randFloat(0.22, 0.5)));
-    const n3 = Math.max(2, Math.round(n2 * randFloat(0.35, 0.85)));
+    const maxT = 56;
+    let best = null;
+    for(let attempt=0; attempt<400; attempt++){
+      const n1 = randInt(40, 220);
+      const n0 = n1 + randInt(8, 90);
+      const n2 = Math.max(4, Math.round(n1 * randFloat(0.22, 0.5)));
+      const n3 = Math.max(2, Math.round(n2 * randFloat(0.35, 0.85)));
+      let n4 = state.n4, n5 = state.n5;
+      if(state.extraWheel){
+        n5 = randInt(8, Math.max(9, Math.round(n3*0.6)));
+        n4 = n5 + randInt(4, Math.max(5, Math.round(n3*0.5)));
+      }
+      const T = computePeriod(n0,n1,n2,n3, state.extraWheel, n4, n5);
+      if(!best || T < best.T) best = {n0,n1,n2,n3,n4,n5,T};
+      if(T <= maxT) break;
+    }
+    const {n0,n1,n2,n3,n4,n5} = best;
     state.n0=n0; state.n1=n1; state.n2=n2; state.n3=n3;
     document.getElementById('n0').value=n0;
     document.getElementById('n1').value=n1;
     document.getElementById('n2').value=n2;
     document.getElementById('n3').value=n3;
     if(state.extraWheel){
-      const n5 = randInt(8, Math.max(9, Math.round(n3*0.6)));
-      const n4 = n5 + randInt(4, Math.max(5, Math.round(n3*0.5)));
       state.n4=n4; state.n5=n5;
       document.getElementById('n4').value=n4;
       document.getElementById('n5').value=n5;
@@ -1644,22 +1676,41 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
   document.getElementById('randomizeColorBtn').addEventListener('click', randomizeColorOnly);
 
   function doRandomize(wild){
-    const n1 = wild ? randInt(60, 400) : randInt(40, 220);
-    const n0 = n1 + randInt(wild?4:8, wild?140:90);
-    const n2 = Math.max(4, Math.round(n1 * randFloat(wild?0.12:0.22, wild?0.6:0.5)));
-    const n3 = Math.max(2, Math.round(n2 * randFloat(wild?0.25:0.35, 0.9)));
+    // Wild is allowed a busier ceiling (it's the "give me something complex" button) but
+    // both stay far below the pathological thousands-of-loops territory that made results
+    // feel cluttered — see computePeriod's comment for why this is the lever that matters.
+    const maxT = wild ? 130 : 56;
+    const extraChance = wild ? 0.55 : 0.2;
+
+    let best = null;
+    for(let attempt=0; attempt<400; attempt++){
+      const n1 = wild ? randInt(60, 400) : randInt(40, 220);
+      const n0 = n1 + randInt(wild?4:8, wild?140:90);
+      const n2 = Math.max(4, Math.round(n1 * randFloat(wild?0.12:0.22, wild?0.6:0.5)));
+      const n3 = Math.max(2, Math.round(n2 * randFloat(wild?0.25:0.35, 0.9)));
+
+      const extraOn = Math.random() < extraChance;
+      let n4=0, n5=0;
+      if(extraOn){
+        n5 = randInt(8, Math.max(9, Math.round(n3*0.6)));
+        n4 = n5 + randInt(4, Math.max(5, Math.round(n3*0.5)));
+      }
+
+      const T = computePeriod(n0,n1,n2,n3, extraOn, n4, n5);
+      if(!best || T < best.T) best = {n0,n1,n2,n3, extraOn,n4,n5, T};
+      if(T <= maxT) break;
+    }
+    const {n0,n1,n2,n3, extraOn,n4,n5} = best;
+
     const hMax = 0.975 * (1 - n2/n1);
     const h = randFloat(-0.95, 0.95) * hMax;
     const holeOptions = wild ? [0, 0, 1.5, 3, 4.5] : [0, 1.5, 3, 4.5];
     const holeMm = holeOptions[randInt(0, holeOptions.length-1)];
 
-    const extraChance = wild ? 0.55 : 0.2;
-    state.extraWheel = Math.random() < extraChance;
+    state.extraWheel = extraOn;
     extraToggleEl.classList.toggle('on', state.extraWheel);
     extraFieldsEl.style.display = state.extraWheel ? 'block' : 'none';
     if(state.extraWheel){
-      const n5 = randInt(8, Math.max(9, Math.round(n3*0.6)));
-      const n4 = n5 + randInt(4, Math.max(5, Math.round(n3*0.5)));
       state.n4 = n4; state.n5 = n5;
       document.getElementById('n4').value = n4;
       document.getElementById('n5').value = n5;
