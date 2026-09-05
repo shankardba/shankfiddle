@@ -207,6 +207,19 @@
     cursor: pointer;
   }
   #tools-btn:hover { border-color: #ffd27a; }
+  #mute-btn {
+    top: 64px; right: 16px;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(5,7,10,0.55);
+    border: 1px solid rgba(240,168,60,0.4);
+    color: #f7ece9;
+    font-size: 1.1rem;
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+  }
+  #mute-btn:hover { border-color: #ffd27a; }
+  #mute-btn.muted { color: #8a8f96; }
   #tools-panel {
     display: none;
     top: 64px; left: 50%; transform: translateX(-50%);
@@ -356,6 +369,7 @@
     <span><span class="icon">&#11088;</span><span id="reputation-count-text">0</span></span>
   </div>
   <div id="shard-counter" class="hud"><span class="icon">&#10022;</span><span id="shard-count-text">0 / 0</span></div>
+  <button id="mute-btn" class="hud" title="Mute music &amp; sound effects">&#128266;</button>
   <button id="tools-btn" class="hud" title="shankFiddle tools">&#127932;</button>
   <div id="tools-panel" class="hud">
     <a href="../circle-of-fifths/" target="_blank" rel="noopener">&#127932; Circle of Fifths</a>
@@ -632,19 +646,34 @@
   // out of the car's destination menu. The Hospital below uses this so it
   // only appears once the story reaches 'diagnosis'; it isn't wired to any
   // walking exit at all, so the car is the only way in or out of it.
+  //
+  // A level can also be locked from the INSIDE — exploration gated behind
+  // a real conversation, not a threshold grind. There's no generic data
+  // field for this (only one level needs it so far): checkPortal() special-
+  // cases it per level id, the same way FIELD_ENTRY_RESPECT gates walking
+  // INTO the Field. Home is the current example — see homeUnlocked() —
+  // you can't leave until you've heard both parents out at least once. If
+  // a second level ever needs this, generalize it into a per-level
+  // `lockedUntil` field read there instead of hardcoding a second id.
   // ========================================================================
   var LEVELS = [
     {
+      // A cozy interior (hardwood floor, warm plaster walls — see
+      // INTERIOR_THEMES.home) rather than the yard outside it, since this
+      // is where Mom and Dad actually are. It's also the story's locked
+      // starting room: see homeUnlocked()/checkPortal() — you can't walk
+      // out the front door until you've heard both of them out at least
+      // once, however that first exchange goes.
       id: 'home',
       name: 'Home',
       map: [
         "###########",
         "#.........#",
-        "#..HHH....#",
-        "#..HHH..D.#",
+        "#..oo.....#",
+        "#.......D.#",
         "#.........#",
         "#....@...M#",
-        "#,.......,#",
+        "#o........#",
         "#.........#",
         "#####2#####"
       ],
@@ -1570,6 +1599,7 @@
   // before. Hospital's palette predates this registry (it shipped its own
   // clinical white first) — its floor values are carried over unchanged.
   var INTERIOR_THEMES = {
+    home: { wall: 0xe0cba8, floor: 0x8a5c34, prop: 0x5a4230, bg: 0x2e2318 },
     hospital: { wall: 0xe3e8ea, floor: 0xeef1f2, prop: 0xc7d1d4, bg: 0xdfe6e8 },
     schoolhouse: { wall: 0x8a6a45, floor: 0xd8bd8a, prop: 0x2f4a3a, bg: 0x3a2e20 },
     studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20 },
@@ -2487,21 +2517,50 @@
     camera.position.copy(player.obj.position).add(camOffset);
     camera.lookAt(player.obj.position.clone().add(camLookAhead));
 
+    startMusicForLevel(levelDef.id);
     showToast(levelDef.name, 2000);
   }
 
   // ----------------------------------------------------------------------
-  // Audio — tiny synthesized SFX, no external files
+  // Audio — tiny synthesized SFX + a per-level 8-bit soundtrack, no
+  // external files. Everything routes through masterGain, so one mute
+  // toggle (see muted/setMuted() and #mute-btn below) silences both at
+  // once — sfxBus and musicBus underneath it exist only to let music sit
+  // quieter than sound effects, never to be muted independently.
   // ----------------------------------------------------------------------
-  var audioCtx = null;
+  var audioCtx = null, masterGain = null, sfxBus = null, musicBus = null;
+  var muted = (function () {
+    try { return localStorage.getItem('boy_muted') === '1'; } catch (e) { return false; }
+  })();
   function ensureAudio() {
     if (!audioCtx) {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       audioCtx = new Ctx();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = muted ? 0 : 1;
+      masterGain.connect(audioCtx.destination);
+      sfxBus = audioCtx.createGain();
+      sfxBus.gain.value = 1;
+      sfxBus.connect(masterGain);
+      musicBus = audioCtx.createGain();
+      musicBus.gain.value = 0.55;
+      musicBus.connect(masterGain);
     }
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    // Music is scheduled independently of any user gesture (see
+    // startMusicForLevel), so the very first gesture that unlocks
+    // audioCtx also needs to kick the current level's loop off.
+    if (!musicState.timer && world) startMusicForLevel(world.id);
   }
-  function tone(freq, start, dur, type, gain) {
+  function setMuted(next) {
+    muted = next;
+    try { localStorage.setItem('boy_muted', muted ? '1' : '0'); } catch (e) {}
+    if (masterGain) masterGain.gain.value = muted ? 0 : 1;
+    var btn = document.getElementById('mute-btn');
+    btn.textContent = muted ? '\u{1F507}' : '\u{1F50A}';
+    btn.classList.toggle('muted', muted);
+  }
+  function tone(freq, start, dur, type, gain, bus) {
     if (!audioCtx) return;
     var osc = audioCtx.createOscillator();
     var g = audioCtx.createGain();
@@ -2509,7 +2568,7 @@
     osc.frequency.value = freq;
     g.gain.value = 0;
     osc.connect(g);
-    g.connect(audioCtx.destination);
+    g.connect(bus || sfxBus);
     var t0 = audioCtx.currentTime + start;
     g.gain.setValueAtTime(0, t0);
     g.gain.linearRampToValueAtTime(gain || 0.18, t0 + 0.02);
@@ -2521,6 +2580,174 @@
   function sfxWin() { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, i * 0.12, 0.28, 'triangle'); }); }
   function sfxBump() { tone(140, 0, 0.06, 'square', 0.08); }
   function sfxPortal() { tone(440, 0, 0.14, 'sine', 0.14); tone(660, 0.08, 0.2, 'sine', 0.14); tone(880, 0.16, 0.26, 'sine', 0.12); }
+
+  // A one-shot flourish for the moment a challenge is actually LEARNED
+  // (story.learned[ch.key] going true for the first time — see
+  // completeMissionStep()), not a loop. The four classic instrument
+  // teachers (violin/piano/guitar/flute) each get a motif shaped like
+  // their instrument; anything else falls back to the original sfxWin()
+  // fanfare, so no learned-moment plays silent.
+  var INSTRUMENT_STINGS = {
+    violin: { notes: [392.00, 493.88, 587.33, 783.99], wave: 'triangle', step: 0.11, dur: 0.32 },   // G4 B4 D5 G5 — bright ascending arpeggio
+    piano: { notes: [783.99, 659.25, 523.25, 349.23], wave: 'square', step: 0.09, dur: 0.22 },       // G5 E5 C5 F4 — crisp descending run
+    guitar: { notes: [164.81, 196.00, 220.00, 246.94, 329.63], wave: 'square', step: 0.09, dur: 0.24 }, // E3 G3 A3 B3 E4 — bluesy walk-up
+    flute: { notes: [523.25, 659.25, 783.99, 659.25, 523.25], wave: 'sine', step: 0.14, dur: 0.4 }   // C5 E5 G5 E5 C5 — airy rise & fall
+  };
+  function sfxInstrumentLearned(key) {
+    var sting = INSTRUMENT_STINGS[key];
+    if (!sting) { sfxWin(); return; }
+    sting.notes.forEach(function (f, i) { tone(f, i * sting.step, sting.dur, sting.wave, 0.16, sfxBus); });
+  }
+
+  // ---- 8-bit soundtrack ----
+  // One looping theme per level, matching that place's vibe — Home warm,
+  // Hospital cold and sparse, the Clearing a bright village jig, and each
+  // single-teacher level (Hollow/Riverside/Meadow/Schoolhouse/Studio/
+  // Conservatory) carrying that teacher's own instrument/subject motif.
+  // Maestro Alden is the one teacher without his own level (he shares the
+  // Clearing with Jono/Elsie/Milo) — his motif lives in INSTRUMENT_STINGS
+  // above instead of here, played once when the violin is actually learned.
+  //
+  // A theme is { tempo, wave, pattern }: pattern is a sequence of
+  // [melodyNote, bassNoteOrNull, steps] triples, played in a single
+  // lockstep loop (both notes of a step start together) — 'R' means rest.
+  // tempo is milliseconds per step. Note names are parsed by noteFreq().
+  var MUSIC_THEMES = {
+    home: {
+      tempo: 320, wave: 'triangle',
+      pattern: [
+        ['F4', 'F3', 2], ['A4', null, 1], ['C5', 'C3', 1],
+        ['A4', null, 2], ['F4', 'F3', 1], ['G4', null, 1],
+        ['A4', 'Bb2', 2], ['G4', null, 1], ['F4', 'C3', 1]
+      ]
+    },
+    hospital: {
+      // No bass at all, long held tones, lots of rest — cold and empty on
+      // purpose. wave 'sine' is the plainest, least "alive" timbre we have.
+      tempo: 420, wave: 'sine',
+      pattern: [
+        ['A3', null, 3], ['R', null, 2], ['C4', null, 2], ['R', null, 1],
+        ['B3', null, 3], ['R', null, 2], ['A3', null, 3], ['R', null, 3]
+      ]
+    },
+    clearing: {
+      tempo: 210, wave: 'square',
+      pattern: [
+        ['G4', 'G3', 1], ['B4', null, 1], ['D5', 'D3', 1], ['B4', null, 1],
+        ['G4', 'G3', 1], ['A4', null, 1], ['B4', 'D3', 1], ['D5', null, 1],
+        ['E5', 'G3', 1], ['D5', null, 1], ['B4', 'D3', 1], ['G4', null, 1]
+      ]
+    },
+    field: {
+      // Slower and steadier than the Clearing — plodding root-note bass,
+      // like working a steady rhythm into the ground.
+      tempo: 260, wave: 'triangle',
+      pattern: [
+        ['D4', 'G2', 2], ['B3', null, 2], ['D4', 'G2', 2], ['G4', null, 2],
+        ['E4', 'C3', 2], ['D4', null, 2], ['B3', 'G2', 2], ['D4', null, 2]
+      ]
+    },
+    hollow: {
+      // Ms. Whitfield teaches piano here — an arpeggiated, no-bass line
+      // (a solo piano, not a band) in a minor key for the cave-like hush.
+      tempo: 230, wave: 'triangle',
+      pattern: [
+        ['D4', null, 1], ['F4', null, 1], ['A4', null, 1], ['D5', null, 1],
+        ['C5', null, 1], ['A4', null, 1], ['F4', null, 1], ['A4', null, 1],
+        ['Bb3', null, 1], ['D4', null, 1], ['F4', null, 1], ['A4', null, 1],
+        ['G4', null, 1], ['F4', null, 1], ['D4', null, 2]
+      ]
+    },
+    riverside: {
+      // Jax teaches guitar — a syncopated blues-scale riff with a
+      // square-wave "twang".
+      tempo: 190, wave: 'square',
+      pattern: [
+        ['E4', 'E3', 1], ['G4', null, 1], ['E4', null, 1], ['R', null, 1],
+        ['A4', 'A2', 1], ['G4', null, 1], ['E4', null, 2],
+        ['D4', 'D3', 1], ['E4', null, 1], ['G4', null, 1], ['R', null, 1],
+        ['E4', 'E3', 2]
+      ]
+    },
+    meadow: {
+      // Sora teaches flute — slow, breathy, wide-interval, no bass at all
+      // so it stays airy and open like the field itself.
+      tempo: 300, wave: 'sine',
+      pattern: [
+        ['E4', null, 3], ['G4', null, 2], ['A4', null, 3],
+        ['G4', null, 2], ['E4', null, 3], ['D4', null, 3],
+        ['C4', null, 4]
+      ]
+    },
+    schoolhouse: {
+      // Mr. Wainwright teaches fractals — the melody is a single 3-note
+      // cell (step, step, step) repeated at successively higher
+      // transpositions before resolving, echoing self-similarity instead
+      // of just being "a cheerful classroom tune."
+      tempo: 200, wave: 'square',
+      pattern: [
+        ['C4', null, 1], ['D4', null, 1], ['E4', null, 1],
+        ['F4', null, 1], ['G4', null, 1], ['A4', null, 1],
+        ['G4', null, 1], ['A4', null, 1], ['B4', null, 1],
+        ['C5', null, 1], ['B4', null, 1], ['C5', null, 2]
+      ]
+    },
+    studio: {
+      // Professor Coffee teaches modular synthesis — a fast sawtooth
+      // 16th-note arpeggio, the most "electronic sequencer" timbre and
+      // rhythm we have on hand.
+      tempo: 130, wave: 'sawtooth',
+      pattern: [
+        ['A4', null, 1], ['C5', null, 1], ['E5', null, 1], ['A5', null, 1],
+        ['E5', null, 1], ['C5', null, 1], ['A4', null, 1], ['R', null, 1],
+        ['G4', null, 1], ['B4', null, 1], ['D5', null, 1], ['G5', null, 1],
+        ['D5', null, 1], ['B4', null, 1], ['G4', null, 1], ['R', null, 1]
+      ]
+    },
+    conservatory: {
+      // Sir Earth teaches the Circle of Fifths — so the bass line IS one:
+      // A-D-G-C, each root a fifth below the last (the vi-ii-V-I everyone
+      // already knows the sound of), with the melody arpeggiating each
+      // chord in turn.
+      tempo: 260, wave: 'triangle',
+      pattern: [
+        ['A4', 'A3', 1], ['C5', null, 1], ['E5', null, 1], ['C5', null, 1],
+        ['D4', 'D3', 1], ['F4', null, 1], ['A4', null, 1], ['F4', null, 1],
+        ['G4', 'G3', 1], ['B4', null, 1], ['D5', null, 1], ['B4', null, 1],
+        ['C4', 'C3', 1], ['E4', null, 1], ['G4', null, 1], ['E4', null, 1]
+      ]
+    }
+  };
+
+  var NOTE_SEMITONES = { C: -9, 'C#': -8, D: -7, 'D#': -6, E: -5, F: -4, 'F#': -3, G: -2, 'G#': -1, A: 0, 'A#': 1, Bb: 1, B: 2 };
+  function noteFreq(name) {
+    var m = /^([A-G][#b]?)(\d)$/.exec(name);
+    if (!m) return 0;
+    var semitonesFromA4 = NOTE_SEMITONES[m[1]] + (parseInt(m[2], 10) - 4) * 12;
+    return 440 * Math.pow(2, semitonesFromA4 / 12);
+  }
+
+  var musicState = { levelId: null, stepIndex: 0, timer: null };
+  function scheduleNextMusicStep() {
+    var theme = MUSIC_THEMES[musicState.levelId];
+    if (!theme || !audioCtx) { musicState.timer = null; return; }
+    var step = theme.pattern[musicState.stepIndex % theme.pattern.length];
+    var stepSeconds = (step[2] * theme.tempo) / 1000;
+    if (step[0] !== 'R') tone(noteFreq(step[0]), 0, stepSeconds * 0.9, theme.wave, 0.11, musicBus);
+    if (step[1]) tone(noteFreq(step[1]) / 2, 0, stepSeconds * 0.9, theme.wave, 0.09, musicBus);
+    musicState.stepIndex++;
+    musicState.timer = setTimeout(scheduleNextMusicStep, stepSeconds * 1000);
+  }
+  // Called on every loadLevel() and from ensureAudio() once audio first
+  // unlocks — safe to call with no audioCtx yet (it just resets the
+  // pointer; ensureAudio() picks the loop back up once it exists).
+  function startMusicForLevel(levelId) {
+    clearTimeout(musicState.timer);
+    musicState.timer = null;
+    musicState.levelId = levelId;
+    musicState.stepIndex = 0;
+    if (audioCtx && MUSIC_THEMES[levelId]) scheduleNextMusicStep();
+  }
 
   // ----------------------------------------------------------------------
   // HUD
@@ -2660,6 +2887,12 @@
   };
   document.getElementById('tools-btn').addEventListener('click', function () {
     document.getElementById('tools-panel').classList.toggle('open');
+  });
+
+  setMuted(muted); // sync the button's icon to the restored localStorage preference
+  document.getElementById('mute-btn').addEventListener('click', function () {
+    ensureAudio();
+    setMuted(!muted);
   });
 
   function findNearbySign() {
@@ -2907,6 +3140,7 @@
       if (!story.learned[ch.key]) {
         story.learned[ch.key] = true;
         showToast(ch.learnedMessage || ('You learned ' + ch.key + '!'), 2800);
+        sfxInstrumentLearned(ch.key);
       }
       // A music challenge points its `link` at the Circle of Fifths so you
       // can go practice what the teacher just taught; a challenge with no
@@ -3081,6 +3315,15 @@
   // into his field instead of on talking to him.
   var FIELD_ENTRY_RESPECT = 2;
 
+  // The very first room is locked from the inside: the story doesn't
+  // start until you've heard both parents out, at least once each — see
+  // Dad's and Mom's `isFamily` dialogue and checkPortal() below. Respect
+  // never decreases once earned, so this is a one-time gate, not
+  // something that can re-lock later — exactly like FIELD_ENTRY_RESPECT.
+  function homeUnlocked() {
+    return (story.respect.dad || 0) >= 1 && (story.respect.mom || 0) >= 1;
+  }
+
   function checkPortal() {
     var portals = world.features.portals;
     for (var i = 0; i < portals.length; i++) {
@@ -3088,6 +3331,10 @@
       if (p.x === player.tileX && p.y === player.tileY) {
         if (p.to === 'field' && (story.respect.farmer_jono || 0) < FIELD_ENTRY_RESPECT) {
           showToast("The field's fenced off — Farmer Jono hasn't said you can go in yet.", 2200);
+          return;
+        }
+        if (world.id === 'home' && p.to !== 'home' && !homeUnlocked()) {
+          showToast("You're not going anywhere until you've heard both of them out.", 2200);
           return;
         }
         var destIndex = LEVEL_INDEX[p.to];
