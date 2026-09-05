@@ -13,8 +13,18 @@
   (gears, symmetry, base curve), the frequency-inversion solver (T1, T3, T
   -> gears), and the similarity readouts (F, n_symm, the a/b decomposition,
   C, n_C, m, l) are all here. Every control redraws live on every input —
-  there is no separate "update" step. The rendering, controls, and
-  interaction are new.
+  there is no separate "update" step.
+
+  Workflow ideas (live drawing with a moving pen, dim/clear/keep-drawing
+  compositing, pen styles, brightness, zoom buttons, graduated randomizers)
+  are adapted from Abel Vincze's HTML Spirograph — https://htmlspirograph.com/
+  — note that site's actual drawing mechanism is a different (two-arm
+  linkage) machine; only its UX ideas are ported here, onto the roulette
+  math above.
+
+  New in this version: a "the math" panel that explains, in plain English
+  plus the live parametric equations with the current numbers substituted
+  in, exactly why the on-screen curve looks the way it does.
 
   Self-contained: no build step, no dependencies beyond two Google Fonts.
   To embed:
@@ -66,7 +76,7 @@
   }
   .hud span{color:var(--cool);}
 
-  .gear-btn, .download-btn, .link-btn{
+  .gear-btn, .download-btn, .link-btn, .explain-btn{
     position:absolute;top:14px;z-index:2;
     width:36px;height:36px;border-radius:4px;
     background:rgba(18,24,34,0.72);
@@ -79,10 +89,28 @@
   .gear-btn{right:14px;}
   .download-btn{left:14px;}
   .link-btn{left:58px;}
-  .gear-btn:hover, .download-btn:hover, .link-btn:hover{background:var(--surface-2);border-color:var(--cool);}
-  .gear-btn:focus-visible, .download-btn:focus-visible, .link-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .explain-btn{left:102px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
+  .gear-btn:hover, .download-btn:hover, .link-btn:hover, .explain-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .link-btn:focus-visible, .explain-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .gear-btn.open, .explain-btn.open{border-color:var(--warm);color:var(--warm);}
   .gear-btn svg, .download-btn svg, .link-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
   .gear-btn.open svg{transform:rotate(75deg);}
+
+  .zoom-controls{
+    position:absolute;right:14px;bottom:54px;z-index:2;
+    display:flex;flex-direction:column;
+  }
+  .zoom-controls button{
+    width:32px;height:28px;
+    background:rgba(18,24,34,0.72);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:inherit;font-size:16px;line-height:1;
+    cursor:pointer;
+  }
+  .zoom-controls button:first-child{border-radius:4px 4px 0 0;border-bottom:none;}
+  .zoom-controls button:last-child{border-radius:0 0 4px 4px;}
+  .zoom-controls button:hover{background:var(--surface-2);border-color:var(--cool);}
 
   .toast{
     position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-8px);
@@ -103,6 +131,31 @@
   }
   .panel.open{transform:translateX(0);}
 
+  .math-panel{
+    position:absolute;top:0;left:0;height:100%;width:360px;max-width:88vw;z-index:1;
+    background:rgba(10,14,22,0.97);
+    border-right:1px solid var(--border);
+    padding:60px 22px 24px;
+    transform:translateX(-100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .math-panel.open{transform:translateX(0);}
+  .math-title{font-size:15px;font-weight:600;margin-bottom:4px;color:var(--text);}
+  .math-subtitle{font-size:11px;color:var(--text-muted);margin-bottom:20px;line-height:1.5;}
+  .math-section{margin-bottom:22px;}
+  .math-section + .math-section{border-top:1px solid var(--border);padding-top:18px;}
+  .math-sub{font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--cool);margin-bottom:10px;}
+  .math-prose{font-size:12.5px;line-height:1.75;color:var(--text-muted);margin:0;}
+  .math-glossary{list-style:none;font-size:11.5px;line-height:1.85;color:var(--text-muted);margin:0;padding:0;}
+  .math-glossary b{color:var(--warm);font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .math-eq{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.95;color:var(--text);
+    white-space:pre-wrap;background:var(--surface);border:1px solid var(--border);
+    border-radius:6px;padding:12px;margin:0;
+  }
+  .math-eq b{color:var(--warm);font-weight:600;}
+
   .section{margin-bottom:22px;}
   .section + .section{border-top:1px solid var(--border);padding-top:20px;}
   .label{
@@ -111,13 +164,6 @@
   }
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-
-  select{
-    width:100%;padding:9px 10px;background:var(--surface);color:var(--text);
-    border:1px solid var(--border);border-radius:4px;font-family:inherit;
-    font-size:13px;cursor:pointer;
-  }
-  select:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
 
   .num-field{display:flex;flex-direction:column;gap:4px;}
   .num-field label{font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;}
@@ -128,7 +174,7 @@
   }
   .num-field input[type=number]:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
 
-  .swatches{display:flex;gap:8px;margin-bottom:16px;}
+  .swatches{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
   .swatch{
     width:34px;height:34px;border-radius:4px;cursor:pointer;
     border:2px solid transparent;
@@ -169,6 +215,8 @@
   .btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
   .btn-accent{border-color:var(--cool);color:var(--cool);}
   .btn-accent:hover{border-color:var(--warm);color:var(--warm);}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .btn-row .btn{margin-top:0;}
 
   .presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .preset-btn{
@@ -177,6 +225,8 @@
     font-size:10.5px;cursor:pointer;text-align:center;
   }
   .preset-btn:hover{border-color:var(--warm);color:var(--warm);}
+
+  .layer-count{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);margin:8px 0;}
 
   .credit{
     font-size:10px;line-height:1.6;color:var(--text-muted);opacity:0.75;
@@ -192,7 +242,7 @@
   }
   @media (prefers-reduced-motion:reduce){
     .hint{transition:none;}
-    .panel{transition:none;}
+    .panel,.math-panel{transition:none;}
     .gear-btn svg{transition:none;}
   }
 </style>
@@ -222,6 +272,8 @@
     </svg>
   </button>
 
+  <button class="explain-btn" id="explainBtn" aria-label="Explain the math" aria-expanded="false" title="Explain the math">&Sigma;</button>
+
   <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"></circle>
@@ -229,7 +281,45 @@
     </svg>
   </button>
 
+  <div class="zoom-controls">
+    <button id="zoomInBtn" aria-label="Zoom in">+</button>
+    <button id="zoomOutBtn" aria-label="Zoom out">&minus;</button>
+  </div>
+
   <div class="toast" id="toast">Link copied</div>
+
+  <div class="math-panel" id="mathPanel">
+    <div class="math-title">The Math Behind This Curve</div>
+    <p class="math-subtitle">Every number below updates live as you change the wheels, so this always describes exactly what's on screen.</p>
+
+    <div class="math-section">
+      <div class="math-sub">The mechanism</div>
+      <p class="math-prose" id="mechProse"></p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Parameters, in plain English</div>
+      <ul class="math-glossary" id="mathGlossary"></ul>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">The parametric equations</div>
+      <pre class="math-eq" id="mathEquations"></pre>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Why it looks the way it does</div>
+      <p class="math-prose" id="mathNarrative"></p>
+    </div>
+
+    <div class="math-section">
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Label the parts on canvas</div>
+        <div class="switch" id="labelsToggle"></div>
+      </div>
+      <p class="math-prose">Turning this on (and "Show gear mechanism" in the settings panel) draws the actual ring, wheel, hoop and pen-wheel to scale, labeled, and lets you watch them turn while it draws.</p>
+    </div>
+  </div>
 
   <div class="panel" id="panel">
     <div class="section">
@@ -290,18 +380,26 @@
     </div>
 
     <div class="section">
-      <div class="label">Color</div>
+      <div class="label">Pen style</div>
       <div class="swatches" id="paletteSwatches">
-        <div class="swatch active" data-p="0" style="background:linear-gradient(135deg,#3a1a05,#f2a65a)"></div>
-        <div class="swatch" data-p="1" style="background:linear-gradient(135deg,#0a1f2b,#57d9c4)"></div>
-        <div class="swatch" data-p="2" style="background:linear-gradient(135deg,#1a0a2b,#c77af2)"></div>
-        <div class="swatch" data-p="3" style="background:linear-gradient(135deg,#111,#eee)"></div>
-        <div class="swatch" data-p="4" style="background:linear-gradient(135deg,#f24a4a,#57d9c4)"></div>
+        <div class="swatch active" data-p="0" style="background:linear-gradient(135deg,#3a1a05,#f2a65a)" title="Amber"></div>
+        <div class="swatch" data-p="1" style="background:linear-gradient(135deg,#0a1f2b,#57d9c4)" title="Teal"></div>
+        <div class="swatch" data-p="2" style="background:linear-gradient(135deg,#1a0a2b,#c77af2)" title="Violet"></div>
+        <div class="swatch" data-p="3" style="background:linear-gradient(135deg,#111,#eee)" title="Mono"></div>
+        <div class="swatch" data-p="4" style="background:linear-gradient(135deg,#f24a4a,#57d9c4)" title="Fire &amp; Ice"></div>
+        <div class="swatch" data-p="5" style="background:conic-gradient(from 0deg,red,orange,yellow,limegreen,cyan,blue,violet,red)" title="Rainbow"></div>
+        <div class="swatch" data-p="6" style="background:linear-gradient(135deg,#f2a65a 50%,#57d9c4 50%)" title="Zebra"></div>
       </div>
       <div class="slider-row">
         <div style="flex:1;">
           <div class="slider-label"><span>Color cycles</span><span class="val" id="densityVal">2.0</span></div>
           <input type="range" id="densitySlider" min="0.5" max="8" step="0.1" value="2">
+        </div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Brightness</span><span class="val" id="brightnessVal">0.90</span></div>
+          <input type="range" id="brightnessSlider" min="0.25" max="1" step="0.05" value="0.9">
         </div>
       </div>
       <div class="toggle-row" style="margin-top:12px;">
@@ -311,10 +409,31 @@
     </div>
 
     <div class="section">
+      <div class="label">Canvas layers</div>
+      <p class="math-prose" style="margin-bottom:8px;">Keep the current drawing, tweak the gears, and draw a new one on top — like the physical toy, without erasing what's already there.</p>
+      <div class="btn-row">
+        <button class="btn btn-accent" id="keepLayerBtn">Keep this drawing</button>
+        <button class="btn" id="dimLayersBtn">Dim canvas</button>
+      </div>
+      <button class="btn" id="clearLayersBtn">Clear canvas</button>
+      <div class="layer-count" id="layerCount">No layers kept yet</div>
+    </div>
+
+    <div class="section">
       <div class="label">Motion</div>
       <div class="toggle-row">
-        <div class="label" style="margin:0;">Animate draw-in</div>
+        <div class="label" style="margin:0;">Reveal animation</div>
         <div class="switch on" id="animateToggle"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Loop continuously (live drawing)</div>
+        <div class="switch" id="loopToggle"></div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Speed</span><span class="val" id="speedVal">1.0x</span></div>
+          <input type="range" id="speedSlider" min="0.25" max="4" step="0.05" value="1">
+        </div>
       </div>
       <button class="btn" id="replayBtn">Replay drawing</button>
     </div>
@@ -342,7 +461,10 @@
 
     <div class="section">
       <div class="label">Explore</div>
-      <button class="btn btn-accent" id="randomizeBtn">Randomize gears</button>
+      <div class="btn-row">
+        <button class="btn btn-accent" id="randomizeBtn">Randomize</button>
+        <button class="btn btn-accent" id="randomizeWildBtn">Randomize wild</button>
+      </div>
       <button class="btn" id="resetBtn">Reset to default</button>
     </div>
 
@@ -350,11 +472,13 @@
       <p class="credit">
         Second-order roulette (gear-in-hoop-in-wheel) construction after
         <a href="https://glagolj.github.io/gg-blog/roulette/2022/03/14/second-order-roulette.html" target="_blank" rel="noopener">glagolj</a>.
+        Live-drawing &amp; compositing workflow inspired by
+        <a href="https://htmlspirograph.com/" target="_blank" rel="noopener">Abel Vincze's HTML Spirograph</a>.
       </p>
     </div>
   </div>
 
-  <div class="hint" id="hint">Drag to pan · Scroll to zoom · Double-click to reset view<br>Tap the gear for wheels, pen &amp; color</div>
+  <div class="hint" id="hint">Drag to pan · Scroll to zoom · Double-click to reset view<br>Gear = tweak the wheels · &Sigma; = explain the math</div>
 </div>
 
 <script>
@@ -365,6 +489,7 @@
 
   const MM_SCALE = 27.07 / 50.0; // 0.5414 — matches the reference tool's physical-hole calibration
   const MAX_PTS = 260000;
+  const MAX_LAYERS = 8;
 
   function gcd(x,y){ x=Math.abs(x); y=Math.abs(y); while(y){ const t=y; y=x%y; x=t; } return x; }
   function lcm(x,y){ return x*y/gcd(x,y); }
@@ -374,8 +499,10 @@
   const state = {
     n0:140, n1:128, n2:54, n3:45,
     h:0.48, p:0.8, phi:0, holeMm:3,
-    showCircles:false, showSymm:false, showF0:false,
-    palette:0, density:2.0, glow:true, animate:true
+    showCircles:false, showSymm:false, showF0:false, showLabels:false,
+    palette:0, density:2.0, brightness:0.9, glow:true,
+    animate:true, loop:false, speedMult:1,
+    layers:[]
   };
 
   // view (pan/zoom, independent of the generative parameters)
@@ -424,7 +551,10 @@
 
   const DEFAULTS = { n0:140, n1:128, n2:54, n3:45, h:0.48, p:0.8, phi:0, holeMm:3 };
 
-  // ---------- cosine color palettes (shared visual family with the fractal explorer) ----------
+  // ---------- color palettes ----------
+  // 0-4: cosine palettes (shared visual family with the fractal explorer).
+  // 5: true rainbow (HSL). 6: two-tone "zebra" stripes — both new, inspired
+  // by htmlspirograph.com's Rainbow / Zebra pen styles.
   const PALETTES = [
     { a:[0.55,0.35,0.20], b:[0.55,0.35,0.20], c:[1.0,0.7,0.4], d:[0.0,0.15,0.2] },
     { a:[0.15,0.35,0.45], b:[0.25,0.35,0.45], c:[0.6,0.8,1.0], d:[0.3,0.5,0.7] },
@@ -432,12 +562,22 @@
     { a:[0.5,0.5,0.5],    b:[0.5,0.5,0.5],    c:[1.0,1.0,1.0], d:[0.0,0.0,0.0] },
     { a:[0.5,0.5,0.5],    b:[0.5,0.5,0.5],    c:[1.0,1.0,1.0], d:[0.0,0.33,0.67] }
   ];
-  function paletteColor(idx, t){
+  function cosinePalette(idx, t){
     const P = PALETTES[idx];
     const r = clamp(P.a[0] + P.b[0]*Math.cos(6.28318*(P.c[0]*t + P.d[0])), 0, 1);
     const g = clamp(P.a[1] + P.b[1]*Math.cos(6.28318*(P.c[1]*t + P.d[1])), 0, 1);
     const b = clamp(P.a[2] + P.b[2]*Math.cos(6.28318*(P.c[2]*t + P.d[2])), 0, 1);
     return `rgb(${(r*255)|0},${(g*255)|0},${(b*255)|0})`;
+  }
+  function getStrokeColor(paletteIdx, t, segIdx){
+    if(paletteIdx === 5){
+      const hue = (((t % 1) + 1) % 1) * 360;
+      return `hsl(${hue.toFixed(1)},85%,60%)`;
+    }
+    if(paletteIdx === 6){
+      return (segIdx % 2 === 0) ? '#f2a65a' : '#57d9c4';
+    }
+    return cosinePalette(paletteIdx, t);
   }
 
   // ---------- generative math (faithful port of the second-order roulette) ----------
@@ -543,6 +683,26 @@
     return { points: pts, npts };
   }
 
+  // Position of every moving part at a given parameter t — used only for the
+  // (single-point, cheap) live mechanism overlay, not the bulk curve above.
+  function mechanismAt(t){
+    const n0=state.n0, n1=state.n1, n2=state.n2, n3=state.n3;
+    const h = derived.h, p = derived.p, phi = derived.phi;
+    const m0 = n0/n1, m1 = n2/n3;
+    const t1 = m0*t;
+    const t2 = t1 + Math.atan2(h*Math.sin(t1), 1 - h*Math.cos(t1));
+    const a0 = t - t1;
+    const t3 = m1*t2;
+    const a1 = a0 + t2 - t3 + phi;
+
+    const gearCx = (n0-n1)*Math.cos(t), gearCy = (n0-n1)*Math.sin(t);
+    const hoopCx = gearCx + n1*h*Math.cos(a0), hoopCy = gearCy + n1*h*Math.sin(a0);
+    const penWheelCx = hoopCx + (n2-n3)*Math.cos(a0+t2), penWheelCy = hoopCy + (n2-n3)*Math.sin(a0+t2);
+    const penX = penWheelCx + p*n3*Math.cos(a1), penY = penWheelCy + p*n3*Math.sin(a1);
+
+    return { gearCx, gearCy, hoopCx, hoopCy, penWheelCx, penWheelCy, penX, penY };
+  }
+
   // ---------- view transform ----------
   let dpr = Math.min(window.devicePixelRatio || 1, 2);
   let baseScale = 1;
@@ -571,10 +731,11 @@
   let animFrame = null;
   let animProgress = 1; // 0..1, fraction of segments revealed
 
-  function drawMechanism(){
-    const n0=state.n0, n1=state.n1, n2=state.n2, n3=state.n3;
-    const h = derived.h, p = derived.p, holeWorld = derived.holeWorld, phi = derived.phi;
+  function drawMechanism(t){
+    const n0=state.n0, n2=state.n2, n3=state.n3;
+    const holeWorld = derived.holeWorld;
     const lw = 1 * dpr;
+    const m = mechanismAt(t);
 
     function circle(cx, cy, r, strokeStyle){
       const [sx, sy] = worldToScreen(cx, cy);
@@ -596,25 +757,36 @@
       ctx.setLineDash([]);
     }
 
-    const gearCx = n0-n1, gearCy = 0;
-    const hoopCx = n0-n1+n1*h, hoopCy = 0;
-    const penWheelCx = n0-n1+n1*h+n2-n3, penWheelCy = 0;
-    const penX = penWheelCx + p*n3*Math.cos(phi);
-    const penY = penWheelCy + p*n3*Math.sin(phi);
-
     circle(0,0,n0, 'rgba(87,217,196,0.55)');
-    link(0,0,gearCx,gearCy);
-    circle(gearCx,gearCy,n1, 'rgba(242,166,90,0.55)');
-    link(gearCx,gearCy,hoopCx,hoopCy);
-    circle(hoopCx,hoopCy,n2, 'rgba(199,122,242,0.55)');
-    link(hoopCx,hoopCy,penWheelCx,penWheelCy);
-    circle(penWheelCx,penWheelCy,n3, 'rgba(231,236,242,0.55)');
+    link(0,0,m.gearCx,m.gearCy);
+    circle(m.gearCx,m.gearCy,state.n1, 'rgba(242,166,90,0.55)');
+    link(m.gearCx,m.gearCy,m.hoopCx,m.hoopCy);
+    circle(m.hoopCx,m.hoopCy,n2, 'rgba(199,122,242,0.55)');
+    link(m.hoopCx,m.hoopCy,m.penWheelCx,m.penWheelCy);
+    circle(m.penWheelCx,m.penWheelCy,n3, 'rgba(231,236,242,0.55)');
 
-    const [px,py] = worldToScreen(penX,penY);
+    const [px,py] = worldToScreen(m.penX,m.penY);
     ctx.beginPath();
     ctx.arc(px,py, Math.max(holeWorld,1.2) * baseScale * view.zoom, 0, 2*Math.PI);
     ctx.fillStyle = 'rgba(242,166,90,0.9)';
     ctx.fill();
+
+    if(state.showLabels){
+      ctx.save();
+      ctx.font = `${11*dpr}px 'IBM Plex Mono', monospace`;
+      ctx.fillStyle = 'rgba(231,236,242,0.9)';
+      ctx.textBaseline = 'bottom';
+      function label(cx,cy,text){
+        const [sx,sy] = worldToScreen(cx,cy);
+        ctx.fillText(text, sx+6*dpr, sy-6*dpr);
+      }
+      label(0,0, `ring n0=${state.n0}`);
+      label(m.gearCx,m.gearCy, `wheel n1=${state.n1}`);
+      label(m.hoopCx,m.hoopCy, `hoop n2=${n2}`);
+      label(m.penWheelCx,m.penWheelCy, `pen wheel n3=${n3}`);
+      label(m.penX,m.penY, 'pen');
+      ctx.restore();
+    }
   }
 
   function drawSymmetry(){
@@ -633,20 +805,29 @@
     }
   }
 
-  function drawCurve(points, npts, revealFrac, withColor){
+  function drawCurve(points, npts, revealFrac, opts){
+    opts = opts || {};
+    const palette = opts.palette !== undefined ? opts.palette : state.palette;
+    const density = opts.density !== undefined ? opts.density : state.density;
+    const glow = opts.glow !== undefined ? opts.glow : state.glow;
+    const opacity = opts.opacity !== undefined ? opts.opacity : state.brightness;
+    const withColor = opts.withColor !== undefined ? opts.withColor : true;
+    const showTip = opts.showTip !== undefined ? opts.showTip : true;
+
     const segCount = Math.min(SEGMENTS, npts);
     const ptsPerSeg = Math.max(1, Math.floor(npts / segCount));
     const revealSegs = Math.max(1, Math.round(segCount * revealFrac));
 
-    ctx.lineWidth = (state.glow ? 1.6 : 1.4) * dpr;
+    ctx.lineWidth = (glow ? 1.6 : 1.4) * dpr;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
+    ctx.globalAlpha = opacity;
 
     for(let s=0; s<revealSegs; s++){
       const startI = s*ptsPerSeg;
       const endI = (s === segCount-1) ? npts : Math.min(npts, (s+1)*ptsPerSeg);
       const frac = s/segCount;
-      const color = withColor ? paletteColor(state.palette, frac*state.density) : 'rgba(255,214,140,0.85)';
+      const color = withColor ? getStrokeColor(palette, frac*density, s) : 'rgba(255,214,140,0.85)';
 
       ctx.beginPath();
       for(let i=startI;i<=endI;i++){
@@ -654,7 +835,7 @@
         if(i===startI) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
       }
       ctx.strokeStyle = color;
-      if(state.glow && withColor){
+      if(glow && withColor){
         ctx.shadowColor = color;
         ctx.shadowBlur = 8*dpr;
       } else {
@@ -664,8 +845,7 @@
     }
     ctx.shadowBlur = 0;
 
-    // pen tip during the animated reveal
-    if(revealFrac < 1){
+    if(showTip && revealFrac < 1){
       const tipI = Math.min(npts, revealSegs*ptsPerSeg);
       const [tx,ty] = worldToScreen(points[tipI*2], points[tipI*2+1]);
       ctx.beginPath();
@@ -676,29 +856,45 @@
       ctx.fill();
       ctx.shadowBlur = 0;
     }
+    ctx.globalAlpha = 1;
   }
 
   function render(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     if(!derived) return;
 
-    if(state.showCircles) drawMechanism();
+    // committed layers first (background), the live curve drawn last (foreground)
+    for(const layer of state.layers){
+      drawCurve(layer.points, layer.npts, 1, {
+        palette:layer.palette, density:layer.density, glow:layer.glow,
+        opacity:layer.opacity, showTip:false
+      });
+    }
+
+    if(state.showCircles) drawMechanism(derived.tend * animProgress);
     if(state.showSymm) drawSymmetry();
-    if(state.showF0 && f0points) drawCurve(f0points.points, f0points.npts, 1, false);
-    drawCurve(derived.points, derived.npts, animProgress, true);
+    if(state.showF0 && f0points) drawCurve(f0points.points, f0points.npts, 1, {withColor:false, showTip:false});
+    drawCurve(derived.points, derived.npts, animProgress);
   }
 
   function startAnimation(){
     cancelAnimationFrame(animFrame);
-    if(!state.animate){ animProgress = 1; render(); return; }
-    animProgress = 0;
-    const dur = 1400;
-    const t0 = performance.now();
+    if(!state.animate && !state.loop){ animProgress = 1; render(); return; }
+    const baseDur = 1400;
+    let t0 = performance.now();
     function step(now){
+      const dur = state.loop ? Math.max(500, 6000/state.speedMult) : baseDur;
       const f = clamp((now - t0)/dur, 0, 1);
-      animProgress = 1 - Math.pow(1-f, 2); // ease-out
+      animProgress = state.loop ? f : 1 - Math.pow(1-f, 2); // ease-out for the one-shot reveal
       render();
-      if(f < 1) animFrame = requestAnimationFrame(step);
+      if(f < 1){
+        animFrame = requestAnimationFrame(step);
+      } else if(state.loop){
+        t0 = now;
+        animFrame = requestAnimationFrame(step);
+      } else {
+        animProgress = 1; render();
+      }
     }
     animFrame = requestAnimationFrame(step);
   }
@@ -706,8 +902,8 @@
   // Every control redraws immediately — there is no "update" step. Slider drags and
   // typing fire many events per second, so the heavy recompute (rebuilding the point
   // array) is coalesced to once per animation frame via rAF; the draw itself is always
-  // instant (no reveal animation) for live edits. The reveal animation is reserved for
-  // discrete "load a new pattern" actions (presets, randomize, reset, solve, initial load).
+  // instant (no reveal animation) for live edits. The reveal/loop animation is reserved
+  // for discrete "load a new pattern" actions and the explicit live-drawing mode.
   let rafPending = false;
   function scheduleUpdate(){
     if(rafPending) return;
@@ -721,7 +917,8 @@
     fitScale();
     updateHud();
     updateFrequencyFields();
-    if(animate) startAnimation();
+    updateMathPanel();
+    if(animate || state.loop) startAnimation();
     else { animProgress = 1; render(); }
   }
 
@@ -738,6 +935,69 @@
     document.getElementById('fT1').value = derived.T1;
     document.getElementById('fT3').value = derived.T3;
     document.getElementById('fT').value = derived.T;
+  }
+
+  function fmt(n, d){
+    d = d===undefined ? 4 : d;
+    const f = Math.pow(10,d);
+    return (Math.round(n*f)/f).toString();
+  }
+
+  function updateMathPanel(){
+    const n0=state.n0, n1=state.n1, n2=state.n2, n3=state.n3;
+    const h = derived.h, p = derived.p, phi = state.phi, holeMm = state.holeMm;
+    const m0 = n0/n1, m1 = n2/n3;
+    const rp = (n3*p);
+
+    document.getElementById('mechProse').textContent =
+      `A pen-wheel with n3 = ${n3} teeth rolls around the inside of a hoop with n2 = ${n2} teeth. `+
+      `That hoop doesn't sit at the center of the next part out — it's offset by h = ${h.toFixed(3)} `+
+      `of the wheel's radius, and that off-center mount is what gives the curve its wobble. The wheel `+
+      `itself, with n1 = ${n1} teeth, rolls around the inside of a fixed outer ring of n0 = ${n0} teeth. `+
+      `A pen sits p = ${p.toFixed(3)} of the way out from the pen-wheel's center (${fmt(rp,2)} units), `+
+      `starting at an angle of φ = ${phi}°.`;
+
+    document.getElementById('mathGlossary').innerHTML =
+      `<li><b>n0 = ${n0}</b> — teeth on the fixed outer ring. Bigger n0 makes a bigger overall drawing.</li>`+
+      `<li><b>n1 = ${n1}</b> — teeth on the wheel rolling inside the ring.</li>`+
+      `<li><b>n2 = ${n2}</b> — teeth on the hoop riding inside the wheel, off-center by h.</li>`+
+      `<li><b>n3 = ${n3}</b> — teeth on the small pen-wheel rolling inside the hoop.</li>`+
+      `<li><b>h = ${h.toFixed(3)}</b> — how far off-center the hoop sits inside the wheel (0 = no wobble).</li>`+
+      `<li><b>p = ${p.toFixed(3)}</b> — how far the pen sits from the pen-wheel's center, as a fraction of n3.</li>`+
+      `<li><b>&phi; = ${phi}&deg;</b> — the pen's starting angle.</li>`+
+      `<li><b>hole = ${holeMm.toFixed(1)}mm</b> — simulates a real pen's hole width, rounding off each cusp instead of a sharp point.</li>`;
+
+    document.getElementById('mathEquations').innerHTML =
+`m<sub>0</sub> = n0/n1 = <b>${fmt(m0)}</b>
+m<sub>1</sub> = n2/n3 = <b>${fmt(m1)}</b>
+
+t<sub>1</sub>(t) = m<sub>0</sub>&middot;t
+t<sub>2</sub>(t) = t<sub>1</sub> + atan2(<b>${h.toFixed(3)}</b>&middot;sin t<sub>1</sub>, 1 &minus; <b>${h.toFixed(3)}</b>&middot;cos t<sub>1</sub>)
+t<sub>3</sub>(t) = m<sub>1</sub>&middot;t<sub>2</sub>
+a<sub>0</sub>(t) = t &minus; t<sub>1</sub>
+a<sub>1</sub>(t) = a<sub>0</sub> + t<sub>2</sub> &minus; t<sub>3</sub> + <b>${(phi*Math.PI/180).toFixed(3)}</b>
+
+x(t) = <b>${n0-n1}</b>&middot;cos t + <b>${fmt(n1*h,2)}</b>&middot;cos a<sub>0</sub> + <b>${n2-n3}</b>&middot;cos(a<sub>0</sub>+t<sub>2</sub>) + <b>${fmt(rp,2)}</b>&middot;cos a<sub>1</sub>
+y(t) = <b>${n0-n1}</b>&middot;sin t + <b>${fmt(n1*h,2)}</b>&middot;sin a<sub>0</sub> + <b>${n2-n3}</b>&middot;sin(a<sub>0</sub>+t<sub>2</sub>) + <b>${fmt(rp,2)}</b>&middot;sin a<sub>1</sub>
+
+t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
+
+    const symmSentence = derived.nsymm > 1
+      ? `Because gcd(T1,T3) = ${derived.nsymm}, the finished drawing has exact ${derived.nsymm}-fold rotational symmetry — spin it by 360°/${derived.nsymm} ≈ ${(360/derived.nsymm).toFixed(1)}° and it lines up with itself.`
+      : `Because gcd(T1,T3) = 1, the drawing has no rotational symmetry at all — turning it by any amount changes the picture.`;
+
+    document.getElementById('mathNarrative').textContent =
+      `This exact gear combination has period T = ${derived.T} — the wheel has to turn ${derived.T} full `+
+      `revolutions before the pen comes back to exactly where it started. Along the way, the wheel `+
+      `effectively completes T1 = ${derived.T1} turns relative to the ring, and the whole hoop-and-pen-wheel `+
+      `assembly completes T3 = ${derived.T3} turns. ${symmSentence}`;
+  }
+
+  function updateLayerCount(){
+    const n = state.layers.length;
+    document.getElementById('layerCount').textContent = n
+      ? `${n} layer${n>1?'s':''} kept on the canvas`
+      : 'No layers kept yet';
   }
 
   function resize(){
@@ -813,6 +1073,9 @@
   }, {passive:false});
   canvas.addEventListener('touchend', e => { if(e.touches.length===0){ dragging=false; pinchDist=null; } });
 
+  document.getElementById('zoomInBtn').addEventListener('click', () => zoomAt(canvas.width/2, canvas.height/2, 1.3));
+  document.getElementById('zoomOutBtn').addEventListener('click', () => zoomAt(canvas.width/2, canvas.height/2, 1/1.3));
+
   // ---------- UI wiring ----------
   const panel = document.getElementById('panel');
   const gearBtn = document.getElementById('gearBtn');
@@ -820,6 +1083,22 @@
     const open = panel.classList.toggle('open');
     gearBtn.classList.toggle('open', open);
     gearBtn.setAttribute('aria-expanded', open);
+  });
+
+  const mathPanel = document.getElementById('mathPanel');
+  const explainBtn = document.getElementById('explainBtn');
+  const labelsToggle = document.getElementById('labelsToggle');
+  const circlesToggleEl = document.getElementById('circlesToggle');
+  explainBtn.addEventListener('click', () => {
+    const open = mathPanel.classList.toggle('open');
+    explainBtn.classList.toggle('open', open);
+    explainBtn.setAttribute('aria-expanded', open);
+    if(open){
+      let changed = false;
+      if(!state.showCircles){ state.showCircles = true; circlesToggleEl.classList.add('on'); changed = true; }
+      if(!state.showLabels){ state.showLabels = true; labelsToggle.classList.add('on'); changed = true; }
+      if(changed) render();
+    }
   });
 
   document.getElementById('downloadBtn').addEventListener('click', () => {
@@ -932,9 +1211,18 @@
   wireSwitch('symmToggle','showSymm', render);
   wireSwitch('f0Toggle','showF0', scheduleUpdate);
   wireSwitch('glowToggle','glow', render);
+  wireSwitch('labelsToggle','showLabels', render);
   wireSwitch('animateToggle','animate', () => {});
+  wireSwitch('loopToggle','loop', startAnimation);
 
   document.getElementById('replayBtn').addEventListener('click', startAnimation);
+
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal = document.getElementById('speedVal');
+  speedSlider.addEventListener('input', () => {
+    state.speedMult = parseFloat(speedSlider.value);
+    speedVal.textContent = state.speedMult.toFixed(2) + 'x';
+  });
 
   const swatches = document.getElementById('paletteSwatches');
   swatches.addEventListener('click', e => {
@@ -951,6 +1239,36 @@
   densitySlider.addEventListener('input', () => {
     state.density = parseFloat(densitySlider.value);
     densityVal.textContent = state.density.toFixed(1);
+    render();
+  });
+
+  const brightnessSlider = document.getElementById('brightnessSlider');
+  const brightnessVal = document.getElementById('brightnessVal');
+  brightnessSlider.addEventListener('input', () => {
+    state.brightness = parseFloat(brightnessSlider.value);
+    brightnessVal.textContent = state.brightness.toFixed(2);
+    render();
+  });
+
+  document.getElementById('keepLayerBtn').addEventListener('click', () => {
+    if(!derived) return;
+    state.layers.push({
+      points: derived.points, npts: derived.npts,
+      palette: state.palette, density: state.density, glow: state.glow,
+      opacity: state.brightness
+    });
+    if(state.layers.length > MAX_LAYERS) state.layers.shift();
+    updateLayerCount();
+    render();
+  });
+  document.getElementById('dimLayersBtn').addEventListener('click', () => {
+    state.layers.forEach(l => { l.opacity *= 0.5; });
+    updateLayerCount();
+    render();
+  });
+  document.getElementById('clearLayersBtn').addEventListener('click', () => {
+    state.layers = [];
+    updateLayerCount();
     render();
   });
 
@@ -1023,25 +1341,30 @@
   function randInt(lo,hi){ return Math.floor(lo + Math.random()*(hi-lo+1)); }
   function randFloat(lo,hi){ return lo + Math.random()*(hi-lo); }
 
-  document.getElementById('randomizeBtn').addEventListener('click', () => {
-    const n1 = randInt(40, 220);
-    const n0 = n1 + randInt(8, 90);
-    const n2 = Math.max(4, Math.round(n1 * randFloat(0.22, 0.5)));
-    const n3 = Math.max(2, Math.round(n2 * randFloat(0.35, 0.85)));
+  function doRandomize(wild){
+    const n1 = wild ? randInt(60, 400) : randInt(40, 220);
+    const n0 = n1 + randInt(wild?4:8, wild?140:90);
+    const n2 = Math.max(4, Math.round(n1 * randFloat(wild?0.12:0.22, wild?0.6:0.5)));
+    const n3 = Math.max(2, Math.round(n2 * randFloat(wild?0.25:0.35, 0.9)));
     const hMax = 0.975 * (1 - n2/n1);
-    const h = randFloat(-0.9,0.9) * hMax;
-    const holeMm = [0, 1.5, 3, 4.5][randInt(0,3)];
+    const h = randFloat(-0.95, 0.95) * hMax;
+    const holeOptions = wild ? [0, 0, 1.5, 3, 4.5] : [0, 1.5, 3, 4.5];
+    const holeMm = holeOptions[randInt(0, holeOptions.length-1)];
     const holeWorld = Math.abs(holeMm/2/MM_SCALE);
     const pMin = holeWorld!==0 ? clamp(1 - holeWorld/n3, 0, 1) : 1;
-    const p = randFloat(0.55,0.95) * pMin;
-    const phi = randInt(0,359);
-    state.palette = randInt(0, PALETTES.length-1);
+    const p = randFloat(0.55, 0.95) * pMin;
+    const phi = randInt(0, 359);
+    state.palette = randInt(0, PALETTES.length + 1); // +2 for rainbow/zebra
     [...swatches.children].forEach(s=>s.classList.remove('active'));
     swatches.children[state.palette].classList.add('active');
     applyState(n0,n1,n2,n3,h,p,phi,holeMm);
-  });
+  }
+  document.getElementById('randomizeBtn').addEventListener('click', () => doRandomize(false));
+  document.getElementById('randomizeWildBtn').addEventListener('click', () => doRandomize(true));
 
   document.getElementById('resetBtn').addEventListener('click', () => {
+    state.layers = [];
+    updateLayerCount();
     applyState(DEFAULTS.n0, DEFAULTS.n1, DEFAULTS.n2, DEFAULTS.n3, DEFAULTS.h, DEFAULTS.p, DEFAULTS.phi, DEFAULTS.holeMm);
   });
 
