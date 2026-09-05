@@ -538,6 +538,24 @@
   //             // tools' own instrumentation for what each `id` detects.
   //             // Next time you talk, `completeLine` plays and the mission
   //             // advances exactly like a threshold step completing.
+  //             //
+  //             // RULE: plain `threshold`/`progressLines` (talk N times,
+  //             // done) is legacy and should not be used for a new skill
+  //             // that has a matching app — it's exactly the "free respect
+  //             // from talking" bug the rest of this file works hard to
+  //             // avoid, just with nicer-sounding lines along the way. If
+  //             // there's a real tool the skill maps to, use `goal` and
+  //             // wire up that tool's own instrumentation (see the sibling
+  //             // apps' `sendBoyGoal`) — that's how Sora/flute (its own
+  //             // fluteCircleOfFifths tool) and Alden/Whitfield/Jax (all
+  //             // three sharing circle-of-fifths/app.html's "practicing
+  //             // for" selector — see its sendBoyGoal for how their goal
+  //             // ids stay distinct from Sir Earth's) all work. Reach for
+  //             // a `job`'s `harvest` (below) instead when the task is
+  //             // physical rather than app-based (Farmer Jono's field).
+  //             // Dr. Voss/research (Hospital) is the one bare `threshold`
+  //             // grind left — debt, not the pattern to copy, kept only
+  //             // because no real task exists to point it at yet.
   //             job: {                  // optional — instead of dialogue or
   //               pay: 5,               // a challenge, an indefinitely
   //               reputation: 1,        // repeatable source of money, this
@@ -795,20 +813,54 @@
       ],
       npcs: {
         V: {
+          id: 'alden',
           name: 'Maestro Alden',
           appearance: { top: 0x6b2338, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xc9c9c9, pieceType: 'bishop' },
-          challenge: {
-            key: 'violin',
-            threshold: 3,
-            progressLines: [
-              "Hold the bow properly, boy! Wrist loose, not limp. Again.",
-              "...Better. You might not be hopeless after all, boy.",
-              "One more session, boy. Prove to me you're serious."
-            ],
-            completeLine: "Alright, boy — you've earned it. I'll teach you the violin, properly this time. Come by whenever you like now; you're welcome here.",
-            learnedMessage: 'You learned the Violin! 🎻',
-            link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
-          }
+          // Verified inside the actual Circle of Fifths app, same as
+          // Sora's flute missions — see the "goal" doc above LEVELS. That
+          // tool is shared by four teachers now; its "practicing for"
+          // selector set to Violin is what makes these specific goal ids
+          // (wheel_violin, etc.) fire instead of Sir Earth's plain ones —
+          // see that app's sendBoyGoal() for how they stay separate.
+          missions: [
+            {
+              key: 'violin_wheel',
+              introLine: "Hold the bow properly, boy! Wrist loose, not limp. A violinist lives on this wheel — set the tool to Violin and find your key.",
+              completeLine: "...Better. You might not be hopeless after all, boy.",
+              learnedMessage: 'You found your key on the wheel! 🎻',
+              goal: { tool: 'circleOfFifths', id: 'wheel_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel and find your key →' }
+            },
+            {
+              key: 'violin_minor',
+              introLine: "Every key has a relative minor, and a real violinist knows both by feel. Switch to minor and listen for the shift.",
+              completeLine: "There — you hear it now, don't you. Light and shadow, same wheel.",
+              learnedMessage: 'You learned minor keys! 🌘',
+              goal: { tool: 'circleOfFifths', id: 'minor_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Find the relative minor →' }
+            },
+            {
+              key: 'violin_progression',
+              introLine: "One more session, boy. Prove to me you're serious — pick a progression and play it through without flinching.",
+              completeLine: "That had actual shape to it. You're not just sawing anymore.",
+              learnedMessage: 'You learned to play a progression! 🎼',
+              goal: { tool: 'circleOfFifths', id: 'progression_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
+            },
+            {
+              key: 'violin_extensions',
+              introLine: "A triad is for beginners. Turn on the 7ths — even the 9ths, if you dare — and show me you can handle the color.",
+              completeLine: "Now that's a violinist's ear, boy. I mean that.",
+              learnedMessage: 'You learned violin extensions! 🎨',
+              goal: { tool: 'circleOfFifths', id: 'extensions_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
+            },
+            {
+              key: 'violin_charts',
+              introLine: "Now read it a different way, boy — switch the notation, change the clef. A real player isn't afraid of the page.",
+              completeLine: "Alright, boy — you've earned it. I'll teach you the violin, properly this time. Come by whenever you like now; you're welcome here.",
+              learnedMessage: 'You learned to read every chart! 📖',
+              goal: { tool: 'circleOfFifths', id: 'charts_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
+            }
+          ],
+          dialogue: { default: "Come sit, boy. The wheel's always here, same as I am." },
+          instrumentSting: 'violin'
         },
         F: {
           id: 'farmer_jono',
@@ -994,20 +1046,51 @@
       ],
       npcs: {
         P: {
+          id: 'whitfield',
           name: 'Ms. Whitfield',
           appearance: { top: 0x2a4a3a, bottom: 0x1f2a2a, hairStyle: 'long', hair: 0xb8b8b8, pieceType: 'queen' },
-          challenge: {
-            key: 'piano',
-            threshold: 3,
-            progressLines: [
-              "Fingers curved, not flat! You're playing piano, not slapping a table.",
-              "That's almost a melody. Almost.",
-              "Once more, and mean it this time."
-            ],
-            completeLine: "There. Now you're actually playing. I'll teach you properly from here.",
-            learnedMessage: 'You learned the Piano! 🎹',
-            link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
-          }
+          // Same Circle of Fifths app as Alden/Jax/Sir Earth, set to Piano
+          // — see the doc note on Alden's missions above (Clearing level)
+          // for how the shared tool keeps every teacher's goals separate.
+          missions: [
+            {
+              key: 'piano_wheel',
+              introLine: "Fingers curved, not flat, boy! You're playing piano, not slapping a table. Every key on that wheel needs the same care — set it to Piano and find yours.",
+              completeLine: "That's almost a melody. Almost — but you found it.",
+              learnedMessage: 'You found your key on the wheel! 🎹',
+              goal: { tool: 'circleOfFifths', id: 'wheel_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel and find your key →' }
+            },
+            {
+              key: 'piano_minor',
+              introLine: "Once more, and mean it this time — switch to minor and feel how the whole keyboard changes mood under your hands.",
+              completeLine: "There. Now your left hand knows something your right hand doesn't.",
+              learnedMessage: 'You learned minor keys! 🌙',
+              goal: { tool: 'circleOfFifths', id: 'minor_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Find the relative minor →' }
+            },
+            {
+              key: 'piano_progression',
+              introLine: "A chord alone is a shrug. String a progression together and say something with it.",
+              completeLine: "Now you're saying something, boy. Not just noodling.",
+              learnedMessage: 'You learned to play a progression! 🎼',
+              goal: { tool: 'circleOfFifths', id: 'progression_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
+            },
+            {
+              key: 'piano_extensions',
+              introLine: "Plain triads are for practicing, boy, not performing. Turn on the 7ths and 9ths and let your hands stretch.",
+              completeLine: "That's a real pianist's chord, boy. Good.",
+              learnedMessage: 'You learned piano extensions! 🎨',
+              goal: { tool: 'circleOfFifths', id: 'extensions_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
+            },
+            {
+              key: 'piano_charts',
+              introLine: "Now look at it differently, boy — change the clef, read the chart a new way.",
+              completeLine: "There. Now you're actually playing, boy. I'll teach you properly from here.",
+              learnedMessage: 'You learned to read every chart! 📖',
+              goal: { tool: 'circleOfFifths', id: 'charts_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
+            }
+          ],
+          dialogue: { default: "Come sit at the bench, boy. It's always waiting." },
+          instrumentSting: 'piano'
         }
       },
       exits: { '1': { to: 'clearing', x: 1, y: 8 } }
@@ -1028,20 +1111,51 @@
       ],
       npcs: {
         G: {
+          id: 'jax',
           name: 'Jax',
           appearance: { top: 0x3a5a8a, bottom: 0x8a7a5a, hairStyle: 'short', hair: 0x2a2018, pieceType: 'rook' },
-          challenge: {
-            key: 'guitar',
-            threshold: 3,
-            progressLines: [
-              "Nah man, you're strangling those strings. Loosen up.",
-              "Okay okay, that had a groove to it.",
-              "One more run-through and I'll know you're serious."
-            ],
-            completeLine: "Alright, you've got heart. Let's actually learn some guitar.",
-            learnedMessage: 'You learned the Guitar! 🎸',
-            link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
-          }
+          // Same Circle of Fifths app as Alden/Whitfield/Sir Earth, set to
+          // Guitar — see the doc note on Alden's missions (Clearing level)
+          // for how the shared tool keeps every teacher's goals separate.
+          missions: [
+            {
+              key: 'guitar_wheel',
+              introLine: "Nah man, you're strangling those strings. Loosen up, boy — every key's got a home on that wheel. Set it to Guitar and go find yours.",
+              completeLine: "Okay okay, that had a groove to it.",
+              learnedMessage: 'You found your key on the wheel! 🎸',
+              goal: { tool: 'circleOfFifths', id: 'wheel_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel and find your key →' }
+            },
+            {
+              key: 'guitar_minor',
+              introLine: "Every key's got a minor side — moodier, bluesier. Switch it up and feel the difference.",
+              completeLine: "Yeah. Now you're bending more than just strings.",
+              learnedMessage: 'You learned minor keys! 🌘',
+              goal: { tool: 'circleOfFifths', id: 'minor_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Find the relative minor →' }
+            },
+            {
+              key: 'guitar_progression',
+              introLine: "One more run-through and I'll know you're serious, boy — pick a progression and ride it all the way out.",
+              completeLine: "Yeah, that run had heart in it.",
+              learnedMessage: 'You learned to play a progression! 🎼',
+              goal: { tool: 'circleOfFifths', id: 'progression_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
+            },
+            {
+              key: 'guitar_extensions',
+              introLine: "Plain chords are fine, but 7ths and 9ths are where the flavor's at. Turn 'em on.",
+              completeLine: "Now THAT'S a chord, boy. That's got some flavor to it.",
+              learnedMessage: 'You learned guitar extensions! 🎨',
+              goal: { tool: 'circleOfFifths', id: 'extensions_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
+            },
+            {
+              key: 'guitar_charts',
+              introLine: "Read it a different way for me, boy — switch the chart, change the clef.",
+              completeLine: "Alright, you've got heart, boy. Let's actually learn some guitar — for real, this time.",
+              learnedMessage: 'You learned to read every chart! 📖',
+              goal: { tool: 'circleOfFifths', id: 'charts_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
+            }
+          ],
+          dialogue: { default: "Pull up a seat, boy. Strings are always ready." },
+          instrumentSting: 'guitar'
         }
       },
       exits: { '1': { to: 'clearing', x: 11, y: 1 } }
@@ -1062,20 +1176,58 @@
       ],
       npcs: {
         F: {
+          id: 'sora',
           name: 'Sora',
           appearance: { top: 0xc9a84a, bottom: 0x5a4a3a, hairStyle: 'long', hair: 0x4a2f22, pieceType: 'queen' },
-          challenge: {
-            key: 'flute',
-            threshold: 3,
-            progressLines: [
-              "Breathe from your stomach, not your chest. Try again.",
-              "That was almost peaceful. Almost.",
-              "Once more, with your whole breath this time."
-            ],
-            completeLine: "Beautiful. Now let's really teach you the flute.",
-            learnedMessage: 'You learned the Flute! 🎶',
-            link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
-          }
+          // Verified inside the actual Flute Circle of Fifths app, the same
+          // way Wainwright/Coffee/Sir Earth's missions are — see the
+          // "goal" doc above LEVELS. Talking alone earns nothing; you have
+          // to go turn the wheel, switch modes, play a progression, etc.
+          // for real, in the embedded tool.
+          missions: [
+            {
+              key: 'flute_wheel',
+              introLine: "Breathe from your stomach, not your chest. Every key sits somewhere on this wheel — turn it until you find the one your breath wants to settle into.",
+              completeLine: "There — you felt it settle into place. That's your center now.",
+              learnedMessage: 'You learned to find your key! 🎐',
+              goal: { tool: 'fluteCircleOfFifths', id: 'wheel', href: '../flute-circle-of-fifths/app.html', linkLabel: 'Turn the wheel and find your key →' }
+            },
+            {
+              key: 'flute_minor',
+              introLine: "Every major breath has a minor shadow behind it — softer, sadder. Switch to minor and hear how the air changes.",
+              completeLine: "That was almost peaceful. Almost — now you know where peaceful and sad share a breath.",
+              learnedMessage: 'You learned minor keys, flute-style! 🌙',
+              goal: { tool: 'fluteCircleOfFifths', id: 'minor', href: '../flute-circle-of-fifths/app.html', linkLabel: 'Find the relative minor →' }
+            },
+            {
+              key: 'flute_progression',
+              introLine: "A single note is just air. String a few together with real phrasing — pick a progression and play it all the way through.",
+              completeLine: "Now you're not just breathing through notes, boy. You're phrasing a line.",
+              learnedMessage: 'You learned to phrase a progression! 🎼',
+              goal: { tool: 'fluteCircleOfFifths', id: 'progression', href: '../flute-circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
+            },
+            {
+              key: 'flute_extensions',
+              introLine: "Once more, with your whole breath this time — and don't stop at the plain triad. Turn on the 7ths, even the 9ths, and let the color in.",
+              completeLine: "Beautiful, boy. That's the whole breath, and the whole color too.",
+              learnedMessage: 'You learned flute extensions! 🎨',
+              goal: { tool: 'fluteCircleOfFifths', id: 'extensions', href: '../flute-circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
+            },
+            {
+              key: 'flute_charts',
+              introLine: "Now look at it a different way, boy — switch the fingering chart and see how the same breath reads on another instrument.",
+              completeLine: "Now you can carry this with you, boy, on any instrument, in any key. Beautiful. Now let's really teach you the flute.",
+              learnedMessage: 'You learned to read every fingering chart! 📖',
+              goal: { tool: 'fluteCircleOfFifths', id: 'charts', href: '../flute-circle-of-fifths/app.html', linkLabel: 'Switch the fingering chart →' }
+            }
+          ],
+          dialogue: { default: "Come sit a while, boy. The breath is always there when you need it." },
+          // Each mission step's own key (flute_wheel, flute_minor, ...)
+          // doesn't match INSTRUMENT_STINGS, so the per-step sting in
+          // completeMissionStep() falls back to the generic sfxWin() —
+          // this plays the real flute motif once, on top of that, the
+          // moment the whole chain (not just one step) is mastered.
+          instrumentSting: 'flute'
         }
       },
       exits: { '1': { to: 'clearing', x: 9, y: 13 } }
@@ -3151,6 +3303,7 @@
         if (story.missionStep[def.id] >= def.missions.length) {
           story.communityRespect[world.id] = (story.communityRespect[world.id] || 0) + MISSION_MASTERY_REPUTATION;
           renderStats();
+          if (def.instrumentSting) sfxInstrumentLearned(def.instrumentSting);
         }
       }
     }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chord Wheel — Circle of Fifths</title>
+<title>Flute Chord Wheel — Circle of Fifths</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -100,22 +100,27 @@
     padding:10px 8px 4px; margin-bottom:12px;
   }
   .key-staff-row svg{ width:100%; height:auto; display:block; }
-  .clef-buttons{ display:flex; gap:6px; }
   .clef-btn{
     font-family:'Inter', sans-serif; font-size:11.5px; border:1px solid var(--brass);
     background:transparent; color:var(--brass-light); border-radius:12px; padding:4px 11px;
     cursor:pointer; transition:background 0.15s, color 0.15s;
   }
   .clef-btn:hover, .clef-btn.active{ background:var(--brass); color:var(--bg); }
+  .instrument-row{
+    display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted);
+  }
   .view-select{
-    font-family:'Inter', sans-serif; font-size:12px; border:1px solid var(--brass);
-    background:var(--bg); color:var(--brass-light); border-radius:8px; padding:4px 8px;
+    font-family:'Inter', sans-serif; font-size:13px; border:1px solid var(--brass);
+    background:var(--bg); color:var(--brass-light); border-radius:8px; padding:5px 10px;
     cursor:pointer;
   }
   .view-select:hover{ background:var(--brass); color:var(--bg); }
   .view-select:focus{ outline:2px solid var(--brass-light); outline-offset:1px; }
-  .instrument-row{
-    display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted);
+  .transpose-warning{
+    max-width:44ch; text-align:center; font-size:12.5px; line-height:1.5;
+    color:#f0c869; background:rgba(184,134,59,0.14);
+    border:1px solid rgba(184,134,59,0.45); border-radius:10px;
+    padding:9px 14px; margin:0;
   }
   .tone-legend{
     position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
@@ -144,9 +149,16 @@
     border:1px solid rgba(0,0,0,0.08);
   }
   .chord-card .rn{ font-size:11px; font-weight:600; }
+  .chord-card .section-label{
+    font-size:7.5px; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-soft);
+    opacity:0.7; margin:3px 0 0;
+  }
   .chord-card .staff{ width:100%; max-width:96px; margin:1px 0; }
-  .chord-card .fretboard{ width:100%; max-width:78px; margin:1px 0; }
-  .chord-card .ukulele{ width:100%; max-width:60px; margin:1px 0; }
+  .flute-row{ display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-end; gap:3px; margin:2px 0; }
+  .flute-note{ display:flex; flex-direction:column; align-items:center; gap:1px; }
+  .flute-note .flute-fingering{ width:15px; height:auto; display:block; }
+  .flute-note .valve-fingering{ width:17px; height:auto; display:block; }
+  .flute-note .flute-label{ font-size:8px; font-weight:600; line-height:1; }
   .chord-card .cn{ font-family:'Fraunces', serif; font-size:16px; font-weight:700; color:var(--ink); }
   .chord-card .nn{ font-size:8.5px; color:var(--ink-soft); text-align:center; line-height:1.3; }
   .chord-card button{
@@ -159,18 +171,19 @@
 </head>
 <body>
 <div class="stage">
-  <h1>Diatonic Circles</h1>
-  <p class="sub">The circle of fifths, built so you can rotate it to any key. Click the outer ring for a major key, the inner ring for its relative minor.</p>
+  <h1 id="mainTitle">Flute Diatonic Circles</h1>
+  <p class="sub" id="subtitle">The circle of fifths, spelled out for flute. Click the outer ring for a major key, the inner ring for its relative minor — every diatonic chord shows its notation and its flute fingerings side by side.</p>
 
   <div class="instrument-row">
-    <label for="teacherSelect">practicing for</label>
-    <select id="teacherSelect" class="view-select">
-      <option value="theory" selected>Music theory</option>
-      <option value="violin">Violin</option>
-      <option value="piano">Piano</option>
-      <option value="guitar">Guitar</option>
+    <label for="instrumentSelect">instrument</label>
+    <select id="instrumentSelect" class="view-select">
+      <option value="flute" selected>Flute</option>
+      <option value="saxophone">Alto Saxophone</option>
+      <option value="trumpet">Trumpet</option>
     </select>
   </div>
+
+  <p class="transpose-warning" id="transposeWarning" hidden></p>
 
   <div class="controls">
     <button class="rot-btn" id="btnLeft" aria-label="Previous key">&#8592;</button>
@@ -227,24 +240,6 @@
 
     <div class="key-staff-row" id="keyStaffRow"></div>
 
-    <div class="clef-row" id="clefRow">
-      <span>clef</span>
-      <div class="clef-buttons">
-        <button class="clef-btn active" data-clef="treble">Treble</button>
-        <button class="clef-btn" data-clef="alto">Alto</button>
-        <button class="clef-btn" data-clef="bass">Bass</button>
-      </div>
-    </div>
-
-    <div class="clef-row">
-      <span>chart</span>
-      <select id="notationSelect" class="view-select">
-        <option value="staff" selected>Notation</option>
-        <option value="guitar">Guitar chords</option>
-        <option value="ukulele">Ukulele chords</option>
-      </select>
-    </div>
-
     <div class="tone-legend" id="toneLegend">
       <span class="item"><span class="dot" data-tone="0"></span>Root</span>
       <span class="item"><span class="dot" data-tone="1"></span>3rd</span>
@@ -255,7 +250,7 @@
     <div class="legend-grid" id="legend"></div>
   </div>
 
-  <p class="foot">Click any wedge &mdash; outer for major, inner for minor &mdash; to make it the tonic, or use the arrows. Tap the small &#9658; on a chord card to hear it.</p>
+  <p class="foot" id="footNote">Click any wedge &mdash; outer for major, inner for minor &mdash; to make it the tonic, or use the arrows. Tap the small &#9658; on a chord card to hear it. On each fingering diagram, a filled circle is a covered hole/pressed key, an open circle is uncovered &mdash; the left thumb's B key stays down throughout.</p>
 </div>
 
 <script>
@@ -472,18 +467,19 @@
   }
 
   // --- staff notation helpers ---
-  let currentClef = 'treble';
-  let notationView = 'staff'; // 'staff', 'guitar', or 'ukulele' — which chart the cards show
+  // Flute, sax, and trumpet parts are all written in treble clef, so
+  // unlike the original circle-of-fifths tool this doesn't offer an
+  // alto/bass clef switch — treble is the only option, so `currentClef`
+  // never changes after this.
+  const currentClef = 'treble';
   const letterIdx = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
   // reference note = the staff's bottom line, plus the octave chosen for a
   // chord's root so triads sit close to the staff rather than needing lots
   // of ledger lines.
   const clefRef = {
-    treble: {letter:'E', oct:4, rootOctave:4},
-    alto:   {letter:'F', oct:3, rootOctave:4},
-    bass:   {letter:'G', oct:2, rootOctave:3}
+    treble: {letter:'E', oct:4, rootOctave:4}
   };
-  const clefGlyph = { treble: '\u{1D11E}', alto: '\u{1D121}', bass: '\u{1D122}' };
+  const clefGlyph = { treble: '\u{1D11E}' };
 
   // For a given letter, find the octave placement whose staff position lands
   // closest to the middle line — independently per note, so a triad can stay
@@ -707,21 +703,15 @@
     </svg>`;
   }
 
-  // --- guitar chord charts ---
-  // No hardcoded per-quality shape table (major/minor/7/maj7/m7/dim/aug/
-  // m7b5/maj7#5 would be nine of them, times two shapes) — instead one
-  // small voicing engine derives a fretting from the chord's pitch classes,
-  // the same "derive, don't hardcode" approach the rest of the data model
-  // uses. It anchors the root on whichever of the low-E or A string gives
-  // the smaller fret (the standard "E-shape"/"A-shape" movable barre-chord
-  // choice), then for every other string takes the closest fret within a
-  // 4-fret span whose pitch class is one of the chord's tones, muting the
-  // string if none fits. Checked against real fingerings, this reproduces
-  // the exact textbook open-position shapes for E/Em/E7/Emaj7/Em7 and
-  // A/Am/A7/Amaj7/Am7 (e.g. E major comes out 0 2 2 1 0 0 unprompted) and
-  // degrades gracefully — extra muted strings, not a bad fret — for the
-  // rarer qualities (diminished, augmented, m7♭5, maj7♯5) that
-  // don't have a standard shape to begin with.
+  // --- flute fingering charts ---
+  // Unlike the guitar/ukulele engines this replaced, a flute can't sound
+  // a whole chord at once — so instead of one diagram per chord, this
+  // renders one small fingering diagram per NOTE in the chord, arranged
+  // in a row (see fluteChartRow below). Fingerings are keyed by pitch
+  // class (0-11), not by spelled note name, using the same noteToPC()
+  // the chord-tone accent lookup relies on elsewhere in this app — so
+  // "G##" and "A" resolve to the identical fingering without a second
+  // enharmonic table.
   const BASE_PC = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
   function noteToPC(note){
     const letter = note[0], acc = note.slice(1);
@@ -729,266 +719,213 @@
     for(const ch of acc) pc += (ch === '#') ? 1 : -1;
     return ((pc % 12) + 12) % 12;
   }
-  const STRING_PC = [4,9,2,7,11,4]; // low E, A, D, G, B, high e
 
-  function guitarVoicing(notes){
-    const pcs = notes.map(noteToPC);
-    const chordSet = new Set(pcs);
-    const rootPC = pcs[0];
-    const fretFor = s => ((rootPC - STRING_PC[s]) % 12 + 12) % 12;
-    const FE = fretFor(0), FA = fretFor(1);
-    const useEShape = FE <= FA;
-    const anchor = useEShape ? 0 : 1;
-    const barreFret = useEShape ? FE : FA;
-    const frets = new Array(6).fill(null);
-    if(notes.length >= 5){
-      // 9th chords: 5 tones for 6 strings, so — same philosophy as the
-      // ukulele engine's willingness to drop the root on dense chords —
-      // favor the "juice" tones (3rd/7th/9th, the ones that actually
-      // spell out the chord's color/alterations) over root and fifth,
-      // rather than force-anchoring the root the way triads/7ths do
-      // below. Every string searches independently, tier by tier.
-      const juicePCs = [pcs[1], pcs[3], pcs[4]]; // third, seventh, ninth
-      const tiers = [juicePCs, [pcs[2]], [rootPC]]; // juice > fifth > root
-      const tierOf = new Array(6).fill(-1);
-      for(let s = 0; s < 6; s++){
-        stringLoop:
-        for(let t = 0; t < tiers.length; t++){
-          for(let f = barreFret; f <= barreFret+3; f++){
-            if(tiers[t].includes((STRING_PC[s]+f) % 12)){ frets[s] = f; tierOf[s] = t; break stringLoop; }
-          }
-        }
-      }
-      // Filling every string independently can ask for more simultaneous
-      // fretted notes than a human hand has fingers for — a real bug a
-      // user caught on Cmaj9♯5 (six strings landing on four *different*,
-      // non-adjacent-string fret values needs six independent fingers).
-      // Count "fingers" as fretted-note clusters, crediting a barre as a
-      // single finger the way a real player would use it. A barre is
-      // ONLY 2+ adjacent strings sharing the chord's CURRENT LOWEST
-      // fretted fret — a second user-caught bug: the first version
-      // credited *any* same-fret adjacent run, but only the index finger
-      // barres, and it necessarily holds the lowest fret in the shape
-      // (every other finger reaches to a *higher* fret than it, never
-      // lower) — so a same-fret run anywhere else still costs one finger
-      // per string, same as a repeated fret on non-adjacent strings.
-      // The lowest fret can change as notes get dropped below, so this
-      // is recomputed fresh on every pass rather than fixed once.
-      const clusters = () => {
-        const list = []; let i = 0;
-        const frettedFrets = frets.filter(f => f !== null && f !== 0);
-        if(frettedFrets.length === 0) return list;
-        const lowFret = Math.min(...frettedFrets);
-        while(i < 6){
-          if(frets[i] === null || frets[i] === 0){ i++; continue; }
-          if(frets[i] === lowFret){
-            let j = i;
-            while(j+1 < 6 && frets[j+1] === lowFret) j++;
-            list.push(Array.from({length:j-i+1}, (_,k)=>i+k));
-            i = j+1;
-          } else {
-            list.push([i]);
-            i++;
-          }
-        }
-        return list;
-      };
-      // While that count exceeds 4, drop the least essential fretted
-      // note. Essential-ness isn't the same as the fill priority above:
-      // a bare 5th is the most dispensable tone in a 9th chord (rarely
-      // altered, easiest to imply), so it's dropped first; the root goes
-      // next, only once no fifth remains; a juice tone (3rd/7th/9th —
-      // the tones that actually spell out the chord's color) is the
-      // last resort, only if the chord has no fifth or root left to
-      // give up first (see `dropRank` below). Never an open string —
-      // those cost no finger at all — and never a string that's part of
-      // a 2+-string barre unless every other option is exhausted:
-      // breaking one string off a barre still leaves the same finger
-      // holding the rest of it down, so it wouldn't free anything, and
-      // would just sacrifice a barred tone for nothing. Only dropping
-      // the *last* string of a cluster (a lone fretted note, or the
-      // final remaining member of a barre) actually reduces the count,
-      // so those are the only candidates considered on each pass.
-      // tierOf indexes into `tiers` (0=juice, 1=fifth, 2=root — fill
-      // priority order). dropRank maps that to drop order: fifth first
-      // (highest rank), then root, then juice (lowest rank, dropped
-      // only as a last resort).
-      const dropRank = [0, 2, 1]; // [juice, fifth, root] -> drop rank
-      let cs = clusters();
-      while(cs.length > 4){
-        let worst = -1;
-        for(const group of cs){
-          if(group.length !== 1) continue; // barred — dropping it wouldn't help
-          const s = group[0];
-          if(worst === -1 || dropRank[tierOf[s]] > dropRank[tierOf[worst]]) worst = s;
-        }
-        if(worst === -1) break; // defensive: six strings can't need >4 clusters without a lone one to drop
-        frets[worst] = null;
-        tierOf[worst] = -1;
-        cs = clusters();
-      }
-    } else {
-      frets[anchor] = barreFret;
-      for(let s = anchor+1; s < 6; s++){
-        for(let f = barreFret; f <= barreFret+3; f++){
-          if(chordSet.has((STRING_PC[s]+f) % 12)){ frets[s] = f; break; }
-        }
-      }
+  // Standard Boehm-flute "basic" fingerings for the first octave (C4-B4),
+  // sourced from the Woodwind Fingering Guide's basic first-octave chart
+  // (wfg.woodwind.org/flute/fl_bas_1.html) — the same fingerings taught
+  // in every beginner method book. lh/rh are the three main tone holes
+  // per hand (index/middle/ring, 1 = covered); gsharp and eb are the
+  // small side keys worked by the left and right pinkies; footCsharp/
+  // footC are the foot-joint keys. The left thumb's B key is held down
+  // for every note in this range (it only lifts for alternate fingerings
+  // this chart doesn't use), so it isn't tracked as a variable here — see
+  // the page's footer note instead. Bb4 uses the standard "1+1" fingering
+  // (thumb B key plus both index fingers) rather than the alternate
+  // thumb-Bb fingering, matching that source's own "Basic" pick among
+  // the three fingerings it lists for the note.
+  const FLUTE_FINGERING = [
+    /* C  */ { lh:[1,1,1], gsharp:0, rh:[1,1,1], eb:0, footCsharp:0, footC:1 },
+    /* C# */ { lh:[1,1,1], gsharp:0, rh:[1,1,1], eb:0, footCsharp:1, footC:0 },
+    /* D  */ { lh:[1,1,1], gsharp:0, rh:[1,1,1], eb:0, footCsharp:0, footC:0 },
+    /* D# */ { lh:[1,1,1], gsharp:0, rh:[1,1,1], eb:1, footCsharp:0, footC:0 },
+    /* E  */ { lh:[1,1,1], gsharp:0, rh:[1,1,0], eb:1, footCsharp:0, footC:0 },
+    /* F  */ { lh:[1,1,1], gsharp:0, rh:[1,0,0], eb:1, footCsharp:0, footC:0 },
+    /* F# */ { lh:[1,1,1], gsharp:0, rh:[0,0,1], eb:1, footCsharp:0, footC:0 },
+    /* G  */ { lh:[1,1,1], gsharp:0, rh:[0,0,0], eb:1, footCsharp:0, footC:0 },
+    /* G# */ { lh:[1,1,1], gsharp:1, rh:[0,0,0], eb:1, footCsharp:0, footC:0 },
+    /* A  */ { lh:[1,1,0], gsharp:0, rh:[0,0,0], eb:1, footCsharp:0, footC:0 },
+    /* A# */ { lh:[1,0,0], gsharp:0, rh:[1,0,0], eb:1, footCsharp:0, footC:0 },
+    /* B  */ { lh:[1,0,0], gsharp:0, rh:[0,0,0], eb:1, footCsharp:0, footC:0 }
+  ];
+
+  // One note's fingering, drawn as a small vertical diagram (embouchure
+  // end up, foot joint down): three left-hand holes, the G# side key,
+  // three right-hand holes, the Eb side key, then the two foot-joint
+  // keys. Colored by the same chordToneAccent() the staff notation
+  // uses — here it tints the WHOLE diagram (every hole, open or closed)
+  // rather than picking out one hole, since on a monophonic instrument
+  // this whole diagram already represents exactly one chord tone, unlike
+  // a guitar/ukulele string which is one of several sounding at once.
+  function fluteFingeringSVG(note, toneIndex){
+    const fing = FLUTE_FINGERING[noteToPC(note)];
+    const accent = chordToneAccent(toneIndex);
+    const fill = accent ? accent.fill : '#2b2118';
+    const stroke = accent ? accent.border : '#2b2118';
+    const mainX = 15, leftX = 6, rightX = 24;
+    const hole = (cx, cy, r, closed) => closed
+      ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>`
+      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${stroke}" stroke-width="1.3"/>`;
+    let svg = `<line x1="${mainX}" y1="3" x2="${mainX}" y2="113" stroke="#c9b98c" stroke-width="2"/>`;
+    svg += hole(mainX, 8, 4.5, fing.lh[0]);
+    svg += hole(mainX, 20, 4.5, fing.lh[1]);
+    svg += hole(mainX, 32, 4.5, fing.lh[2]);
+    svg += hole(leftX, 40, 2.8, fing.gsharp);
+    svg += hole(mainX, 54, 4.5, fing.rh[0]);
+    svg += hole(mainX, 66, 4.5, fing.rh[1]);
+    svg += hole(mainX, 78, 4.5, fing.rh[2]);
+    svg += hole(rightX, 86, 2.8, fing.eb);
+    svg += hole(mainX, 98, 3.8, fing.footCsharp);
+    svg += hole(mainX, 110, 3.8, fing.footC);
+    return `<svg class="flute-fingering" viewBox="0 0 30 118" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  }
+
+  // --- saxophone fingering charts ---
+  // Standard Boehm-saxophone "basic" fingerings for one octave (C4-B4),
+  // sourced from the Woodwind Fingering Guide's basic first-octave sax
+  // chart (wfg.woodwind.org/sax/sax_bas_1.html) — the same fingerings
+  // for alto, tenor, soprano, and baritone (the source's own text: "the
+  // same on all sizes of saxophone... unless specified otherwise"), so
+  // this one table covers the "Alto Saxophone" option. lh/rh are the
+  // three main tone holes per hand; gsharp and lowCsharp are two of the
+  // left pinky's four spatula keys (the other two, low B and low Bb,
+  // are below this octave's range so aren't needed here); sideC and
+  // sideEb are right-hand side keys; bisBb is the "bis" key used for
+  // the basic Bb fingering (pressed together with RH1). C4/C#4 keeping
+  // the side C key held and C#4 needing the low C# spatula even though
+  // it's the note *above* C4 both look like typos but are real,
+  // well-documented quirks of saxophone fingering, not flute-style
+  // "open one more hole per semitone" — confirmed against the source's
+  // own key-state images, not just its shorthand notation column.
+  const SAX_FINGERING = [
+    /* C  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,1,1], sideC:1, sideEb:0, bisBb:0 },
+    /* C# */ { lh:[1,1,1], gsharp:0, lowCsharp:1, rh:[1,1,1], sideC:1, sideEb:0, bisBb:0 },
+    /* D  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,1,1], sideC:0, sideEb:0, bisBb:0 },
+    /* D# */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,1,1], sideC:0, sideEb:1, bisBb:0 },
+    /* E  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,1,0], sideC:0, sideEb:0, bisBb:0 },
+    /* F  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[1,0,0], sideC:0, sideEb:0, bisBb:0 },
+    /* F# */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[0,1,0], sideC:0, sideEb:0, bisBb:0 },
+    /* G  */ { lh:[1,1,1], gsharp:0, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:0 },
+    /* G# */ { lh:[1,1,1], gsharp:1, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:0 },
+    /* A  */ { lh:[1,1,0], gsharp:0, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:0 },
+    /* A# */ { lh:[1,1,0], gsharp:0, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:1 },
+    /* B  */ { lh:[1,0,0], gsharp:0, lowCsharp:0, rh:[0,0,0], sideC:0, sideEb:0, bisBb:0 }
+  ];
+
+  // Same vertical layout idea as the flute diagram (embouchure end up),
+  // with two extra left-pinky keys (G#, low C#) and three extra
+  // right-side keys (bis Bb, side Eb, side C) alongside the six main
+  // holes — more auxiliary keys than flute because saxophone's left and
+  // right pinky clusters simply have more of them.
+  function saxFingeringSVG(note, toneIndex){
+    const fing = SAX_FINGERING[noteToPC(note)];
+    const accent = chordToneAccent(toneIndex);
+    const fill = accent ? accent.fill : '#2b2118';
+    const stroke = accent ? accent.border : '#2b2118';
+    const mainX = 15, leftX = 6, rightX = 24;
+    const hole = (cx, cy, r, closed) => closed
+      ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>`
+      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${stroke}" stroke-width="1.3"/>`;
+    let svg = `<line x1="${mainX}" y1="3" x2="${mainX}" y2="100" stroke="#c9b98c" stroke-width="2"/>`;
+    svg += hole(mainX, 8, 4.5, fing.lh[0]);
+    svg += hole(mainX, 20, 4.5, fing.lh[1]);
+    svg += hole(mainX, 32, 4.5, fing.lh[2]);
+    svg += hole(leftX, 37, 2.6, fing.gsharp);
+    svg += hole(leftX, 46, 2.6, fing.lowCsharp);
+    svg += hole(rightX, 55, 2.6, fing.bisBb);
+    svg += hole(mainX, 60, 4.5, fing.rh[0]);
+    svg += hole(mainX, 72, 4.5, fing.rh[1]);
+    svg += hole(mainX, 84, 4.5, fing.rh[2]);
+    svg += hole(rightX, 89, 2.6, fing.sideEb);
+    svg += hole(rightX, 98, 2.6, fing.sideC);
+    return `<svg class="flute-fingering" viewBox="0 0 30 105" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  }
+
+  // --- trumpet valve charts ---
+  // Standard Bb-trumpet valve combinations for one chromatic octave,
+  // universal knowledge among trumpet players and cross-checked here
+  // against several independently-published fingerings (C=open, F=1,
+  // Bb=1, D=1-3, E=1-2, A=1-2, B=2 all confirmed) rather than a single
+  // source. Valve fingerings don't change with octave (unlike flute/sax,
+  // where the whole chart repeats by pitch class only within one
+  // octave), so this table is genuinely valid at any octave. See the
+  // page's transposition warning: trumpet is a Bb instrument, so this
+  // shows the fingering for the CONCERT pitch letter name displayed
+  // (not transposed up a major 2nd for a written trumpet part).
+  const TRUMPET_FINGERING = [
+    /* C  */ [],
+    /* C# */ [1,2,3],
+    /* D  */ [1,3],
+    /* D# */ [2,3],
+    /* E  */ [1,2],
+    /* F  */ [1],
+    /* F# */ [2],
+    /* G  */ [],
+    /* G# */ [2,3],
+    /* A  */ [1,2],
+    /* A# */ [1],
+    /* B  */ [2]
+  ];
+
+  // Three valve buttons stacked top to bottom (valve 1, 2, 3) rather than
+  // side by side — narrower than a horizontal row, so a whole chord's
+  // worth of these still lines up in one row per card next to the
+  // flute/sax diagrams (which are already vertical for the same reason)
+  // instead of forcing the card wider. Filled in the chord tone's accent
+  // color when pressed. Unlike the woodwind hole diagrams, an unpressed
+  // valve doesn't get an accent-colored outline — there's no "which
+  // hole" ambiguity to resolve on a 3-valve chart, so only the pressed
+  // valves need to stand out.
+  function trumpetValveSVG(note, toneIndex){
+    const pressed = new Set(TRUMPET_FINGERING[noteToPC(note)]);
+    const accent = chordToneAccent(toneIndex);
+    const fill = accent ? accent.fill : '#2b2118';
+    const stroke = accent ? accent.border : '#2b2118';
+    const ys = [10, 27, 44];
+    let svg = '';
+    ys.forEach((y, i) => {
+      const isPressed = pressed.has(i+1);
+      svg += `<circle cx="10" cy="${y}" r="7" fill="${isPressed ? fill : 'none'}" stroke="${isPressed ? stroke : '#8a7a5c'}" stroke-width="1.6"/>`;
+      svg += `<text x="10" y="${y+3}" text-anchor="middle" font-size="8" font-weight="700" fill="${isPressed ? '#fff8e8' : '#8a7a5c'}">${i+1}</text>`;
+    });
+    return `<svg class="valve-fingering" viewBox="0 0 20 54" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  }
+
+  // --- instrument selection ---
+  // One shared dispatcher so buildLegend() doesn't need to know which
+  // instrument is active — it just asks for "the fingering diagram" and
+  // "the fingering section's label" and gets whichever instrument is
+  // currently selected. `warning` is the transposition notice shown
+  // above the wheel for the two transposing instruments; flute (in
+  // concert C already) has none. Every chord/fingering shown stays in
+  // concert pitch regardless of instrument — these apps intentionally
+  // do NOT transpose the displayed notes for Bb/Eb instruments, so the
+  // warning is what tells a sax or trumpet player that what's on screen
+  // isn't what would appear in their written part.
+  const INSTRUMENTS = {
+    flute: { label: 'Flute', svg: fluteFingeringSVG, warning: null },
+    saxophone: {
+      label: 'Alto Saxophone', svg: saxFingeringSVG,
+      warning: 'Alto Saxophone is an E♭ transposing instrument. Chords and fingerings below are shown in concert pitch (what you’d hear), not transposed for a written alto sax part — to read this from a transposed alto part, add a major 6th to every note shown (e.g. concert C is written A).'
+    },
+    trumpet: {
+      label: 'Trumpet', svg: trumpetValveSVG,
+      warning: 'Trumpet is a B♭ transposing instrument. Chords and fingerings below are shown in concert pitch (what you’d hear), not transposed for a written trumpet part — to read this from a transposed trumpet part, add a major 2nd to every note shown (e.g. concert C is written D).'
     }
-    return { frets, barreFret, rootPC };
-  }
+  };
+  let currentInstrument = 'flute';
 
-  function fretboardSVG(notes){
-    const { frets, barreFret } = guitarVoicing(notes);
-    const tonePCs = notes.map(noteToPC); // [root, third, fifth, seventh?, ninth?]
-    const stringXs = [8,18,28,38,48,58];
-    const fretTop = 16, fretSpacing = 14, cells = 4;
-    const ink = '#2b2118';
-    // Row 0 of the grid means different things depending on barreFret:
-    // when barreFret===0 this is an open-position chord and row 0 is the
-    // (bold) nut itself, so a fretted note at fret 1 belongs in the row
-    // *after* the nut, i.e. row (fret-1); when barreFret>0 there's no nut
-    // drawn, the grid's top edge simply starts at barreFret, so a note at
-    // that fret belongs in row 0, i.e. row (fret-barreFret). Same anchor
-    // used for the marker offset below and for the barre-run bar.
-    const rowZeroFret = barreFret === 0 ? 1 : barreFret;
-
-    const stringLines = stringXs.map(sx =>
-      `<line x1="${sx}" y1="${fretTop}" x2="${sx}" y2="${fretTop+cells*fretSpacing}" stroke="${ink}" stroke-width="1"/>`
-    ).join('');
-    const fretLines = Array.from({length:cells+1}, (_,i)=>{
-      const y = fretTop + i*fretSpacing;
-      const w = (i===0 && barreFret===0) ? 3 : 1;
-      return `<line x1="${stringXs[0]}" y1="${y}" x2="${stringXs[5]}" y2="${y}" stroke="${ink}" stroke-width="${w}"/>`;
+  // A whole chord's worth of fingering diagrams, one per note, each
+  // labeled with its letter name in the same accent color as its
+  // diagram — laid out left to right in chord-tone order (root, third,
+  // fifth, then any 7th/9th) so it reads in the same order as the note
+  // list already printed under the chord name.
+  function fluteChartRow(notes){
+    const svgFor = INSTRUMENTS[currentInstrument].svg;
+    return notes.map((n, i) => {
+      const accent = chordToneAccent(i);
+      const color = accent ? accent.fill : '#2b2118';
+      return `<div class="flute-note">${svgFor(n, i)}<span class="flute-label" style="color:${color}">${n.replace('b','♭')}</span></div>`;
     }).join('');
-
-    // A rounded bar under any run of 2+ adjacent strings sharing the
-    // lowest *fretted* fret actually in this voicing — not necessarily
-    // barreFret (the anchor/search-window's reference fret): for 9th
-    // chords, guitarVoicing()'s playability repair can drop whichever
-    // string was sitting at barreFret, shifting the true lowest fret
-    // higher. Only the lowest fret can ever be a real barre (the index
-    // finger necessarily holds the lowest fret in the shape — every
-    // other finger reaches to something *higher*, never lower), so this
-    // uses the same rule as the finger-counting in guitarVoicing().
-    const frettedFrets = frets.filter(f => f !== null && f !== 0);
-    const lowFret = frettedFrets.length ? Math.min(...frettedFrets) : barreFret;
-    let barreSvg = '', runStart = -1;
-    for(let s=0; s<=6; s++){
-      const onBarre = s<6 && frets[s] === lowFret && lowFret > 0;
-      if(onBarre && runStart === -1) runStart = s;
-      if(!onBarre && runStart !== -1){
-        if(s - runStart >= 2){
-          const y = fretTop + (lowFret - rowZeroFret)*fretSpacing + fretSpacing/2;
-          barreSvg += `<line x1="${stringXs[runStart]}" y1="${y}" x2="${stringXs[s-1]}" y2="${y}" stroke="${ink}" stroke-width="8" stroke-linecap="round" opacity="0.85"/>`;
-        }
-        runStart = -1;
-      }
-    }
-
-    let markers = '';
-    frets.forEach((fret, s)=>{
-      const sx = stringXs[s];
-      if(fret === null){
-        markers += `<text x="${sx}" y="10" text-anchor="middle" font-size="9" fill="${ink}">✕</text>`;
-      } else if(fret === 0){
-        const pc = STRING_PC[s];
-        const accent = chordToneAccent(tonePCs.indexOf(pc));
-        const stroke = accent ? accent.border : ink;
-        markers += `<circle cx="${sx}" cy="10" r="3" fill="none" stroke="${stroke}" stroke-width="1.4"/>`;
-      } else {
-        const offset = fret - rowZeroFret;
-        const cy = fretTop + offset*fretSpacing + fretSpacing/2;
-        const pc = (STRING_PC[s]+fret) % 12;
-        const accent = chordToneAccent(tonePCs.indexOf(pc));
-        const fill = accent ? accent.fill : ink;
-        const stroke = accent ? accent.border : 'none';
-        markers += `<circle cx="${sx}" cy="${cy}" r="4.2" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>`;
-      }
-    });
-
-    const label = barreFret > 0
-      ? `<text x="${stringXs[5]+8}" y="${fretTop+fretSpacing/2+3}" font-size="9" fill="${ink}">${barreFret}fr</text>`
-      : '';
-
-    return `<svg class="fretboard" viewBox="0 0 92 ${fretTop+cells*fretSpacing+6}" xmlns="http://www.w3.org/2000/svg">
-      ${fretLines}
-      ${stringLines}
-      ${barreSvg}
-      ${markers}
-      ${label}
-    </svg>`;
-  }
-
-  // --- ukulele chord charts ---
-  // Standard reentrant GCEA tuning (soprano/concert/tenor). Unlike the
-  // guitar engine above, this has no movable-barre-shape anchor concept —
-  // ukulele chord charts are conventionally shown as open-position
-  // fingerings near the nut, not movable shapes up the neck. So each
-  // string independently searches frets 0..4 for the lowest fret whose
-  // pitch class is a chord tone (open string preferred whenever it
-  // already matches), muting if nothing in that span fits. No barre
-  // detection either — real barre fingerings exist on ukulele but aren't
-  // how beginner charts are conventionally drawn. Checked against real
-  // fingerings, this reproduces the exact standard open shapes: C=0,0,0,3;
-  // Am=2,0,0,0; F=2,0,1,0; G=0,2,3,2; D=2,2,2,0 — all unprompted.
-  const STRING_PC_UKE = [7,0,4,9]; // G4, C4, E4, A4 (reentrant)
-  const UKE_SPAN = 4;
-
-  function ukuleleVoicing(notes){
-    const pcs = notes.map(noteToPC);
-    const chordSet = new Set(pcs);
-    const rootPC = pcs[0];
-    const frets = STRING_PC_UKE.map(openPc=>{
-      for(let f = 0; f <= UKE_SPAN; f++){
-        if(chordSet.has((openPc+f) % 12)) return f;
-      }
-      return null;
-    });
-    return { frets, rootPC };
-  }
-
-  function ukuleleSVG(notes){
-    const { frets } = ukuleleVoicing(notes);
-    const tonePCs = notes.map(noteToPC); // [root, third, fifth, seventh?, ninth?]
-    const stringXs = [8,24,40,56];
-    const fretTop = 16, fretSpacing = 14, cells = UKE_SPAN;
-    const ink = '#2b2118';
-
-    const stringLines = stringXs.map(sx =>
-      `<line x1="${sx}" y1="${fretTop}" x2="${sx}" y2="${fretTop+cells*fretSpacing}" stroke="${ink}" stroke-width="1"/>`
-    ).join('');
-    const fretLines = Array.from({length:cells+1}, (_,i)=>{
-      const y = fretTop + i*fretSpacing;
-      const w = (i===0) ? 3 : 1;
-      return `<line x1="${stringXs[0]}" y1="${y}" x2="${stringXs[3]}" y2="${y}" stroke="${ink}" stroke-width="${w}"/>`;
-    }).join('');
-
-    let markers = '';
-    frets.forEach((fret, s)=>{
-      const sx = stringXs[s];
-      if(fret === null){
-        markers += `<text x="${sx}" y="10" text-anchor="middle" font-size="9" fill="${ink}">✕</text>`;
-      } else if(fret === 0){
-        const pc = STRING_PC_UKE[s];
-        const accent = chordToneAccent(tonePCs.indexOf(pc));
-        const stroke = accent ? accent.border : ink;
-        markers += `<circle cx="${sx}" cy="10" r="3" fill="none" stroke="${stroke}" stroke-width="1.4"/>`;
-      } else {
-        const cy = fretTop + (fret-1)*fretSpacing + fretSpacing/2;
-        const pc = (STRING_PC_UKE[s]+fret) % 12;
-        const accent = chordToneAccent(tonePCs.indexOf(pc));
-        const fill = accent ? accent.fill : ink;
-        const stroke = accent ? accent.border : 'none';
-        markers += `<circle cx="${sx}" cy="${cy}" r="4.2" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>`;
-      }
-    });
-
-    return `<svg class="ukulele" viewBox="0 0 64 ${fretTop+cells*fretSpacing+6}" xmlns="http://www.w3.org/2000/svg">
-      ${fretLines}
-      ${stringLines}
-      ${markers}
-    </svg>`;
   }
 
   // Notifies a parent page embedding this tool in an iframe (e.g. the Boy
@@ -996,26 +933,12 @@
   // Sent at most once per goal id per page load. Harmless no-op when not
   // embedded — postMessage to a same-window parent (i.e. no parent at
   // all) just talks to itself and nobody's listening.
-  //
-  // This one tool is shared by four different teachers in that game (Sir
-  // Earth teaches theory directly; Maestro Alden/violin, Ms. Whitfield/
-  // piano, and Jax/guitar each send you here too) — the "practicing for"
-  // selector below picks which one you're doing the work for, and gets
-  // folded into the goal id so e.g. turning the wheel while set to violin
-  // fires 'wheel_violin', a completely separate goal from Sir Earth's
-  // plain 'wheel'. Leaving it on the default 'theory' keeps Sir Earth's
-  // original goal ids unchanged.
-  let currentTeacher = 'theory';
   const sentGoals = {};
   function sendBoyGoal(goal) {
-    var id = currentTeacher === 'theory' ? goal : (goal + '_' + currentTeacher);
-    if (sentGoals[id]) return;
-    sentGoals[id] = true;
-    window.parent.postMessage({ source: 'boy-tool', tool: 'circleOfFifths', goal: id }, '*');
+    if (sentGoals[goal]) return;
+    sentGoals[goal] = true;
+    window.parent.postMessage({ source: 'boy-tool', tool: 'fluteCircleOfFifths', goal: goal }, '*');
   }
-  document.getElementById('teacherSelect').addEventListener('change', function (e) {
-    currentTeacher = e.target.value;
-  });
 
   let keyIndex = 0;
   let mode = 'major'; // 'major' or 'minor' — which ring is currently the tonic
@@ -1351,22 +1274,16 @@
             : notes[0].replace('b','\u266d') + minorInfo[mr].qualitySuffix;
         color = romanColorMinor(mr);
       }
-      // The guitar/ukulele chart cards spell out "m7♭5"/"m9♭5" instead of
-      // the ø symbol — fretted-instrument players reach for that shorthand
-      // more than the jazz ø glyph. Everywhere else (staff-view chord
-      // names, roman numerals, the key-spelling staff) keeps ø, so this
-      // only touches the name text on these cards, derived from the
-      // canonical ø spelling rather than a second suffix table to keep
-      // in sync.
-      if(notationView !== 'staff') name = name.replace('ø7','m7♭5').replace('ø9','m9♭5');
       const card = document.createElement('div');
       card.className = 'chord-card';
-      const chart = notationView === 'staff' ? staffSVG(notes, currentClef)
-        : notationView === 'guitar' ? fretboardSVG(notes)
-        : ukuleleSVG(notes);
+      const staffChart = staffSVG(notes, currentClef);
+      const fluteRow = fluteChartRow(notes);
       card.innerHTML = `
         <div class="rn" style="color:${color}">${roman}</div>
-        ${chart}
+        <div class="section-label">Notation</div>
+        ${staffChart}
+        <div class="section-label">${INSTRUMENTS[currentInstrument].label} fingering</div>
+        <div class="flute-row">${fluteRow}</div>
         <div class="cn">${name}</div>
         <div class="nn">${notes.map(n=>n.replace('b','\u266d')).join(' \u2013 ')}</div>
         <button data-notes="${notes.join(',')}">&#9658;</button>
@@ -1679,22 +1596,34 @@
     buildKeyStaff(key);
   });
 
-  document.getElementById('notationSelect').addEventListener('change', (e)=>{
-    notationView = e.target.value;
-    if (notationView !== 'staff') sendBoyGoal('charts');
+  // Swaps the page's instrument-flavored copy (title, subtitle, footer
+  // note) and shows/hides the transposition warning to match whichever
+  // instrument is selected — separate from buildLegend()/buildKeyStaff(),
+  // which redraw the actual chord content, since none of this text
+  // depends on the current key/progression.
+  const footNoteByInstrument = {
+    flute: 'Click any wedge — outer for major, inner for minor — to make it the tonic, or use the arrows. Tap the small ▶ on a chord card to hear it. On each fingering diagram, a filled circle is a covered hole/pressed key, an open circle is uncovered — the left thumb’s B key stays down throughout.',
+    saxophone: 'Click any wedge — outer for major, inner for minor — to make it the tonic, or use the arrows. Tap the small ▶ on a chord card to hear it. On each fingering diagram, a filled circle is a covered hole/pressed key, an open circle is uncovered.',
+    trumpet: 'Click any wedge — outer for major, inner for minor — to make it the tonic, or use the arrows. Tap the small ▶ on a chord card to hear it. On each valve diagram, a filled circle is a pressed valve.'
+  };
+  function updateInstrumentUI(){
+    const info = INSTRUMENTS[currentInstrument];
+    document.getElementById('mainTitle').textContent = info.label + ' Diatonic Circles';
+    document.getElementById('subtitle').textContent = `The circle of fifths, spelled out for ${info.label.toLowerCase()}. Click the outer ring for a major key, the inner ring for its relative minor — every diatonic chord shows its notation and its ${info.label.toLowerCase()} fingerings side by side.`;
+    document.getElementById('footNote').textContent = footNoteByInstrument[currentInstrument];
+    const warningEl = document.getElementById('transposeWarning');
+    if(info.warning){
+      warningEl.textContent = info.warning;
+      warningEl.hidden = false;
+    } else {
+      warningEl.hidden = true;
+    }
+  }
+  document.getElementById('instrumentSelect').addEventListener('change', (e)=>{
+    currentInstrument = e.target.value;
+    if (currentInstrument !== 'flute') sendBoyGoal('charts');
+    updateInstrumentUI();
     buildLegend(order[((keyIndex%N)+N)%N]);
-  });
-
-  document.querySelectorAll('.clef-buttons .clef-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.clef-buttons .clef-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      currentClef = btn.dataset.clef;
-      if (currentClef !== 'treble') sendBoyGoal('charts');
-      const key = order[((keyIndex%N)+N)%N];
-      buildLegend(key);
-      buildKeyStaff(key);
-    });
   });
 
   // Populated from chordToneAccent() rather than duplicating hex values
