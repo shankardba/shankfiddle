@@ -2871,7 +2871,10 @@
   }
   function sfxPickup() { tone(660, 0, 0.12, 'triangle'); tone(880, 0.07, 0.14, 'triangle'); tone(1180, 0.14, 0.2, 'triangle'); }
   function sfxWin() { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, i * 0.12, 0.28, 'triangle'); }); }
-  function sfxBump() { tone(140, 0, 0.06, 'square', 0.08); }
+  // Softer than a 'square' wave's buzzy harmonics (which read as an
+  // alarm/error at this frequency) and quieter — this plays on every
+  // wall bump, easily the most-repeated sfx in the game.
+  function sfxBump() { tone(110, 0, 0.07, 'triangle', 0.045); }
   function sfxPortal() { tone(440, 0, 0.14, 'sine', 0.14); tone(660, 0.08, 0.2, 'sine', 0.14); tone(880, 0.16, 0.26, 'sine', 0.12); }
 
   // A one-shot flourish for the moment a challenge is actually LEARNED
