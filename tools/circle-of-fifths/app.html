@@ -166,7 +166,6 @@
     <label for="teacherSelect">practicing for</label>
     <select id="teacherSelect" class="view-select">
       <option value="theory" selected>Music theory</option>
-      <option value="violin">Violin</option>
       <option value="piano">Piano</option>
       <option value="guitar">Guitar</option>
     </select>
@@ -997,14 +996,15 @@
   // embedded — postMessage to a same-window parent (i.e. no parent at
   // all) just talks to itself and nobody's listening.
   //
-  // This one tool is shared by four different teachers in that game (Sir
-  // Earth teaches theory directly; Maestro Alden/violin, Ms. Whitfield/
-  // piano, and Jax/guitar each send you here too) — the "practicing for"
-  // selector below picks which one you're doing the work for, and gets
-  // folded into the goal id so e.g. turning the wheel while set to violin
-  // fires 'wheel_violin', a completely separate goal from Sir Earth's
-  // plain 'wheel'. Leaving it on the default 'theory' keeps Sir Earth's
-  // original goal ids unchanged.
+  // This one tool is shared by three different teachers in that game (Sir
+  // Earth teaches theory directly; Ms. Whitfield/piano and Jax/guitar each
+  // send you here too — Maestro Alden/violin does NOT, a separate violin
+  // game is being built for him) — the "practicing for" selector below
+  // picks which one you're doing the work for, and gets folded into the
+  // goal id so e.g. turning the wheel while set to piano fires
+  // 'wheel_piano', a completely separate goal from Sir Earth's plain
+  // 'wheel'. Leaving it on the default 'theory' keeps Sir Earth's original
+  // goal ids unchanged.
   let currentTeacher = 'theory';
   const sentGoals = {};
   function sendBoyGoal(goal) {

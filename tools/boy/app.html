@@ -471,12 +471,23 @@
   //                           // names that collide once lowercased).
   //             name: 'Mom',
   //             appearance: { top, bottom, skin, hair, hairStyle, skirt,
-  //               pieceType, pieceAccent },
+  //               pieceType, pieceTopper, pieceAccent, tieDye },
   //             // pieceType: 'pawn'|'king'|'queen'|'rook'|'bishop' — which
-  //             // chess piece this NPC's body renders as when
+  //             // chess piece this NPC's BODY renders as when
   //             // CHARACTER_STYLE === 'chess' (defaults to 'pawn'; ignored
-  //             // entirely in 'human' style). pieceAccent optionally colors
-  //             // the king/queen/bishop head accessory (defaults gold).
+  //             // entirely in 'human' style). pieceTopper optionally picks
+  //             // a DIFFERENT piece's head accessory instead of the one
+  //             // that matches pieceType — e.g. Sir Earth is pieceType
+  //             // 'king' (the taller, thicker body) with pieceTopper
+  //             // 'queen' (an actual crown; a plain 'king' topper is a
+  //             // cross, not a crown — see PIECE_TOPPER_BUILDERS). Omit it
+  //             // to just use pieceType's own topper, as everyone else
+  //             // does. pieceAccent optionally colors that head accessory
+  //             // (defaults gold; Sir Earth's is white — see below).
+  //             // tieDye: true swaps the flat `top` color for a painted
+  //             // tie-dye pattern (see getTieDyeTexture()) — `top` is
+  //             // still required as a fallback for CHARACTER_STYLE ===
+  //             // 'human', which doesn't use it.
   //             // skin defaults to SKIN_LIGHT (everyone else in the world);
   //             // Boy's family uses SKIN_BROWN (0xa9714a) — pass it as the
   //             // literal since this data runs before those are defined.
@@ -547,12 +558,18 @@
   //             // there's a real tool the skill maps to, use `goal` and
   //             // wire up that tool's own instrumentation (see the sibling
   //             // apps' `sendBoyGoal`) — that's how Sora/flute (its own
-  //             // fluteCircleOfFifths tool) and Alden/Whitfield/Jax (all
-  //             // three sharing circle-of-fifths/app.html's "practicing
-  //             // for" selector — see its sendBoyGoal for how their goal
-  //             // ids stay distinct from Sir Earth's) all work. Reach for
-  //             // a `job`'s `harvest` (below) instead when the task is
-  //             // physical rather than app-based (Farmer Jono's field).
+  //             // fluteCircleOfFifths tool) and Whitfield/Jax (sharing
+  //             // circle-of-fifths/app.html's "practicing for" selector —
+  //             // see its sendBoyGoal for how their goal ids stay distinct
+  //             // from Sir Earth's) all work. Reach for a `job`'s
+  //             // `harvest` (below) instead when the task is physical
+  //             // rather than app-based (Farmer Jono's field).
+  //             // Alden/violin is a `goal` pointed at a tool that doesn't
+  //             // exist yet (a separate violin game is being built) — it
+  //             // simply can't be completed by any real action right now,
+  //             // which is correct: still no free respect from talking,
+  //             // even before the real task exists. Update its
+  //             // tool/id/href/linkLabel once that game is ready.
   //             // Dr. Voss/research (Hospital) is the one bare `threshold`
   //             // grind left — debt, not the pattern to copy, kept only
   //             // because no real task exists to point it at yet.
@@ -816,51 +833,23 @@
           id: 'alden',
           name: 'Maestro Alden',
           appearance: { top: 0x6b2338, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xc9c9c9, pieceType: 'bishop' },
-          // Verified inside the actual Circle of Fifths app, same as
-          // Sora's flute missions — see the "goal" doc above LEVELS. That
-          // tool is shared by four teachers now; its "practicing for"
-          // selector set to Violin is what makes these specific goal ids
-          // (wheel_violin, etc.) fire instead of Sir Earth's plain ones —
-          // see that app's sendBoyGoal() for how they stay separate.
-          missions: [
-            {
-              key: 'violin_wheel',
-              introLine: "Hold the bow properly, boy! Wrist loose, not limp. A violinist lives on this wheel — set the tool to Violin and find your key.",
-              completeLine: "...Better. You might not be hopeless after all, boy.",
-              learnedMessage: 'You found your key on the wheel! 🎻',
-              goal: { tool: 'circleOfFifths', id: 'wheel_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel and find your key →' }
-            },
-            {
-              key: 'violin_minor',
-              introLine: "Every key has a relative minor, and a real violinist knows both by feel. Switch to minor and listen for the shift.",
-              completeLine: "There — you hear it now, don't you. Light and shadow, same wheel.",
-              learnedMessage: 'You learned minor keys! 🌘',
-              goal: { tool: 'circleOfFifths', id: 'minor_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Find the relative minor →' }
-            },
-            {
-              key: 'violin_progression',
-              introLine: "One more session, boy. Prove to me you're serious — pick a progression and play it through without flinching.",
-              completeLine: "That had actual shape to it. You're not just sawing anymore.",
-              learnedMessage: 'You learned to play a progression! 🎼',
-              goal: { tool: 'circleOfFifths', id: 'progression_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
-            },
-            {
-              key: 'violin_extensions',
-              introLine: "A triad is for beginners. Turn on the 7ths — even the 9ths, if you dare — and show me you can handle the color.",
-              completeLine: "Now that's a violinist's ear, boy. I mean that.",
-              learnedMessage: 'You learned violin extensions! 🎨',
-              goal: { tool: 'circleOfFifths', id: 'extensions_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
-            },
-            {
-              key: 'violin_charts',
-              introLine: "Now read it a different way, boy — switch the notation, change the clef. A real player isn't afraid of the page.",
-              completeLine: "Alright, boy — you've earned it. I'll teach you the violin, properly this time. Come by whenever you like now; you're welcome here.",
-              learnedMessage: 'You learned to read every chart! 📖',
-              goal: { tool: 'circleOfFifths', id: 'charts_violin', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
-            }
-          ],
-          dialogue: { default: "Come sit, boy. The wheel's always here, same as I am." },
-          instrumentSting: 'violin'
+          // Violin is the FIRST instrument taught in the story, and it
+          // does NOT share the Circle of Fifths tool the way Whitfield/
+          // Jax do (see their missions, Hollow/Riverside levels) — a
+          // separate violin game is being built and will plug in here.
+          // This `goal` is a placeholder: `tool`/`id`/`href`/`linkLabel`
+          // all need to change to match whatever that game actually
+          // detects once it exists (see the sibling apps' `sendBoyGoal`
+          // for the protocol). Until then this step simply can't be
+          // completed by any real action — which is correct: no free
+          // respect from talking, even while waiting on the real task.
+          challenge: {
+            key: 'violin',
+            introLine: "Hold the bow properly, boy! Wrist loose, not limp. Go practice for real, and come back when you've got something to show me.",
+            completeLine: "Alright, boy — you've earned it. I'll teach you the violin, properly this time. Come by whenever you like now; you're welcome here.",
+            learnedMessage: 'You learned the Violin! 🎻',
+            goal: { tool: 'violin', id: 'practice', href: '../violin/app.html', linkLabel: 'Go practice →' }
+          }
         },
         F: {
           id: 'farmer_jono',
@@ -1355,24 +1344,30 @@
       exits: { '1': { to: 'clearing', x: 15, y: 1 } }
     },
     {
+      // A wooded clearing, not a recital room — see the note on
+      // INTERIOR_THEMES above. Flowers replace two of the old rocks for
+      // undergrowth; the border '#' renders as real trees out here.
       id: 'conservatory',
       name: 'The Conservatory',
       map: [
         "#####1#####",
         "#..o...o..#",
-        "#.........#",
+        "#.,.....,.#",
         "#...$.$...#",
         "#....E....#",
-        "#.........#",
+        "#.,.....,.#",
         "#....@....#",
-        "#..o...o..#",
+        "#..b...b..#",
         "###########"
       ],
       npcs: {
         E: {
           id: 'sir_earth',
           name: 'Sir Earth',
-          appearance: { top: 0x2a2a5a, bottom: 0x1f1f2a, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'queen' },
+          // King-shaped body (tall and thick), a queen's crown on top
+          // instead of a king's plain cross, and a painted tie-dye robe —
+          // see pieceTopper/tieDye in the appearance doc above LEVELS.
+          appearance: { top: 0x2a2a5a, bottom: 0x1f1f2a, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'king', pieceTopper: 'queen', pieceAccent: 0xffffff, tieDye: true },
           missions: [
             {
               key: 'theory_wheel',
@@ -1750,12 +1745,15 @@
   // outdoor sky). A level id with no entry here is outdoor/village as
   // before. Hospital's palette predates this registry (it shipped its own
   // clinical white first) — its floor values are carried over unchanged.
+  // The Conservatory used to be in here too (a plum-and-gold recital
+  // room) — it's a wooded clearing now instead, so it's deliberately
+  // absent and falls through to the default outdoor look below (real
+  // trees around '#', sky background, grass floor).
   var INTERIOR_THEMES = {
     home: { wall: 0xe0cba8, floor: 0x8a5c34, prop: 0x5a4230, bg: 0x2e2318 },
     hospital: { wall: 0xe3e8ea, floor: 0xeef1f2, prop: 0xc7d1d4, bg: 0xdfe6e8 },
     schoolhouse: { wall: 0x8a6a45, floor: 0xd8bd8a, prop: 0x2f4a3a, bg: 0x3a2e20 },
-    studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20 },
-    conservatory: { wall: 0x4a2030, floor: 0x2a1420, prop: 0xc9a24a, bg: 0x241018 }
+    studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20 }
   };
 
   // levelId opts into a level-specific palette via INTERIOR_THEMES; a
@@ -2146,10 +2144,53 @@
   // still built by createHuman/createPlayer on top of whichever body they
   // get, so a character's costume colors carry over unchanged either way.
   // ----------------------------------------------------------------------
+  // topColor/bottomColor are normally a hex number, but may instead be a
+  // THREE.Texture (see getTieDyeTexture()) for a patterned costume — this
+  // is the one place that distinction is handled, so every piece body
+  // builder below can just call it instead of constructing its own
+  // MeshStandardMaterial.
+  function pieceMaterial(colorOrTexture, roughness) {
+    if (colorOrTexture && colorOrTexture.isTexture) {
+      return new THREE.MeshStandardMaterial({ map: colorOrTexture, roughness: roughness });
+    }
+    return new THREE.MeshStandardMaterial({ color: colorOrTexture, roughness: roughness });
+  }
+
+  // A blotchy tie-dye pattern, painted once onto a canvas and reused by
+  // every character with `appearance.tieDye: true` (see createHuman) —
+  // there's only one canvas ever built for this, not one per character.
+  var tieDyeTexture = null;
+  function getTieDyeTexture() {
+    if (tieDyeTexture) return tieDyeTexture;
+    var size = 128;
+    var canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    var colors = ['#ff2ea6', '#ffcf3a', '#3ad6ff', '#7a4fff', '#5fdc6a', '#ff6a3a'];
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(0, 0, size, size);
+    ctx.globalAlpha = 0.85;
+    for (var i = 0; i < 22; i++) {
+      var cx = rand(0, size), cy = rand(0, size), r = rand(size * 0.14, size * 0.4);
+      var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, colors[Math.floor(rand(0, colors.length))]);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    tieDyeTexture = new THREE.CanvasTexture(canvas);
+    tieDyeTexture.wrapS = tieDyeTexture.wrapT = THREE.RepeatWrapping;
+    return tieDyeTexture;
+  }
+
   function createPawnBody(topColor, bottomColor) {
     var g = new THREE.Group();
-    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
-    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.55 });
+    var baseMat = pieceMaterial(bottomColor, 0.6);
+    var bodyMat = pieceMaterial(topColor, 0.55);
     var base = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.24, 0.08, 14), baseMat);
     base.position.y = 0.04;
     base.castShadow = true;
@@ -2167,8 +2208,8 @@
 
   function createKingBody(topColor, bottomColor) {
     var g = new THREE.Group();
-    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
-    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.5 });
+    var baseMat = pieceMaterial(bottomColor, 0.6);
+    var bodyMat = pieceMaterial(topColor, 0.5);
     var base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.1, 16), baseMat);
     base.position.y = 0.05;
     base.castShadow = true;
@@ -2186,8 +2227,8 @@
 
   function createQueenBody(topColor, bottomColor) {
     var g = new THREE.Group();
-    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
-    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.5 });
+    var baseMat = pieceMaterial(bottomColor, 0.6);
+    var bodyMat = pieceMaterial(topColor, 0.5);
     var base = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.1, 16), baseMat);
     base.position.y = 0.05;
     base.castShadow = true;
@@ -2201,8 +2242,8 @@
 
   function createRookBody(topColor, bottomColor) {
     var g = new THREE.Group();
-    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
-    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.55 });
+    var baseMat = pieceMaterial(bottomColor, 0.6);
+    var bodyMat = pieceMaterial(topColor, 0.55);
     var base = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.3, 0.1, 16), baseMat);
     base.position.y = 0.05;
     base.castShadow = true;
@@ -2226,8 +2267,8 @@
 
   function createBishopBody(topColor, bottomColor) {
     var g = new THREE.Group();
-    var baseMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.6 });
-    var bodyMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.5 });
+    var baseMat = pieceMaterial(bottomColor, 0.6);
+    var bodyMat = pieceMaterial(topColor, 0.5);
     var base = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.1, 16), baseMat);
     base.position.y = 0.05;
     base.castShadow = true;
@@ -2314,7 +2355,7 @@
     opts = opts || {};
     var skinColor = opts.skin || SKIN_LIGHT;
     var hairColor = opts.hair || 0x3a2a22;
-    var topColor = opts.top || 0x6b7a8f;
+    var topColor = opts.tieDye ? getTieDyeTexture() : (opts.top || 0x6b7a8f);
     var bottomColor = opts.bottom || 0x2e2a35;
 
     var g = new THREE.Group();
@@ -2376,7 +2417,7 @@
     pivot.add(hair);
 
     if (isChess) {
-      var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceType];
+      var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceTopper || opts.pieceType];
       if (topperBuilder) {
         var topper = topperBuilder(opts.pieceAccent || 0xf0a83c);
         topper.position.y = head.position.y + 0.19;
