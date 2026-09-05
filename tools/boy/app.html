@@ -420,9 +420,14 @@
   //              scanning the grid top-to-bottom, left-to-right) — plain
   //              environmental flavor text, not a character
   //           $  collectible Light Shard
-  //           c  carrot — a job tier's harvest good, see `job.tiers`
-  //           r  basket — same idea as 'c', a different tier's harvest good
-  //           p  seed row — an advanced (higher-tier) harvest good
+  //           c  carrot — a job tier's harvest good (item 'vegetable'),
+  //              see `job.tiers`. t (potato) and n (corn) are the same
+  //              economy, just different growing things to look at —
+  //              see parseLevel()'s switch and createCrop()'s `kind`.
+  //           r  basket — a different tier's harvest good (Elsie's, not
+  //              part of the vegetable economy above)
+  //           p  seed row — Jono's one-time "plant the seeds" upgrade
+  //              good, see `job.tiers`' oneTime/plantsSeeds tier
   //           e  crate — an advanced (higher-tier) harvest good
   //           @  player start (used when this level loads with no explicit
   //              spawn override, i.e. as the first level, or via loadLevel
@@ -543,13 +548,23 @@
   //                                     // beats (+1 respect each, capped —
   //                                     // same rule as isFamily below).
   //               tiers: [ /* {minRespect, pay, reputation, harvest,      */
-  //                 /* lines} objects */ // optional — an ordered ladder of
-  //               ]                     // better-paid work: talking always
-  //             }                       // uses the highest tier your
-  //                                     // current respect qualifies for.
-  //                                     // Omit for a single flat job (uses
-  //                                     // pay/harvest/lines above as its
-  //                                     // only tier).
+  //                 /* lines, oneTime, plantsSeeds} objects */ // optional —
+  //               ]           // an ordered ladder of better-paid work:
+  //                            // talking always uses the highest tier your
+  //                            // respect qualifies for AND hasn't already
+  //                            // claimed. A tier with `oneTime: true` is
+  //                            // removed from consideration for good once
+  //                            // paid (story.learned tracks it) — for a
+  //                            // real upgrade, not a repeatable wage, like
+  //                            // Jono's "plant the seeds" tier. `plantsSeeds`
+  //                            // on that tier flips story.fieldSeedsPlanted,
+  //                            // permanently speeding up how fast that
+  //                            // job's `vegetable` crops regrow — see
+  //                            // FIELD_REGROW_FAST/SLOW and
+  //                            // updateCropRespawns().
+  //             }                       // Omit `tiers` for a single flat
+  //                                     // job (uses pay/harvest/lines
+  //                                     // above as its only tier).
   //             kindness: {             // optional — job's mirror image: a
   //               cost: 3,              // repeatable act of generosity that
   //               reputation: 2,        // SPENDS story.money instead of
@@ -706,11 +721,11 @@
         "#..S.=..HHH..=..$.#",
         "#....=========....#",
         "1.,......@.......$2",
-        "#...~~~..cccorr.o.#",
+        "#...~~~...8.orr.o.#",
         "#..~~~~~..F.K...C.#",
-        "#...~~~..cc.rrb...#",
+        "#...~~~.....rrb...#",
         "#Y$.........or..$.#",
-        "#..$.,,ppp.eee,S..#",
+        "#..$.,,....eee,S..#",
         "####7####4#########"
       ],
       signs: [
@@ -747,16 +762,20 @@
                 "...Alright. You keep showing up, you don't get underfoot. Maybe I can use you."
               ]
             },
+            // Once trusted (see `trust` above), the actual picking happens
+            // through the gated 'field' level (Clearing exit '8', right
+            // beside him) — not here. Bring what you picked back to Jono
+            // to turn it in; see checkPortal()'s FIELD_ENTRY_RESPECT gate.
             tiers: [
               {
                 minRespect: 2,
                 pay: 5,
                 reputation: 1,
                 harvest: {
-                  item: 'carrot',
+                  item: 'vegetable',
                   need: 5,
-                  itemLabel: 'carrots',
-                  needLine: "Rows won't pick themselves — bring me 5 carrots and I'll pay you for the work."
+                  itemLabel: 'vegetables',
+                  needLine: "The field's through that gate — bring me 5 vegetables, whatever you find growing, and I'll pay you for the work."
                 },
                 lines: [
                   "Now that's a haul. Good hands.",
@@ -765,19 +784,25 @@
                 ]
               },
               {
+                // A one-time upgrade, not a repeatable wage — see talkToNpc's
+                // job branch (oneTime tiers are skipped once claimed, and
+                // plantsSeeds permanently speeds up how fast the field's
+                // vegetables grow back — see FIELD_REGROW_FAST/SLOW and
+                // updateCropRespawns()).
                 minRespect: 6,
+                oneTime: true,
+                plantsSeeds: true,
                 pay: 14,
                 reputation: 2,
                 harvest: {
                   item: 'seedrow',
                   need: 3,
                   itemLabel: 'rows planted',
-                  needLine: "You've earned more than picking. Plant 3 rows for me and I'll pay you properly this time."
+                  needLine: "You've earned more than picking. There's open ground at the back of the field — plant 3 rows for me and I'll pay you properly this time."
                 },
                 lines: [
                   "Straight rows, good spacing. You've got a real feel for this now.",
-                  "That's a farmer's work, not a kid's chore. I mean that.",
-                  "Half this field is yours as much as mine at this point."
+                  "That's a farmer's work, not a kid's chore. I mean that. Field'll grow back faster for it, too — you earned that."
                 ]
               }
             ]
@@ -856,7 +881,37 @@
         '4': { to: 'meadow', x: 5, y: 7 },
         '5': { to: 'schoolhouse', x: 5, y: 7 },
         '6': { to: 'studio', x: 5, y: 7 },
-        '7': { to: 'conservatory', x: 5, y: 1 }
+        '7': { to: 'conservatory', x: 5, y: 1 },
+        // Gated — see checkPortal()'s FIELD_ENTRY_RESPECT check. Jono
+        // stands right beside this tile; below trust.need respect with
+        // him, walking onto it bounces you back instead of loading 'field'.
+        '8': { to: 'field', x: 7, y: 9 }
+      }
+    },
+    {
+      // Farmer Jono's actual fields — not part of the Clearing itself so
+      // that being fenced out of it (below FIELD_ENTRY_RESPECT) is a real,
+      // visible place you can't go yet, not just a job you can't do yet.
+      // No NPCs live here; you pick here, then walk back out to Jono (in
+      // the Clearing) to turn goods in and get paid — see talkToNpc's
+      // job/tier logic.
+      id: 'field',
+      name: "Jono's Field",
+      map: [
+        "###############",
+        "#.............#",
+        "#.c...t...n...#",
+        "#.............#",
+        "#...n...c...t.#",
+        "#.............#",
+        "#.t...c...n...#",
+        "#.............#",
+        "#....p.p.p....#",
+        "#......@......#",
+        "#######1#######"
+      ],
+      exits: {
+        '1': { to: 'clearing', x: 11, y: 9 }
       }
     },
     {
@@ -1261,11 +1316,13 @@
   // — indexes an array `dialogue` value's caregiving beats; separate from
   // the cumulative story.respect total (see talkToNpc's isFamily branch).
   // produce: harvested-but-not-yet-delivered goods by item, e.g.
-  // produce.carrot — see checkCropPickup() and a job's `harvest` field.
+  // produce.vegetable — see checkCropPickup() and a job's `harvest` field.
   // goalDone: a mission step's `key`, once its `goal` has actually been
   // verified inside the sibling tool itself — see the postMessage
   // listener (GOAL_INDEX) below and talkToNpc's mission-step branch.
-  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false };
+  // fieldSeedsPlanted: set once, permanently, by Jono's oneTime
+  // plantsSeeds job tier — see updateCropRespawns()/FIELD_REGROW_FAST.
+  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, fieldSeedsPlanted: false };
   var CAR_FAMILY_RESPECT_THRESHOLD = 3;
   // Community reputation gained once an NPC's whole `missions` chain is
   // finished — same idea as a job's per-visit `reputation`, but paid out
@@ -1400,7 +1457,9 @@
           case 'S': obstacles.add(key(x, y)); features.signs.push({ x: x, y: y, message: (levelDef.signs || [])[features.signs.length] || 'A weathered sign, worn smooth by rain.' }); break;
           case ',': features.flowers.push({ x: x, y: y }); break;
           case '$': features.shards.push({ x: x, y: y, collected: false }); break;
-          case 'c': features.crops.push({ x: x, y: y, collected: false, item: 'carrot' }); break;
+          case 'c': features.crops.push({ x: x, y: y, collected: false, item: 'vegetable', kind: 'carrot' }); break;
+          case 't': features.crops.push({ x: x, y: y, collected: false, item: 'vegetable', kind: 'potato' }); break;
+          case 'n': features.crops.push({ x: x, y: y, collected: false, item: 'vegetable', kind: 'corn' }); break;
           case 'r': features.crops.push({ x: x, y: y, collected: false, item: 'basket' }); break;
           case 'p': features.crops.push({ x: x, y: y, collected: false, item: 'seedrow' }); break;
           case 'e': features.crops.push({ x: x, y: y, collected: false, item: 'crate' }); break;
@@ -1709,10 +1768,12 @@
   // A job's `harvest` requirement — walk over one of these to add to
   // story.produce[item], the same way a shard adds to the level puzzle,
   // except these feed a job turn-in instead: see checkCropPickup() and
-  // talkToNpc()'s job branch.
-  function createCrop(item) {
+  // talkToNpc()'s job branch. Takes `kind` (falls back to `item` when a
+  // feature has no separate one) purely for which model to build — carrot/
+  // potato/corn all feed the SAME `vegetable` economy, just for variety.
+  function createCrop(kind) {
     var g = new THREE.Group();
-    if (item === 'basket') {
+    if (kind === 'basket') {
       var basket = new THREE.Mesh(
         new THREE.CylinderGeometry(0.22, 0.16, 0.28, 8),
         new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.9 })
@@ -1727,7 +1788,7 @@
       goods.position.y = 0.32;
       goods.castShadow = true;
       g.add(goods);
-    } else if (item === 'crate') {
+    } else if (kind === 'crate') {
       var crate = new THREE.Mesh(
         new THREE.BoxGeometry(0.32, 0.28, 0.32),
         new THREE.MeshStandardMaterial({ color: 0x7a5a35, roughness: 0.9 })
@@ -1741,7 +1802,7 @@
       );
       band.position.y = 0.16;
       g.add(band);
-    } else if (item === 'seedrow') {
+    } else if (kind === 'seedrow') {
       var mound = new THREE.Mesh(
         new THREE.BoxGeometry(0.4, 0.08, 0.22),
         new THREE.MeshStandardMaterial({ color: 0x5a3f28, roughness: 0.95 })
@@ -1754,6 +1815,36 @@
         var sprout = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.14, 5), sproutMat);
         sprout.position.set(-0.12 + si * 0.12, 0.15, 0);
         g.add(sprout);
+      }
+    } else if (kind === 'potato') {
+      var tuber = new THREE.Mesh(
+        new THREE.SphereGeometry(0.15, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xa9825a, roughness: 0.95 })
+      );
+      tuber.scale.set(1, 0.78, 1.15);
+      tuber.position.y = 0.13;
+      tuber.castShadow = true;
+      g.add(tuber);
+      var vine = new THREE.MeshStandardMaterial({ color: 0x4f9a4a, roughness: 0.8 });
+      for (var pi = 0; pi < 2; pi++) {
+        var stem = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.24, 5), vine);
+        stem.position.set(pi === 0 ? -0.05 : 0.06, 0.34, 0);
+        g.add(stem);
+      }
+    } else if (kind === 'corn') {
+      var cob = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.07, 0.32, 8),
+        new THREE.MeshStandardMaterial({ color: 0xe8c53f, roughness: 0.6 })
+      );
+      cob.position.y = 0.22;
+      cob.castShadow = true;
+      g.add(cob);
+      var huskMat = new THREE.MeshStandardMaterial({ color: 0x6fbf5a, roughness: 0.8 });
+      for (var ci = 0; ci < 3; ci++) {
+        var husk = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 5), huskMat);
+        husk.position.set(Math.cos(ci * 2.1) * 0.05, 0.16, Math.sin(ci * 2.1) * 0.05);
+        husk.rotation.z = (ci - 1) * 0.25;
+        g.add(husk);
       }
     } else {
       var root = new THREE.Mesh(
@@ -2196,7 +2287,7 @@
     }
 
     place(w.features.shards, createShard);
-    place(w.features.crops, function (f) { return createCrop(f.item); });
+    place(w.features.crops, function (f) { return createCrop(f.kind || f.item); });
 
     w.features.npcs.forEach(function (n) {
       var p = worldPos(w, n.x, n.y);
@@ -2637,12 +2728,18 @@
       // work on offer — maturing at a job means graduating to better-paid
       // tasks, not doing the entry-level chore forever. `tiers` is
       // optional; a job without one just uses its own top-level
-      // pay/harvest/lines as a single implicit tier.
+      // pay/harvest/lines as a single implicit tier. A tier marked
+      // `oneTime` drops out of consideration for good once claimed (see
+      // story.learned below) — a real upgrade, not a repeatable wage.
       var tier = job;
+      var tierIndex = -1;
       if (job.tiers) {
         tier = job.tiers[0];
+        tierIndex = 0;
         for (var ti = 0; ti < job.tiers.length; ti++) {
-          if (jobRespect >= job.tiers[ti].minRespect) tier = job.tiers[ti];
+          var candidate = job.tiers[ti];
+          if (candidate.oneTime && story.learned[jobKey + ':tier' + ti]) continue;
+          if (jobRespect >= candidate.minRespect) { tier = candidate; tierIndex = ti; }
         }
       }
 
@@ -2667,12 +2764,15 @@
         var communityId = tier.community || job.community || world.id;
         story.communityRespect[communityId] = (story.communityRespect[communityId] || 0) + tier.reputation;
       }
+      if (tier.oneTime && tierIndex >= 0) story.learned[jobKey + ':tier' + tierIndex] = true;
+      if (tier.plantsSeeds) story.fieldSeedsPlanted = true;
       renderStats();
       var jobLine = tier.lines[Math.floor(rand(0, tier.lines.length))];
       openDialogue(jobLine, def.name);
       var parts = [];
       if (tier.pay) parts.push('+' + tier.pay + ' 💰');
       if (tier.reputation) parts.push('+' + tier.reputation + ' respect');
+      if (tier.plantsSeeds) parts.push('🌱 field grows back faster now');
       if (parts.length) showToast(parts.join('   '), 1600);
       return;
     }
@@ -2895,36 +2995,69 @@
 
   var CROP_LABELS = {
     carrot: { name: 'Carrot', emoji: '🥕' },
+    potato: { name: 'Potato', emoji: '🥔' },
+    corn: { name: 'Corn', emoji: '🌽' },
     basket: { name: 'Basket', emoji: '🧺' },
     seedrow: { name: 'Row planted', emoji: '🌱' },
     crate: { name: 'Crate', emoji: '📦' }
   };
 
+  // Vegetable tiles ('vegetable' item — carrot/potato/corn `kind`s) regrow
+  // in place, timed off the same clock as update() — see
+  // updateCropRespawns(). Everything else a job harvests (basket/crate/
+  // seedrow) still only comes back on the next loadLevel(), since nothing
+  // in the story lets you speed THEM up.
+  var FIELD_REGROW_SLOW = 40;
+  var FIELD_REGROW_FAST = 15;
+
   // A job's harvest requirement, picked up the same way a shard is —
   // walk onto the tile. Unlike shards these feed story.produce (global,
-  // persists across level loads) rather than a per-level puzzle count,
-  // and the field only regrows on the next loadLevel() (leave and come
-  // back) rather than respawning in place — simplest way to make the job
-  // repeatable without a real day/growth-cycle simulation.
-  function checkCropPickup() {
+  // persists across level loads) rather than a per-level puzzle count.
+  function checkCropPickup(t) {
     world.features.crops.forEach(function (c) {
       if (c.collected) return;
       if (c.x === player.tileX && c.y === player.tileY) {
         c.collected = true;
         c.obj.visible = false;
+        if (c.item === 'vegetable') {
+          c.respawnAt = t + (story.fieldSeedsPlanted ? FIELD_REGROW_FAST : FIELD_REGROW_SLOW);
+        }
         story.produce[c.item] = (story.produce[c.item] || 0) + 1;
         sfxPickup();
-        var label = CROP_LABELS[c.item] || { name: c.item, emoji: '' };
+        var label = CROP_LABELS[c.kind || c.item] || { name: c.item, emoji: '' };
         showToast(label.emoji + ' ' + label.name + ' (' + story.produce[c.item] + ')', 1200);
       }
     });
   }
+
+  // Brings a picked vegetable tile back once its respawnAt clears — the
+  // ONLY crop kind that regrows in place; see checkCropPickup() and
+  // FIELD_REGROW_FAST/SLOW.
+  function updateCropRespawns(t) {
+    world.features.crops.forEach(function (c) {
+      if (!c.collected || c.item !== 'vegetable' || c.respawnAt === undefined) return;
+      if (t >= c.respawnAt) {
+        c.collected = false;
+        c.respawnAt = undefined;
+        if (c.obj) c.obj.visible = true;
+      }
+    });
+  }
+
+  // Keep in sync with Farmer Jono's job.trust.need (Clearing level) — this
+  // is the same "does he trust you yet" bar, just enforced on the gate
+  // into his field instead of on talking to him.
+  var FIELD_ENTRY_RESPECT = 2;
 
   function checkPortal() {
     var portals = world.features.portals;
     for (var i = 0; i < portals.length; i++) {
       var p = portals[i];
       if (p.x === player.tileX && p.y === player.tileY) {
+        if (p.to === 'field' && (story.respect.farmer_jono || 0) < FIELD_ENTRY_RESPECT) {
+          showToast("The field's fenced off — Farmer Jono hasn't said you can go in yet.", 2200);
+          return;
+        }
         var destIndex = LEVEL_INDEX[p.to];
         if (destIndex !== undefined) {
           sfxPortal();
@@ -2961,7 +3094,7 @@
             player.obj.userData.legR.rotation.x = 0;
           }
           checkShardPickup();
-          checkCropPickup();
+          checkCropPickup(t);
           checkPortal();
         }
       } else if (!dialogueOpen && !carMenuOpen && !toolFrameOpen) {
@@ -2971,6 +3104,7 @@
         player.obj.userData.pivot.scale.set(1, breathe, 1);
       }
 
+      updateCropRespawns(t);
       world.waterTiles.forEach(function (wt) {
         wt.mesh.position.y = wt.baseY + Math.sin(t * 1.6 + wt.phase) * 0.03;
       });
