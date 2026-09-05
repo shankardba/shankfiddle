@@ -443,6 +443,12 @@
   //           p  seed row — Jono's one-time "plant the seeds" upgrade
   //              good, see `job.tiers`' oneTime/plantsSeeds tier
   //           e  crate — an advanced (higher-tier) harvest good
+  //           V  practice spot — an interactable prop (not an NPC), see
+  //              findNearbyPracticeSpot()/practiceViolin(). Interacting
+  //              sets story.learned.practiced, a real one-time action a
+  //              family dialogue beat's `requires` can gate on (see the
+  //              "requires" shape in the dialogue doc below) instead of
+  //              just being talked into existence.
   //           @  player start (used when this level loads with no explicit
   //              spawn override, i.e. as the first level, or via loadLevel
   //              with no spawn argument)
@@ -471,19 +477,13 @@
   //                           // names that collide once lowercased).
   //             name: 'Mom',
   //             appearance: { top, bottom, skin, hair, hairStyle, skirt,
-  //               pieceType, pieceTopper, pieceAccent, tieDye },
+  //               pieceType, pieceAccent, tieDye },
   //             // pieceType: 'pawn'|'king'|'queen'|'rook'|'bishop' — which
-  //             // chess piece this NPC's BODY renders as when
+  //             // chess piece this NPC's body renders as when
   //             // CHARACTER_STYLE === 'chess' (defaults to 'pawn'; ignored
-  //             // entirely in 'human' style). pieceTopper optionally picks
-  //             // a DIFFERENT piece's head accessory instead of the one
-  //             // that matches pieceType — e.g. Sir Earth is pieceType
-  //             // 'king' (the taller, thicker body) with pieceTopper
-  //             // 'queen' (an actual crown; a plain 'king' topper is a
-  //             // cross, not a crown — see PIECE_TOPPER_BUILDERS). Omit it
-  //             // to just use pieceType's own topper, as everyone else
-  //             // does. pieceAccent optionally colors that head accessory
-  //             // (defaults gold; Sir Earth's is white — see below).
+  //             // entirely in 'human' style). pieceAccent optionally colors
+  //             // the king/queen/bishop head accessory (defaults gold;
+  //             // Sir Earth's cross is white — see below).
   //             // tieDye: true swaps the flat `top` color for a painted
   //             // tie-dye pattern (see getTieDyeTexture()) — `top` is
   //             // still required as a fallback for CHARACTER_STYLE ===
@@ -638,6 +638,25 @@
   //         entry for the toast that names it. An NPC with `challenge`,
   //         `job`, or `kindness` ignores `dialogue` entirely — see
   //         talkToNpc().
+  //         A beat in one of these arrays is USUALLY a plain string, but
+  //         can instead be { requires: 'learnedKey', reminder: '...',
+  //         line: '...' } when the thing it praises needs to have
+  //         actually happened first — e.g. Dad's "you practiced" beat
+  //         requires 'practiced' (see the 'V' practice spot in the map
+  //         legend above), and both parents' "so-and-so says you're
+  //         reliable" beats require 'worked_farmer_jono'/'worked_elsie'
+  //         (set the first time a job is actually worked — see
+  //         talkToNpc's job branch). Below the requirement, talking only
+  //         replays `reminder` — the beat doesn't advance and no respect
+  //         is granted, same rule as everywhere else in this file: family
+  //         respect is earned by something REAL happening, not by a
+  //         parent's dialogue simply asserting that it did. Once the
+  //         requirement is met, `line` plays instead and the beat
+  //         completes normally. Reserve this for a beat that praises a
+  //         SPECIFIC verifiable action; a beat that's just "you talked to
+  //         me and I appreciated it" (no physical task claimed) doesn't
+  //         need to be gated at all — see Mom's "you checked in on me"
+  //         beat, a plain string on purpose.
   //
   // ---- the three-tier respect model ----
   // Respect is never one flat number — it's modeled at three distinct
@@ -704,7 +723,7 @@
       map: [
         "###########",
         "#.........#",
-        "#..oo.....#",
+        "#..oV.....#",
         "#.......D.#",
         "#.........#",
         "#....@...M#",
@@ -730,16 +749,40 @@
             // the tone arc itself: "Boy" starts as a curt, name-replacing
             // address here and ends as the term of endearment in his
             // grief line below — same word, earned all the way around.
+            // Beats 0-2 are gated on real things (see the "requires" doc
+            // above LEVELS) — practicing the violin, actually working for
+            // Jono, actually helping Milo — not just talking. Beat 3 is a
+            // pure wrap-up sentiment, fine ungated since it only follows
+            // three real beats already earned.
             earning_respect: [
-              "Boy. You practiced again without me telling you to. That's something, I suppose.",
-              "Farmer Jono says you're reliable, Boy. That's not nothing, coming from him.",
-              "You fixed the gate without being asked. I saw that, Boy.",
+              {
+                requires: 'practiced',
+                reminder: "Go pick up that violin and put in the work yourself, Boy — then we'll talk.",
+                line: "Boy. You practiced again without me telling you to. That's something, I suppose."
+              },
+              {
+                requires: 'worked_farmer_jono',
+                reminder: "Jono hasn't said a word about you to me. Have you even been out to his fields, Boy?",
+                line: "Farmer Jono says you're reliable, Boy. That's not nothing, coming from him."
+              },
+              {
+                requires: 'kindness_hungry_kid',
+                reminder: "Kindness isn't a feeling, Boy. It's a thing you do for somebody, or it's nothing at all.",
+                line: "Someone told me you gave that hungry boy in the clearing something to eat, without anyone asking. That's not nothing, Boy."
+              },
               "...I don't say this enough, Boy. I'm proud of the effort you're putting in."
             ],
             // The earning_respect -> diagnosis reveal, delivered right here
             // at home before he leaves for the Hospital — see the trigger
             // in talkToNpc().
             diagnosis: "...I'm not as strong as I used to be, Boy. But I'm glad you're here.",
+            // FLAGGED DEBT, not yet fixed: "You read to me yesterday"
+            // claims a task (reading aloud) with no matching mechanic,
+            // same problem the earning_respect beats above were fixed
+            // for — it just wasn't in scope of that pass. Needs either a
+            // real reading interaction or a `requires` swap once one
+            // exists; leaving it alone for now rather than inventing a
+            // new mechanic unasked.
             hospice: [
               "It's good to be home, Boy. Don't fuss over me too much — just sit with me a while.",
               "You read to me yesterday. I don't remember the story, but I remember your voice, Boy.",
@@ -774,9 +817,22 @@
             // a NEW one of these, never by hearing the same one twice. Same
             // tone arc as Dad's: "Boy" starts curt, lands as endearment in
             // her duty line below.
+            // Beats 0-1 are gated on real things (see the "requires" doc
+            // above LEVELS) — actually learning from Wainwright, actually
+            // working for Elsie. Beat 2 is fine ungated: it never claims a
+            // physical task happened, just that you talked to her, which
+            // is simply true whenever this line plays.
             earning_respect: [
-              "Boy. You cleared the table without me asking. Thank you.",
-              "I heard you've been helping Elsie at the shop, Boy. That matters more than you know.",
+              {
+                requires: 'fractal_navigate',
+                reminder: "You've been home an awful lot for a boy your age. Isn't there somewhere in this village worth losing yourself in?",
+                line: "I heard you've been down at the schoolhouse, lost in Mr. Wainwright's fractals, Boy. Good — a mind like that shouldn't sit still."
+              },
+              {
+                requires: 'worked_elsie',
+                reminder: "Elsie hasn't mentioned you once. Have you even introduced yourself at the shop, Boy?",
+                line: "I heard you've been helping Elsie at the shop, Boy. That matters more than you know."
+              },
               "You checked in on me today just because. That's rare in a boy your age.",
               "I know your father is hard on you, Boy. I see how hard you're trying anyway."
             ],
@@ -1364,10 +1420,16 @@
         E: {
           id: 'sir_earth',
           name: 'Sir Earth',
-          // King-shaped body (tall and thick), a queen's crown on top
-          // instead of a king's plain cross, and a painted tie-dye robe —
-          // see pieceTopper/tieDye in the appearance doc above LEVELS.
-          appearance: { top: 0x2a2a5a, bottom: 0x1f1f2a, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'king', pieceTopper: 'queen', pieceAccent: 0xffffff, tieDye: true },
+          // King-shaped body (tall and thick), its own white cross on top
+          // — a cross, not a crown, is what actually marks a king apart
+          // from a queen in chess — plus a painted tie-dye robe. See
+          // tieDye in the appearance doc above LEVELS.
+          // By background he's a trumpet player, but trumpet itself is
+          // never a required skill in the story — his actual role is
+          // introducing the player to the Circle of Fifths, the same way
+          // Coffee's role is introducing synthesis rather than guitar or
+          // any one instrument being the point.
+          appearance: { top: 0x2a2a5a, bottom: 0x1f1f2a, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'king', pieceAccent: 0xffffff, tieDye: true },
           missions: [
             {
               key: 'theory_wheel',
@@ -1405,7 +1467,7 @@
               goal: { tool: 'circleOfFifths', id: 'charts', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
             }
           ],
-          dialogue: { default: "Come sit a while, boy. The wheel will still be turning when you return. It always is." }
+          dialogue: { default: "Come sit a while, boy. I could show you my trumpet, but the wheel's the real lesson — it'll still be turning when you return. It always is." }
         }
       },
       exits: { '1': { to: 'clearing', x: 4, y: 13 } }
@@ -1589,7 +1651,16 @@
     var idx = CHAPTERS.indexOf(story.chapter);
     for (var i = idx; i >= 0; i--) {
       var raw = npcDef.dialogue[CHAPTERS[i]];
-      if (raw) return Array.isArray(raw) ? raw[Math.min(visitCount || 0, raw.length - 1)] : raw;
+      if (raw) {
+        if (!Array.isArray(raw)) return raw;
+        var entry = raw[Math.min(visitCount || 0, raw.length - 1)];
+        // A beat gated behind a real task (see the "requires" shape in the
+        // appearance/dialogue doc above LEVELS) is an object, not a plain
+        // string — its `line` is what actually gets said once earned.
+        // talkToNpc's isFamily branch checks `requires` itself before
+        // ever reaching here, so by the time we unwrap it it's earned.
+        return (entry && typeof entry === 'object') ? entry.line : entry;
+      }
     }
     return npcDef.dialogue.default || '...';
   }
@@ -1637,7 +1708,7 @@
     var exits = levelDef.exits || {};
     var npcs = levelDef.npcs || {};
     var obstacles = new Set();
-    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], car: null };
+    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], practiceSpots: [], car: null };
     var groundKinds = [];
     var playerStart = { x: 1, y: 1 };
 
@@ -1672,6 +1743,7 @@
           case 'p': features.crops.push({ x: x, y: y, collected: false, item: 'seedrow' }); break;
           case 'e': features.crops.push({ x: x, y: y, collected: false, item: 'crate' }); break;
           case 'C': obstacles.add(key(x, y)); features.car = { x: x, y: y }; break;
+          case 'V': obstacles.add(key(x, y)); features.practiceSpots.push({ x: x, y: y }); break;
           case '@': playerStart = { x: x, y: y }; break;
         }
       }
@@ -2078,6 +2150,33 @@
     return g;
   }
 
+  // A violin resting on its stand — see the 'V' map legend entry and
+  // practiceViolin(). A prop, not a collectible: it never disappears.
+  function createPracticeSpot() {
+    var g = new THREE.Group();
+    var standMat = new THREE.MeshStandardMaterial({ color: 0x4a3524, roughness: 0.8 });
+    var standPost = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 8), standMat);
+    standPost.position.y = 0.25;
+    standPost.castShadow = true;
+    g.add(standPost);
+    var standBase = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.05, 12), standMat);
+    standBase.position.y = 0.025;
+    g.add(standBase);
+    var bodyMat = new THREE.MeshStandardMaterial({ color: 0x8a4a28, roughness: 0.5 });
+    var body = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), bodyMat);
+    body.scale.set(0.7, 1, 0.35);
+    body.position.set(0, 0.56, 0.05);
+    body.rotation.x = -0.3;
+    body.castShadow = true;
+    g.add(body);
+    var neck = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.32, 6), new THREE.MeshStandardMaterial({ color: 0x2a1c12, roughness: 0.6 }));
+    neck.position.set(0, 0.78, -0.08);
+    neck.rotation.x = -0.3;
+    neck.castShadow = true;
+    g.add(neck);
+    return g;
+  }
+
   function createPortalMarker() {
     var g = new THREE.Group();
     var post = new THREE.Mesh(
@@ -2417,7 +2516,7 @@
     pivot.add(hair);
 
     if (isChess) {
-      var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceTopper || opts.pieceType];
+      var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceType];
       if (topperBuilder) {
         var topper = topperBuilder(opts.pieceAccent || 0xf0a83c);
         topper.position.y = head.position.y + 0.19;
@@ -2543,6 +2642,7 @@
 
     place(w.features.shards, createShard);
     place(w.features.crops, function (f) { return createCrop(f.kind || f.item); });
+    place(w.features.practiceSpots, createPracticeSpot);
 
     w.features.npcs.forEach(function (n) {
       var p = worldPos(w, n.x, n.y);
@@ -3098,6 +3198,31 @@
     return null;
   }
 
+  function findNearbyPracticeSpot() {
+    var spots = world.features.practiceSpots;
+    for (var i = 0; i < spots.length; i++) {
+      var s = spots[i];
+      var dx = Math.abs(s.x - player.tileX), dy = Math.abs(s.y - player.tileY);
+      if (dx + dy <= 1) return s;
+    }
+    return null;
+  }
+
+  // The real task behind Dad's "you practiced again without me telling
+  // you to" beat — see the 'requires' shape in the dialogue doc above
+  // LEVELS. One-time flag; practicing again after that just repeats the
+  // flavor line, since the beat itself is already earned.
+  function practiceViolin() {
+    var firstTime = !story.learned.practiced;
+    story.learned.practiced = true;
+    if (firstTime) {
+      openDialogue("You pick up the violin and run through it on your own, no one telling you to. Still rough. But it's real.");
+      showToast('🎻 You practiced on your own', 2000);
+    } else {
+      openDialogue("You run through it again, just for the feel of it.");
+    }
+  }
+
   function findNearbyNpc() {
     var npcs = world.features.npcs;
     for (var i = 0; i < npcs.length; i++) {
@@ -3218,6 +3343,11 @@
       }
       story.money += tier.pay || 0;
       story.respect[jobKey] = jobRespect + 1;
+      // A real, one-time record that this job has actually been worked —
+      // lets other content (e.g. a family dialogue beat's `requires`)
+      // reference "have they done real work for Jono/Elsie/etc." without
+      // caring about the current respect number, which keeps climbing.
+      if (!story.learned['worked_' + jobKey]) story.learned['worked_' + jobKey] = true;
       if (tier.reputation) {
         var communityId = tier.community || job.community || world.id;
         story.communityRespect[communityId] = (story.communityRespect[communityId] || 0) + tier.reputation;
@@ -3248,6 +3378,10 @@
       story.money -= kindness.cost;
       var kindCommunity = kindness.community || world.id;
       story.communityRespect[kindCommunity] = (story.communityRespect[kindCommunity] || 0) + (kindness.reputation || 0);
+      // Same idea as a job's worked_<jobKey> flag — a real, one-time
+      // record that this act of generosity actually happened, so other
+      // content can gate on it (see e.g. Dad's earning_respect beats).
+      if (!story.learned['kindness_' + npcRespectKey(def)]) story.learned['kindness_' + npcRespectKey(def)] = true;
       renderStats();
       var kindLine = kindness.lines[Math.floor(rand(0, kindness.lines.length))];
       openDialogue(kindLine, def.name);
@@ -3293,18 +3427,31 @@
       // just which beat of THIS chapter's dialogue array you're on.
       var chapterTalkKey = famKey + ':' + story.chapter;
       var chapterVisit = story.chapterTalks[chapterTalkKey] || 0;
+      var chapterDialogue = def.dialogue && def.dialogue[story.chapter];
+      var beatCount = Array.isArray(chapterDialogue) ? chapterDialogue.length : (chapterDialogue ? 1 : 0);
+      // A beat can be gated behind a real task instead of just being
+      // talked into existence — an object `{ requires, reminder, line }`
+      // instead of a plain string (see the doc above LEVELS). Below the
+      // requirement, talking only replays the reminder: no advance, no
+      // respect, same "no free respect from talking" rule as everywhere
+      // else. dialogueFor() unwraps `line` once it's actually earned.
+      if (def.isFamily && chapterVisit < beatCount) {
+        var pendingBeat = chapterDialogue[chapterVisit];
+        if (pendingBeat && typeof pendingBeat === 'object' && pendingBeat.requires && !story.learned[pendingBeat.requires]) {
+          openDialogue(pendingBeat.reminder, def.name);
+          return;
+        }
+      }
       openDialogue(dialogueFor(def, chapterVisit), def.name);
       if (def.isFamily) {
         story.chapterTalks[chapterTalkKey] = chapterVisit + 1;
         // Respect is earned by reaching a NEW beat of this chapter's
-        // dialogue — a distinct caregiving moment, e.g. "you fixed the
-        // gate" or "you sat with him" — never by repeating one you've
-        // already heard. A plain string is one beat; an array is that
-        // many. Once you've heard them all, talking is still welcome
-        // (the last line just repeats), but it stops growing respect
-        // until a new chapter gives this person something new to do.
-        var chapterDialogue = def.dialogue && def.dialogue[story.chapter];
-        var beatCount = Array.isArray(chapterDialogue) ? chapterDialogue.length : (chapterDialogue ? 1 : 0);
+        // dialogue — a distinct caregiving moment, e.g. "you sat with
+        // him" — never by repeating one you've already heard. A plain
+        // string is one beat; an array is that many. Once you've heard
+        // them all, talking is still welcome (the last line just
+        // repeats), but it stops growing respect until a new chapter
+        // gives this person something new to do.
         if (chapterVisit < beatCount) {
           story.respect[famKey] = (story.respect[famKey] || 0) + 1;
           if (!story.hasCar) showToast('Family respect: ' + familyRespect() + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD, 1600);
@@ -3402,6 +3549,8 @@
 
     var npc = findNearbyNpc();
     if (npc) { talkToNpc(npc); return; }
+    var practiceSpot = findNearbyPracticeSpot();
+    if (practiceSpot) { practiceViolin(); return; }
     var sign = findNearbySign();
     if (sign) openDialogue(sign.message);
   }
