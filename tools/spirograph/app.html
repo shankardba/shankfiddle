@@ -839,16 +839,24 @@
     baseScale = (size * 0.46) / (derived ? derived.pltmax : 100);
   }
 
+  // A 90° CCW rotation applied only at the display/projection layer — the generative math
+  // (t=0, phi=0, etc.) still starts at the conventional "3 o'clock" angle, but the pen's
+  // conventional starting position on a real Spirograph is straight up at 12 o'clock, so
+  // every point (curve, mechanism, symmetry rays) is rotated here before hitting the
+  // screen. Purely cosmetic: doesn't touch T/T1/T3/T5/nsymm or any of the equations.
   function worldToScreen(x,y){
     const s = baseScale * view.zoom;
+    const rx = -y, ry = x;
     return [
-      canvas.width/2 + view.offX + s*x,
-      canvas.height/2 + view.offY - s*y
+      canvas.width/2 + view.offX + s*rx,
+      canvas.height/2 + view.offY - s*ry
     ];
   }
   function screenToWorld(px,py){
     const s = baseScale * view.zoom;
-    return [ (px - canvas.width/2 - view.offX)/s, -(py - canvas.height/2 - view.offY)/s ];
+    const rx = (px - canvas.width/2 - view.offX)/s;
+    const ry = (canvas.height/2 + view.offY - py)/s;
+    return [ ry, -rx ];
   }
 
   function resetView(){ view.zoom = 1; view.offX = 0; view.offY = 0; }
