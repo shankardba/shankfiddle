@@ -610,6 +610,23 @@
   // money stays a single global number on purpose — it's fungible and
   // portable in a way respect at any of these scopes deliberately isn't.
   //
+  // ---- writing convention: tone arcs with respect, not just nicer words ----
+  // Every character who talks down to you at low respect should visibly
+  // warm up as respect with THEM specifically grows — and the tell isn't
+  // nicer phrasing, it's a different form of address. Low respect: curt,
+  // dismissive, often no name at all beyond "Boy" used as a put-down
+  // ("Boy, what are you doing"). High respect: the SAME person, using the
+  // SAME word warmly — "Come here, Boy, how are you" — respect earned
+  // becomes a term of endearment instead of dismissal, not a new word.
+  // This is universal, not just family: an instrument/tool mentor's
+  // `challenge.progressLines` (early index = harsh, late index/
+  // `completeLine` = warm), a job's `trust.lines` -> tier `lines` (entry
+  // tier still brusque, a mature/oneTime tier openly fond), and an
+  // isFamily NPC's per-chapter `dialogue` beats (first beat of a chapter
+  // curt, last beat affectionate) should all stage this same arc. When
+  // writing a new NPC's lines, don't just make later lines nicer — change
+  // what they call you, and echo the earlier word back on purpose.
+  //
   // A level itself may optionally set `availableFrom: '<chapter>'` — until
   // story.chapter has reached (or passed) that chapter, the level is left
   // out of the car's destination menu. The Hospital below uses this so it
@@ -638,29 +655,38 @@
           appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'short', skin: 0xa9714a, pieceType: 'king' },
           isFamily: true,
           dialogue: {
+            // Preserve this exact line — it's the story's signature opening
+            // put-down and anchors the tone arc below (see "writing
+            // convention: tone arcs with respect" above LEVELS). Don't
+            // touch it even when revising the rest of his dialogue.
             childhood: "An A-minus. Do you know what that tells me? That you stopped trying the moment it got hard.",
             // Each beat is a distinct, real thing he noticed you do — see
             // talkToNpc()'s isFamily branch: respect only grows by reaching
-            // a NEW one of these, never by hearing the same one twice.
+            // a NEW one of these, never by hearing the same one twice. Also
+            // the tone arc itself: "Boy" starts as a curt, name-replacing
+            // address here and ends as the term of endearment in his
+            // grief line below — same word, earned all the way around.
             earning_respect: [
-              "You practiced again without me telling you to. Good.",
-              "Farmer Jono says you're reliable. That's not nothing, coming from him.",
-              "You fixed the gate without being asked. I saw that.",
-              "...I don't say this enough. I'm proud of the effort you're putting in."
+              "Boy. You practiced again without me telling you to. That's something, I suppose.",
+              "Farmer Jono says you're reliable, Boy. That's not nothing, coming from him.",
+              "You fixed the gate without being asked. I saw that, Boy.",
+              "...I don't say this enough, Boy. I'm proud of the effort you're putting in."
             ],
             // The earning_respect -> diagnosis reveal, delivered right here
             // at home before he leaves for the Hospital — see the trigger
             // in talkToNpc().
-            diagnosis: "...I'm not as strong as I used to be. But I'm glad you're here.",
+            diagnosis: "...I'm not as strong as I used to be, Boy. But I'm glad you're here.",
             hospice: [
-              "It's good to be home. Don't fuss over me too much — just sit with me a while.",
-              "You read to me yesterday. I don't remember the story, but I remember your voice.",
-              "I'm tired today. But you're here. That's enough."
+              "It's good to be home, Boy. Don't fuss over me too much — just sit with me a while.",
+              "You read to me yesterday. I don't remember the story, but I remember your voice, Boy.",
+              "I'm tired today, Boy. But you're here. That's enough."
             ],
             // His last line, delivered once as the hospice -> grief trigger
             // fires — see talkToNpc(). He's presentDuring hospice only, so
-            // by the next visit here he's simply gone.
-            grief: "...You've become someone I'm proud of. Take care of your mother for me."
+            // by the next visit here he's simply gone. The tone arc's whole
+            // payoff: the word that opened as a put-down in earning_respect
+            // now opens his goodbye as an endearment.
+            grief: "Come here, Boy. ...You've become someone I'm proud of. Take care of your mother for me."
           },
           careMessages: {
             earning_respect: 'Dad noticed the effort. 🏡 +1 family respect',
@@ -676,28 +702,34 @@
           appearance: { top: 0xa8536b, bottom: 0x3a2a35, hairStyle: 'long', skirt: true, skin: 0xa9714a, pieceType: 'queen' },
           isFamily: true,
           dialogue: {
+            // Preserve this exact line — see the matching note on Dad's
+            // childhood line above; don't touch it during a tone-arc pass.
             childhood: "Your father's right. In this house, 'good enough' isn't. We didn't raise you to be ordinary.",
             // Each beat is a distinct, real thing she noticed — see
             // talkToNpc()'s isFamily branch: respect only grows by reaching
-            // a NEW one of these, never by hearing the same one twice.
+            // a NEW one of these, never by hearing the same one twice. Same
+            // tone arc as Dad's: "Boy" starts curt, lands as endearment in
+            // her duty line below.
             earning_respect: [
-              "You cleared the table without me asking. Thank you.",
-              "I heard you've been helping Elsie at the shop. That matters more than you know.",
+              "Boy. You cleared the table without me asking. Thank you.",
+              "I heard you've been helping Elsie at the shop, Boy. That matters more than you know.",
               "You checked in on me today just because. That's rare in a boy your age.",
-              "I know your father is hard on you. I see how hard you're trying anyway."
+              "I know your father is hard on you, Boy. I see how hard you're trying anyway."
             ],
-            diagnosis: "I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know.",
+            diagnosis: "I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know, Boy.",
             hospice: [
-              "Having him home is better, even like this. Thank you for helping me take care of him.",
-              "You've learned how to give him his medicine without being asked. I don't know how you grew up so fast.",
-              "Some nights I don't think I could do this without you here."
+              "Having him home is better, even like this, Boy. Thank you for helping me take care of him.",
+              "You've learned how to give him his medicine without being asked. I don't know how you grew up so fast, Boy.",
+              "Some nights I don't think I could do this without you here, Boy."
             ],
             grief: [
-              "Some days the house feels too quiet. But you're still here. That's not nothing.",
-              "You've been getting up early, taking care of things before I even ask. I see it."
+              "Some days the house feels too quiet, Boy. But you're still here. That's not nothing.",
+              "You've been getting up early, taking care of things before I even ask. I see it, Boy."
             ],
-            // The grief -> duty trigger's reveal — see talkToNpc().
-            duty: "It's just the two of us now. We're building something new out of what we lost — I'm proud of who you've become in the middle of it."
+            // The grief -> duty trigger's reveal — see talkToNpc(). The
+            // arc's payoff, same as Dad's grief line: "Boy" opens her
+            // biggest line now, not a put-down anymore.
+            duty: "Come here, Boy. It's just the two of us now. We're building something new out of what we lost — I'm proud of who you've become in the middle of it."
           },
           careMessages: {
             earning_respect: 'Mom noticed the effort. 🏡 +1 family respect',
@@ -740,11 +772,11 @@
             key: 'violin',
             threshold: 3,
             progressLines: [
-              "Hold the bow properly! Wrist loose, not limp. Again.",
-              "...Better. You might not be hopeless after all.",
-              "One more session. Prove to me you're serious."
+              "Hold the bow properly, boy! Wrist loose, not limp. Again.",
+              "...Better. You might not be hopeless after all, boy.",
+              "One more session, boy. Prove to me you're serious."
             ],
-            completeLine: "Alright. You've earned it — I'll teach you the violin, properly this time.",
+            completeLine: "Alright, boy — you've earned it. I'll teach you the violin, properly this time. Come by whenever you like now; you're welcome here.",
             learnedMessage: 'You learned the Violin! 🎻',
             link: { href: '../circle-of-fifths/', label: 'Practice your scales in the Circle of Fifths →' }
           }
@@ -758,8 +790,8 @@
             trust: {
               need: 2,
               lines: [
-                "You're the new kid hanging around the fields, huh? Watch where you step.",
-                "...Alright. You keep showing up, you don't get underfoot. Maybe I can use you."
+                "You're the new kid hanging around my fields, boy. Watch where you step.",
+                "...Alright, boy. You keep showing up, you don't get underfoot. Maybe I can use you."
               ]
             },
             // Once trusted (see `trust` above), the actual picking happens
@@ -778,7 +810,7 @@
                   needLine: "The field's through that gate — bring me 5 vegetables, whatever you find growing, and I'll pay you for the work."
                 },
                 lines: [
-                  "Now that's a haul. Good hands.",
+                  "Now that's a haul. Good hands, boy.",
                   "Fields don't tend themselves. Thanks for the help.",
                   "Good hands. Come back anytime there's more to pick."
                 ]
@@ -801,8 +833,8 @@
                   needLine: "You've earned more than picking. There's open ground at the back of the field — plant 3 rows for me and I'll pay you properly this time."
                 },
                 lines: [
-                  "Straight rows, good spacing. You've got a real feel for this now.",
-                  "That's a farmer's work, not a kid's chore. I mean that. Field'll grow back faster for it, too — you earned that."
+                  "Straight rows, good spacing. You've got a real feel for this now, boy.",
+                  "That's a farmer's work, not a kid's chore anymore, boy — I mean that. Field'll grow back faster for it, too. You've more than earned your place here."
                 ]
               }
             ]
@@ -817,8 +849,8 @@
             trust: {
               need: 2,
               lines: [
-                "Careful with the shelves! ...You're the one who's been around lately, aren't you.",
-                "You've been polite every time you've come in. That's worth something to me."
+                "Careful with the shelves, boy! ...You're the one who's been hanging around lately, aren't you.",
+                "You've been polite every time you've come in, boy. That's worth something to me."
               ]
             },
             tiers: [
@@ -835,7 +867,7 @@
                 lines: [
                   "Welcome back! Everything's fresh today.",
                   "That'll keep the shelves full a while. Thank you.",
-                  "You're becoming a familiar face around here."
+                  "You're becoming a familiar face around here, boy."
                 ]
               },
               {
@@ -849,9 +881,9 @@
                   needLine: "I trust you with the good stuff now — bring in 3 of the imported crates and I'll pay you properly."
                 },
                 lines: [
-                  "Careful hands with the fine goods. I knew I could trust you with these.",
-                  "Half my customers ask for you by name now.",
-                  "You've earned a real cut of this, not just pocket change."
+                  "Careful hands with the fine goods, boy. I knew I could trust you with these.",
+                  "Half my customers ask for you by name now. Funny — I still just think of you as 'boy'. Softer, these days, isn't it?",
+                  "You've earned a real cut of this, not just pocket change, boy."
                 ]
               }
             ]
@@ -1041,7 +1073,7 @@
           missions: [
             {
               key: 'fractal_navigate',
-              introLine: "Numbers aren't the boring part, son. Look closer. Go on — zoom in until it stops looking like anything.",
+              introLine: "Numbers aren't the boring part, boy. Look closer. Go on — zoom in until it stops looking like anything.",
               completeLine: "There. You just found self-similarity with your own hands. Go get lost in it.",
               learnedMessage: 'You learned to navigate fractals! 🔍',
               goal: { tool: 'fractal', id: 'zoom', href: '../fractal/app.html', linkLabel: 'Pan and zoom into the fractal →' }
@@ -1063,12 +1095,12 @@
             {
               key: 'fractal_color',
               introLine: "Now make it yours. Push the iterations up, pick your own colors — a fractal with no palette is just math homework.",
-              completeLine: "You're not just doing my homework anymore. You're exploring.",
+              completeLine: "You're not just doing my homework anymore, boy. You're exploring — and I mean that as the compliment it is now.",
               learnedMessage: 'You learned to shape fractals! 🎨',
               goal: { tool: 'fractal', id: 'color', href: '../fractal/app.html', linkLabel: 'Tune the color and detail →' }
             }
           ],
-          dialogue: { default: "Still coming back to stare at infinity? Good. That means it's working." }
+          dialogue: { default: "Come back to stare at infinity again, boy? Good — that means it's working. How are you keeping?" }
         }
       },
       exits: { '1': { to: 'clearing', x: 4, y: 1 } }
@@ -1095,7 +1127,7 @@
           missions: [
             {
               key: 'synth_oscillator',
-              introLine: "First things first — meet the oscillator. It's just a wave. Patch the keyboard into it, one volt per octave, and play something.",
+              introLine: "Another kid at my door. Fine, boy — meet the oscillator. It's just a wave. Patch the keyboard into it, one volt per octave, and play something.",
               completeLine: "Good. You just built an instrument out of electricity. Coffee's on me.",
               learnedMessage: 'You learned the oscillator! 〰️',
               goal: { tool: 'synth', id: 'oscillator_keyboard', href: '../synth/app.html', linkLabel: 'Meet the oscillator and keyboard →' }
@@ -1131,12 +1163,12 @@
             {
               key: 'synth_patching',
               introLine: "Last lesson. Patch something back into itself, or just wire up everything you've got. Careful — this is where it gets chaotic.",
-              completeLine: "That's not a mistake, that's a modular synthesizer. Now go make noise.",
+              completeLine: "That's not a mistake, boy, that's a modular synthesizer. Now go make noise — you've earned the run of this place.",
               learnedMessage: 'You learned self-patching! ⚡',
               goal: { tool: 'synth', id: 'self_patch', href: '../synth/app.html', linkLabel: 'Patch everything at once →' }
             }
           ],
-          dialogue: { default: "Still here? Good, the coffee's fresh. Go patch something weird." }
+          dialogue: { default: "Still here, boy? Good — the coffee's fresh. Come sit, patch something weird, stay as long as you like." }
         }
       },
       exits: { '1': { to: 'clearing', x: 15, y: 1 } }
@@ -1163,7 +1195,7 @@
           missions: [
             {
               key: 'theory_wheel',
-              introLine: "Every key has its place on this wheel. Find your tonic — the home note — and turn the wheel until you feel where it sits.",
+              introLine: "Every key has its place on this wheel, boy. Find your tonic — the home note — and turn the wheel until you feel where it sits.",
               completeLine: "You have found your way home in twelve keys, not just one. That is no small thing.",
               learnedMessage: 'You learned the Circle of Fifths! 🎼',
               goal: { tool: 'circleOfFifths', id: 'wheel', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel yourself →' }
@@ -1192,12 +1224,12 @@
             {
               key: 'theory_charts',
               introLine: "Theory is not just for the ear. Switch the chart to guitar or ukulele, or change the clef — read it a different way.",
-              completeLine: "Now you can carry this with you, on any instrument, in any key. That was the whole lesson.",
+              completeLine: "Now you can carry this with you, boy, on any instrument, in any key. That was the whole lesson.",
               learnedMessage: 'You learned to read every chart! 📖',
               goal: { tool: 'circleOfFifths', id: 'charts', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
             }
           ],
-          dialogue: { default: "The wheel will still be turning when you return. It always is." }
+          dialogue: { default: "Come sit a while, boy. The wheel will still be turning when you return. It always is." }
         }
       },
       exits: { '1': { to: 'clearing', x: 4, y: 13 } }
