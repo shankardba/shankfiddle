@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<!--
+  Spirograph Studio — embeddable widget
+  --------------------------------------
+  Copyright (c) 2026 Shankar Srinivasan. All rights reserved.
+  See LICENSE in the repository root.
+
+  Generative math: the "second-order roulette" (gear-in-hoop-in-wheel)
+  construction described by glagolj —
+  https://glagolj.github.io/gg-blog/roulette/2022/03/14/second-order-roulette.html
+  Full parameter parity with that reference tool: the eight generative
+  parameters (n0, n1, n2, n3, h, p, phi, hole), the three display toggles
+  (gears, symmetry, base curve), the frequency-inversion solver (T1, T3, T
+  -> gears), and the similarity readouts (F, n_symm, the a/b decomposition,
+  C, n_C, m, l) are all here. Every control redraws live on every input —
+  there is no separate "update" step. The rendering, controls, and
+  interaction are new.
+
+  Self-contained: no build step, no dependencies beyond two Google Fonts.
+  To embed:
+    1) Easiest / safest: <iframe src="app.html" style="width:100%;height:600px;border:0;"></iframe>
+    2) Inline: paste this whole file's body into a page (it sizes itself to its
+       parent container, so wrap it in a div with a fixed height if you don't
+       want it filling the viewport).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spirograph Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E16;
+    --surface:#121822;
+    --surface-2:#1A2230;
+    --border:#232D3B;
+    --text:#E7ECF2;
+    --text-muted:#8A97A8;
+    --warm:#F2A65A;
+    --cool:#57D9C4;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'Space Grotesk',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    overflow:hidden;
+  }
+  #wrap{position:relative;width:100%;height:100vh;min-height:320px;background:var(--bg);}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;}
+  canvas.dragging{cursor:grabbing;}
+
+  .hud{
+    position:absolute;left:14px;bottom:14px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px);
+    background:rgba(18,24,34,0.72);
+    border:1px solid var(--border);
+    padding:7px 12px;border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;color:var(--text-muted);
+    pointer-events:none;
+    backdrop-filter:blur(2px);
+  }
+  .hud span{color:var(--cool);}
+
+  .gear-btn, .download-btn, .link-btn{
+    position:absolute;top:14px;z-index:2;
+    width:36px;height:36px;border-radius:4px;
+    background:rgba(18,24,34,0.72);
+    border:1px solid var(--border);
+    color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .gear-btn{right:14px;}
+  .download-btn{left:14px;}
+  .link-btn{left:58px;}
+  .gear-btn:hover, .download-btn:hover, .link-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .link-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .gear-btn svg, .download-btn svg, .link-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
+  .gear-btn.open svg{transform:rotate(75deg);}
+
+  .toast{
+    position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-8px);
+    background:rgba(18,24,34,0.9);border:1px solid var(--cool);color:var(--cool);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 12px;border-radius:4px;
+    opacity:0;pointer-events:none;transition:opacity 0.2s ease, transform 0.2s ease;z-index:3;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .panel{
+    position:absolute;top:0;right:0;height:100%;width:300px;z-index:1;
+    background:rgba(15,20,29,0.94);
+    border-left:1px solid var(--border);
+    padding:60px 18px 18px;
+    transform:translateX(100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .panel.open{transform:translateX(0);}
+
+  .section{margin-bottom:22px;}
+  .section + .section{border-top:1px solid var(--border);padding-top:20px;}
+  .label{
+    font-size:11px;letter-spacing:0.02em;color:var(--text-muted);
+    margin-bottom:9px;
+  }
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  select{
+    width:100%;padding:9px 10px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:13px;cursor:pointer;
+  }
+  select:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+
+  .num-field{display:flex;flex-direction:column;gap:4px;}
+  .num-field label{font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;}
+  .num-field input[type=number]{
+    width:100%;padding:7px 8px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+  }
+  .num-field input[type=number]:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+
+  .swatches{display:flex;gap:8px;margin-bottom:16px;}
+  .swatch{
+    width:34px;height:34px;border-radius:4px;cursor:pointer;
+    border:2px solid transparent;
+  }
+  .swatch.active{border-color:var(--cool);}
+  .swatch:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+
+  .slider-row{display:flex;align-items:center;gap:10px;}
+  .slider-row + .slider-row{margin-top:12px;}
+  .slider-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+  input[type=range]{
+    flex:1;accent-color:var(--warm);height:4px;
+  }
+  .val{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--cool);
+    min-width:44px;text-align:right;
+  }
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .toggle-row .label{margin:0;}
+  .switch{
+    position:relative;width:36px;height:20px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:10px;cursor:pointer;flex-shrink:0;
+  }
+  .switch::after{
+    content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;
+    background:var(--text-muted);border-radius:50%;transition:transform 0.15s, background 0.15s;
+  }
+  .switch.on{border-color:var(--cool);}
+  .switch.on::after{transform:translateX(16px);background:var(--cool);}
+
+  .btn{
+    width:100%;padding:9px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:12px;cursor:pointer;margin-top:8px;
+  }
+  .btn:hover{border-color:var(--warm);color:var(--warm);}
+  .btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .btn-accent{border-color:var(--cool);color:var(--cool);}
+  .btn-accent:hover{border-color:var(--warm);color:var(--warm);}
+
+  .presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .preset-btn{
+    padding:7px 6px;background:var(--surface);color:var(--text-muted);
+    border:1px solid var(--border);border-radius:4px;font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;cursor:pointer;text-align:center;
+  }
+  .preset-btn:hover{border-color:var(--warm);color:var(--warm);}
+
+  .credit{
+    font-size:10px;line-height:1.6;color:var(--text-muted);opacity:0.75;
+  }
+  .credit a{color:var(--cool);}
+
+  .hint{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:13px;color:var(--text-muted);
+    background:rgba(10,14,22,0.6);padding:10px 16px;border-radius:4px;
+    pointer-events:none;transition:opacity 0.6s ease;
+    text-align:center;line-height:1.5;
+  }
+  @media (prefers-reduced-motion:reduce){
+    .hint{transition:none;}
+    .panel{transition:none;}
+    .gear-btn svg{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+
+  <div class="hud" id="hud">
+    <span id="hgears">(140:128;54:45)</span> ·
+    F=<span id="hF">(35/32,42/32)</span> ·
+    n<sub>symm</sub>=<span id="hsymm">7</span>
+  </div>
+
+  <button class="download-btn" id="downloadBtn" aria-label="Download image">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v12"></path>
+      <path d="M7 10l5 5 5-5"></path>
+      <path d="M5 21h14"></path>
+    </svg>
+  </button>
+
+  <button class="link-btn" id="linkBtn" aria-label="Copy share link">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 4.5"></path>
+      <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.5 19.5"></path>
+    </svg>
+  </button>
+
+  <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+
+  <div class="toast" id="toast">Link copied</div>
+
+  <div class="panel" id="panel">
+    <div class="section">
+      <div class="label">Gears — outer ring (n0), wheel (n1)</div>
+      <div class="grid2">
+        <div class="num-field"><label><span>n0</span></label><input type="number" id="n0" min="1" max="600" value="140"></div>
+        <div class="num-field"><label><span>n1</span></label><input type="number" id="n1" min="1" max="600" value="128"></div>
+      </div>
+      <div class="label" style="margin-top:14px;">Hoop (n2), pen wheel (n3)</div>
+      <div class="grid2">
+        <div class="num-field"><label><span>n2</span></label><input type="number" id="n2" min="1" max="600" value="54"></div>
+        <div class="num-field"><label><span>n3</span></label><input type="number" id="n3" min="1" max="600" value="45"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">Hoop &amp; pen</div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Hoop offset (h)</span><span class="val" id="hVal">0.480</span></div>
+          <input type="range" id="hSlider" min="-0.9" max="0.9" step="0.001" value="0.48">
+        </div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Pen distance (p)</span><span class="val" id="pVal">0.800</span></div>
+          <input type="range" id="pSlider" min="0" max="1" step="0.001" value="0.8">
+        </div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Pen phase (&phi;)</span><span class="val" id="phiVal">0°</span></div>
+          <input type="range" id="phiSlider" min="0" max="360" step="1" value="0">
+        </div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Pen hole</span><span class="val" id="holeVal">3.0mm</span></div>
+          <input type="range" id="holeSlider" min="0" max="10" step="0.5" value="3">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">Display</div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Show gear mechanism</div>
+        <div class="switch" id="circlesToggle"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Show symmetry rays</div>
+        <div class="switch" id="symmToggle"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Show base curve (no pen offset)</div>
+        <div class="switch" id="f0Toggle"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">Color</div>
+      <div class="swatches" id="paletteSwatches">
+        <div class="swatch active" data-p="0" style="background:linear-gradient(135deg,#3a1a05,#f2a65a)"></div>
+        <div class="swatch" data-p="1" style="background:linear-gradient(135deg,#0a1f2b,#57d9c4)"></div>
+        <div class="swatch" data-p="2" style="background:linear-gradient(135deg,#1a0a2b,#c77af2)"></div>
+        <div class="swatch" data-p="3" style="background:linear-gradient(135deg,#111,#eee)"></div>
+        <div class="swatch" data-p="4" style="background:linear-gradient(135deg,#f24a4a,#57d9c4)"></div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Color cycles</span><span class="val" id="densityVal">2.0</span></div>
+          <input type="range" id="densitySlider" min="0.5" max="8" step="0.1" value="2">
+        </div>
+      </div>
+      <div class="toggle-row" style="margin-top:12px;">
+        <div class="label" style="margin:0;">Glow</div>
+        <div class="switch on" id="glowToggle"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">Motion</div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Animate draw-in</div>
+        <div class="switch on" id="animateToggle"></div>
+      </div>
+      <button class="btn" id="replayBtn">Replay drawing</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Frequency inversion — solve gears from F=(T1/T,T3/T)</div>
+      <div class="grid2" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="num-field"><label><span>T1</span></label><input type="number" id="fT1" min="1" value="35"></div>
+        <div class="num-field"><label><span>T3</span></label><input type="number" id="fT3" min="1" value="42"></div>
+        <div class="num-field"><label><span>T</span></label><input type="number" id="fT" min="1" value="32"></div>
+      </div>
+      <button class="btn btn-accent" id="solveFreqBtn">Solve gears</button>
+      <div id="freqError" style="font-size:10.5px;color:#ff8a8a;margin-top:6px;min-height:14px;"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Derived &amp; similarity</div>
+      <div id="derivedInfo" style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);line-height:1.8;"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Presets</div>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Explore</div>
+      <button class="btn btn-accent" id="randomizeBtn">Randomize gears</button>
+      <button class="btn" id="resetBtn">Reset to default</button>
+    </div>
+
+    <div class="section" style="border-top:1px solid var(--border);padding-top:14px;">
+      <p class="credit">
+        Second-order roulette (gear-in-hoop-in-wheel) construction after
+        <a href="https://glagolj.github.io/gg-blog/roulette/2022/03/14/second-order-roulette.html" target="_blank" rel="noopener">glagolj</a>.
+      </p>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Drag to pan · Scroll to zoom · Double-click to reset view<br>Tap the gear for wheels, pen &amp; color</div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('cv');
+  const wrap = document.getElementById('wrap');
+  const ctx = canvas.getContext('2d');
+
+  const MM_SCALE = 27.07 / 50.0; // 0.5414 — matches the reference tool's physical-hole calibration
+  const MAX_PTS = 260000;
+
+  function gcd(x,y){ x=Math.abs(x); y=Math.abs(y); while(y){ const t=y; y=x%y; x=t; } return x; }
+  function lcm(x,y){ return x*y/gcd(x,y); }
+  function clamp(v,lo,hi){ return Math.min(hi, Math.max(lo, v)); }
+
+  // ---------- state ----------
+  const state = {
+    n0:140, n1:128, n2:54, n3:45,
+    h:0.48, p:0.8, phi:0, holeMm:3,
+    showCircles:false, showSymm:false, showF0:false,
+    palette:0, density:2.0, glow:true, animate:true
+  };
+
+  // view (pan/zoom, independent of the generative parameters)
+  const view = { zoom:1, offX:0, offY:0 };
+
+  let derived = null;   // {points, T, T1, T3, nsymm, pltmax, xmax, ymax, h, p, holeWorld}
+  let f0points = null;
+
+  // The full example gallery from the reference tool (all 34 srset(...) buttons).
+  const PRESETS = [
+    {n:[144,126,56,24], h:0.4603, p:0.8000},
+    {n:[112,104,46,28], h:0.4299, p:0.7000},
+    {n:[135,126,56,45], h:0.4603, p:0.7900},
+    {n:[126,108,45,15], h:0.5146, p:0.7000},
+    {n:[120,96,40,26],  h:0.4573, p:0.7000},
+    {n:[140,128,54,45], h:0.4832, p:0.8000},
+    {n:[210,160,81,63], h:0.4033, p:0.8000},
+    {n:[96,88,30,12],   h:0.4727, p:0.8000},
+    {n:[81,72,36,24],   h:0.3712, p:0.8000},
+    {n:[176,128,38,22], h:0.5179, p:0.8000},
+    {n:[120,108,48,30], h:0.4433, p:0.8000},
+    {n:[240,140,35,21], h:0.6459, p:0.8000},
+    {n:[210,120,60,28], h:0.3934, p:0.8000},
+    {n:[144,135,63,48], h:0.4824, p:0.8000},
+    {n:[144,135,63,36], h:0.4824, p:0.8000},
+    {n:[72,64,32,20],   h:0.3668, p:0.7000},
+    {n:[210,192,88,40], h:0.4584, p:0.8000},
+    {n:[144,126,56,48], h:0.4603, p:0.8000},
+    {n:[176,128,54,22], h:0.4832, p:0.8000},
+    {n:[144,104,46,36], h:0.4299, p:0.8000},
+    {n:[72,64,32,12],   h:0.3668, p:0.7000},
+    {n:[108,84,36,24],  h:0.4373, p:0.7500},
+    {n:[210,192,50,35], h:0.6226, p:0.7000},
+    {n:[140,135,60,48], h:0.4611, p:0.7000},
+    {n:[180,126,64,40], h:0.4181, p:0.8000},
+    {n:[240,192,88,40], h:0.4584, p:0.7000},
+    {n:[180,135,63,56], h:0.4824, p:0.7000},
+    {n:[126,108,25,14], h:0.6611, p:0.7000},
+    {n:[144,60,24,16],  h:0.4431, p:0.8000},
+    {n:[144,81,27,16],  h:0.5009, p:0.8000},
+    {n:[160,140,42,16], h:0.6154, p:0.8000},
+    {n:[240,192,49,35], h:0.6480, p:0.7000},
+    {n:[180,140,45,40], h:0.5924, p:0.7885},
+    {n:[96,80,40,32],   h:0.3751, p:0.7000}
+  ].map(pr => ({...pr, label: `${pr.n[0]}:${pr.n[1]};${pr.n[2]}:${pr.n[3]}`}));
+
+  const DEFAULTS = { n0:140, n1:128, n2:54, n3:45, h:0.48, p:0.8, phi:0, holeMm:3 };
+
+  // ---------- cosine color palettes (shared visual family with the fractal explorer) ----------
+  const PALETTES = [
+    { a:[0.55,0.35,0.20], b:[0.55,0.35,0.20], c:[1.0,0.7,0.4], d:[0.0,0.15,0.2] },
+    { a:[0.15,0.35,0.45], b:[0.25,0.35,0.45], c:[0.6,0.8,1.0], d:[0.3,0.5,0.7] },
+    { a:[0.45,0.25,0.55], b:[0.45,0.25,0.55], c:[1.0,0.6,1.0], d:[0.1,0.5,0.9] },
+    { a:[0.5,0.5,0.5],    b:[0.5,0.5,0.5],    c:[1.0,1.0,1.0], d:[0.0,0.0,0.0] },
+    { a:[0.5,0.5,0.5],    b:[0.5,0.5,0.5],    c:[1.0,1.0,1.0], d:[0.0,0.33,0.67] }
+  ];
+  function paletteColor(idx, t){
+    const P = PALETTES[idx];
+    const r = clamp(P.a[0] + P.b[0]*Math.cos(6.28318*(P.c[0]*t + P.d[0])), 0, 1);
+    const g = clamp(P.a[1] + P.b[1]*Math.cos(6.28318*(P.c[1]*t + P.d[1])), 0, 1);
+    const b = clamp(P.a[2] + P.b[2]*Math.cos(6.28318*(P.c[2]*t + P.d[2])), 0, 1);
+    return `rgb(${(r*255)|0},${(g*255)|0},${(b*255)|0})`;
+  }
+
+  // ---------- generative math (faithful port of the second-order roulette) ----------
+  function computeDerived(){
+    const n0=state.n0, n1=state.n1, n2=state.n2, n3=state.n3;
+
+    const hMax = 0.975 * (1 - n2/n1);
+    const h = clamp(state.h, -hMax, hMax);
+
+    const holeWorld = Math.abs(state.holeMm / 2 / MM_SCALE);
+    let p = state.p;
+    if(holeWorld !== 0){
+      const pMin = 1 - holeWorld/n3;
+      p = clamp(p, 0, pMin);
+    }
+
+    const phi = state.phi / 180 * Math.PI;
+
+    const a = n1 / gcd(n0,n1);
+    const b = (n1*n3) / gcd(n0*n2, n1*n3);
+    const T = lcm(a,b);
+    const T1 = (T*n0) / n1;
+    const T3 = (T*n0*n2) / (n1*n3);
+    const nsymm = gcd(T1,T3);
+
+    // similarity / decomposition readouts (ported from the reference tool's info panel)
+    const nh2 = gcd(T1,T);
+    const n0scl = T1/nh2, n1scl = T/nh2, n2scl = T3/nsymm, n3scl = T1/nsymm;
+    let cP = T1 - nsymm*(T1-T);
+    let cQ = T3 - T1;
+    const nC = gcd(cP,cQ);
+    const simL = nC/nsymm;
+    const simM = T1 - T;
+    cP = cP/nC; cQ = cQ/nC;
+
+    const pltmax = Math.max(n0,n1,n2,n3) * 1.05;
+
+    const ptDens = 512;
+    let npts = Math.round(T * ptDens);
+    if(npts > MAX_PTS) npts = MAX_PTS;
+    if(npts < 64) npts = 64;
+
+    const tend = T * 2 * Math.PI;
+    const m0 = n0/n1, m1 = n2/n3;
+    const rp = n3*p;
+
+    const pts = new Float64Array((npts+1)*2);
+    let xmax=0, ymax=0, rsav=0;
+
+    for(let i=0;i<=npts;i++){
+      const t = i * tend / npts;
+      const t1 = m0*t;
+      const t2 = t1 + Math.atan2(h*Math.sin(t1), 1 - h*Math.cos(t1));
+      const t3 = m1*t2;
+      const a0 = t - t1;
+      const a1 = a0 + t2 - t3 + phi;
+
+      let x = (n0-n1)*Math.cos(t) + n1*h*Math.cos(a0) + (n2-n3)*Math.cos(a0+t2) + rp*Math.cos(a1);
+      let y = (n0-n1)*Math.sin(t) + n1*h*Math.sin(a0) + (n2-n3)*Math.sin(a0+t2) + rp*Math.sin(a1);
+
+      if(holeWorld !== 0){
+        const xt = (n0-n1)*Math.cos(t) + n1*h*Math.cos(a0) + n2*Math.cos(a0+t2);
+        const yt = (n0-n1)*Math.sin(t) + n1*h*Math.sin(a0) + n2*Math.sin(a0+t2);
+        const ang = Math.atan2(yt-y, xt-x);
+        x += holeWorld*Math.cos(ang);
+        y += holeWorld*Math.sin(ang);
+      }
+
+      const r = x*x + y*y;
+      if(r > rsav){ rsav = r; xmax = x; ymax = y; }
+
+      pts[i*2] = x; pts[i*2+1] = y;
+    }
+
+    return {
+      points: pts, npts, T, T1, T3, nsymm, pltmax, xmax, ymax, h, p, holeWorld, m0, m1, phi, tend,
+      n0scl, n1scl, n2scl, n3scl, cP, cQ, nC, simL, simM
+    };
+  }
+
+  function computeF0(){
+    // Same mechanism with the pen collapsed onto the hoop-wheel center (rp = 0) — the "bare" curve.
+    const n0=state.n0, n1=state.n1, n2=state.n2, n3=state.n3;
+    const hMax = 0.975 * (1 - n2/n1);
+    const h = clamp(state.h, -hMax, hMax);
+    const T = derived.T;
+    const ptDens = 512;
+    let npts = Math.round(T * ptDens);
+    if(npts > MAX_PTS) npts = MAX_PTS;
+    if(npts < 64) npts = 64;
+    const tend = T * 2 * Math.PI;
+    const m0 = n0/n1, m1 = n2/n3;
+    const pts = new Float64Array((npts+1)*2);
+    for(let i=0;i<=npts;i++){
+      const t = i * tend / npts;
+      const t1 = m0*t;
+      const t2 = t1 + Math.atan2(h*Math.sin(t1), 1 - h*Math.cos(t1));
+      const a0 = t - t1;
+      const x = (n0-n1)*Math.cos(t) + n1*h*Math.cos(a0) + (n2-n3)*Math.cos(a0+t2);
+      const y = (n0-n1)*Math.sin(t) + n1*h*Math.sin(a0) + (n2-n3)*Math.sin(a0+t2);
+      pts[i*2]=x; pts[i*2+1]=y;
+    }
+    return { points: pts, npts };
+  }
+
+  // ---------- view transform ----------
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let baseScale = 1;
+
+  function fitScale(){
+    const size = Math.min(canvas.width, canvas.height);
+    baseScale = (size * 0.46) / (derived ? derived.pltmax : 100);
+  }
+
+  function worldToScreen(x,y){
+    const s = baseScale * view.zoom;
+    return [
+      canvas.width/2 + view.offX + s*x,
+      canvas.height/2 + view.offY - s*y
+    ];
+  }
+  function screenToWorld(px,py){
+    const s = baseScale * view.zoom;
+    return [ (px - canvas.width/2 - view.offX)/s, -(py - canvas.height/2 - view.offY)/s ];
+  }
+
+  function resetView(){ view.zoom = 1; view.offX = 0; view.offY = 0; }
+
+  // ---------- rendering ----------
+  const SEGMENTS = 200;
+  let animFrame = null;
+  let animProgress = 1; // 0..1, fraction of segments revealed
+
+  function drawMechanism(){
+    const n0=state.n0, n1=state.n1, n2=state.n2, n3=state.n3;
+    const h = derived.h, p = derived.p, holeWorld = derived.holeWorld, phi = derived.phi;
+    const lw = 1 * dpr;
+
+    function circle(cx, cy, r, strokeStyle){
+      const [sx, sy] = worldToScreen(cx, cy);
+      ctx.beginPath();
+      ctx.arc(sx, sy, r * baseScale * view.zoom, 0, 2*Math.PI);
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lw;
+      ctx.stroke();
+    }
+    function link(x1,y1,x2,y2){
+      const [ax,ay] = worldToScreen(x1,y1);
+      const [bx,by] = worldToScreen(x2,y2);
+      ctx.beginPath();
+      ctx.setLineDash([4*dpr, 4*dpr]);
+      ctx.moveTo(ax,ay); ctx.lineTo(bx,by);
+      ctx.strokeStyle = 'rgba(138,151,168,0.5)';
+      ctx.lineWidth = lw;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    const gearCx = n0-n1, gearCy = 0;
+    const hoopCx = n0-n1+n1*h, hoopCy = 0;
+    const penWheelCx = n0-n1+n1*h+n2-n3, penWheelCy = 0;
+    const penX = penWheelCx + p*n3*Math.cos(phi);
+    const penY = penWheelCy + p*n3*Math.sin(phi);
+
+    circle(0,0,n0, 'rgba(87,217,196,0.55)');
+    link(0,0,gearCx,gearCy);
+    circle(gearCx,gearCy,n1, 'rgba(242,166,90,0.55)');
+    link(gearCx,gearCy,hoopCx,hoopCy);
+    circle(hoopCx,hoopCy,n2, 'rgba(199,122,242,0.55)');
+    link(hoopCx,hoopCy,penWheelCx,penWheelCy);
+    circle(penWheelCx,penWheelCy,n3, 'rgba(231,236,242,0.55)');
+
+    const [px,py] = worldToScreen(penX,penY);
+    ctx.beginPath();
+    ctx.arc(px,py, Math.max(holeWorld,1.2) * baseScale * view.zoom, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(242,166,90,0.9)';
+    ctx.fill();
+  }
+
+  function drawSymmetry(){
+    if(derived.nsymm <= 1) return;
+    const ang = Math.atan2(derived.ymax, derived.xmax);
+    const rmax = Math.max(1.1*Math.sqrt(derived.xmax**2 + derived.ymax**2), 1.1*state.n0);
+    ctx.strokeStyle = 'rgba(138,151,168,0.5)';
+    ctx.lineWidth = 1*dpr;
+    for(let i=0;i<derived.nsymm;i++){
+      const a = ang + i*2*Math.PI/derived.nsymm;
+      const [ox,oy] = worldToScreen(0,0);
+      const [ex,ey] = worldToScreen(rmax*Math.cos(a), rmax*Math.sin(a));
+      ctx.beginPath();
+      ctx.moveTo(ox,oy); ctx.lineTo(ex,ey);
+      ctx.stroke();
+    }
+  }
+
+  function drawCurve(points, npts, revealFrac, withColor){
+    const segCount = Math.min(SEGMENTS, npts);
+    const ptsPerSeg = Math.max(1, Math.floor(npts / segCount));
+    const revealSegs = Math.max(1, Math.round(segCount * revealFrac));
+
+    ctx.lineWidth = (state.glow ? 1.6 : 1.4) * dpr;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    for(let s=0; s<revealSegs; s++){
+      const startI = s*ptsPerSeg;
+      const endI = (s === segCount-1) ? npts : Math.min(npts, (s+1)*ptsPerSeg);
+      const frac = s/segCount;
+      const color = withColor ? paletteColor(state.palette, frac*state.density) : 'rgba(255,214,140,0.85)';
+
+      ctx.beginPath();
+      for(let i=startI;i<=endI;i++){
+        const [sx,sy] = worldToScreen(points[i*2], points[i*2+1]);
+        if(i===startI) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+      }
+      ctx.strokeStyle = color;
+      if(state.glow && withColor){
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 8*dpr;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+
+    // pen tip during the animated reveal
+    if(revealFrac < 1){
+      const tipI = Math.min(npts, revealSegs*ptsPerSeg);
+      const [tx,ty] = worldToScreen(points[tipI*2], points[tipI*2+1]);
+      ctx.beginPath();
+      ctx.arc(tx,ty, 3*dpr, 0, 2*Math.PI);
+      ctx.fillStyle = '#fff';
+      ctx.shadowColor = '#fff';
+      ctx.shadowBlur = 10*dpr;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  function render(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(!derived) return;
+
+    if(state.showCircles) drawMechanism();
+    if(state.showSymm) drawSymmetry();
+    if(state.showF0 && f0points) drawCurve(f0points.points, f0points.npts, 1, false);
+    drawCurve(derived.points, derived.npts, animProgress, true);
+  }
+
+  function startAnimation(){
+    cancelAnimationFrame(animFrame);
+    if(!state.animate){ animProgress = 1; render(); return; }
+    animProgress = 0;
+    const dur = 1400;
+    const t0 = performance.now();
+    function step(now){
+      const f = clamp((now - t0)/dur, 0, 1);
+      animProgress = 1 - Math.pow(1-f, 2); // ease-out
+      render();
+      if(f < 1) animFrame = requestAnimationFrame(step);
+    }
+    animFrame = requestAnimationFrame(step);
+  }
+
+  // Every control redraws immediately — there is no "update" step. Slider drags and
+  // typing fire many events per second, so the heavy recompute (rebuilding the point
+  // array) is coalesced to once per animation frame via rAF; the draw itself is always
+  // instant (no reveal animation) for live edits. The reveal animation is reserved for
+  // discrete "load a new pattern" actions (presets, randomize, reset, solve, initial load).
+  let rafPending = false;
+  function scheduleUpdate(){
+    if(rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => { rafPending = false; doRecompute(false); });
+  }
+
+  function doRecompute(animate){
+    derived = computeDerived();
+    f0points = state.showF0 ? computeF0() : null;
+    fitScale();
+    updateHud();
+    updateFrequencyFields();
+    if(animate) startAnimation();
+    else { animProgress = 1; render(); }
+  }
+
+  function updateHud(){
+    document.getElementById('hgears').textContent = `(${state.n0}:${state.n1};${state.n2}:${state.n3})`;
+    document.getElementById('hF').textContent = `(${derived.T1}/${derived.T},${derived.T3}/${derived.T})`;
+    document.getElementById('hsymm').textContent = derived.nsymm;
+    document.getElementById('derivedInfo').innerHTML =
+      `n0=${derived.n0scl}a &nbsp; n1=${derived.n1scl}a &nbsp; n2=${derived.n2scl}b &nbsp; n3=${derived.n3scl}b<br>`+
+      `C=${derived.cP}/${derived.cQ} &nbsp; n<sub>C</sub>=${derived.nC} &nbsp; m=${derived.simM} &nbsp; l=${derived.simL}`;
+  }
+
+  function updateFrequencyFields(){
+    document.getElementById('fT1').value = derived.T1;
+    document.getElementById('fT3').value = derived.T3;
+    document.getElementById('fT').value = derived.T;
+  }
+
+  function resize(){
+    const w = Math.round(wrap.clientWidth * dpr);
+    const h = Math.round(wrap.clientHeight * dpr);
+    if(canvas.width !== w || canvas.height !== h){
+      canvas.width = w;
+      canvas.height = h;
+      fitScale();
+    }
+    render();
+  }
+  new ResizeObserver(resize).observe(wrap);
+
+  // ---------- pointer interaction: pan + zoom ----------
+  let dragging=false, lastX=0, lastY=0, pinchDist=null;
+  function toDevice(clientX, clientY){
+    const r = canvas.getBoundingClientRect();
+    return [ (clientX-r.left)*dpr, (clientY-r.top)*dpr ];
+  }
+  function zoomAt(px,py,factor){
+    const w = screenToWorld(px,py);
+    view.zoom = clamp(view.zoom*factor, 0.2, 40);
+    const s = baseScale*view.zoom;
+    view.offX = px - canvas.width/2 - s*w[0];
+    view.offY = py - canvas.height/2 + s*w[1];
+    render();
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    dragging=true; canvas.classList.add('dragging');
+    [lastX,lastY] = toDevice(e.clientX,e.clientY);
+  });
+  window.addEventListener('mouseup', () => { dragging=false; canvas.classList.remove('dragging'); });
+  window.addEventListener('mousemove', e => {
+    if(!dragging) return;
+    const [px,py] = toDevice(e.clientX,e.clientY);
+    view.offX += px-lastX; view.offY += py-lastY;
+    lastX=px; lastY=py;
+    render();
+  });
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const [px,py] = toDevice(e.clientX,e.clientY);
+    zoomAt(px,py, e.deltaY<0 ? 1.15 : 1/1.15);
+  }, {passive:false});
+  canvas.addEventListener('dblclick', () => { resetView(); render(); });
+
+  canvas.addEventListener('touchstart', e => {
+    if(e.touches.length===1){ dragging=true; [lastX,lastY]=toDevice(e.touches[0].clientX,e.touches[0].clientY); }
+    else if(e.touches.length===2){
+      dragging=false;
+      const [x1,y1]=toDevice(e.touches[0].clientX,e.touches[0].clientY);
+      const [x2,y2]=toDevice(e.touches[1].clientX,e.touches[1].clientY);
+      pinchDist = Math.hypot(x2-x1,y2-y1);
+    }
+  }, {passive:true});
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if(e.touches.length===1 && dragging){
+      const [px,py]=toDevice(e.touches[0].clientX,e.touches[0].clientY);
+      view.offX += px-lastX; view.offY += py-lastY;
+      lastX=px; lastY=py;
+      render();
+    } else if(e.touches.length===2){
+      const [x1,y1]=toDevice(e.touches[0].clientX,e.touches[0].clientY);
+      const [x2,y2]=toDevice(e.touches[1].clientX,e.touches[1].clientY);
+      const dist = Math.hypot(x2-x1,y2-y1);
+      const mid = [(x1+x2)/2,(y1+y2)/2];
+      if(pinchDist) zoomAt(mid[0],mid[1], dist/pinchDist);
+      pinchDist = dist;
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchend', e => { if(e.touches.length===0){ dragging=false; pinchDist=null; } });
+
+  // ---------- UI wiring ----------
+  const panel = document.getElementById('panel');
+  const gearBtn = document.getElementById('gearBtn');
+  gearBtn.addEventListener('click', () => {
+    const open = panel.classList.toggle('open');
+    gearBtn.classList.toggle('open', open);
+    gearBtn.setAttribute('aria-expanded', open);
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    render();
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    const link = document.createElement('a');
+    link.download = `spirograph-${state.n0}-${state.n1}-${state.n2}-${state.n3}-${stamp}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  function shareUrl(){
+    const url = new URL(window.location.href);
+    url.search = '';
+    const q = url.searchParams;
+    q.set('n0', state.n0); q.set('n1', state.n1); q.set('n2', state.n2); q.set('n3', state.n3);
+    q.set('h', state.h); q.set('p', state.p); q.set('phi', state.phi); q.set('hole', state.holeMm);
+    return url.toString();
+  }
+  document.getElementById('linkBtn').addEventListener('click', () => {
+    const url = shareUrl();
+    const toast = document.getElementById('toast');
+    const finish = () => { toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(finish, finish);
+    } else {
+      finish();
+    }
+    history.replaceState(null, '', url);
+  });
+
+  function bindNumber(id, key, onSet){
+    const el = document.getElementById(id);
+    // 'input' fires on every keystroke / spinner click for true real-time feedback;
+    // invalid/empty intermediate text (e.g. clearing the field to retype) is ignored
+    // rather than forced to a value, so it doesn't fight the user mid-edit.
+    el.addEventListener('input', () => {
+      const raw = parseFloat(el.value);
+      if(!isFinite(raw) || raw < 1) return;
+      const v = Math.min(600, Math.round(raw));
+      if(state[key] === v) return;
+      state[key] = v;
+      if(onSet) onSet();
+      scheduleUpdate();
+    });
+    // on blur/enter, normalize whatever's left in the field into range
+    el.addEventListener('change', () => {
+      let v = Math.round(Math.abs(parseFloat(el.value) || state[key]));
+      v = clamp(v, 1, 600);
+      el.value = v;
+      if(state[key] !== v){ state[key] = v; if(onSet) onSet(); }
+      scheduleUpdate();
+    });
+  }
+  function refreshHRange(){
+    const hMax = 0.975 * (1 - state.n2/state.n1);
+    const hSlider = document.getElementById('hSlider');
+    hSlider.min = -hMax; hSlider.max = hMax;
+    state.h = clamp(state.h, -hMax, hMax);
+    hSlider.value = state.h;
+    document.getElementById('hVal').textContent = state.h.toFixed(3);
+  }
+  bindNumber('n0','n0');
+  bindNumber('n1','n1', refreshHRange);
+  bindNumber('n2','n2', refreshHRange);
+  bindNumber('n3','n3');
+
+  const hSlider = document.getElementById('hSlider');
+  const hVal = document.getElementById('hVal');
+  hSlider.addEventListener('input', () => {
+    state.h = parseFloat(hSlider.value);
+    hVal.textContent = state.h.toFixed(3);
+    scheduleUpdate();
+  });
+
+  const pSlider = document.getElementById('pSlider');
+  const pVal = document.getElementById('pVal');
+  pSlider.addEventListener('input', () => {
+    state.p = parseFloat(pSlider.value);
+    pVal.textContent = state.p.toFixed(3);
+    scheduleUpdate();
+  });
+
+  const phiSlider = document.getElementById('phiSlider');
+  const phiVal = document.getElementById('phiVal');
+  phiSlider.addEventListener('input', () => {
+    state.phi = parseInt(phiSlider.value,10);
+    phiVal.textContent = state.phi + '°';
+    scheduleUpdate();
+  });
+
+  const holeSlider = document.getElementById('holeSlider');
+  const holeVal = document.getElementById('holeVal');
+  holeSlider.addEventListener('input', () => {
+    state.holeMm = parseFloat(holeSlider.value);
+    holeVal.textContent = state.holeMm.toFixed(1) + 'mm';
+    scheduleUpdate();
+  });
+
+  function wireSwitch(id, key, cb){
+    const el = document.getElementById(id);
+    el.addEventListener('click', () => {
+      state[key] = !state[key];
+      el.classList.toggle('on', state[key]);
+      if(cb) cb();
+      else { scheduleUpdate(); }
+    });
+  }
+  wireSwitch('circlesToggle','showCircles', render);
+  wireSwitch('symmToggle','showSymm', render);
+  wireSwitch('f0Toggle','showF0', scheduleUpdate);
+  wireSwitch('glowToggle','glow', render);
+  wireSwitch('animateToggle','animate', () => {});
+
+  document.getElementById('replayBtn').addEventListener('click', startAnimation);
+
+  const swatches = document.getElementById('paletteSwatches');
+  swatches.addEventListener('click', e => {
+    const sw = e.target.closest('.swatch');
+    if(!sw) return;
+    [...swatches.children].forEach(s=>s.classList.remove('active'));
+    sw.classList.add('active');
+    state.palette = parseInt(sw.dataset.p,10);
+    render();
+  });
+
+  const densitySlider = document.getElementById('densitySlider');
+  const densityVal = document.getElementById('densityVal');
+  densitySlider.addEventListener('input', () => {
+    state.density = parseFloat(densitySlider.value);
+    densityVal.textContent = state.density.toFixed(1);
+    render();
+  });
+
+  function applyState(n0,n1,n2,n3,h,p,phi,holeMm){
+    state.n0=n0; state.n1=n1; state.n2=n2; state.n3=n3;
+    state.h=h; state.p=p; state.phi=phi!==undefined?phi:0; state.holeMm=holeMm!==undefined?holeMm:3;
+    document.getElementById('n0').value=n0;
+    document.getElementById('n1').value=n1;
+    document.getElementById('n2').value=n2;
+    document.getElementById('n3').value=n3;
+    refreshHRange();
+    pSlider.value=state.p; pVal.textContent=state.p.toFixed(3);
+    phiSlider.value=state.phi; phiVal.textContent=state.phi+'°';
+    holeSlider.value=state.holeMm; holeVal.textContent=state.holeMm.toFixed(1)+'mm';
+    resetView();
+    doRecompute(true);
+  }
+
+  function solveGearsFromFrequency(){
+    const errorEl = document.getElementById('freqError');
+    errorEl.textContent = '';
+
+    let inT1 = Math.round(Math.abs(parseFloat(document.getElementById('fT1').value)));
+    let inT3 = Math.round(Math.abs(parseFloat(document.getElementById('fT3').value)));
+    let inT  = Math.round(Math.abs(parseFloat(document.getElementById('fT').value)));
+
+    if(!(inT1>=1) || !(inT3>=1) || !(inT>=1) || inT1>=inT3 || inT>=inT1){
+      errorEl.textContent = 'Error: must have T < T1 < T3';
+      return;
+    }
+
+    const c = gcd(gcd(inT1,inT3), inT);
+    inT1/=c; inT3/=c; inT/=c;
+
+    const n1n2fac = 2.0;
+    const ns = gcd(inT1,inT3);
+    const nh = gcd(inT1,inT);
+
+    const bmin = Math.ceil(8*ns/(inT3-inT1));
+    let b = Math.max(bmin, 1, Math.ceil(12*ns/inT1));
+    let inN3 = (b*inT1)/ns;
+    let inN2 = (b*inT3)/ns;
+
+    let inN1 = Math.round(inN2*n1n2fac);
+    const amin = Math.ceil(8*nh/(inT1-inT));
+    const a = Math.max(amin, 1, Math.ceil(nh*inN1/inT));
+    inN1 = (a*inT)/nh;
+    let inN0 = (a*inT1)/nh;
+
+    const bNew = Math.floor(inN1*ns/(inT3*n1n2fac));
+    if(bNew > b){
+      b = bNew;
+      inN3 = (b*inT1)/ns;
+      inN2 = (b*inT3)/ns;
+    }
+
+    applyState(Math.round(inN0), Math.round(inN1), Math.round(inN2), Math.round(inN3), state.h, state.p, state.phi, state.holeMm);
+  }
+  document.getElementById('solveFreqBtn').addEventListener('click', solveGearsFromFrequency);
+
+  const presetsEl = document.getElementById('presets');
+  PRESETS.forEach(pr => {
+    const b = document.createElement('button');
+    b.className = 'preset-btn';
+    b.textContent = pr.label;
+    b.addEventListener('click', () => applyState(pr.n[0],pr.n[1],pr.n[2],pr.n[3],pr.h,pr.p,0,3));
+    presetsEl.appendChild(b);
+  });
+
+  function randInt(lo,hi){ return Math.floor(lo + Math.random()*(hi-lo+1)); }
+  function randFloat(lo,hi){ return lo + Math.random()*(hi-lo); }
+
+  document.getElementById('randomizeBtn').addEventListener('click', () => {
+    const n1 = randInt(40, 220);
+    const n0 = n1 + randInt(8, 90);
+    const n2 = Math.max(4, Math.round(n1 * randFloat(0.22, 0.5)));
+    const n3 = Math.max(2, Math.round(n2 * randFloat(0.35, 0.85)));
+    const hMax = 0.975 * (1 - n2/n1);
+    const h = randFloat(-0.9,0.9) * hMax;
+    const holeMm = [0, 1.5, 3, 4.5][randInt(0,3)];
+    const holeWorld = Math.abs(holeMm/2/MM_SCALE);
+    const pMin = holeWorld!==0 ? clamp(1 - holeWorld/n3, 0, 1) : 1;
+    const p = randFloat(0.55,0.95) * pMin;
+    const phi = randInt(0,359);
+    state.palette = randInt(0, PALETTES.length-1);
+    [...swatches.children].forEach(s=>s.classList.remove('active'));
+    swatches.children[state.palette].classList.add('active');
+    applyState(n0,n1,n2,n3,h,p,phi,holeMm);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    applyState(DEFAULTS.n0, DEFAULTS.n1, DEFAULTS.n2, DEFAULTS.n3, DEFAULTS.h, DEFAULTS.p, DEFAULTS.phi, DEFAULTS.holeMm);
+  });
+
+  // ---------- load params from URL, if present (all four gear counts required) ----------
+  (function loadFromUrl(){
+    const q = new URLSearchParams(window.location.search);
+    const n0 = parseInt(q.get('n0'),10), n1 = parseInt(q.get('n1'),10);
+    const n2 = parseInt(q.get('n2'),10), n3 = parseInt(q.get('n3'),10);
+    if(n0 && n1 && n2 && n3){
+      const h = q.has('h') ? parseFloat(q.get('h')) : DEFAULTS.h;
+      const p = q.has('p') ? parseFloat(q.get('p')) : DEFAULTS.p;
+      const phi = q.has('phi') ? parseFloat(q.get('phi')) : 0;
+      const holeMm = q.has('hole') ? parseFloat(q.get('hole')) : 3;
+      state.n0=n0; state.n1=n1; state.n2=n2; state.n3=n3;
+      state.h=h; state.p=p; state.phi=phi; state.holeMm=holeMm;
+      document.getElementById('n0').value=n0;
+      document.getElementById('n1').value=n1;
+      document.getElementById('n2').value=n2;
+      document.getElementById('n3').value=n3;
+      pSlider.value=p; pVal.textContent=p.toFixed(3);
+      phiSlider.value=phi; phiVal.textContent=phi+'°';
+      holeSlider.value=holeMm; holeVal.textContent=holeMm.toFixed(1)+'mm';
+    }
+    refreshHRange();
+  })();
+
+  // fade hint
+  const hint = document.getElementById('hint');
+  const fadeHint = () => { hint.style.opacity='0'; setTimeout(()=>hint.remove(),700); };
+  setTimeout(fadeHint, 4000);
+  canvas.addEventListener('pointerdown', fadeHint, {once:true});
+
+  resize();
+  doRecompute(true);
+})();
+</script>
+</body>
+</html>
