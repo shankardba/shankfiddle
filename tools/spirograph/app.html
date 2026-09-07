@@ -193,25 +193,39 @@
   .swatch:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
 
   .color-wheel-panel{
-    display:none;align-items:flex-start;gap:14px;
-    margin:-4px 0 16px;padding:14px;
-    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    display:none;align-items:center;gap:16px;
+    margin:-4px 0 16px;padding:16px;
+    background:linear-gradient(180deg,var(--surface-2),var(--surface));
+    border:1px solid var(--border);border-radius:10px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.03), 0 8px 20px rgba(0,0,0,0.25);
   }
   .color-wheel-panel.open{display:flex;}
   .color-wheel-panel .bar-wrap,.color-wheel-panel .wheel-wrap{position:relative;flex-shrink:0;}
-  #brightnessBar{border-radius:3px;cursor:pointer;display:block;}
-  #colorWheel{border-radius:50%;cursor:crosshair;display:block;}
+  #brightnessBar{
+    border-radius:9px;cursor:pointer;display:block;
+    box-shadow:0 0 0 1px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.35);
+  }
+  #colorWheel{
+    border-radius:50%;cursor:crosshair;display:block;
+    box-shadow:0 0 0 1px rgba(0,0,0,0.3), 0 6px 18px rgba(0,0,0,0.4);
+  }
   .picker-cursor{
     position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;
     border:2px solid #fff;border-radius:50%;
-    box-shadow:0 0 0 1px rgba(0,0,0,0.55);pointer-events:none;
+    box-shadow:0 0 0 1px rgba(0,0,0,0.55), 0 0 6px rgba(0,0,0,0.4);
+    pointer-events:none;transition:box-shadow 0.15s;
   }
   .bar-cursor{
-    position:absolute;left:-2px;right:-2px;height:3px;margin-top:-1.5px;
-    background:#fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,0.55);pointer-events:none;
+    position:absolute;left:-3px;right:-3px;height:4px;margin-top:-2px;
+    background:#fff;border-radius:3px;
+    box-shadow:0 0 0 1px rgba(0,0,0,0.55), 0 0 4px rgba(0,0,0,0.4);
+    pointer-events:none;
   }
   .color-wheel-panel .hex-readout{
-    align-self:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-muted);
+    align-self:center;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    color:var(--cool);letter-spacing:0.02em;
+    background:rgba(0,0,0,0.2);border:1px solid var(--border);
+    border-radius:6px;padding:5px 9px;
   }
 
   .slider-row{display:flex;align-items:center;gap:10px;}
@@ -1568,25 +1582,40 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     const bctx = bar.getContext('2d');
     const barCursor = document.getElementById('barCursor');
     const hexReadout = document.getElementById('hexReadout');
-    const wheelR = wheel.width / 2;
+
+    // CSS (logical) sizes stay fixed; the backing buffers are rendered at
+    // devicePixelRatio so the wheel's circular edge is smooth, not jagged.
+    const CSS_WHEEL = wheel.width, CSS_BAR_W = bar.width, CSS_BAR_H = bar.height;
+    const cssR = CSS_WHEEL / 2;
+    wheel.width = Math.round(CSS_WHEEL * dpr);
+    wheel.height = Math.round(CSS_WHEEL * dpr);
+    wheel.style.width = CSS_WHEEL + 'px';
+    wheel.style.height = CSS_WHEEL + 'px';
+    bar.width = Math.round(CSS_BAR_W * dpr);
+    bar.height = Math.round(CSS_BAR_H * dpr);
+    bar.style.width = CSS_BAR_W + 'px';
+    bar.style.height = CSS_BAR_H + 'px';
+    const bufR = wheel.width / 2;
 
     let baseWheelImage = null; // the full-saturation/value wheel, built once and reused
     function buildBaseWheelImage(){
       const size = wheel.width;
       const img = wctx.createImageData(size, size);
+      const feather = Math.max(1, dpr); // ~1 CSS px of edge anti-aliasing
       for(let y=0; y<size; y++){
         for(let x=0; x<size; x++){
-          const dx = x - wheelR, dy = y - wheelR;
+          const dx = x - bufR, dy = y - bufR;
           const dist = Math.sqrt(dx*dx + dy*dy);
           const idx = (y*size + x) * 4;
-          if(dist > wheelR){ img.data[idx+3] = 0; continue; }
+          const edge = bufR - dist;
+          if(edge <= 0){ img.data[idx+3] = 0; continue; }
           const hue = (Math.atan2(dy,dx) * 180/Math.PI + 360) % 360;
-          const sat = Math.min(1, dist/wheelR);
+          const sat = Math.min(1, dist/bufR);
           const hex = hsvToHex(hue, sat, 1);
           img.data[idx]   = parseInt(hex.slice(1,3),16);
           img.data[idx+1] = parseInt(hex.slice(3,5),16);
           img.data[idx+2] = parseInt(hex.slice(5,7),16);
-          img.data[idx+3] = 255;
+          img.data[idx+3] = edge >= feather ? 255 : Math.round((edge/feather)*255);
         }
       }
       return img;
@@ -1601,7 +1630,7 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
         // darkening = an alpha-black overlay, since dst*(1-a) === dst*V when a = 1-V
         wctx.save();
         wctx.beginPath();
-        wctx.arc(wheelR, wheelR, wheelR, 0, 2*Math.PI);
+        wctx.arc(bufR, bufR, bufR, 0, 2*Math.PI);
         wctx.clip();
         wctx.fillStyle = '#000';
         wctx.globalAlpha = 1 - curV;
@@ -1619,10 +1648,10 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     function refreshPicker(){
       drawWheel();
       drawBar();
-      const angle = curH * Math.PI/180, dist = curS * wheelR;
-      wheelCursor.style.left = (wheelR + dist*Math.cos(angle)) + 'px';
-      wheelCursor.style.top = (wheelR + dist*Math.sin(angle)) + 'px';
-      barCursor.style.top = ((1-curV) * bar.height) + 'px';
+      const angle = curH * Math.PI/180, dist = curS * cssR;
+      wheelCursor.style.left = (cssR + dist*Math.cos(angle)) + 'px';
+      wheelCursor.style.top = (cssR + dist*Math.sin(angle)) + 'px';
+      barCursor.style.top = ((1-curV) * CSS_BAR_H) + 'px';
     }
     function commitColor(){
       const hex = hsvToHex(curH, curS, curV);
@@ -1662,10 +1691,10 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
       evt.preventDefault();
       const update = e => {
         const [x,y] = pointFromEvent(wheel, e || evt);
-        const dx = x - wheelR, dy = y - wheelR;
-        const dist = Math.min(Math.sqrt(dx*dx + dy*dy), wheelR);
+        const dx = x - cssR, dy = y - cssR;
+        const dist = Math.min(Math.sqrt(dx*dx + dy*dy), cssR);
         curH = (Math.atan2(dy,dx) * 180/Math.PI + 360) % 360;
-        curS = dist / wheelR;
+        curS = dist / cssR;
         refreshPicker();
         commitColor();
       };
@@ -1679,7 +1708,7 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
       evt.preventDefault();
       const update = e => {
         const [,y] = pointFromEvent(bar, e || evt);
-        curV = 1 - clamp(y/bar.height, 0, 1);
+        curV = 1 - clamp(y/CSS_BAR_H, 0, 1);
         refreshPicker();
         commitColor();
       };
