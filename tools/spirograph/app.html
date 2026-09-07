@@ -438,7 +438,13 @@
     </div>
 
     <div class="section">
-      <div class="label">Pen style</div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Pen style</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--text-muted);">Solid Color</span>
+          <div class="switch" id="solidToggle"></div>
+        </div>
+      </div>
       <div class="swatches" id="paletteSwatches">
         <div class="swatch active" data-p="0" style="background:linear-gradient(135deg,#3a1a05,#f2a65a)" title="Amber"></div>
         <div class="swatch" data-p="1" style="background:linear-gradient(135deg,#0a1f2b,#57d9c4)" title="Teal"></div>
@@ -447,7 +453,6 @@
         <div class="swatch" data-p="4" style="background:linear-gradient(135deg,#f24a4a,#57d9c4)" title="Fire &amp; Ice"></div>
         <div class="swatch" data-p="5" style="background:conic-gradient(from 0deg,red,orange,yellow,limegreen,cyan,blue,violet,red)" title="Rainbow"></div>
         <div class="swatch" data-p="6" style="background:linear-gradient(135deg,#f2a65a 50%,#57d9c4 50%)" title="Zebra"></div>
-        <div class="swatch" id="solidSwatch" data-p="7" style="background:#f2a65a" title="Solid color"></div>
       </div>
       <div class="color-wheel-panel" id="colorWheelPanel">
         <div class="bar-wrap">
@@ -1525,15 +1530,32 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
   });
 
   const swatches = document.getElementById('paletteSwatches');
-  const solidSwatch = document.getElementById('solidSwatch');
   const colorWheelPanel = document.getElementById('colorWheelPanel');
+  const solidToggle = document.getElementById('solidToggle');
   swatches.addEventListener('click', e => {
     const sw = e.target.closest('.swatch');
     if(!sw) return;
     [...swatches.children].forEach(s=>s.classList.remove('active'));
     sw.classList.add('active');
     state.palette = parseInt(sw.dataset.p,10);
-    colorWheelPanel.classList.toggle('open', sw === solidSwatch);
+    render();
+  });
+
+  // Remembers the last blended (non-solid) pen style so turning "Solid Color" off restores it.
+  let lastBlendPalette = state.palette;
+  function setSolidMode(on){
+    solidToggle.classList.toggle('on', on);
+    swatches.style.display = on ? 'none' : 'flex';
+    colorWheelPanel.classList.toggle('open', on);
+    if(on){
+      if(state.palette !== 7) lastBlendPalette = state.palette;
+      state.palette = 7;
+    } else {
+      state.palette = lastBlendPalette;
+    }
+  }
+  solidToggle.addEventListener('click', () => {
+    setSolidMode(!colorWheelPanel.classList.contains('open'));
     render();
   });
 
@@ -1605,7 +1627,6 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     function commitColor(){
       const hex = hsvToHex(curH, curS, curV);
       state.solidColor = hex;
-      solidSwatch.style.background = hex;
       hexReadout.textContent = hex;
       render();
     }
@@ -1881,6 +1902,7 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
   document.getElementById('randomizeHoopPenBtn').addEventListener('click', randomizeHoopPenOnly);
 
   function randomizeColorOnly(){
+    setSolidMode(false);
     state.palette = randInt(0, PALETTES.length+1);
     [...swatches.children].forEach(s=>s.classList.remove('active'));
     swatches.children[state.palette].classList.add('active');
@@ -1941,6 +1963,7 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     const pMin = holeWorld!==0 ? clamp(1 - holeWorld/lastRadius, 0, 1) : 1;
     const p = randFloat(0.55, 0.95) * pMin;
     const phi = randInt(0, 359);
+    setSolidMode(false);
     state.palette = randInt(0, PALETTES.length + 1);
     [...swatches.children].forEach(s=>s.classList.remove('active'));
     swatches.children[state.palette].classList.add('active');
