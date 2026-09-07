@@ -13,7 +13,7 @@ js/main.js                    Mobile nav toggle
 assets/images/                Logo + brand photography
 tools/circle-of-fifths/
   index.html                  shankFiddle-branded wrapper (top bar + iframe)
-  app.html                     Unmodified copy of circle-of-fifths-chord-wheel.html
+  app.html                     NOT a plain copy — see note below
 tools/synth/
   index.html                  Wrapper
   app.html                     Unmodified copy of modular-synth-widget/index.html
@@ -29,15 +29,27 @@ Each tool lives in an iframe (`app.html`) inside a small shankFiddle-branded
 wrapper page (`index.html`) — a thin top bar with a "← shankFiddle" link
 back to the home page's Tools section, the tool's name, and a "Full
 screen ↗" link that opens `app.html` directly with no iframe/chrome
-around it. `app.html` is always an untouched copy straight from the
-tool's own repo — to pull in updates, just re-copy the file:
+around it. For fractal/synth/boy, `app.html` is an untouched copy
+straight from the tool's own repo — to pull in updates, just re-copy
+the file:
 
 ```bash
 cp ~/fractal-widget/index.html tools/fractal/app.html
 cp ~/modular-synth-widget/index.html tools/synth/app.html
-cp ~/circle-of-fifths-chord-wheel/circle-of-fifths-chord-wheel.html tools/circle-of-fifths/app.html
 cp ~/boy-game/index.html tools/boy/app.html
 ```
+
+**circle-of-fifths/app.html is the one exception — do not blindly
+`cp` over it.** It carries shankFiddle/Boy-game-specific patches on top
+of the standalone `circle-of-fifths-chord-wheel.html`: a "practicing
+for" teacher/instrument selector (`#teacherSelect`) and `sendBoyGoal()`
+calls at several interaction points, which `postMessage` progress back
+to a parent page embedding this tool (the Boy game). Overwriting
+`app.html` with a plain copy of the upstream file would silently delete
+that integration. To pull in an update, diff the upstream file against
+`app.html` first (e.g. `diff ~/circle-of-fifths-chord-wheel/circle-of-fifths-chord-wheel.html tools/circle-of-fifths/app.html`) and hand-merge just the
+new changes, keeping every `instrument-row`/`sendBoyGoal`/`teacherSelect`
+line intact.
 
 No need to touch the wrapper `index.html` files when a tool updates —
 they never change.

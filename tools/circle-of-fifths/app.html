@@ -694,6 +694,17 @@
       return `<text x="${labelX}" y="${bottomY+16}" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="${st.color}">${st.roman}</text>`;
     }).join('');
 
+    // Playhead: a thin solid vertical cursor that scheduleProgression()
+    // animates left-to-right across the beat cells while playing (see
+    // updatePlayhead()). Drawn last so it sits on top of everything else
+    // it sweeps over; starts pinned at the first cell (x=startX,
+    // transform:none) and opacity:0 so a freshly-rebuilt staff shows no
+    // stray cursor until playback actually (re)starts. data-total-width
+    // is the exact distance (in this SVG's own user units, matching
+    // cellW*n) a full pass travels — read back by updatePlayhead() so
+    // the animation distance can never drift from this layout.
+    const playheadSvg = `<rect id="keyStaffPlayhead" data-total-width="${cellW*n}" x="${startX}" y="-14" width="3" height="98" rx="1.5" fill="#b23b3b" opacity="0" style="pointer-events:none"/>`;
+
     return `<svg class="staff" viewBox="0 -16 ${rightEdge+4} 104" xmlns="http://www.w3.org/2000/svg">
       ${lines}
       ${barlines}
@@ -703,6 +714,7 @@
       ${tieSvg}
       ${noteSvg}
       ${labelSvg}
+      ${playheadSvg}
     </svg>`;
   }
 
@@ -1301,6 +1313,14 @@
       steps.push({ roman: degreeRomanLabel(step.deg), color: degreeColor(step.deg), startCol, span: step.beats });
     });
     document.getElementById('keyStaffRow').innerHTML = keyStaffSVG(cells, currentClef, steps);
+    // This rebuild just replaced the SVG the playhead was animating in
+    // (e.g. a key/toggle/clef change while a progression is playing),
+    // wiping out that animation along with the old markup. Restart it
+    // fresh from the left for one full pass at the current tempo rather
+    // than leaving a dead cursor — not a resume of the exact position
+    // mid-progression, but consistent with how the audio itself already
+    // only picks up the change on the next scheduleProgression() pass.
+    if(isPlaying) updatePlayhead(progressionPassMs());
   }
 
   // Colored by harmonic function, matching the wheel: tonic-function
@@ -1582,6 +1602,41 @@
   // multiplier below and of the notation (which doesn't encode rhythm).
   const PLAYBACK_BEATS_PER_CHORD = 2;
 
+  // Total wall-clock time (ms) one pass through the current progression
+  // takes at the current tempo — the same stepMs*beats sum
+  // scheduleProgression() accumulates while scheduling notes, factored
+  // out so buildKeyStaff() can restart the playhead with a correct
+  // duration after a mid-playback rebuild without duplicating the
+  // scheduling loop itself.
+  function progressionPassMs(){
+    const stepMs = (60000 / bpm) * PLAYBACK_BEATS_PER_CHORD;
+    return progressions[currentProgression].degrees.reduce((sum, step) => sum + stepMs*step.beats, 0);
+  }
+
+  // Animates #keyStaffPlayhead across the current key-staff SVG in sync
+  // with playback. Call with the duration (ms) of one pass to (re)start
+  // it from the left edge — used both for the initial play and every
+  // loop repeat, so "reset to the left on loop" falls out naturally from
+  // starting a fresh animation each pass rather than looping one
+  // animation object. Call with no argument to stop and hide it.
+  let playheadAnim = null;
+  function updatePlayhead(totalMs){
+    const el = document.getElementById('keyStaffPlayhead');
+    if(!el) return;
+    if(playheadAnim){ playheadAnim.cancel(); playheadAnim = null; }
+    if(totalMs == null){
+      el.style.opacity = 0;
+      el.style.transform = 'translateX(0px)';
+      return;
+    }
+    el.style.opacity = 1;
+    const totalWidth = +el.dataset.totalWidth;
+    playheadAnim = el.animate(
+      [{ transform: 'translateX(0px)' }, { transform: `translateX(${totalWidth}px)` }],
+      { duration: totalMs, easing: 'linear', fill: 'forwards' }
+    );
+  }
+
   function scheduleProgression(){
     const iTonic = ((keyIndex%N)+N)%N;
     const key = order[iTonic];
@@ -1594,12 +1649,14 @@
       timeoutIds.push(setTimeout(()=> playChord(chordNotes, undefined, dur), elapsedMs));
       elapsedMs += stepMs * step.beats;
     });
+    updatePlayhead(elapsedMs);
     timeoutIds.push(setTimeout(()=>{
       if(isPlaying && loopEnabled){
         scheduleProgression();
       } else {
         isPlaying = false;
         updatePlayButton();
+        updatePlayhead();
       }
     }, elapsedMs));
   }
@@ -1617,6 +1674,7 @@
       timeoutIds.forEach(id => clearTimeout(id));
       timeoutIds = [];
       updatePlayButton();
+      updatePlayhead();
     } else {
       isPlaying = true;
       sendBoyGoal('progression');
@@ -1640,6 +1698,7 @@
       isPlaying = false;
       timeoutIds.forEach(id => clearTimeout(id));
       timeoutIds = [];
+      updatePlayhead();
     }
     updatePlayButton();
     buildKeyStaff(order[((keyIndex%N)+N)%N]);
