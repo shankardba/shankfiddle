@@ -92,7 +92,6 @@ a {
   width: 38px;
   height: 38px;
   object-fit: contain;
-  filter: drop-shadow(0 0 8px rgba(255, 46, 166, 0.45));
 }
 
 .logo-word {
@@ -182,7 +181,6 @@ a {
   height: 160px;
   object-fit: contain;
   margin: 0 auto 12px;
-  filter: drop-shadow(0 0 34px rgba(255, 46, 166, 0.35)) drop-shadow(0 0 18px rgba(240, 168, 60, 0.25));
 }
 
 .hero-content h1 {
