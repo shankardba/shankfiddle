@@ -192,6 +192,28 @@
   .swatch.active{border-color:var(--cool);}
   .swatch:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
 
+  .color-wheel-panel{
+    display:none;align-items:flex-start;gap:14px;
+    margin:-4px 0 16px;padding:14px;
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  }
+  .color-wheel-panel.open{display:flex;}
+  .color-wheel-panel .bar-wrap,.color-wheel-panel .wheel-wrap{position:relative;flex-shrink:0;}
+  #brightnessBar{border-radius:3px;cursor:pointer;display:block;}
+  #colorWheel{border-radius:50%;cursor:crosshair;display:block;}
+  .picker-cursor{
+    position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;
+    border:2px solid #fff;border-radius:50%;
+    box-shadow:0 0 0 1px rgba(0,0,0,0.55);pointer-events:none;
+  }
+  .bar-cursor{
+    position:absolute;left:-2px;right:-2px;height:3px;margin-top:-1.5px;
+    background:#fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,0.55);pointer-events:none;
+  }
+  .color-wheel-panel .hex-readout{
+    align-self:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-muted);
+  }
+
   .slider-row{display:flex;align-items:center;gap:10px;}
   .slider-row + .slider-row{margin-top:12px;}
   .slider-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
@@ -425,6 +447,18 @@
         <div class="swatch" data-p="4" style="background:linear-gradient(135deg,#f24a4a,#57d9c4)" title="Fire &amp; Ice"></div>
         <div class="swatch" data-p="5" style="background:conic-gradient(from 0deg,red,orange,yellow,limegreen,cyan,blue,violet,red)" title="Rainbow"></div>
         <div class="swatch" data-p="6" style="background:linear-gradient(135deg,#f2a65a 50%,#57d9c4 50%)" title="Zebra"></div>
+        <div class="swatch" id="solidSwatch" data-p="7" style="background:#f2a65a" title="Solid color"></div>
+      </div>
+      <div class="color-wheel-panel" id="colorWheelPanel">
+        <div class="bar-wrap">
+          <canvas id="brightnessBar" width="18" height="140"></canvas>
+          <div class="bar-cursor" id="barCursor"></div>
+        </div>
+        <div class="wheel-wrap">
+          <canvas id="colorWheel" width="140" height="140"></canvas>
+          <div class="picker-cursor" id="wheelCursor"></div>
+        </div>
+        <span class="hex-readout" id="hexReadout">#f2a65a</span>
       </div>
       <div class="slider-row">
         <div style="flex:1;">
@@ -561,7 +595,7 @@
     h:0.48, p:0.8, phi:0, holeMm:3,
     extraWheel:false, n4:30, n5:18, h2:0.3,
     showCircles:false, showSymm:false, showF0:false, showLabels:false,
-    palette:0, density:2.0, brightness:0.9, glow:true,
+    palette:0, solidColor:'#f2a65a', density:2.0, brightness:0.9, glow:true,
     lineWidth:1.6, glowIntensity:8, ptDens:512,
     animate:true, loop:false, speedMult:1,
     layers:[]
@@ -631,7 +665,7 @@
     const b = clamp(P.a[2] + P.b[2]*Math.cos(6.28318*(P.c[2]*t + P.d[2])), 0, 1);
     return `rgb(${(r*255)|0},${(g*255)|0},${(b*255)|0})`;
   }
-  function getStrokeColor(paletteIdx, t, segIdx){
+  function getStrokeColor(paletteIdx, t, segIdx, solidColor){
     if(paletteIdx === 5){
       const hue = (((t % 1) + 1) % 1) * 360;
       return `hsl(${hue.toFixed(1)},85%,60%)`;
@@ -639,7 +673,40 @@
     if(paletteIdx === 6){
       return (segIdx % 2 === 0) ? '#f2a65a' : '#57d9c4';
     }
+    if(paletteIdx === 7){
+      return solidColor !== undefined ? solidColor : state.solidColor;
+    }
     return cosinePalette(paletteIdx, t);
+  }
+
+  // ---------- HSV color wheel helpers (for the "Solid" pen style) ----------
+  function hsvToHex(h, s, v){
+    h = ((h % 360) + 360) % 360;
+    const c = v * s;
+    const x = c * (1 - Math.abs((h/60) % 2 - 1));
+    const m = v - c;
+    let r,g,b;
+    if(h < 60){ r=c; g=x; b=0; }
+    else if(h < 120){ r=x; g=c; b=0; }
+    else if(h < 180){ r=0; g=c; b=x; }
+    else if(h < 240){ r=0; g=x; b=c; }
+    else if(h < 300){ r=x; g=0; b=c; }
+    else { r=c; g=0; b=x; }
+    const toHex = n => Math.round((n+m)*255).toString(16).padStart(2,'0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+  function hexToHsv(hex){
+    const r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max-min;
+    let h = 0;
+    if(d !== 0){
+      if(max===r) h = 60*(((g-b)/d)%6);
+      else if(max===g) h = 60*((b-r)/d + 2);
+      else h = 60*((r-g)/d + 4);
+    }
+    if(h<0) h += 360;
+    const s = max===0 ? 0 : d/max;
+    return {h, s, v:max};
   }
 
   // ---------- generative math (faithful port of the second-order roulette, with an
@@ -964,6 +1031,7 @@
     const opacity = opts.opacity !== undefined ? opts.opacity : state.brightness;
     const withColor = opts.withColor !== undefined ? opts.withColor : true;
     const showTip = opts.showTip !== undefined ? opts.showTip : true;
+    const solidColor = opts.solidColor !== undefined ? opts.solidColor : state.solidColor;
 
     const segCount = Math.min(SEGMENTS, npts);
     const ptsPerSeg = Math.max(1, Math.floor(npts / segCount));
@@ -978,7 +1046,7 @@
       const startI = s*ptsPerSeg;
       const endI = (s === segCount-1) ? npts : Math.min(npts, (s+1)*ptsPerSeg);
       const frac = s/segCount;
-      const color = withColor ? getStrokeColor(palette, frac*density, s) : 'rgba(255,214,140,0.85)';
+      const color = withColor ? getStrokeColor(palette, frac*density, s, solidColor) : 'rgba(255,214,140,0.85)';
 
       ctx.beginPath();
       for(let i=startI;i<=endI;i++){
@@ -1018,7 +1086,7 @@
     for(const layer of state.layers){
       drawCurve(layer.points, layer.npts, 1, {
         palette:layer.palette, density:layer.density, glow:layer.glow,
-        opacity:layer.opacity, showTip:false
+        opacity:layer.opacity, showTip:false, solidColor:layer.solidColor
       });
     }
 
@@ -1457,14 +1525,149 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
   });
 
   const swatches = document.getElementById('paletteSwatches');
+  const solidSwatch = document.getElementById('solidSwatch');
+  const colorWheelPanel = document.getElementById('colorWheelPanel');
   swatches.addEventListener('click', e => {
     const sw = e.target.closest('.swatch');
     if(!sw) return;
     [...swatches.children].forEach(s=>s.classList.remove('active'));
     sw.classList.add('active');
     state.palette = parseInt(sw.dataset.p,10);
+    colorWheelPanel.classList.toggle('open', sw === solidSwatch);
     render();
   });
+
+  // ---------- "Solid" pen style: a simple HSV color-wheel + brightness-bar picker ----------
+  (function initColorWheel(){
+    const wheel = document.getElementById('colorWheel');
+    const wctx = wheel.getContext('2d');
+    const wheelCursor = document.getElementById('wheelCursor');
+    const bar = document.getElementById('brightnessBar');
+    const bctx = bar.getContext('2d');
+    const barCursor = document.getElementById('barCursor');
+    const hexReadout = document.getElementById('hexReadout');
+    const wheelR = wheel.width / 2;
+
+    let baseWheelImage = null; // the full-saturation/value wheel, built once and reused
+    function buildBaseWheelImage(){
+      const size = wheel.width;
+      const img = wctx.createImageData(size, size);
+      for(let y=0; y<size; y++){
+        for(let x=0; x<size; x++){
+          const dx = x - wheelR, dy = y - wheelR;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const idx = (y*size + x) * 4;
+          if(dist > wheelR){ img.data[idx+3] = 0; continue; }
+          const hue = (Math.atan2(dy,dx) * 180/Math.PI + 360) % 360;
+          const sat = Math.min(1, dist/wheelR);
+          const hex = hsvToHex(hue, sat, 1);
+          img.data[idx]   = parseInt(hex.slice(1,3),16);
+          img.data[idx+1] = parseInt(hex.slice(3,5),16);
+          img.data[idx+2] = parseInt(hex.slice(5,7),16);
+          img.data[idx+3] = 255;
+        }
+      }
+      return img;
+    }
+
+    let curH = 0, curS = 1, curV = 1;
+
+    function drawWheel(){
+      if(!baseWheelImage) baseWheelImage = buildBaseWheelImage();
+      wctx.putImageData(baseWheelImage, 0, 0);
+      if(curV < 1){
+        // darkening = an alpha-black overlay, since dst*(1-a) === dst*V when a = 1-V
+        wctx.save();
+        wctx.beginPath();
+        wctx.arc(wheelR, wheelR, wheelR, 0, 2*Math.PI);
+        wctx.clip();
+        wctx.fillStyle = '#000';
+        wctx.globalAlpha = 1 - curV;
+        wctx.fillRect(0, 0, wheel.width, wheel.height);
+        wctx.restore();
+      }
+    }
+    function drawBar(){
+      const grad = bctx.createLinearGradient(0, 0, 0, bar.height);
+      grad.addColorStop(0, hsvToHex(curH, curS, 1));
+      grad.addColorStop(1, '#000');
+      bctx.fillStyle = grad;
+      bctx.fillRect(0, 0, bar.width, bar.height);
+    }
+    function refreshPicker(){
+      drawWheel();
+      drawBar();
+      const angle = curH * Math.PI/180, dist = curS * wheelR;
+      wheelCursor.style.left = (wheelR + dist*Math.cos(angle)) + 'px';
+      wheelCursor.style.top = (wheelR + dist*Math.sin(angle)) + 'px';
+      barCursor.style.top = ((1-curV) * bar.height) + 'px';
+    }
+    function commitColor(){
+      const hex = hsvToHex(curH, curS, curV);
+      state.solidColor = hex;
+      solidSwatch.style.background = hex;
+      hexReadout.textContent = hex;
+      render();
+    }
+    function setFromHex(hex){
+      const hsv = hexToHsv(hex);
+      curH = hsv.h; curS = hsv.s; curV = hsv.v;
+      hexReadout.textContent = hex;
+      refreshPicker();
+    }
+
+    function pointFromEvent(el, evt){
+      const rect = el.getBoundingClientRect();
+      const t = evt.touches && evt.touches[0];
+      return [(t ? t.clientX : evt.clientX) - rect.left, (t ? t.clientY : evt.clientY) - rect.top];
+    }
+    function trackDrag(onMove){
+      const move = e => { e.preventDefault(); onMove(e); };
+      const up = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('touchmove', move);
+        window.removeEventListener('touchend', up);
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+      window.addEventListener('touchmove', move, {passive:false});
+      window.addEventListener('touchend', up);
+    }
+
+    wheel.addEventListener('mousedown', downOnWheel);
+    wheel.addEventListener('touchstart', downOnWheel, {passive:false});
+    function downOnWheel(evt){
+      evt.preventDefault();
+      const update = e => {
+        const [x,y] = pointFromEvent(wheel, e || evt);
+        const dx = x - wheelR, dy = y - wheelR;
+        const dist = Math.min(Math.sqrt(dx*dx + dy*dy), wheelR);
+        curH = (Math.atan2(dy,dx) * 180/Math.PI + 360) % 360;
+        curS = dist / wheelR;
+        refreshPicker();
+        commitColor();
+      };
+      update(evt);
+      trackDrag(update);
+    }
+
+    bar.addEventListener('mousedown', downOnBar);
+    bar.addEventListener('touchstart', downOnBar, {passive:false});
+    function downOnBar(evt){
+      evt.preventDefault();
+      const update = e => {
+        const [,y] = pointFromEvent(bar, e || evt);
+        curV = 1 - clamp(y/bar.height, 0, 1);
+        refreshPicker();
+        commitColor();
+      };
+      update(evt);
+      trackDrag(update);
+    }
+
+    setFromHex(state.solidColor);
+  })();
 
   const densitySlider = document.getElementById('densitySlider');
   const densityVal = document.getElementById('densityVal');
@@ -1511,7 +1714,7 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     state.layers.push({
       points: derived.points, npts: derived.npts,
       palette: state.palette, density: state.density, glow: state.glow,
-      opacity: state.brightness
+      opacity: state.brightness, solidColor: state.solidColor
     });
     if(state.layers.length > MAX_LAYERS) state.layers.shift();
     updateLayerCount();
