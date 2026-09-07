@@ -912,27 +912,32 @@
     ctx.arc(px,py, Math.max(holeWorld,1.2) * baseScale * view.zoom, 0, 2*Math.PI);
     ctx.fillStyle = 'rgba(242,166,90,0.9)';
     ctx.fill();
+  }
 
-    if(state.showLabels){
-      ctx.save();
-      ctx.font = `${11*dpr}px 'IBM Plex Mono', monospace`;
-      ctx.fillStyle = 'rgba(231,236,242,0.9)';
-      ctx.textBaseline = 'bottom';
-      function label(cx,cy,text){
-        const [sx,sy] = worldToScreen(cx,cy);
-        ctx.fillText(text, sx+6*dpr, sy-6*dpr);
-      }
-      label(0,0, `ring n0=${state.n0}`);
-      label(m.gearCx,m.gearCy, `wheel n1=${state.n1}`);
-      label(m.hoopCx,m.hoopCy, `hoop n2=${n2}`);
-      label(m.penWheelCx,m.penWheelCy, `pen wheel n3=${n3}`);
-      if(derived.extraOn){
-        label(m.hoop2Cx,m.hoop2Cy, `hoop2 n4=${state.n4}`);
-        label(m.wheel2Cx,m.wheel2Cy, `wheel2 n5=${state.n5}`);
-      }
-      label(m.penX,m.penY, 'pen');
-      ctx.restore();
+  // Drawn after the curve (not inside drawMechanism) so the white labels
+  // always sit on top of the glowing stroke instead of getting painted over.
+  function drawMechanismLabels(t){
+    if(!state.showLabels) return;
+    const n2=state.n2, n3=state.n3;
+    const m = mechanismAt(t);
+    ctx.save();
+    ctx.font = `${11*dpr}px 'IBM Plex Mono', monospace`;
+    ctx.fillStyle = 'rgba(231,236,242,0.9)';
+    ctx.textBaseline = 'bottom';
+    function label(cx,cy,text){
+      const [sx,sy] = worldToScreen(cx,cy);
+      ctx.fillText(text, sx+6*dpr, sy-6*dpr);
     }
+    label(0,0, `ring n0=${state.n0}`);
+    label(m.gearCx,m.gearCy, `wheel n1=${state.n1}`);
+    label(m.hoopCx,m.hoopCy, `hoop n2=${n2}`);
+    label(m.penWheelCx,m.penWheelCy, `pen wheel n3=${n3}`);
+    if(derived.extraOn){
+      label(m.hoop2Cx,m.hoop2Cy, `hoop2 n4=${state.n4}`);
+      label(m.wheel2Cx,m.wheel2Cy, `wheel2 n5=${state.n5}`);
+    }
+    label(m.penX,m.penY, 'pen');
+    ctx.restore();
   }
 
   function drawSymmetry(){
@@ -1021,6 +1026,7 @@
     if(state.showSymm) drawSymmetry();
     if(state.showF0 && f0points) drawCurve(f0points.points, f0points.npts, 1, {withColor:false, showTip:false});
     drawCurve(derived.points, derived.npts, animProgress);
+    if(state.showCircles) drawMechanismLabels(derived.tend * animProgress);
   }
 
   function startAnimation(){
