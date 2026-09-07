@@ -55,8 +55,8 @@
   }
   .hud span{color:var(--cool);}
 
-  .gear-btn, .download-btn{
-    position:absolute;top:14px;z-index:2;
+  .gear-btn, .download-btn, .math-btn{
+    position:absolute;z-index:2;
     width:36px;height:36px;border-radius:4px;
     background:rgba(18,24,34,0.72);
     border:1px solid var(--border);
@@ -65,12 +65,15 @@
     cursor:pointer;
     transition:background 0.15s, border-color 0.15s;
   }
-  .gear-btn{right:14px;}
-  .download-btn{left:14px;}
-  .gear-btn:hover, .download-btn:hover{background:var(--surface-2);border-color:var(--cool);}
-  .gear-btn:focus-visible, .download-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
-  .gear-btn svg, .download-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
+  .gear-btn{top:14px;right:14px;}
+  .download-btn{top:14px;left:14px;}
+  .math-btn{top:60px;left:14px;}
+  .gear-btn:hover, .download-btn:hover, .math-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .math-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .gear-btn svg, .download-btn svg, .math-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
   .gear-btn.open svg{transform:rotate(75deg);}
+  .math-btn.open{border-color:var(--cool);}
+  .math-btn.open svg{stroke:var(--cool);}
 
   .panel{
     position:absolute;top:0;right:0;height:100%;width:280px;z-index:1;
@@ -82,6 +85,32 @@
     overflow-y:auto;
   }
   .panel.open{transform:translateX(0);}
+
+  .math-panel{
+    position:absolute;top:0;left:0;height:100%;width:min(320px, 90%);z-index:1;
+    background:rgba(15,20,29,0.94);
+    border-right:1px solid var(--border);
+    padding:18px;
+    transform:translateX(-100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .math-panel.open{transform:translateX(0);}
+  .math-panel h2{font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 3px;color:var(--text);}
+  .math-panel .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:16px;}
+  .math-panel .eq-block{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px;}
+  .math-panel .eq{font-family:'IBM Plex Mono',monospace;font-size:14.5px;color:var(--cool);line-height:1.7;word-break:break-word;}
+  .math-panel .eq sup{font-size:0.68em;position:relative;top:-0.55em;}
+  .math-panel .eq sub{font-size:0.68em;position:relative;top:0.35em;}
+  .math-panel .eq-note{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);line-height:1.6;}
+  .math-panel .eq-note sup{font-size:0.75em;position:relative;top:-0.4em;}
+  .math-panel .eq-note sub{font-size:0.75em;position:relative;top:0.3em;}
+  .math-panel .desc{font-family:'Space Grotesk',sans-serif;font-size:12.5px;color:var(--text);line-height:1.6;margin-bottom:18px;}
+  .math-panel .row-label{font-size:11px;letter-spacing:0.02em;color:var(--text-muted);margin-bottom:8px;}
+  .math-panel .row-label:not(:first-of-type){margin-top:18px;}
+  .math-panel .values{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text);line-height:1.9;}
+  .math-panel .values div{white-space:normal;}
+  .math-panel .values .k{color:var(--text-muted);}
 
   .section{margin-bottom:22px;}
   .section + .section{border-top:1px solid var(--border);padding-top:20px;}
@@ -149,6 +178,7 @@
   @media (prefers-reduced-motion:reduce){
     .hint{transition:none;}
     .panel{transition:none;}
+    .math-panel{transition:none;}
     .gear-btn svg{transition:none;}
   }
 </style>
@@ -166,6 +196,14 @@
       <path d="M5 21h14"></path>
     </svg>
   </button>
+
+  <button class="math-btn" id="mathBtn" aria-label="Show the math" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 15c1.5-7.5 3-7.5 4.5 0s3 7.5 4.5 0 3-7.5 4.5 0 3 7.5 4.5 0"></path>
+    </svg>
+  </button>
+
+  <div class="math-panel" id="mathPanel"></div>
 
   <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -640,6 +678,7 @@
     gl.uniform1f(uRelax, state.relax);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     updateHud();
+    if(mathPanel.classList.contains('open')) updateMathPanel();
   }
 
   function updateHud(){
@@ -777,6 +816,132 @@
     gearBtn.classList.toggle('open', open);
     gearBtn.setAttribute('aria-expanded', open);
   });
+
+  // ---------- math panel ----------
+  const mathBtn = document.getElementById('mathBtn');
+  const mathPanel = document.getElementById('mathPanel');
+
+  mathBtn.addEventListener('click', () => {
+    const open = mathPanel.classList.toggle('open');
+    mathBtn.classList.toggle('open', open);
+    mathBtn.setAttribute('aria-expanded', open);
+    if(open) updateMathPanel();
+  });
+
+  const MINUS = '−';
+  function fmtSigned(n, d){ const v = n.toFixed(d); return v.startsWith('-') ? MINUS + v.slice(1) : v; }
+  function fmtComplex(c, d){
+    d = d || 3;
+    return `${fmtSigned(c[0], d)} ${c[1] < 0 ? MINUS : '+'} ${Math.abs(c[1]).toFixed(d)}i`;
+  }
+  function valuesRows(pairs){
+    return pairs.filter(Boolean).map(([k, v]) => `<div><span class="k">${k}:</span> ${v}</div>`).join('');
+  }
+
+  const foldRules = {
+    1: 'z&prime; = |Re z<sub>n</sub>| + i|Im z<sub>n</sub>|  (fold into one quadrant)',
+    2: 'z&prime; = conjugate of z<sub>n</sub>  (flip the imaginary part)',
+    3: 'after squaring: |Re(z<sub>n</sub><sup>d</sup>)| + i&middot;Im(z<sub>n</sub><sup>d</sup>)',
+    4: 'z&prime; = Re z<sub>n</sub> &minus; i|Im z<sub>n</sub>|',
+    5: 'z&prime; = |Re z<sub>n</sub>| &minus; i|Im z<sub>n</sub>|',
+    6: 'z&prime; = |Re z<sub>n</sub>| + i|Im z<sub>n</sub>|, then take |Re| of z&prime;<sup>d</sup>',
+    7: 'z&prime; = Re z<sub>n</sub> &minus; i|Im z<sub>n</sub>|, then take |Re| of z&prime;<sup>d</sup>'
+  };
+
+  const descriptions = {
+    0: 'The classic: square z and add c, over and over. Points that never run away stay in the set.',
+    1: 'Folds z into one quadrant (absolute value of both parts) before squaring, producing ship-like silhouettes.',
+    2: 'Conjugates z (flips its imaginary part) before squaring &mdash; a mirror-image cousin of Mandelbrot.',
+    3: 'Squares z normally, then takes the absolute value of the result’s real part, braiding the boundary into knots.',
+    4: 'Folds only the imaginary part before squaring &mdash; a Burning Ship variant with perpendicular symmetry.',
+    5: 'Folds both parts like Burning Ship but keeps the sign flipped, rounding the silhouette into a buffalo shape.',
+    6: 'Combines Burning Ship’s fold going in with Celtic’s absolute value coming out.',
+    7: 'Combines the Perpendicular fold going in with Celtic’s absolute value coming out.',
+    8: 'A piecewise-linear map: shift z by &plusmn;1 depending on its sign, then scale by c.',
+    9: 'Like Barnsley 1, but the branch is chosen by a rotated test mixing z and c together.',
+    10: 'Iterates the complex sine function scaled by c &mdash; a transcendental fractal with endless folding.',
+    11: 'Models a magnetic spin lattice; the rational function’s two poles carve the plane into intricate basins.',
+    12: 'A relaxed Newton search for the roots of z<sup>d</sup> = 1, with an extra Mandelbrot-style offset c added each step.',
+    13: 'Pure Newton’s method for the roots of z<sup>d</sup> = 1. Every pixel is colored by which root it falls into, and how fast.'
+  };
+
+  function updateMathPanel(){
+    const m = state.mode;
+    const isPowerFamily = m <= 7;
+    const isSimple = m >= 8 && m <= 11;
+    const isNewton = m === NEWTON;
+    const isNova = m === NOVA;
+    const julia = state.juliaMode && !isNewton;
+    const d = state.power.toFixed(1);
+
+    let eq, note = '', startLine, stopLine, colorLine, values;
+
+    if(isPowerFamily){
+      const zTerm = foldRules[m] ? 'z&prime;' : 'z<sub>n</sub>';
+      eq = `z<sub>n+1</sub> = ${zTerm}<sup>${d}</sup>`;
+      if(state.rotation !== 0) eq += ` &middot; e<sup>i${state.rotation}&deg;</sup>`;
+      eq += ' + c';
+      if(state.phoenixOn) eq += ` + (${fmtComplex(state.phoenixP, 2)})&middot;z<sub>n</sub><sub>&minus;1</sub>`;
+      note = foldRules[m] || '';
+      startLine = julia
+        ? `z<sub>0</sub> = p &nbsp; c = ${fmtComplex(state.juliaC)} (fixed)`
+        : 'z<sub>0</sub> = 0 &nbsp; c = p (each pixel)';
+      stopLine = `stop when |z<sub>n</sub>| &gt; R`;
+      colorLine = 'escaped &rarr; smooth escape-time shading &middot; never escapes &rarr; dark interior';
+      values = valuesRows([
+        ['d (power)', d],
+        state.rotation !== 0 ? ['&theta; (rotation)', state.rotation + '&deg;'] : null,
+        state.phoenixOn ? ['P (feedback)', fmtComplex(state.phoenixP, 2)] : null,
+        ['R (escape radius)', state.bailout]
+      ]);
+    } else if(isSimple){
+      if(m === 8) eq = 'z<sub>n+1</sub> = c(z<sub>n</sub> &minus; 1) if Re(z<sub>n</sub>)&ge;0, else c(z<sub>n</sub> + 1)';
+      else if(m === 9) eq = 'z<sub>n+1</sub> = c(z<sub>n</sub> &minus; 1) if Re(z<sub>n</sub>)Im(c)+Im(z<sub>n</sub>)Re(c)&ge;0, else c(z<sub>n</sub> + 1)';
+      else if(m === 10) eq = 'z<sub>n+1</sub> = c &middot; sin(z<sub>n</sub>)';
+      else eq = 'z<sub>n+1</sub> = [ (z<sub>n</sub><sup>2</sup> + c &minus; 1) / (2z<sub>n</sub> + c &minus; 2) ]<sup>2</sup>';
+      const z0 = m === 10 ? '1' : '0';
+      startLine = julia
+        ? `z<sub>0</sub> = p &nbsp; c = ${fmtComplex(state.juliaC)} (fixed)`
+        : `z<sub>0</sub> = ${z0} &nbsp; c = p (each pixel)`;
+      stopLine = 'stop when |z<sub>n</sub>| &gt; R';
+      colorLine = 'escaped &rarr; smooth escape-time shading &middot; never escapes &rarr; dark interior';
+      values = valuesRows([['R (escape radius)', state.bailout]]);
+    } else {
+      const dMinus1 = (state.power - 1).toFixed(1);
+      eq = `z<sub>n+1</sub> = z<sub>n</sub> &minus; &alpha;&middot;(z<sub>n</sub><sup>${d}</sup> &minus; 1) / (${d}&middot;z<sub>n</sub><sup>${dMinus1}</sup>)`;
+      if(isNova) eq += ' + c';
+      if(isNewton){
+        startLine = 'z<sub>0</sub> = p &nbsp; c = 0 &nbsp; (solves z<sup>d</sup> = 1)';
+      } else if(julia){
+        startLine = `z<sub>0</sub> = p &nbsp; c = ${fmtComplex(state.juliaC)} (fixed)`;
+      } else {
+        startLine = 'z<sub>0</sub> = 1 &nbsp; c = p (each pixel)';
+      }
+      stopLine = `converged when |z<sub>n+1</sub> &minus; z<sub>n</sub>| &lt; 10${sup('-5')}`;
+      colorLine = 'converged &rarr; colored by which root, and how fast &middot; never converges &rarr; dark';
+      values = valuesRows([
+        ['d (root count)', d],
+        ['&alpha; (relaxation)', state.relax.toFixed(2)]
+      ]);
+    }
+
+    mathPanel.innerHTML = `
+      <h2>${modeNames[m]}</h2>
+      <div class="sub">${isNewton ? 'root-finding' : (julia ? 'Julia-type' : 'Mandelbrot-type')} iteration</div>
+      <div class="eq-block">
+        <div class="eq">${eq}</div>
+        ${note ? `<div class="eq-note">${note}</div>` : ''}
+      </div>
+      <div class="desc">${descriptions[m]}</div>
+      <div class="row-label">Start &amp; stop</div>
+      <div class="values"><div>${startLine}</div><div>${stopLine}</div></div>
+      <div class="row-label">Coloring</div>
+      <div class="values"><div>${colorLine}</div></div>
+      <div class="row-label">Current parameters</div>
+      <div class="values">${values}</div>
+    `;
+  }
+  function sup(s){ return `<sup>${s.replace('-', MINUS)}</sup>`; }
 
   document.getElementById('downloadBtn').addEventListener('click', () => {
     render();
