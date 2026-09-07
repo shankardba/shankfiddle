@@ -479,7 +479,7 @@
         </div>
         <span class="hex-readout" id="hexReadout">#f2a65a</span>
       </div>
-      <div class="slider-row">
+      <div class="slider-row" id="densityRow">
         <div style="flex:1;">
           <div class="slider-label"><span>Color cycles</span><span class="val" id="densityVal">2.0</span></div>
           <input type="range" id="densitySlider" min="0.5" max="8" step="0.1" value="2">
@@ -1546,6 +1546,7 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
   const swatches = document.getElementById('paletteSwatches');
   const colorWheelPanel = document.getElementById('colorWheelPanel');
   const solidToggle = document.getElementById('solidToggle');
+  const densityRow = document.getElementById('densityRow');
   swatches.addEventListener('click', e => {
     const sw = e.target.closest('.swatch');
     if(!sw) return;
@@ -1561,6 +1562,7 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     solidToggle.classList.toggle('on', on);
     swatches.style.display = on ? 'none' : 'flex';
     colorWheelPanel.classList.toggle('open', on);
+    densityRow.style.display = on ? 'none' : 'flex'; // "Color cycles" has no effect on a flat solid color
     if(on){
       if(state.palette !== 7) lastBlendPalette = state.palette;
       state.palette = 7;
@@ -1573,6 +1575,9 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     render();
   });
 
+  // Set by initColorWheel below; lets the "Brightness" slider drive the wheel's V while in solid mode.
+  let syncSolidValueFromSlider = null;
+
   // ---------- "Solid" pen style: a simple HSV color-wheel + brightness-bar picker ----------
   (function initColorWheel(){
     const wheel = document.getElementById('colorWheel');
@@ -1582,6 +1587,8 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     const bctx = bar.getContext('2d');
     const barCursor = document.getElementById('barCursor');
     const hexReadout = document.getElementById('hexReadout');
+    const brightnessSliderEl = document.getElementById('brightnessSlider');
+    const brightnessValEl = document.getElementById('brightnessVal');
 
     // CSS (logical) sizes stay fixed; the backing buffers are rendered at
     // devicePixelRatio so the wheel's circular edge is smooth, not jagged.
@@ -1653,10 +1660,19 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
       wheelCursor.style.top = (cssR + dist*Math.sin(angle)) + 'px';
       barCursor.style.top = ((1-curV) * CSS_BAR_H) + 'px';
     }
-    function commitColor(){
+    function commitColor(opts){
       const hex = hsvToHex(curH, curS, curV);
       state.solidColor = hex;
       hexReadout.textContent = hex;
+      if(!opts || opts.syncBrightnessSlider !== false){
+        // Keep the horizontal "Brightness" slider in lockstep with the wheel's V,
+        // clamped to the slider's own range (it never goes fully transparent/black).
+        const lo = parseFloat(brightnessSliderEl.min), hi = parseFloat(brightnessSliderEl.max);
+        brightnessSliderEl.value = clamp(curV, lo, hi);
+        const snapped = parseFloat(brightnessSliderEl.value); // the slider's `step` may round this
+        state.brightness = snapped;
+        brightnessValEl.textContent = snapped.toFixed(2);
+      }
       render();
     }
     function setFromHex(hex){
@@ -1717,6 +1733,13 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
     }
 
     setFromHex(state.solidColor);
+
+    // Lets the horizontal "Brightness" slider drive the wheel's V in the other direction.
+    syncSolidValueFromSlider = function(v){
+      curV = v;
+      refreshPicker();
+      commitColor({syncBrightnessSlider:false});
+    };
   })();
 
   const densitySlider = document.getElementById('densitySlider');
@@ -1732,7 +1755,8 @@ t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
   brightnessSlider.addEventListener('input', () => {
     state.brightness = parseFloat(brightnessSlider.value);
     brightnessVal.textContent = state.brightness.toFixed(2);
-    render();
+    if(state.palette === 7 && syncSolidValueFromSlider) syncSolidValueFromSlider(state.brightness);
+    else render();
   });
 
   const lineWidthSlider = document.getElementById('lineWidthSlider');
