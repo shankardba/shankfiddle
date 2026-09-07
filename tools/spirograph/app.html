@@ -88,7 +88,7 @@
   }
   .hud span{color:var(--cool);}
 
-  .gear-btn, .download-btn, .link-btn, .explain-btn{
+  .gear-btn, .download-btn, .explain-btn{
     position:absolute;top:14px;z-index:2;
     width:36px;height:36px;border-radius:4px;
     background:rgba(18,24,34,0.72);
@@ -100,12 +100,11 @@
   }
   .gear-btn{right:14px;}
   .download-btn{left:14px;}
-  .link-btn{left:58px;}
-  .explain-btn{left:102px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
-  .gear-btn:hover, .download-btn:hover, .link-btn:hover, .explain-btn:hover{background:var(--surface-2);border-color:var(--cool);}
-  .gear-btn:focus-visible, .download-btn:focus-visible, .link-btn:focus-visible, .explain-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .explain-btn{left:58px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
+  .gear-btn:hover, .download-btn:hover, .explain-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .explain-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
   .gear-btn.open, .explain-btn.open{border-color:var(--warm);color:var(--warm);}
-  .gear-btn svg, .download-btn svg, .link-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
+  .gear-btn svg, .download-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
   .gear-btn.open svg{transform:rotate(75deg);}
 
   .zoom-controls{
@@ -123,14 +122,6 @@
   .zoom-controls button:first-child{border-radius:4px 4px 0 0;border-bottom:none;}
   .zoom-controls button:last-child{border-radius:0 0 4px 4px;}
   .zoom-controls button:hover{background:var(--surface-2);border-color:var(--cool);}
-
-  .toast{
-    position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-8px);
-    background:rgba(18,24,34,0.9);border:1px solid var(--cool);color:var(--cool);
-    font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 12px;border-radius:4px;
-    opacity:0;pointer-events:none;transition:opacity 0.2s ease, transform 0.2s ease;z-index:3;
-  }
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
   .panel{
     position:absolute;top:0;right:0;height:100%;width:300px;z-index:1;
@@ -324,13 +315,6 @@
     </svg>
   </button>
 
-  <button class="link-btn" id="linkBtn" aria-label="Copy share link">
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 4.5"></path>
-      <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.5 19.5"></path>
-    </svg>
-  </button>
-
   <button class="explain-btn" id="explainBtn" aria-label="Explain the math" aria-expanded="false" title="Explain the math">&Sigma;</button>
 
   <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
@@ -344,8 +328,6 @@
     <button id="zoomInBtn" aria-label="Zoom in">+</button>
     <button id="zoomOutBtn" aria-label="Zoom out">&minus;</button>
   </div>
-
-  <div class="toast" id="toast">Link copied</div>
 
   <div class="math-panel" id="mathPanel">
     <div class="math-title">The Math Behind This Curve</div>
@@ -1408,29 +1390,6 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     link.download = `spirograph-${state.n0}-${state.n1}-${state.n2}-${state.n3}-${stamp}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-  });
-
-  function shareUrl(){
-    const url = new URL(window.location.href);
-    url.search = '';
-    const q = url.searchParams;
-    q.set('n0', state.n0); q.set('n1', state.n1); q.set('n2', state.n2); q.set('n3', state.n3);
-    q.set('h', state.h); q.set('p', state.p); q.set('phi', state.phi); q.set('hole', state.holeMm);
-    if(state.extraWheel){
-      q.set('n4', state.n4); q.set('n5', state.n5); q.set('h2', state.h2); q.set('extra', 1);
-    }
-    return url.toString();
-  }
-  document.getElementById('linkBtn').addEventListener('click', () => {
-    const url = shareUrl();
-    const toast = document.getElementById('toast');
-    const finish = () => { toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); };
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(url).then(finish, finish);
-    } else {
-      finish();
-    }
-    history.replaceState(null, '', url);
   });
 
   function bindNumber(id, key, onSet){
