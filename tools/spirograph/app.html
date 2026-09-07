@@ -36,7 +36,8 @@
   equations with the current numbers substituted in, exactly why the
   on-screen curve looks the way it does.
 
-  Self-contained: no build step, no dependencies beyond two Google Fonts.
+  Self-contained: no build step. The only external dependencies are two Google
+  Fonts and KaTeX (math typesetting for the "the math" panel), all via CDN.
   To embed:
     1) Easiest / safest: <iframe src="app.html" style="width:100%;height:600px;border:0;"></iframe>
     2) Inline: paste this whole file's body into a page (it sizes itself to its
@@ -50,6 +51,7 @@
 <title>Spirograph Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <style>
   :root{
     --bg:#0A0E16;
@@ -157,14 +159,17 @@
   .math-section + .math-section{border-top:1px solid var(--border);padding-top:18px;}
   .math-sub{font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--cool);margin-bottom:10px;}
   .math-prose{font-size:12.5px;line-height:1.75;color:var(--text-muted);margin:0;}
-  .math-glossary{list-style:none;font-size:11.5px;line-height:1.85;color:var(--text-muted);margin:0;padding:0;}
-  .math-glossary b{color:var(--warm);font-family:'IBM Plex Mono',monospace;font-weight:600;}
-  .math-eq{
-    font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.95;color:var(--text);
-    white-space:pre-wrap;background:var(--surface);border:1px solid var(--border);
-    border-radius:6px;padding:12px;margin:0;
+  .math-eq-katex{
+    background:var(--surface);border:1px solid var(--border);border-radius:6px;
+    padding:14px 10px;margin:0 0 12px;overflow-x:auto;
   }
-  .math-eq b{color:var(--warm);font-weight:600;}
+  .math-eq-katex .katex{font-size:0.95em;color:var(--text);}
+  .math-legend{font-size:11px;line-height:1.75;color:var(--text-muted);margin:0 0 16px;}
+  .math-legend b{color:var(--warm);font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .math-caption{
+    font-size:10px;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--text-muted);margin:0 0 8px;
+  }
 
   .section{margin-bottom:22px;}
   .section + .section{border-top:1px solid var(--border);padding-top:20px;}
@@ -352,13 +357,12 @@
     </div>
 
     <div class="math-section">
-      <div class="math-sub">Parameters, in plain English</div>
-      <ul class="math-glossary" id="mathGlossary"></ul>
-    </div>
-
-    <div class="math-section">
-      <div class="math-sub">The parametric equations</div>
-      <pre class="math-eq" id="mathEquations"></pre>
+      <div class="math-sub">The equations</div>
+      <div class="math-eq-katex" id="mathEqGeneral"></div>
+      <p class="math-legend" id="mathLegend"></p>
+      <div class="math-caption">With your current numbers</div>
+      <div class="math-eq-katex" id="mathEqLive"></div>
+      <p class="math-caption" id="mathEqLiveCaption" style="margin-top:8px;"></p>
     </div>
 
     <div class="math-section">
@@ -594,6 +598,7 @@
   <div class="hint" id="hint">Drag to pan · Scroll to zoom · Double-click to reset view<br>Gear = tweak the wheels · &Sigma; = explain the math</div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script>
 (function(){
   const canvas = document.getElementById('cv');
@@ -1189,81 +1194,87 @@
     return (Math.round(n*f)/f).toString();
   }
 
+  function renderTex(elId, tex){
+    const el = document.getElementById(elId);
+    if(typeof katex === 'undefined'){ el.textContent = tex.trim(); return; }
+    try{ katex.render(tex, el, {throwOnError:false, displayMode:true}); }
+    catch(e){ el.textContent = tex.trim(); }
+  }
+
   function updateMathPanel(){
     const n0=state.n0, n1=state.n1, n2=state.n2, n3=state.n3;
     const h = derived.h, p = derived.p, phi = state.phi, holeMm = state.holeMm;
-    const m0 = n0/n1, m1 = n2/n3;
     const extraOn = derived.extraOn;
     const n4=state.n4, n5=state.n5, h2=derived.h2;
     const lastLabel = extraOn ? 'n5' : 'n3';
     const lastRadius = extraOn ? n5 : n3;
     const rp = lastRadius*p;
 
-    let mech = `A pen-wheel with ${lastLabel} = ${lastRadius} teeth rolls around the inside of a hoop with `+
-      `n2 = ${n2} teeth. That hoop doesn't sit at the center of the next part out — it's offset by `+
-      `h = ${h.toFixed(3)} of the wheel's radius, and that off-center mount is what gives the curve its `+
-      `wobble. The wheel itself, with n1 = ${n1} teeth, rolls around the inside of a fixed outer ring of `+
-      `n0 = ${n0} teeth. `;
+    let mech = `A pen-wheel with ${lastLabel} = ${lastRadius} teeth rolls inside a hoop with n2 = ${n2} teeth, `+
+      `itself mounted off-center on a wheel with n1 = ${n1} teeth, which rolls inside a fixed outer ring `+
+      `with n0 = ${n0} teeth. `;
     if(extraOn){
-      mech += `A third stage is nested in too: instead of the pen sitting directly on that first pen-wheel `+
-        `(n3 = ${n3} teeth), n3 instead carries its own off-center hoop (n4 = ${n4} teeth, offset by `+
-        `h2 = ${h2.toFixed(3)}), and a second small wheel (n5 = ${n5} teeth) rolls inside that — the exact `+
-        `same trick, applied one level deeper. `;
+      mech += `A second hoop-and-wheel pair (n4 = ${n4}, n5 = ${n5}) nests one level deeper still, with the `+
+        `pen now riding on n5 — the same trick, applied twice. `;
     }
-    mech += `A pen sits p = ${p.toFixed(3)} of the way out from the last wheel's center (${fmt(rp,2)} units), `+
-      `starting at an angle of φ = ${phi}°.`;
+    mech += `The pen itself rides near the last wheel's rim, so every turn of that whole chain traces one point of the curve below.`;
     document.getElementById('mechProse').textContent = mech;
 
-    let glossary =
-      `<li><b>n0 = ${n0}</b> — teeth on the fixed outer ring. Bigger n0 makes a bigger overall drawing.</li>`+
-      `<li><b>n1 = ${n1}</b> — teeth on the wheel rolling inside the ring.</li>`+
-      `<li><b>n2 = ${n2}</b> — teeth on the hoop riding inside the wheel, off-center by h.</li>`+
-      `<li><b>n3 = ${n3}</b> — teeth on ${extraOn ? 'the first pen-wheel' : 'the small pen-wheel'} rolling inside the hoop.</li>`+
-      `<li><b>h = ${h.toFixed(3)}</b> — how far off-center the hoop sits inside the wheel (0 = no wobble).</li>`;
-    if(extraOn){
-      glossary +=
-        `<li><b>n4 = ${n4}</b> — teeth on a second hoop, riding inside n3, off-center by h2.</li>`+
-        `<li><b>n5 = ${n5}</b> — teeth on a second pen-wheel, rolling inside that second hoop — the pen is mounted here.</li>`+
-        `<li><b>h2 = ${h2.toFixed(3)}</b> — how far off-center the second hoop sits inside n3 (its own wobble).</li>`;
-    }
-    glossary +=
-      `<li><b>p = ${p.toFixed(3)}</b> — how far the pen sits from the last wheel's center, as a fraction of its radius.</li>`+
-      `<li><b>&phi; = ${phi}&deg;</b> — the pen's starting angle.</li>`+
-      `<li><b>hole = ${holeMm.toFixed(1)}mm</b> — simulates a real pen's hole width, rounding off each cusp instead of a sharp point.</li>`;
-    document.getElementById('mathGlossary').innerHTML = glossary;
+    const legend = `<b>n0</b>=${n0}, <b>n1</b>=${n1}, <b>n2</b>=${n2}, <b>n3</b>=${n3}`+
+      (extraOn ? `, <b>n4</b>=${n4}, <b>n5</b>=${n5}` : ``) + ` teeth · `+
+      `<b>h</b>=${h.toFixed(3)}` + (extraOn ? `, <b>h2</b>=${h2.toFixed(3)}` : ``) + ` hoop offset · `+
+      `<b>p</b>=${p.toFixed(3)} pen distance (r<sub>p</sub>=${fmt(rp,2)}) · `+
+      `<b>&phi;</b>=${phi}&deg; pen start angle · hole=${holeMm.toFixed(1)}mm`;
+    document.getElementById('mathLegend').innerHTML = legend;
 
-    let eq =
-`m<sub>0</sub> = n0/n1 = <b>${fmt(m0)}</b>
-m<sub>1</sub> = n2/n3 = <b>${fmt(m1)}</b>
+    const generalTex = extraOn ? String.raw`
+\begin{aligned}
+m_0 &= \dfrac{n_1}{n_0} \qquad m_1 = \dfrac{n_2}{n_3} \qquad m_2 = \dfrac{n_4}{n_5} \\[6pt]
+t_1(t) &= m_0\,t \\
+t_2(t) &= t_1 + \operatorname{atan2}(h\sin t_1,\ 1-h\cos t_1) \\
+t_3(t) &= m_1\,t_2 \\
+t_{3c}(t) &= t_3 + \operatorname{atan2}(h_2\sin t_3,\ 1-h_2\cos t_3) \\
+t_5(t) &= m_2\,t_{3c} \\
+a_0(t) = t - t_1 &\qquad a_1(t) = a_0 + t_2 - t_3 \qquad a_2(t) = a_1 + t_{3c} - t_5 \\[8pt]
+x(t) &= (n_0{-}n_1)\cos t + n_1 h\cos a_0 + (n_2{-}n_3)\cos(a_0{+}t_2) \\
+     &\quad + n_3 h_2\cos a_1 + (n_4{-}n_5)\cos(a_1{+}t_{3c}) + r_p\cos(a_2{+}\varphi) \\[6pt]
+y(t) &= (n_0{-}n_1)\sin t + n_1 h\sin a_0 + (n_2{-}n_3)\sin(a_0{+}t_2) \\
+     &\quad + n_3 h_2\sin a_1 + (n_4{-}n_5)\sin(a_1{+}t_{3c}) + r_p\sin(a_2{+}\varphi)
+\end{aligned}
+` : String.raw`
+\begin{aligned}
+m_0 &= \dfrac{n_1}{n_0} \qquad m_1 = \dfrac{n_2}{n_3} \\[6pt]
+t_1(t) &= m_0\,t \\
+t_2(t) &= t_1 + \operatorname{atan2}(h\sin t_1,\ 1-h\cos t_1) \\
+t_3(t) &= m_1\,t_2 \\
+a_0(t) &= t - t_1 \qquad a_1(t) = a_0 + t_2 - t_3 \\[8pt]
+x(t) &= (n_0{-}n_1)\cos t + n_1 h\cos a_0 \\
+     &\quad + (n_2{-}n_3)\cos(a_0{+}t_2) + r_p\cos(a_1{+}\varphi) \\[6pt]
+y(t) &= (n_0{-}n_1)\sin t + n_1 h\sin a_0 \\
+     &\quad + (n_2{-}n_3)\sin(a_0{+}t_2) + r_p\sin(a_1{+}\varphi)
+\end{aligned}
+`;
 
-t<sub>1</sub>(t) = m<sub>0</sub>&middot;t
-t<sub>2</sub>(t) = t<sub>1</sub> + atan2(<b>${h.toFixed(3)}</b>&middot;sin t<sub>1</sub>, 1 &minus; <b>${h.toFixed(3)}</b>&middot;cos t<sub>1</sub>)
-t<sub>3</sub>(t) = m<sub>1</sub>&middot;t<sub>2</sub>
-a<sub>0</sub>(t) = t &minus; t<sub>1</sub>
-a<sub>1</sub>(t) = a<sub>0</sub> + t<sub>2</sub> &minus; t<sub>3</sub>`;
+    const liveTex = extraOn ? String.raw`
+\begin{aligned}
+x(t) &= \textcolor{#F2A65A}{${n0-n1}}\cos t + \textcolor{#F2A65A}{${fmt(n1*h,2)}}\cos a_0 + \textcolor{#F2A65A}{${n2-n3}}\cos(a_0{+}t_2) \\
+     &\quad + \textcolor{#F2A65A}{${fmt(n3*h2,2)}}\cos a_1 + \textcolor{#F2A65A}{${n4-n5}}\cos(a_1{+}t_{3c}) + \textcolor{#F2A65A}{${fmt(rp,2)}}\cos(a_2{+}\varphi) \\[6pt]
+y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}}\sin a_0 + \textcolor{#F2A65A}{${n2-n3}}\sin(a_0{+}t_2) \\
+     &\quad + \textcolor{#F2A65A}{${fmt(n3*h2,2)}}\sin a_1 + \textcolor{#F2A65A}{${n4-n5}}\sin(a_1{+}t_{3c}) + \textcolor{#F2A65A}{${fmt(rp,2)}}\sin(a_2{+}\varphi)
+\end{aligned}
+` : String.raw`
+\begin{aligned}
+x(t) &= \textcolor{#F2A65A}{${n0-n1}}\cos t + \textcolor{#F2A65A}{${fmt(n1*h,2)}}\cos a_0 \\
+     &\quad + \textcolor{#F2A65A}{${n2-n3}}\cos(a_0{+}t_2) + \textcolor{#F2A65A}{${fmt(rp,2)}}\cos(a_1{+}\varphi) \\[6pt]
+y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}}\sin a_0 \\
+     &\quad + \textcolor{#F2A65A}{${n2-n3}}\sin(a_0{+}t_2) + \textcolor{#F2A65A}{${fmt(rp,2)}}\sin(a_1{+}\varphi)
+\end{aligned}
+`;
 
-    if(extraOn){
-      const m2 = derived.m2;
-      eq += `
-
-m<sub>2</sub> = n4/n5 = <b>${fmt(m2)}</b>
-t<sub>3c</sub>(t) = t<sub>3</sub> + atan2(<b>${h2.toFixed(3)}</b>&middot;sin t<sub>3</sub>, 1 &minus; <b>${h2.toFixed(3)}</b>&middot;cos t<sub>3</sub>)
-t<sub>5</sub>(t) = m<sub>2</sub>&middot;t<sub>3c</sub>
-a<sub>2</sub>(t) = a<sub>1</sub> + t<sub>3c</sub> &minus; t<sub>5</sub>
-
-x(t) = <b>${n0-n1}</b>cos t + <b>${fmt(n1*h,2)}</b>cos a<sub>0</sub> + <b>${n2-n3}</b>cos(a<sub>0</sub>+t<sub>2</sub>) + <b>${fmt(n3*h2,2)}</b>cos a<sub>1</sub> + <b>${n4-n5}</b>cos(a<sub>1</sub>+t<sub>3c</sub>) + <b>${fmt(rp,2)}</b>cos(a<sub>2</sub>+&phi;)
-y(t) = <b>${n0-n1}</b>sin t + <b>${fmt(n1*h,2)}</b>sin a<sub>0</sub> + <b>${n2-n3}</b>sin(a<sub>0</sub>+t<sub>2</sub>) + <b>${fmt(n3*h2,2)}</b>sin a<sub>1</sub> + <b>${n4-n5}</b>sin(a<sub>1</sub>+t<sub>3c</sub>) + <b>${fmt(rp,2)}</b>sin(a<sub>2</sub>+&phi;)
-
-t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
-    } else {
-      eq += `
-
-x(t) = <b>${n0-n1}</b>&middot;cos t + <b>${fmt(n1*h,2)}</b>&middot;cos a<sub>0</sub> + <b>${n2-n3}</b>&middot;cos(a<sub>0</sub>+t<sub>2</sub>) + <b>${fmt(rp,2)}</b>&middot;cos(a<sub>1</sub>+&phi;)
-y(t) = <b>${n0-n1}</b>&middot;sin t + <b>${fmt(n1*h,2)}</b>&middot;sin a<sub>0</sub> + <b>${n2-n3}</b>&middot;sin(a<sub>0</sub>+t<sub>2</sub>) + <b>${fmt(rp,2)}</b>&middot;sin(a<sub>1</sub>+&phi;)
-
-t runs from 0 to T&middot;2&pi;, T = <b>${derived.T}</b>`;
-    }
-    document.getElementById('mathEquations').innerHTML = eq;
+    renderTex('mathEqGeneral', generalTex);
+    renderTex('mathEqLive', liveTex);
+    document.getElementById('mathEqLiveCaption').textContent =
+      `t runs from 0 to 2π·T, where T = ${derived.T}`;
 
     const symmSentence = derived.nsymm > 1
       ? `Because that shared factor is ${derived.nsymm}, the finished drawing has exact ${derived.nsymm}-fold rotational symmetry — spin it by 360°/${derived.nsymm} ≈ ${(360/derived.nsymm).toFixed(1)}° and it lines up with itself.`
