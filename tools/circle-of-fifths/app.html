@@ -114,9 +114,6 @@
   }
   .view-select:hover{ background:var(--brass); color:var(--bg); }
   .view-select:focus{ outline:2px solid var(--brass-light); outline-offset:1px; }
-  .instrument-row{
-    display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted);
-  }
   .tone-legend{
     position:fixed; left:50%; bottom:14px; transform:translateX(-50%);
     z-index:50;
@@ -162,14 +159,6 @@
   <h1>Diatonic Circles</h1>
   <p class="sub">The circle of fifths, built so you can rotate it to any key. Click the outer ring for a major key, the inner ring for its relative minor.</p>
 
-  <div class="instrument-row">
-    <label for="teacherSelect">practicing for</label>
-    <select id="teacherSelect" class="view-select">
-      <option value="theory" selected>Music theory</option>
-      <option value="piano">Piano</option>
-      <option value="guitar">Guitar</option>
-    </select>
-  </div>
 
   <div class="controls">
     <button class="rot-btn" id="btnLeft" aria-label="Previous key">&#8592;</button>
@@ -1011,13 +1000,14 @@
   // This one tool is shared by three different teachers in that game (Sir
   // Earth teaches theory directly; Ms. Whitfield/piano and Jax/guitar each
   // send you here too — Maestro Alden/violin does NOT, a separate violin
-  // game is being built for him) — the "practicing for" selector below
-  // picks which one you're doing the work for, and gets folded into the
-  // goal id so e.g. turning the wheel while set to piano fires
+  // game is being built for him) — which one you're doing the work for
+  // comes from a ?teacher= query param on this page's own URL (set by
+  // whichever teacher's dialogue links here), and gets folded into the
+  // goal id so e.g. turning the wheel when linked from piano fires
   // 'wheel_piano', a completely separate goal from Sir Earth's plain
-  // 'wheel'. Leaving it on the default 'theory' keeps Sir Earth's original
-  // goal ids unchanged.
-  let currentTeacher = 'theory';
+  // 'wheel'. No param (the default, e.g. opened directly) keeps Sir
+  // Earth's original goal ids unchanged.
+  const currentTeacher = new URLSearchParams(location.search).get('teacher') || 'theory';
   const sentGoals = {};
   function sendBoyGoal(goal) {
     var id = currentTeacher === 'theory' ? goal : (goal + '_' + currentTeacher);
@@ -1025,9 +1015,6 @@
     sentGoals[id] = true;
     window.parent.postMessage({ source: 'boy-tool', tool: 'circleOfFifths', goal: id }, '*');
   }
-  document.getElementById('teacherSelect').addEventListener('change', function (e) {
-    currentTeacher = e.target.value;
-  });
 
   let keyIndex = 0;
   let mode = 'major'; // 'major' or 'minor' — which ring is currently the tonic

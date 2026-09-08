@@ -41,15 +41,16 @@ cp ~/boy-game/index.html tools/boy/app.html
 
 **circle-of-fifths/app.html is the one exception — do not blindly
 `cp` over it.** It carries shankFiddle/Boy-game-specific patches on top
-of the standalone `circle-of-fifths-chord-wheel.html`: a "practicing
-for" teacher/instrument selector (`#teacherSelect`) and `sendBoyGoal()`
-calls at several interaction points, which `postMessage` progress back
-to a parent page embedding this tool (the Boy game). Overwriting
-`app.html` with a plain copy of the upstream file would silently delete
-that integration. To pull in an update, diff the upstream file against
-`app.html` first (e.g. `diff ~/circle-of-fifths-chord-wheel/circle-of-fifths-chord-wheel.html tools/circle-of-fifths/app.html`) and hand-merge just the
-new changes, keeping every `instrument-row`/`sendBoyGoal`/`teacherSelect`
-line intact.
+of the standalone `circle-of-fifths-chord-wheel.html`: a `?teacher=`
+query-param read (which teacher's dialogue linked here — piano, guitar,
+or the default theory) and `sendBoyGoal()` calls at several interaction
+points, which `postMessage` progress back to a parent page embedding
+this tool (the Boy game). Overwriting `app.html` with a plain copy of
+the upstream file would silently delete that integration. To pull in an
+update, diff the upstream file against `app.html` first (e.g. `diff
+~/circle-of-fifths-chord-wheel/circle-of-fifths-chord-wheel.html
+tools/circle-of-fifths/app.html`) and hand-merge just the new changes,
+keeping every `currentTeacher`/`sendBoyGoal` line intact.
 
 No need to touch the wrapper `index.html` files when a tool updates —
 they never change.
