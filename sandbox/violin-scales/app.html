@@ -60,47 +60,35 @@
   .play-btn:hover{ background:var(--gold); color:var(--bg); }
 
   .strings-wrap{
-    width:100%; display:flex; flex-direction:column; gap:20px;
+    width:100%; max-width:340px; background:var(--panel); border-radius:14px; padding:14px 6px;
   }
-  .string-row{
-    background:var(--panel); border-radius:14px; padding:16px 14px 14px;
-    display:flex; flex-direction:column; gap:8px;
+  .strings-wrap svg{ width:100%; height:auto; display:block; overflow:visible; }
+  .fretboard .string-name{
+    font-family:'Inter', sans-serif; font-size:12px; font-weight:700; letter-spacing:0.5px;
+    text-transform:uppercase; fill:var(--ink-soft); text-anchor:middle;
   }
-  .string-label{
-    font-size:12px; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-soft);
-    font-weight:600;
+  .fretboard .string-line{ stroke:var(--wood); stroke-width:2.5; }
+  .fretboard .fret-line{ stroke:var(--ink-soft); stroke-width:1; opacity:0.35; }
+  .fretboard .nut{ stroke:var(--ink); stroke-width:5; stroke-linecap:round; }
+  .fretboard .note-dot circle{
+    fill:var(--wood); stroke:var(--ink); stroke-width:2; transition:stroke 0.15s, stroke-width 0.15s;
   }
-  .positions{
-    display:flex; align-items:flex-start; overflow-x:auto; padding-bottom:4px;
+  .fretboard .note-dot.open circle{ fill:var(--panel); stroke:var(--wood); }
+  .fretboard .note-dot.playing circle{ stroke:var(--gold); stroke-width:4; }
+  .fretboard .finger-num{
+    font-family:'Fraunces', serif; font-weight:700; font-size:15px; fill:var(--panel);
+    text-anchor:middle; dominant-baseline:central; pointer-events:none;
   }
-  .pos{
-    display:flex; flex-direction:column; align-items:center; gap:3px;
-    flex:0 0 56px; width:56px;
+  .fretboard .note-dot.open .finger-num{ fill:var(--ink); }
+  .fretboard .note-label{
+    font-size:13.5px; font-weight:600; fill:var(--ink); font-family:'Inter', sans-serif;
   }
-  .pos.playing .finger{ box-shadow:0 0 0 4px rgba(212,166,60,0.5); }
-  .pos .finger{
-    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    font-family:'Fraunces', serif; font-weight:700; font-size:15px;
-    background:var(--wood); color:var(--panel); border:2px solid var(--ink);
-    transition:box-shadow 0.15s;
+  .fretboard .degree-label{ font-size:10.5px; fill:var(--ink-soft); font-family:'Inter', sans-serif; }
+  .fretboard .step-label{ font-size:8.5px; fill:var(--ink-soft); opacity:0.7; font-family:'Inter', sans-serif; }
+  .fretboard .bug-label{
+    font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; fill:var(--ink-soft);
+    font-family:'Inter', sans-serif; text-anchor:middle;
   }
-  .pos .finger.open{ background:var(--panel); color:var(--ink); border-color:var(--wood); }
-  .pos .note{ font-size:13.5px; font-weight:600; color:var(--ink); }
-  .pos .degree{ font-size:10.5px; color:var(--ink-soft); }
-  .segment{
-    flex:0 0 68px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-    padding-top:6px; gap:2px;
-  }
-  .segment .bar{
-    width:100%; height:2px; background:var(--ink-soft); opacity:0.4; margin-top:8px;
-  }
-  .segment.half .bar{ opacity:0; }
-  .segment .bug-icon{ width:24px; height:24px; flex-shrink:0; }
-  .segment .bug-label{
-    font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px;
-    color:var(--ink-soft); text-align:center; max-width:64px;
-  }
-  .segment.whole .step-label{ font-size:9px; color:var(--ink-soft); opacity:0.6; margin-top:2px; }
 
   .bug-summary{
     font-size:14px; color:var(--gold-light); display:flex; align-items:center; gap:8px;
@@ -131,12 +119,6 @@
 
   .foot{ font-size:12px; color:var(--muted); text-align:center; max-width:42ch; line-height:1.5; }
 
-  @media (max-width:420px){
-    .pos{ flex-basis:46px; width:46px; }
-    .pos .finger{ width:28px; height:28px; font-size:13px; }
-    .segment{ flex-basis:56px; }
-    .segment .bug-label{ font-size:8.5px; }
-  }
 </style>
 </head>
 <body>
@@ -166,15 +148,15 @@
     <h2>Bug legend</h2>
     <div class="legend-item">
       <span class="bug-icon" id="legendMantis"></span>
-      <span class="legend-text"><b>Mantis</b><span>1st &amp; 2nd finger sit a half step apart</span></span>
+      <span class="legend-text"><b>Mantis</b><span>Half step sits between 1 and 2</span></span>
     </div>
     <div class="legend-item">
       <span class="bug-icon" id="legendSpider"></span>
-      <span class="legend-text"><b>Spider</b><span>2nd &amp; 3rd finger sit a half step apart</span></span>
+      <span class="legend-text"><b>Spider</b><span>Half step sits between 2 and 3</span></span>
     </div>
     <div class="legend-item">
       <span class="bug-icon" id="legendLadybug"></span>
-      <span class="legend-text"><b>Ladybug</b><span>3rd &amp; 4th finger sit a half step apart</span></span>
+      <span class="legend-text"><b>Ladybug</b><span>Half step sits between 3 and 4</span></span>
     </div>
   </div>
 
@@ -378,6 +360,99 @@
     return { string: tetra.string, positions };
   }
 
+  // --- fretboard diagram (vertical, guitar-chart style) ---
+  // Rows run open-string, finger 1, 2, 3, 4 top to bottom. G/D occupy rows
+  // 0-3 (open through finger 3); A/E occupy rows 1-4 (finger 1 through 4,
+  // no open row) — but rather than spacing rows evenly by finger number,
+  // rows are spaced by actual SEMITONE offset from each string's first
+  // position (0 there, always ending at 5 — a perfect fourth — since every
+  // major/natural-minor tetrachord spans one). That's what lets a half
+  // step (1 semitone) land on the very next fret with nothing between,
+  // while a whole step (2 semitones) leaves one empty fret showing in the
+  // gap — the physical difference the user asked to make visible.
+  const FRET_H = 42;
+  const TOP_Y = 40;
+  const X_LOWER = 100, X_UPPER = 200;
+  const LABEL_OFFSET = 24, BUG_OFFSET = 66;
+  const DOT_R = 15;
+
+  function fretY(offset){ return TOP_Y + offset * FRET_H; }
+
+  // Cumulative semitone offset of each position from the tetrachord's own
+  // first note (0, 2, 4, 5 for major; 0, 2, 3, 5 or 0, 1, 3, 5 for the two
+  // natural-minor tetrachords) — derived straight from the note letters,
+  // not hardcoded, so it can't drift out of sync with the note data.
+  function withOffsets(tetra){
+    let offset = 0;
+    return tetra.positions.map((p, i) => {
+      if(i > 0) offset += stepSize(tetra.positions[i-1].note, p.note);
+      return Object.assign({}, p, { offset });
+    });
+  }
+
+  function buildFretboardSVG(lower, upper){
+    const bugsFound = [];
+    let svg = '';
+    const lowerPos = withOffsets(lower);
+    const upperPos = withOffsets(upper);
+    const maxOffset = Math.max(lowerPos[lowerPos.length-1].offset, upperPos[upperPos.length-1].offset);
+    // A true nut (thick bar) only where the diagram's top row really is the
+    // open string (G/D); A/E's top row is finger 1, so it gets a plain
+    // fret line instead — there's no open string sitting above it here.
+    const topIsNut = lower.positions[0].finger === 'open';
+
+    for(let f = 0; f <= maxOffset; f++){
+      svg += `<line class="${f === 0 && topIsNut ? 'nut' : 'fret-line'}" x1="${X_LOWER}" y1="${fretY(f)}" x2="${X_UPPER}" y2="${fretY(f)}"/>`;
+    }
+    [X_LOWER, X_UPPER].forEach(x => {
+      svg += `<line class="string-line" x1="${x}" y1="${fretY(0)}" x2="${x}" y2="${fretY(maxOffset) + 16}"/>`;
+    });
+    svg += `<text class="string-name" x="${X_LOWER}" y="18">${lower.string} string</text>`;
+    svg += `<text class="string-name" x="${X_UPPER}" y="18">${upper.string} string</text>`;
+
+    [ { positions: lowerPos, x: X_LOWER, side: -1 },
+      { positions: upperPos, x: X_UPPER, side: 1 }
+    ].forEach(({ positions, x, side }) => {
+      const labelX = x + side * LABEL_OFFSET;
+      const bugX = x + side * BUG_OFFSET;
+      const anchor = side < 0 ? 'end' : 'start';
+
+      positions.forEach((p, i) => {
+        const y = fretY(p.offset);
+        const isOpen = p.finger === 'open';
+        const degreeLabel = (currentMode === 'minor' && FLATTED_DEGREES.includes(p.degree))
+          ? '♭' + p.degree : String(p.degree);
+        svg += `<g class="note-dot${isOpen ? ' open' : ''}" data-midi="${noteToMidi(p.note, p.octave)}">
+          <circle cx="${x}" cy="${y}" r="${DOT_R}"/>
+          <text class="finger-num" x="${x}" y="${y+1}">${isOpen ? 'O' : p.finger}</text>
+        </g>`;
+        svg += `<text class="note-label" x="${labelX}" y="${y-3}" text-anchor="${anchor}">${noteLabel(p.note)}</text>`;
+        svg += `<text class="degree-label" x="${labelX}" y="${y+12}" text-anchor="${anchor}">${degreeLabel}</text>`;
+
+        if(i < positions.length - 1){
+          const next = positions[i + 1];
+          const gapY = (y + fretY(next.offset)) / 2;
+          const isHalf = (next.offset - p.offset) === 1;
+          // A bug only exists between two actual fingers, adjacent by
+          // number — never on the open-string gap, even if that gap
+          // happens to be the half step (see the natural-minor case where
+          // this hides one bug entirely).
+          const bug = (!isOpen && next.finger !== 'open' && next.finger === p.finger + 1 && isHalf)
+            ? BUG_BY_FINGER_PAIR[p.finger] : null;
+          if(bug){
+            bugsFound.push(bug);
+            svg += `<g transform="translate(${bugX - 11}, ${gapY - 11})">${bugIconSVG(bug, 22)}</g>`;
+            svg += `<text class="bug-label" x="${bugX}" y="${gapY + 21}">${BUG_LABEL[bug]}</text>`;
+          } else {
+            svg += `<text class="step-label" x="${bugX}" y="${gapY + 3}" text-anchor="middle">${isHalf ? 'half step' : 'whole step'}</text>`;
+          }
+        }
+      });
+    });
+
+    return { svg, bugsFound, height: fretY(maxOffset) + 36 };
+  }
+
   function render(){
     const scale = SCALES[currentKey][currentMode];
     const octaves = OCTAVES[currentKey];
@@ -387,57 +462,9 @@
     document.getElementById('scaleName').textContent =
       currentKey + (currentMode === 'major' ? ' Major' : ' Natural Minor');
 
+    const { svg: fretboardInner, bugsFound, height } = buildFretboardSVG(lower, upper);
     const wrap = document.getElementById('stringsWrap');
-    wrap.innerHTML = '';
-    const bugsFound = [];
-    [lower, upper].forEach(entry => {
-      const row = document.createElement('div');
-      row.className = 'string-row';
-      const label = document.createElement('div');
-      label.className = 'string-label';
-      label.textContent = entry.string + ' string';
-      row.appendChild(label);
-
-      const posWrap = document.createElement('div');
-      posWrap.className = 'positions';
-
-      entry.positions.forEach((p, i) => {
-        const posEl = document.createElement('div');
-        posEl.className = 'pos';
-        posEl.dataset.midi = noteToMidi(p.note, p.octave);
-        const degreeLabel = (currentMode === 'minor' && FLATTED_DEGREES.includes(p.degree))
-          ? '♭' + p.degree : String(p.degree);
-        const isOpen = p.finger === 'open';
-        posEl.innerHTML = `
-          <div class="finger${isOpen ? ' open' : ''}">${isOpen ? 'O' : p.finger}</div>
-          <div class="note">${noteLabel(p.note)}</div>
-          <div class="degree">${degreeLabel}</div>`;
-        posWrap.appendChild(posEl);
-
-        if(i < entry.positions.length - 1){
-          const next = entry.positions[i + 1];
-          const isHalf = stepSize(p.note, next.note) === 1;
-          // A bug only exists between two actual fingers, adjacent by
-          // number — never on the open-string gap, even if that gap
-          // happens to be the half step (see the natural-minor case where
-          // this hides one bug entirely).
-          const bug = (!isOpen && next.finger !== 'open' && next.finger === p.finger + 1 && isHalf)
-            ? BUG_BY_FINGER_PAIR[p.finger] : null;
-          const seg = document.createElement('div');
-          seg.className = 'segment ' + (isHalf ? 'half' : 'whole');
-          if(bug){
-            bugsFound.push(bug);
-            seg.innerHTML = `<span class="bug-icon">${bugIconSVG(bug, 26)}</span><span class="bug-label">${BUG_LABEL[bug]}</span>`;
-          } else {
-            seg.innerHTML = `<div class="bar"></div><div class="step-label">${isHalf ? 'half step' : 'whole step'}</div>`;
-          }
-          posWrap.appendChild(seg);
-        }
-      });
-
-      row.appendChild(posWrap);
-      wrap.appendChild(row);
-    });
+    wrap.innerHTML = `<svg class="fretboard" viewBox="0 0 300 ${height}" xmlns="http://www.w3.org/2000/svg">${fretboardInner}</svg>`;
 
     const summary = document.getElementById('bugSummary');
     summary.innerHTML = bugsFound.map(b => `${bugIconSVG(b,22)} <span>${BUG_LABEL[b]}</span>`).join('&nbsp;&nbsp;')
@@ -446,7 +473,7 @@
     const why = document.getElementById('whyPanel');
     if(currentMode === 'major'){
       why.innerHTML = `<h2>Why major sounds the way it does</h2>
-        <p>Major keeps every scale degree natural (unraised, unlowered) — a bright, open sound. Shift the same finger shape to any starting note and the bug travels with it: this key's fingering puts the half step between the <b>${lastMajorFingerPair()}</b>, on both strings.</p>`;
+        <p>Major keeps every scale degree natural (unraised, unlowered) — a bright, open sound. Shift the same finger shape to any starting note and the bug travels with it: this key's fingering means the half step sits between <b>${lastMajorFingerPair()}</b>, on both strings.</p>`;
     } else {
       why.innerHTML = `<h2>Why minor sounds the way it does</h2>
         <p>Natural minor lowers the 3rd, 6th, and 7th scale degrees (♭3, ♭6, ♭7) compared to major — that's the darker color you hear. It also moves where the half steps fall compared to major's fingering.</p>
@@ -454,14 +481,14 @@
     }
 
     function lastMajorFingerPair(){
-      const pairs = { mantis: '1st & 2nd finger', spider: '2nd & 3rd finger', ladybug: '3rd & 4th finger' };
+      const pairs = { mantis: '1 and 2', spider: '2 and 3', ladybug: '3 and 4' };
       return bugsFound.length ? pairs[bugsFound[0]] : 'open string';
     }
   }
 
   function playScale(){
     const wrap = document.getElementById('stringsWrap');
-    const posEls = Array.from(wrap.querySelectorAll('.pos'));
+    const posEls = Array.from(wrap.querySelectorAll('.note-dot'));
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const now = audioCtx.currentTime;
     const noteDur = 0.42, gap = 0.45;
