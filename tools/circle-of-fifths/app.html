@@ -144,6 +144,7 @@
   .chord-card .staff{ width:100%; max-width:96px; margin:1px 0; }
   .chord-card .fretboard{ width:100%; max-width:78px; margin:1px 0; }
   .chord-card .ukulele{ width:100%; max-width:60px; margin:1px 0; }
+  .chord-card .mandolin{ width:100%; max-width:70px; margin:1px 0; }
   .chord-card .cn{ font-family:'Fraunces', serif; font-size:16px; font-weight:700; color:var(--ink); }
   .chord-card .nn{ font-size:8.5px; color:var(--ink-soft); text-align:center; line-height:1.3; }
   .chord-card button{
@@ -230,6 +231,7 @@
         <option value="staff" selected>Notation</option>
         <option value="guitar">Guitar chords</option>
         <option value="ukulele">Ukulele chords</option>
+        <option value="mandolin">Mandolin chords</option>
       </select>
     </div>
 
@@ -461,7 +463,7 @@
 
   // --- staff notation helpers ---
   let currentClef = 'treble';
-  let notationView = 'staff'; // 'staff', 'guitar', or 'ukulele' — which chart the cards show
+  let notationView = 'staff'; // 'staff', 'guitar', 'ukulele', or 'mandolin' — which chart the cards show
   const letterIdx = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
   // reference note = the staff's bottom line, plus the octave chosen for a
   // chord's root so triads sit close to the staff rather than needing lots
@@ -991,6 +993,164 @@
     </svg>`;
   }
 
+  // --- mandolin chord charts ---
+  // Standard mandolin tuning, low to high: G3, D4, A4, E5 — tuned in
+  // perfect fifths like a violin (one octave down), NOT like a guitar or
+  // ukulele. Unlike guitarVoicing()'s movable-barre-shape (root always
+  // anchors the shape, everything else fills relative to it), this
+  // searches increasing fret positions and takes the LOWEST one where
+  // every "required" tone can be covered by some string — root and,
+  // for 7th chords and up, the fifth are optional filler rather than
+  // anchors: another instrument in the ensemble is almost certainly
+  // already covering the root (same reasoning ukuleleVoicing() leans on
+  // when a dense chord doesn't fit), and a plain unaltered 5th rarely
+  // carries a 7th/9th chord's color, so neither is worth climbing the
+  // neck for. This can and often does drop the root, or the root *and*
+  // fifth, rather than force a higher position just to include them.
+  const STRING_PC_MANDO = [7,2,9,4]; // G3, D4, A4, E5
+  const MANDO_SPAN = 4;
+  const MANDO_MAX_START = 14; // 4 strings a 5th apart cycle through every pitch class well within this many frets
+
+  function mandolinVoicing(notes){
+    const pcs = notes.map(noteToPC);
+    const rootPC = pcs[0], thirdPC = pcs[1], fifthPC = pcs[2];
+    const extraPCs = pcs.slice(3); // seventh, ninth — present only on 7th/9th chords
+
+    // Required tones must appear somewhere in the voicing; bonus tones
+    // fill leftover strings if convenient but never push the search to
+    // a higher window. Plain triads have nothing to fall back on for
+    // color besides the pair that actually distinguishes major/minor/
+    // dim/aug (3rd+5th), so both are required and only the root is
+    // optional. 7th chords and up already get their color from the
+    // juice tones (3rd/7th/9th), so the 5th joins the root as optional
+    // — tried before the root as bonus (not after) since another
+    // instrument covering the root is the more likely gap-filler of the
+    // two, per the same rationale as the comment above.
+    const required = notes.length >= 4 ? [thirdPC, ...extraPCs] : [thirdPC, fifthPC];
+    const bonus = notes.length >= 4 ? [fifthPC, rootPC] : [rootPC];
+
+    for(let w = 0; w <= MANDO_MAX_START; w++){
+      // pcAtFret[s]: pitch class -> lowest fret in this 4-fret window
+      // that produces it on string s.
+      const pcAtFret = STRING_PC_MANDO.map(openPc=>{
+        const m = new Map();
+        for(let f = w; f < w+MANDO_SPAN; f++){
+          const pc = (openPc+f) % 12;
+          if(!m.has(pc)) m.set(pc, f);
+        }
+        return m;
+      });
+
+      // Can every required tone be matched to its own string within
+      // this window? Small backtracking search (≤4 required tones over
+      // 4 strings) rather than a greedy assignment, so one required
+      // tone grabbing a string a *different* required tone needed can't
+      // falsely rule out a low window that another assignment would
+      // have made work.
+      const assign = new Array(required.length).fill(-1);
+      const usedStrings = new Array(4).fill(false);
+      function backtrack(i){
+        if(i === required.length) return true;
+        const pc = required[i];
+        for(let s = 0; s < 4; s++){
+          if(usedStrings[s] || !pcAtFret[s].has(pc)) continue;
+          usedStrings[s] = true; assign[i] = s;
+          if(backtrack(i+1)) return true;
+          usedStrings[s] = false; assign[i] = -1;
+        }
+        return false;
+      }
+      if(!backtrack(0)) continue; // can't cover every required tone here — try the next fret up
+
+      const frets = new Array(4).fill(null);
+      required.forEach((pc, i) => { frets[assign[i]] = pcAtFret[assign[i]].get(pc); });
+      for(const pc of bonus){
+        for(let s = 0; s < 4; s++){
+          if(frets[s] !== null) continue;
+          if(pcAtFret[s].has(pc)){ frets[s] = pcAtFret[s].get(pc); break; }
+        }
+      }
+      return { frets, barreFret: w, rootPC };
+    }
+    // Defensive fallback — should be unreachable: 4 strings a 5th apart
+    // cycle through every pitch class well within MANDO_MAX_START frets,
+    // so some window above always covers ≤3 required tones.
+    return { frets: new Array(4).fill(null), barreFret: 0, rootPC };
+  }
+
+  function mandolinSVG(notes){
+    const { frets, barreFret } = mandolinVoicing(notes);
+    const tonePCs = notes.map(noteToPC); // [root, third, fifth, seventh?, ninth?]
+    const stringXs = [8,24,40,56];
+    const fretTop = 16, fretSpacing = 14, cells = MANDO_SPAN;
+    const ink = '#2b2118';
+    // Same row-zero convention as fretboardSVG(): open-position chords
+    // (barreFret===0) draw the nut as row 0, so a fret-1 note belongs in
+    // the row after it; movable shapes higher up the neck have no nut
+    // drawn, so the barre fret itself is row 0.
+    const rowZeroFret = barreFret === 0 ? 1 : barreFret;
+
+    const stringLines = stringXs.map(sx =>
+      `<line x1="${sx}" y1="${fretTop}" x2="${sx}" y2="${fretTop+cells*fretSpacing}" stroke="${ink}" stroke-width="1"/>`
+    ).join('');
+    const fretLines = Array.from({length:cells+1}, (_,i)=>{
+      const y = fretTop + i*fretSpacing;
+      const w = (i===0 && barreFret===0) ? 3 : 1;
+      return `<line x1="${stringXs[0]}" y1="${y}" x2="${stringXs[3]}" y2="${y}" stroke="${ink}" stroke-width="${w}"/>`;
+    }).join('');
+
+    // Same lowest-fret-only barre rule as fretboardSVG() — only the
+    // index finger can barre, and it necessarily holds the shape's
+    // lowest fret.
+    const frettedFrets = frets.filter(f => f !== null && f !== 0);
+    const lowFret = frettedFrets.length ? Math.min(...frettedFrets) : barreFret;
+    let barreSvg = '', runStart = -1;
+    for(let s=0; s<=4; s++){
+      const onBarre = s<4 && frets[s] === lowFret && lowFret > 0;
+      if(onBarre && runStart === -1) runStart = s;
+      if(!onBarre && runStart !== -1){
+        if(s - runStart >= 2){
+          const y = fretTop + (lowFret - rowZeroFret)*fretSpacing + fretSpacing/2;
+          barreSvg += `<line x1="${stringXs[runStart]}" y1="${y}" x2="${stringXs[s-1]}" y2="${y}" stroke="${ink}" stroke-width="8" stroke-linecap="round" opacity="0.85"/>`;
+        }
+        runStart = -1;
+      }
+    }
+
+    let markers = '';
+    frets.forEach((fret, s)=>{
+      const sx = stringXs[s];
+      if(fret === null){
+        markers += `<text x="${sx}" y="10" text-anchor="middle" font-size="9" fill="${ink}">✕</text>`;
+      } else if(fret === 0){
+        const pc = STRING_PC_MANDO[s];
+        const accent = chordToneAccent(tonePCs.indexOf(pc));
+        const stroke = accent ? accent.border : ink;
+        markers += `<circle cx="${sx}" cy="10" r="3" fill="none" stroke="${stroke}" stroke-width="1.4"/>`;
+      } else {
+        const offset = fret - rowZeroFret;
+        const cy = fretTop + offset*fretSpacing + fretSpacing/2;
+        const pc = (STRING_PC_MANDO[s]+fret) % 12;
+        const accent = chordToneAccent(tonePCs.indexOf(pc));
+        const fill = accent ? accent.fill : ink;
+        const stroke = accent ? accent.border : 'none';
+        markers += `<circle cx="${sx}" cy="${cy}" r="4.2" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>`;
+      }
+    });
+
+    const label = barreFret > 0
+      ? `<text x="${stringXs[3]+8}" y="${fretTop+fretSpacing/2+3}" font-size="9" fill="${ink}">${barreFret}fr</text>`
+      : '';
+
+    return `<svg class="mandolin" viewBox="0 0 84 ${fretTop+cells*fretSpacing+6}" xmlns="http://www.w3.org/2000/svg">
+      ${fretLines}
+      ${stringLines}
+      ${barreSvg}
+      ${markers}
+      ${label}
+    </svg>`;
+  }
+
   // Notifies a parent page embedding this tool in an iframe (e.g. the Boy
   // game) that the player did a specific thing, not just opened the tool.
   // Sent at most once per goal id per page load. Harmless no-op when not
@@ -1370,7 +1530,8 @@
       card.className = 'chord-card';
       const chart = notationView === 'staff' ? staffSVG(notes, currentClef)
         : notationView === 'guitar' ? fretboardSVG(notes)
-        : ukuleleSVG(notes);
+        : notationView === 'ukulele' ? ukuleleSVG(notes)
+        : mandolinSVG(notes);
       card.innerHTML = `
         <div class="rn" style="color:${color}">${roman}</div>
         ${chart}
