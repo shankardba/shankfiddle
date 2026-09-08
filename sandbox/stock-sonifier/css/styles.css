@@ -17,6 +17,13 @@
 
 * { box-sizing: border-box; }
 
+/* Bulletproof visibility toggle: this has to beat any component's own
+   `display` rule regardless of selector specificity or source order, or a
+   later class (e.g. .has-extra) can silently un-hide an element that JS set
+   `hidden` on. Hit this exact bug three times before adding this — one rule
+   here replaces every one-off `.foo[hidden] { display: none }` override. */
+[hidden] { display: none !important; }
+
 html, body { height: 100%; }
 
 body {
@@ -176,7 +183,6 @@ body {
 
 .chart-frame canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
-.chart-overlay[hidden] { display: none; }
 .chart-overlay {
   position: absolute;
   inset: 0;
@@ -250,7 +256,6 @@ body {
   50% { box-shadow: 0 0 0 8px rgba(255, 46, 166, 0.08), 0 4px 26px rgba(255, 46, 166, 0.5); }
 }
 
-.transport-controls[hidden] { display: none; }
 .transport-controls {
   flex: 1 1 auto;
   display: grid;

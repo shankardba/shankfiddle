@@ -93,7 +93,11 @@
             </label>
           </div>
         </div>
-        <div class="compare-row">
+        <!-- Hidden for now: the demo Twelve Data key only resolves AAPL, so comparing
+             tickers isn't usable yet. Code stays wired up (rebuildCandlestickTracks,
+             loadCompareSymbols, SonicCandlestick multi-track support) — re-enable by
+             removing `hidden` here once a real API key is in place. -->
+        <div class="compare-row" hidden>
           <label for="compareInput">Compare <span class="hint">optional · up to 2 tickers, comma-separated</span></label>
           <input id="compareInput" type="text" class="mono compare-input" placeholder="e.g. MSFT, GOOGL" spellcheck="false" autocomplete="off" />
           <p id="compareStatus" class="compare-status" hidden></p>
