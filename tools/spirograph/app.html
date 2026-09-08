@@ -291,7 +291,27 @@
   }
   .preset-btn:hover{border-color:var(--warm);color:var(--warm);}
 
-  .layer-count{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);margin:8px 0;}
+  .layer-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+  .layer-empty{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);}
+  .layer-row{
+    display:flex;align-items:center;gap:8px;
+    background:var(--surface);border:1px solid var(--border);border-radius:6px;
+    padding:7px 8px;
+  }
+  .layer-row .switch{flex-shrink:0;}
+  .layer-label{
+    flex:1;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+    color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .layer-row.off .layer-label{opacity:0.5;}
+  .layer-del{
+    flex-shrink:0;width:22px;height:22px;border-radius:4px;
+    background:transparent;border:1px solid var(--border);color:var(--text-muted);
+    font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:border-color 0.15s, color 0.15s;
+  }
+  .layer-del:hover{border-color:var(--error);color:var(--error);}
+  .layer-del:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
 
   details.collapsible summary{
     cursor:pointer;font-size:11px;letter-spacing:0.02em;color:var(--cool);
@@ -551,7 +571,7 @@
         <button class="btn" id="dimLayersBtn">Dim canvas</button>
       </div>
       <button class="btn" id="clearLayersBtn">Clear canvas</button>
-      <div class="layer-count" id="layerCount">No layers kept yet</div>
+      <div class="layer-list" id="layerList"></div>
     </div>
 
     <div class="section">
@@ -1195,6 +1215,7 @@
 
     // committed layers first (background), the live curve drawn last (foreground)
     for(const layer of state.layers){
+      if(layer.visible === false) continue;
       drawCurve(layer.points, layer.npts, 1, {
         palette:layer.palette, density:layer.density, glow:layer.glow,
         opacity:layer.opacity, showTip:false, solidColor:layer.solidColor
@@ -1391,12 +1412,41 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     document.getElementById('mathNarrative').textContent = narrative;
   }
 
-  function updateLayerCount(){
-    const n = state.layers.length;
-    document.getElementById('layerCount').textContent = n
-      ? `${n} layer${n>1?'s':''} kept on the canvas`
-      : 'No layers kept yet';
+  function layerGearLabel(layer){
+    let s = `n0=${layer.n0} n1=${layer.n1} n2=${layer.n2} n3=${layer.n3}`;
+    if(layer.extraWheel) s += ` n4=${layer.n4} n5=${layer.n5}`;
+    return s;
   }
+  function renderLayerList(){
+    const list = document.getElementById('layerList');
+    if(!state.layers.length){
+      list.innerHTML = '<div class="layer-empty">No layers kept yet</div>';
+      return;
+    }
+    list.innerHTML = state.layers.map((layer,i) => {
+      const on = layer.visible !== false;
+      return `<div class="layer-row ${on ? '' : 'off'}">
+        <div class="switch ${on ? 'on' : ''}" data-layer-toggle="${i}" role="button" aria-label="Toggle layer ${i+1}"></div>
+        <div class="layer-label">Layer ${i+1} — ${layerGearLabel(layer)}</div>
+        <button class="layer-del" data-layer-del="${i}" aria-label="Delete layer ${i+1}" title="Delete layer ${i+1}">&#10005;</button>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('layerList').addEventListener('click', e => {
+    const toggleIdx = e.target.dataset.layerToggle;
+    const delIdx = e.target.dataset.layerDel;
+    if(toggleIdx !== undefined){
+      const layer = state.layers[+toggleIdx];
+      if(!layer) return;
+      layer.visible = layer.visible === false ? true : false;
+      renderLayerList();
+      render();
+    } else if(delIdx !== undefined){
+      state.layers.splice(+delIdx, 1);
+      renderLayerList();
+      render();
+    }
+  });
 
   function resize(){
     const w = Math.round(wrap.clientWidth * dpr);
@@ -1891,20 +1941,21 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     state.layers.push({
       points: derived.points, npts: derived.npts,
       palette: state.palette, density: state.density, glow: state.glow,
-      opacity: state.brightness, solidColor: state.solidColor
+      opacity: state.brightness, solidColor: state.solidColor, visible: true,
+      n0: state.n0, n1: state.n1, n2: state.n2, n3: state.n3,
+      n4: state.n4, n5: state.n5, extraWheel: state.extraWheel
     });
     if(state.layers.length > MAX_LAYERS) state.layers.shift();
-    updateLayerCount();
+    renderLayerList();
     render();
   });
   document.getElementById('dimLayersBtn').addEventListener('click', () => {
     state.layers.forEach(l => { l.opacity *= 0.5; });
-    updateLayerCount();
     render();
   });
   document.getElementById('clearLayersBtn').addEventListener('click', () => {
     state.layers = [];
-    updateLayerCount();
+    renderLayerList();
     render();
   });
 
@@ -2130,7 +2181,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
 
   document.getElementById('resetBtn').addEventListener('click', () => {
     state.layers = [];
-    updateLayerCount();
+    renderLayerList();
     state.extraWheel = DEFAULTS.extraWheel;
     state.n4 = DEFAULTS.n4; state.n5 = DEFAULTS.n5; state.h2 = DEFAULTS.h2;
     extraToggleEl.classList.toggle('on', state.extraWheel);
@@ -2188,6 +2239,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   setTimeout(fadeHint, 4000);
   canvas.addEventListener('pointerdown', fadeHint, {once:true});
 
+  renderLayerList();
   resize();
   doRecompute(true);
 })();
