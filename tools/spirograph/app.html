@@ -62,6 +62,28 @@
     --text-muted:#8A97A8;
     --warm:#F2A65A;
     --cool:#57D9C4;
+    --error:#FF8A8A;
+    --chip-bg:rgba(18,24,34,0.72);
+    --panel-bg:rgba(15,20,29,0.94);
+    --mathpanel-bg:rgba(10,14,22,0.97);
+    --hint-bg:rgba(10,14,22,0.6);
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF;
+    --surface:#F1F3F6;
+    --surface-2:#E5E9EE;
+    --border:#D4D9E0;
+    --text:#14181F;
+    --text-muted:#5B6472;
+    --warm:#B45309;
+    --cool:#0F766E;
+    --error:#B3261E;
+    --chip-bg:rgba(255,255,255,0.82);
+    --panel-bg:rgba(255,255,255,0.96);
+    --mathpanel-bg:rgba(248,249,251,0.98);
+    --hint-bg:rgba(255,255,255,0.8);
+    color-scheme:light;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;margin:0;}
@@ -78,7 +100,7 @@
   .hud{
     position:absolute;left:14px;bottom:14px;
     display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px);
-    background:rgba(18,24,34,0.72);
+    background:var(--chip-bg);
     border:1px solid var(--border);
     padding:7px 12px;border-radius:4px;
     font-family:'IBM Plex Mono',monospace;
@@ -91,7 +113,7 @@
   .gear-btn, .download-btn, .explain-btn{
     position:absolute;top:14px;z-index:2;
     width:36px;height:36px;border-radius:4px;
-    background:rgba(18,24,34,0.72);
+    background:var(--chip-bg);
     border:1px solid var(--border);
     color:var(--text);
     display:flex;align-items:center;justify-content:center;
@@ -113,7 +135,7 @@
   }
   .zoom-controls button{
     width:32px;height:28px;
-    background:rgba(18,24,34,0.72);
+    background:var(--chip-bg);
     border:1px solid var(--border);
     color:var(--text);
     font-family:inherit;font-size:16px;line-height:1;
@@ -125,7 +147,7 @@
 
   .panel{
     position:absolute;top:0;right:0;height:100%;width:300px;z-index:1;
-    background:rgba(15,20,29,0.94);
+    background:var(--panel-bg);
     border-left:1px solid var(--border);
     padding:60px 18px 18px;
     transform:translateX(100%);
@@ -136,7 +158,7 @@
 
   .math-panel{
     position:absolute;top:0;left:0;height:100%;width:360px;max-width:88vw;z-index:1;
-    background:rgba(10,14,22,0.97);
+    background:var(--mathpanel-bg);
     border-right:1px solid var(--border);
     padding:60px 22px 24px;
     transform:translateX(-100%);
@@ -248,6 +270,20 @@
   .switch.on{border-color:var(--cool);}
   .switch.on::after{transform:translateX(16px);background:var(--cool);}
 
+  .theme-toggle{
+    display:flex;gap:2px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:8px;padding:2px;flex-shrink:0;
+  }
+  .theme-opt{
+    width:28px;height:26px;display:flex;align-items:center;justify-content:center;
+    background:transparent;border:none;border-radius:6px;cursor:pointer;
+    color:var(--text-muted);transition:background 0.15s, color 0.15s;
+  }
+  .theme-opt svg{width:15px;height:15px;stroke:currentColor;}
+  .theme-opt:hover{color:var(--text);}
+  .theme-opt.active{background:var(--surface);color:var(--cool);}
+  .theme-opt:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+
   .btn{
     width:100%;padding:9px;background:var(--surface);color:var(--text);
     border:1px solid var(--border);border-radius:4px;font-family:inherit;
@@ -286,7 +322,7 @@
   .hint{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
     font-size:13px;color:var(--text-muted);
-    background:rgba(10,14,22,0.6);padding:10px 16px;border-radius:4px;
+    background:var(--hint-bg);padding:10px 16px;border-radius:4px;
     pointer-events:none;transition:opacity 0.6s ease;
     text-align:center;line-height:1.5;
   }
@@ -424,6 +460,25 @@
     <div class="section">
       <div class="label">Display</div>
       <div class="toggle-row">
+        <div class="label" style="margin:0;">Theme</div>
+        <div class="theme-toggle" id="themeToggle" role="group" aria-label="Color theme">
+          <button type="button" class="theme-opt active" id="themeDarkBtn" aria-pressed="true" aria-label="Dark mode" title="Dark mode">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+          <button type="button" class="theme-opt" id="themeLightBtn" aria-pressed="false" aria-label="Light mode" title="Light mode">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2"></path><path d="M12 20v2"></path>
+              <path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path>
+              <path d="M2 12h2"></path><path d="M20 12h2"></path>
+              <path d="M6.34 17.66l-1.41 1.41"></path><path d="M19.07 4.93l-1.41 1.41"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="toggle-row">
         <div class="label" style="margin:0;">Show gear mechanism</div>
         <div class="switch" id="circlesToggle"></div>
       </div>
@@ -543,7 +598,7 @@
             <div class="num-field"><label><span>T</span></label><input type="number" id="fT" min="1" value="32"></div>
           </div>
           <button class="btn btn-accent" id="solveFreqBtn">Solve gears</button>
-          <div id="freqError" style="font-size:10.5px;color:#ff8a8a;margin-top:6px;min-height:14px;"></div>
+          <div id="freqError" style="font-size:10.5px;color:var(--error);margin-top:6px;min-height:14px;"></div>
           <div class="label" style="margin-top:16px;">Derived &amp; similarity</div>
           <div id="derivedInfo" style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);line-height:1.8;"></div>
         </div>
@@ -604,8 +659,25 @@
     palette:0, solidColor:'#f2a65a', density:2.0, brightness:0.9, glow:true,
     lineWidth:1.6, glowIntensity:8, ptDens:512,
     animate:true, loop:false, speedMult:1,
-    layers:[]
+    layers:[], theme:'dark'
   };
+
+  // Mechanism-overlay colors (rings, links, symmetry rays, on-canvas labels) can't
+  // pick up CSS custom properties, since they're drawn directly on the <canvas> —
+  // so they get their own light/dark lookup, kept in sync with the CSS theme below.
+  const MECH_COLORS = {
+    dark: {
+      ring:'rgba(87,217,196,0.55)', wheel:'rgba(242,166,90,0.55)', hoop:'rgba(199,122,242,0.55)',
+      penWheel:'rgba(231,236,242,0.55)', hoop2:'rgba(255,138,138,0.55)', wheel2:'rgba(138,255,190,0.55)',
+      link:'rgba(138,151,168,0.5)', label:'rgba(231,236,242,0.9)', pen:'rgba(242,166,90,0.9)'
+    },
+    light: {
+      ring:'rgba(14,143,126,0.65)', wheel:'rgba(181,101,29,0.65)', hoop:'rgba(124,58,178,0.6)',
+      penWheel:'rgba(20,24,31,0.55)', hoop2:'rgba(185,45,45,0.6)', wheel2:'rgba(15,120,90,0.6)',
+      link:'rgba(90,100,114,0.6)', label:'rgba(20,24,31,0.9)', pen:'rgba(181,101,29,0.95)'
+    }
+  };
+  function mc(){ return MECH_COLORS[state.theme] || MECH_COLORS.dark; }
 
   // view (pan/zoom, independent of the generative parameters)
   const view = { zoom:1, offX:0, offY:0 };
@@ -959,43 +1031,43 @@
       ctx.beginPath();
       ctx.setLineDash([4*dpr, 4*dpr]);
       ctx.moveTo(ax,ay); ctx.lineTo(bx,by);
-      ctx.strokeStyle = 'rgba(138,151,168,0.5)';
+      ctx.strokeStyle = mc().link;
       ctx.lineWidth = lw;
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    circle(0,0,n0, 'rgba(87,217,196,0.55)');
+    circle(0,0,n0, mc().ring);
     link(0,0,m.gearCx,m.gearCy);
-    circle(m.gearCx,m.gearCy,state.n1, 'rgba(242,166,90,0.55)');
+    circle(m.gearCx,m.gearCy,state.n1, mc().wheel);
     link(m.gearCx,m.gearCy,m.hoopCx,m.hoopCy);
-    circle(m.hoopCx,m.hoopCy,n2, 'rgba(199,122,242,0.55)');
+    circle(m.hoopCx,m.hoopCy,n2, mc().hoop);
     link(m.hoopCx,m.hoopCy,m.penWheelCx,m.penWheelCy);
-    circle(m.penWheelCx,m.penWheelCy,n3, 'rgba(231,236,242,0.55)');
+    circle(m.penWheelCx,m.penWheelCy,n3, mc().penWheel);
 
     if(derived.extraOn){
       link(m.penWheelCx,m.penWheelCy,m.hoop2Cx,m.hoop2Cy);
-      circle(m.hoop2Cx,m.hoop2Cy,state.n4, 'rgba(255,138,138,0.55)');
+      circle(m.hoop2Cx,m.hoop2Cy,state.n4, mc().hoop2);
       link(m.hoop2Cx,m.hoop2Cy,m.wheel2Cx,m.wheel2Cy);
-      circle(m.wheel2Cx,m.wheel2Cy,state.n5, 'rgba(138,255,190,0.55)');
+      circle(m.wheel2Cx,m.wheel2Cy,state.n5, mc().wheel2);
     }
 
     const [px,py] = worldToScreen(m.penX,m.penY);
     ctx.beginPath();
     ctx.arc(px,py, Math.max(holeWorld,1.2) * baseScale * view.zoom, 0, 2*Math.PI);
-    ctx.fillStyle = 'rgba(242,166,90,0.9)';
+    ctx.fillStyle = mc().pen;
     ctx.fill();
   }
 
-  // Drawn after the curve (not inside drawMechanism) so the white labels
-  // always sit on top of the glowing stroke instead of getting painted over.
+  // Drawn after the curve (not inside drawMechanism) so the labels always sit
+  // on top of the glowing stroke instead of getting painted over.
   function drawMechanismLabels(t){
     if(!state.showLabels) return;
     const n2=state.n2, n3=state.n3;
     const m = mechanismAt(t);
     ctx.save();
     ctx.font = `${11*dpr}px 'IBM Plex Mono', monospace`;
-    ctx.fillStyle = 'rgba(231,236,242,0.9)';
+    ctx.fillStyle = mc().label;
     ctx.textBaseline = 'bottom';
     function label(cx,cy,text){
       const [sx,sy] = worldToScreen(cx,cy);
@@ -1017,7 +1089,7 @@
     if(derived.nsymm <= 1) return;
     const ang = Math.atan2(derived.ymax, derived.xmax);
     const rmax = Math.max(1.1*Math.sqrt(derived.xmax**2 + derived.ymax**2), 1.1*state.n0);
-    ctx.strokeStyle = 'rgba(138,151,168,0.5)';
+    ctx.strokeStyle = mc().link;
     ctx.lineWidth = 1*dpr;
     for(let i=0;i<derived.nsymm;i++){
       const a = ang + i*2*Math.PI/derived.nsymm;
@@ -1359,6 +1431,20 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   document.getElementById('zoomOutBtn').addEventListener('click', () => zoomAt(canvas.width/2, canvas.height/2, 1/1.3));
 
   // ---------- UI wiring ----------
+  const themeDarkBtn = document.getElementById('themeDarkBtn');
+  const themeLightBtn = document.getElementById('themeLightBtn');
+  function setTheme(theme){
+    state.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    themeDarkBtn.classList.toggle('active', theme === 'dark');
+    themeDarkBtn.setAttribute('aria-pressed', theme === 'dark');
+    themeLightBtn.classList.toggle('active', theme === 'light');
+    themeLightBtn.setAttribute('aria-pressed', theme === 'light');
+    render();
+  }
+  themeDarkBtn.addEventListener('click', () => setTheme('dark'));
+  themeLightBtn.addEventListener('click', () => setTheme('light'));
+
   const panel = document.getElementById('panel');
   const gearBtn = document.getElementById('gearBtn');
   gearBtn.addEventListener('click', () => {
