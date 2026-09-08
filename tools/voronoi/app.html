@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<!--
+  Voronoi Diagrams — embeddable widget
+  -------------------------------------
+  Copyright (c) 2026 Shankar Srinivasan. All rights reserved.
+  See LICENSE in the repository root.
+
+  A Voronoi diagram partitions the plane into regions ("cells") of points
+  closest to each of a set of "sites" — see
+  https://en.wikipedia.org/wiki/Voronoi_diagram for the formalism this tool
+  follows (cells, edges as perpendicular bisectors, vertices, the Delaunay
+  dual, Lloyd's relaxation toward a centroidal Voronoi tessellation).
+
+  Cells are built by clipping the canvas rectangle against the half-plane
+  "closer to site i than site j" for every other site j (Sutherland-Hodgman
+  polygon clipping) — an O(n^2) approach that's easy to reason about and
+  plenty fast at the site counts this tool supports, in place of an O(n log n)
+  sweep (Fortune's algorithm) or a GPU jump-flood pass; both are named in the
+  math panel as the faster alternatives this tool doesn't implement. The
+  optional Delaunay overlay is a from-scratch Bowyer-Watson triangulation.
+  Manhattan/Chebyshev distance cells don't have straight-line bisectors, so
+  those two metrics fall back to sampling a fine grid and coloring each
+  sample by its nearest site (same spirit as the GPU jump-flood algorithm,
+  done on the CPU) rather than exact polygons.
+
+  A "the math" panel explains all of the above with the live site/cell count
+  for whatever is currently on screen.
+
+  Self-contained: no build step, no dependencies beyond two Google Fonts.
+  To embed:
+    1) Easiest / safest: <iframe src="index.html" style="width:100%;height:600px;border:0;"></iframe>
+    2) Inline: paste this whole file's body into a page (it sizes itself to its
+       parent container, so wrap it in a div with a fixed height if you don't
+       want it filling the viewport).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voronoi Diagrams</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E16;
+    --surface:#121822;
+    --surface-2:#1A2230;
+    --border:#232D3B;
+    --text:#E7ECF2;
+    --text-muted:#8A97A8;
+    --warm:#F2A65A;
+    --cool:#57D9C4;
+    --error:#FF8A8A;
+    --chip-bg:rgba(18,24,34,0.72);
+    --panel-bg:rgba(15,20,29,0.94);
+    --mathpanel-bg:rgba(10,14,22,0.97);
+    --hint-bg:rgba(10,14,22,0.6);
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF;
+    --surface:#F1F3F6;
+    --surface-2:#E5E9EE;
+    --border:#D4D9E0;
+    --text:#14181F;
+    --text-muted:#5B6472;
+    --warm:#B45309;
+    --cool:#0F766E;
+    --error:#B3261E;
+    --chip-bg:rgba(255,255,255,0.82);
+    --panel-bg:rgba(255,255,255,0.96);
+    --mathpanel-bg:rgba(248,249,251,0.98);
+    --hint-bg:rgba(255,255,255,0.8);
+    color-scheme:light;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'Space Grotesk',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    overflow:hidden;
+  }
+  #wrap{position:relative;width:100%;height:100vh;min-height:320px;background:var(--bg);}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;}
+  canvas.dragging{cursor:grabbing;}
+  canvas.probing{cursor:cell;}
+
+  .hud{
+    position:absolute;left:14px;bottom:14px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px);
+    background:var(--chip-bg);
+    border:1px solid var(--border);
+    padding:7px 12px;border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;color:var(--text-muted);
+    pointer-events:none;
+    backdrop-filter:blur(2px);
+  }
+  .hud span{color:var(--cool);}
+
+  .gear-btn, .download-btn, .explain-btn, .link-btn, .theme-btn{
+    position:absolute;top:14px;z-index:2;
+    width:36px;height:36px;border-radius:4px;
+    background:var(--chip-bg);
+    border:1px solid var(--border);
+    color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .gear-btn{right:14px;}
+  .download-btn{left:14px;}
+  .explain-btn{left:58px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
+  .link-btn{left:102px;}
+  .theme-btn{left:146px;}
+  .gear-btn:hover, .download-btn:hover, .explain-btn:hover, .link-btn:hover, .theme-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .explain-btn:focus-visible, .link-btn:focus-visible, .theme-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .gear-btn.open, .explain-btn.open{border-color:var(--warm);color:var(--warm);}
+  .gear-btn svg, .download-btn svg, .link-btn svg, .theme-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
+  .gear-btn.open svg{transform:rotate(75deg);}
+  .link-btn.copied{border-color:var(--cool);color:var(--cool);}
+
+  .panel{
+    position:absolute;top:0;right:0;height:100%;width:300px;z-index:1;
+    background:var(--panel-bg);
+    border-left:1px solid var(--border);
+    padding:60px 18px 18px;
+    transform:translateX(100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .panel.open{transform:translateX(0);}
+
+  .math-panel{
+    position:absolute;top:0;left:0;height:100%;width:340px;max-width:88vw;z-index:1;
+    background:var(--mathpanel-bg);
+    border-right:1px solid var(--border);
+    padding:60px 22px 24px;
+    transform:translateX(-100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .math-panel.open{transform:translateX(0);}
+  .math-title{font-size:15px;font-weight:600;margin-bottom:4px;color:var(--text);}
+  .math-subtitle{font-size:11px;color:var(--text-muted);margin-bottom:20px;line-height:1.5;}
+  .math-section{margin-bottom:22px;}
+  .math-section + .math-section{border-top:1px solid var(--border);padding-top:18px;}
+  .math-sub{font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--cool);margin-bottom:10px;}
+  .math-prose{font-size:12.5px;line-height:1.75;color:var(--text-muted);margin:0;}
+  .math-block{
+    background:var(--surface);border:1px solid var(--border);border-radius:6px;
+    padding:12px 14px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--text);line-height:1.85;word-break:break-word;
+  }
+  .math-legend{font-size:11px;line-height:1.9;color:var(--text-muted);margin:0 0 4px;}
+  .math-legend b{color:var(--warm);font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .math-caption{
+    font-size:10px;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--text-muted);margin:0 0 8px;
+  }
+
+  .section{margin-bottom:22px;}
+  .section + .section{border-top:1px solid var(--border);padding-top:20px;}
+  .label{
+    font-size:11px;letter-spacing:0.02em;color:var(--text-muted);
+    margin-bottom:9px;
+  }
+
+  select{
+    width:100%;padding:9px 10px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:13px;cursor:pointer;
+  }
+  select:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  select:disabled{opacity:0.5;cursor:not-allowed;}
+
+  .swatches{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .swatch{
+    width:34px;height:34px;border-radius:4px;cursor:pointer;
+    border:2px solid transparent;
+  }
+  .swatch.active{border-color:var(--cool);}
+  .swatch:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .custom-color-row{display:none;align-items:center;gap:10px;margin-bottom:16px;}
+  .custom-color-row.open{display:flex;}
+  .custom-color-row input[type=color]{
+    width:40px;height:34px;padding:0;border:1px solid var(--border);border-radius:4px;
+    background:var(--surface);cursor:pointer;
+  }
+  .custom-color-row .hex-readout{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--cool);
+  }
+
+  .slider-row{display:flex;align-items:center;gap:10px;}
+  .slider-row + .slider-row{margin-top:12px;}
+  .slider-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+  input[type=range]{
+    flex:1;accent-color:var(--warm);height:4px;
+  }
+  input[type=range]:disabled{opacity:0.4;}
+  .val{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--cool);
+    min-width:44px;text-align:right;
+  }
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .toggle-row .label{margin:0;}
+  .switch{
+    position:relative;width:36px;height:20px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:10px;cursor:pointer;flex-shrink:0;
+  }
+  .switch::after{
+    content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;
+    background:var(--text-muted);border-radius:50%;transition:transform 0.15s, background 0.15s;
+  }
+  .switch.on{border-color:var(--cool);}
+  .switch.on::after{transform:translateX(16px);background:var(--cool);}
+  .switch.disabled{opacity:0.4;cursor:not-allowed;}
+
+  .btn{
+    width:100%;padding:9px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:12px;cursor:pointer;margin-top:8px;
+  }
+  .btn:hover{border-color:var(--warm);color:var(--warm);}
+  .btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .btn-accent{border-color:var(--cool);color:var(--cool);}
+  .btn-accent:hover{border-color:var(--warm);color:var(--warm);}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .btn-row .btn{margin-top:0;}
+
+  .credit{
+    font-size:10px;line-height:1.6;color:var(--text-muted);opacity:0.75;
+  }
+  .credit a{color:var(--cool);}
+
+  .hint{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:13px;color:var(--text-muted);
+    background:var(--hint-bg);padding:10px 16px;border-radius:4px;
+    pointer-events:none;transition:opacity 0.6s ease;
+    text-align:center;line-height:1.5;
+    max-width:calc(100% - 40px);
+  }
+  .probe-readout{
+    position:absolute;z-index:2;pointer-events:none;
+    background:var(--chip-bg);border:1px solid var(--border);border-radius:4px;
+    padding:5px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--cool);
+    display:none;white-space:nowrap;backdrop-filter:blur(2px);
+  }
+  @media (prefers-reduced-motion:reduce){
+    .hint{transition:none;}
+    .panel,.math-panel{transition:none;}
+    .gear-btn svg{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+
+  <div class="hud" id="hud">
+    <span id="hname">Blue Noise</span> ·
+    sites=<span id="hsites">48</span> ·
+    metric=<span id="hmetric">Euclidean</span>
+  </div>
+
+  <div class="probe-readout" id="probeReadout"></div>
+
+  <button class="download-btn" id="downloadBtn" aria-label="Download image">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v12"></path>
+      <path d="M7 10l5 5 5-5"></path>
+      <path d="M5 21h14"></path>
+    </svg>
+  </button>
+
+  <button class="explain-btn" id="explainBtn" aria-label="Explain the math" aria-expanded="false" title="Explain the math">&Sigma;</button>
+
+  <button class="link-btn" id="linkBtn" aria-label="Copy link to this diagram" title="Copy link to this diagram">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+    </svg>
+  </button>
+
+  <button class="theme-btn" id="themeBtn" aria-label="Switch to light mode" aria-pressed="false" title="Switch to light mode">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2"></path><path d="M12 20v2"></path>
+      <path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path>
+      <path d="M2 12h2"></path><path d="M20 12h2"></path>
+      <path d="M6.34 17.66l-1.41 1.41"></path><path d="M19.07 4.93l-1.41 1.41"></path>
+    </svg>
+  </button>
+
+  <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+
+  <div class="math-panel" id="mathPanel">
+    <div class="math-title">The Math Behind This Diagram</div>
+    <p class="math-subtitle">Every number below updates live as you change the diagram, so this always describes exactly what's on screen.</p>
+
+    <div class="math-section">
+      <div class="math-sub">What a Voronoi diagram is</div>
+      <p class="math-prose">Scatter a handful of <b style="color:var(--text)">sites</b> on a plane. For every other point in the plane, ask "which site is closest?" — the set of points that all share the same closest site forms that site's <b style="color:var(--text)">cell</b>. Do this for every site and the plane splits into a mosaic of cells: a Voronoi diagram (also called a Thiessen tessellation). Formally, the cell of site P<sub>k</sub> is R<sub>k</sub> = { x : dist(x, P<sub>k</sub>) &le; dist(x, P<sub>j</sub>) for all j }.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Cells, edges &amp; vertices</div>
+      <p class="math-prose">Under ordinary (Euclidean) distance, every cell boundary is dead straight: the edge between two neighboring sites' cells sits exactly on the <b style="color:var(--text)">perpendicular bisector</b> of the segment joining them — every point on that line is equidistant from both sites. Where three or more bisectors meet at a single point, equidistant from three or more sites, that's a <b style="color:var(--text)">vertex</b>. Because it's built from an intersection of half-planes, every cell is convex.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">The Delaunay dual</div>
+      <p class="math-prose">Connect two sites with a line whenever their cells share an edge, and you get the <b style="color:var(--text)">Delaunay triangulation</b> — the mathematical "dual" of the Voronoi diagram. It has a famous defining property: no site ever falls inside another triangle's circumcircle. Toggle "Show Delaunay" in the panel to see it overlaid on the diagram below.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Distance metrics</div>
+      <p class="math-prose">"Closest" depends on how you measure distance. This tool offers three: <b style="color:var(--text)">Euclidean</b> (straight-line, &radic;(&Delta;x&sup2;+&Delta;y&sup2;)) gives the straight-edged cells above; <b style="color:var(--text)">Manhattan</b> (|&Delta;x|+|&Delta;y|, like walking city blocks) and <b style="color:var(--text)">Chebyshev</b> (max(|&Delta;x|,|&Delta;y|), like a chess king's moves) both bend cell boundaries into diamonds and squares. Those two don't have straight-line bisectors, so this tool approximates them by sampling a fine grid and coloring each sample by its nearest site — the same idea as the GPU-friendly Jump Flooding Algorithm, just done here on the CPU.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Lloyd's relaxation</div>
+      <p class="math-prose">Move every site to its own cell's <b style="color:var(--text)">centroid</b> (center of mass), rebuild the diagram, and repeat. Cells that were too big push their site toward open space; cells that were too small get squeezed. Iterating this — <b style="color:var(--text)">Lloyd's algorithm</b> — converges toward a <b style="color:var(--text)">centroidal Voronoi tessellation</b>: evenly sized, evenly spaced cells, each site sitting at the center of its own territory. Hit "Relax" in the panel to watch it happen.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Building it faster</div>
+      <p class="math-prose">This tool clips each cell out of the canvas directly, testing every site against every other one — simple to follow, but O(n&sup2;) work. Real-world tools instead use <b style="color:var(--text)">Fortune's algorithm</b>, a single left-to-right sweep that builds the whole diagram in O(n&nbsp;log&nbsp;n) time, or build the Delaunay triangulation incrementally (Bowyer&ndash;Watson, used for the overlay here) and take its dual. Neither is implemented as an animated sweep in this tool, to keep things focused on the geometry itself.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Where this shows up</div>
+      <p class="math-prose">John Snow's 1854 map of a London cholera outbreak — cells around water pumps — is an early, famous use. Today the same idea underpins nearest-facility lookups (which store/hospital/cell-tower is closest), 1-nearest-neighbor classification in machine learning, and the boundary patterns of biological cells, mineral grains, and other tightly-packed natural structures.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">This diagram</div>
+      <div class="math-caption">Live stats</div>
+      <div class="math-block" id="mathStats"></div>
+    </div>
+
+    <div class="math-section" style="border-top:1px solid var(--border);padding-top:14px;">
+      <p class="credit">
+        Definitions, terminology and algorithm names from the
+        <a href="https://en.wikipedia.org/wiki/Voronoi_diagram" target="_blank" rel="noopener">Wikipedia Voronoi diagram article</a>.
+      </p>
+    </div>
+  </div>
+
+  <div class="panel" id="panel">
+    <div class="section">
+      <div class="label">Sites</div>
+      <select id="presetSelect"></select>
+      <div class="slider-row" style="margin-top:12px;">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Site count</span><span class="val" id="siteCountVal">48</span></div>
+          <input type="range" id="siteCountSlider" min="5" max="150" step="1" value="48">
+        </div>
+      </div>
+      <button class="btn btn-accent" id="randomizeBtn">🎲 New sites</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Diagram</div>
+      <div class="field" style="margin-top:0;">
+        <label for="metricSelect" style="font-size:10px;color:var(--text-muted);margin-bottom:4px;display:block;">Distance metric</label>
+        <select id="metricSelect">
+          <option value="euclidean">Euclidean (straight-line)</option>
+          <option value="manhattan">Manhattan (city-block)</option>
+          <option value="chebyshev">Chebyshev (chessboard)</option>
+        </select>
+      </div>
+      <div class="toggle-row" style="margin-top:14px;">
+        <div class="label" style="margin:0;">Show Delaunay dual</div>
+        <div class="switch" id="delaunayToggle"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Fill cells</div>
+        <div class="switch on" id="fillToggle"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Show sites</div>
+        <div class="switch on" id="sitesToggle"></div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Edge width</span><span class="val" id="edgeWidthVal">1.4</span></div>
+          <input type="range" id="edgeWidthSlider" min="0.5" max="4" step="0.1" value="1.4">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">Color</div>
+      <div class="swatches" id="paletteSwatches">
+        <div class="swatch" data-p="0" style="background:linear-gradient(135deg,#3a1a05,#f2a65a)" title="Amber"></div>
+        <div class="swatch active" data-p="1" style="background:linear-gradient(135deg,#0a1f2b,#57d9c4)" title="Teal"></div>
+        <div class="swatch" data-p="2" style="background:linear-gradient(135deg,#1a0a2b,#c77af2)" title="Violet"></div>
+        <div class="swatch" data-p="3" style="background:linear-gradient(135deg,#111,#eee)" title="Mono"></div>
+        <div class="swatch" data-p="4" style="background:linear-gradient(135deg,#f24a4a,#57d9c4)" title="Fire &amp; Ice"></div>
+        <div class="swatch" data-p="5" style="background:conic-gradient(from 0deg,red,orange,yellow,limegreen,cyan,blue,violet,red)" title="Rainbow"></div>
+        <div class="swatch" data-p="6" style="background:linear-gradient(135deg,#f2a65a 50%,#57d9c4 50%)" title="Checker"></div>
+        <div class="swatch" data-p="7" style="background:#57d9c4" title="Custom color" id="customSwatch"></div>
+      </div>
+      <div class="custom-color-row" id="customColorRow">
+        <input type="color" id="customColorPicker" value="#57d9c4">
+        <span class="hex-readout" id="customColorHex">#57d9c4</span>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Brightness</span><span class="val" id="brightnessVal">0.90</span></div>
+          <input type="range" id="brightnessSlider" min="0.25" max="1" step="0.05" value="0.9">
+        </div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Glow intensity</span><span class="val" id="glowIntensityVal">8</span></div>
+          <input type="range" id="glowIntensitySlider" min="0" max="20" step="1" value="8">
+        </div>
+      </div>
+      <div class="toggle-row" style="margin-top:12px;">
+        <div class="label" style="margin:0;">Glow</div>
+        <div class="switch on" id="glowToggle"></div>
+      </div>
+      <button class="btn btn-accent" id="randomizeColorBtn">🎲 Randomize color</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Explore</div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Probe nearest site</div>
+        <div class="switch" id="probeToggle"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="relaxBtn">Relax step</button>
+        <button class="btn" id="resetLayoutBtn">Reset layout</button>
+      </div>
+      <div class="toggle-row" style="margin-top:12px;">
+        <div class="label" style="margin:0;">Auto-relax</div>
+        <div class="switch" id="autoRelaxToggle"></div>
+      </div>
+    </div>
+
+    <div class="section" style="border-top:1px solid var(--border);padding-top:14px;">
+      <p class="credit">
+        Definitions from the <a href="https://en.wikipedia.org/wiki/Voronoi_diagram" target="_blank" rel="noopener">Wikipedia Voronoi diagram article</a>.
+      </p>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Click empty space to add a site · Drag a site to move it · Double-click a site to remove it<br>Gear = tune the diagram · &Sigma; = explain the math</div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('cv');
+  const wrap = document.getElementById('wrap');
+  const ctx = canvas.getContext('2d');
+
+  function clamp(v,lo,hi){ return Math.min(hi, Math.max(lo, v)); }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+
+  // ---------- seeded RNG (mulberry32) ----------
+  function mulberry32(seed){
+    let a = seed >>> 0;
+    return function(){
+      a |= 0; a = (a+0x6D2B79F5)|0;
+      let t = Math.imul(a ^ a>>>15, 1|a);
+      t = (t + Math.imul(t ^ t>>>7, 61|t)) ^ t;
+      return ((t ^ t>>>14) >>> 0) / 4294967296;
+    };
+  }
+  function gaussian(rng){
+    let u=0,v=0;
+    while(u===0) u = rng();
+    while(v===0) v = rng();
+    return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+  }
+
+  // ---------- presets: site-layout generators ----------
+  const PRESETS = {
+    blueNoise: { label:'Blue Noise', gen: genBlueNoise },
+    random:    { label:'Random Scatter', gen: genRandom },
+    grid:      { label:'Grid Lattice', gen: genGrid },
+    hex:       { label:'Hex Lattice', gen: genHex },
+    rings:     { label:'Concentric Rings', gen: genRings },
+    spiral:    { label:'Spiral', gen: genSpiral },
+    clusters:  { label:'Clusters', gen: genClusters }
+  };
+  const PRESET_ORDER = ['blueNoise','random','grid','hex','rings','spiral','clusters'];
+
+  function genRandom(n, rng, w, h){
+    const mx = w*0.04, my = h*0.04;
+    const pts = [];
+    for(let i=0;i<n;i++) pts.push({x: mx+rng()*(w-2*mx), y: my+rng()*(h-2*my)});
+    return pts;
+  }
+
+  function genBlueNoise(n, rng, w, h){
+    const cols = Math.max(1, Math.round(Math.sqrt(n*w/h)));
+    const rows = Math.max(1, Math.ceil(n/cols));
+    const cw = w/cols, ch = h/rows;
+    const pts = [];
+    for(let i=0;i<n;i++){
+      const r = Math.floor(i/cols), c = i%cols;
+      const jx = (rng()-0.5)*0.72*cw, jy = (rng()-0.5)*0.72*ch;
+      pts.push({x: clamp(c*cw+cw/2+jx, 2, w-2), y: clamp(r*ch+ch/2+jy, 2, h-2)});
+    }
+    return pts;
+  }
+
+  function genGrid(n, rng, w, h){
+    const cols = Math.max(1, Math.round(Math.sqrt(n*w/h)));
+    const rows = Math.max(1, Math.ceil(n/cols));
+    const cw = w/cols, ch = h/rows;
+    const pts = [];
+    for(let i=0;i<n;i++){
+      const r = Math.floor(i/cols), c = i%cols;
+      pts.push({x: c*cw+cw/2, y: r*ch+ch/2});
+    }
+    return pts;
+  }
+
+  function genHex(n, rng, w, h){
+    const cols = Math.max(1, Math.round(Math.sqrt(n*w/h / 0.866)));
+    const cw = w/cols;
+    const ch = cw*0.866;
+    const rows = Math.max(1, Math.ceil(n/cols));
+    const pts = [];
+    let i=0;
+    for(let r=0; r<rows+1 && pts.length<n; r++){
+      const offset = (r%2===1) ? cw/2 : 0;
+      for(let c=0; c<cols && pts.length<n; c++){
+        const x = c*cw + offset + cw/2;
+        const y = r*ch + ch/2;
+        if(x < w-2 && y < h-2) pts.push({x, y});
+        i++;
+      }
+    }
+    // top up if the lattice ran out of room before reaching n (rare, tall/narrow canvases)
+    while(pts.length < n) pts.push({x: rng()*w, y: rng()*h});
+    return pts.slice(0,n);
+  }
+
+  function genRings(n, rng, w, h){
+    const cx = w/2, cy = h/2;
+    const maxR = Math.min(w,h)*0.46;
+    const ringCount = clamp(Math.round(Math.sqrt(n/3)), 2, 8);
+    const pts = [];
+    let remaining = n;
+    let weightTotal = 0;
+    for(let k=0;k<ringCount;k++) weightTotal += (k+1);
+    for(let k=0;k<ringCount;k++){
+      const isLast = k===ringCount-1;
+      const count = isLast ? remaining : Math.max(1, Math.round(n*(k+1)/weightTotal));
+      const r = maxR * (k+1)/ringCount;
+      const phase = rng()*Math.PI*2;
+      for(let i=0;i<count;i++){
+        const a = phase + (i/count)*Math.PI*2;
+        pts.push({x: cx+Math.cos(a)*r, y: cy+Math.sin(a)*r});
+      }
+      remaining -= count;
+      if(remaining<=0) break;
+    }
+    return pts.slice(0,n);
+  }
+
+  function genSpiral(n, rng, w, h){
+    const cx = w/2, cy = h/2;
+    const maxR = Math.min(w,h)*0.46;
+    const turns = 4.2;
+    const pts = [];
+    for(let i=0;i<n;i++){
+      const t = n<=1 ? 0 : i/(n-1);
+      const a = t*turns*Math.PI*2;
+      const r = t*maxR;
+      pts.push({x: cx+Math.cos(a)*r, y: cy+Math.sin(a)*r});
+    }
+    return pts;
+  }
+
+  function genClusters(n, rng, w, h){
+    const k = clamp(Math.round(n/12), 3, 7);
+    const mx = w*0.15, my = h*0.15;
+    const centers = [];
+    for(let i=0;i<k;i++) centers.push({x: mx+rng()*(w-2*mx), y: my+rng()*(h-2*my)});
+    const spread = Math.min(w,h)*0.09;
+    const pts = [];
+    for(let i=0;i<n;i++){
+      const c = centers[i%k];
+      const x = clamp(c.x + gaussian(rng)*spread, 4, w-4);
+      const y = clamp(c.y + gaussian(rng)*spread, 4, h-4);
+      pts.push({x,y});
+    }
+    return pts;
+  }
+
+  // ---------- color palettes (same cosine family as the other shankFiddle tools) ----------
+  const PALETTES = [
+    { a:[0.55,0.35,0.20], b:[0.55,0.35,0.20], c:[1.0,0.7,0.4], d:[0.0,0.15,0.2] },
+    { a:[0.15,0.35,0.45], b:[0.25,0.35,0.45], c:[0.6,0.8,1.0], d:[0.3,0.5,0.7] },
+    { a:[0.45,0.25,0.55], b:[0.45,0.25,0.55], c:[1.0,0.6,1.0], d:[0.1,0.5,0.9] },
+    { a:[0.5,0.5,0.5],    b:[0.5,0.5,0.5],    c:[1.0,1.0,1.0], d:[0.0,0.0,0.0] },
+    { a:[0.5,0.5,0.5],    b:[0.5,0.5,0.5],    c:[1.0,1.0,1.0], d:[0.0,0.33,0.67] }
+  ];
+  function cosinePalette(idx, t){
+    const P = PALETTES[idx];
+    const r = clamp(P.a[0] + P.b[0]*Math.cos(6.28318*(P.c[0]*t + P.d[0])), 0, 1);
+    const g = clamp(P.a[1] + P.b[1]*Math.cos(6.28318*(P.c[1]*t + P.d[1])), 0, 1);
+    const b = clamp(P.a[2] + P.b[2]*Math.cos(6.28318*(P.c[2]*t + P.d[2])), 0, 1);
+    return [(r*255)|0, (g*255)|0, (b*255)|0];
+  }
+  function getCellColorRGB(paletteIdx, t, idx){
+    if(paletteIdx === 5){
+      const hue = (((t % 1) + 1) % 1) * 360;
+      return hslToRgb(hue, 85, 60);
+    }
+    if(paletteIdx === 6) return hexToRgb(idx % 2 === 0 ? '#f2a65a' : '#57d9c4');
+    if(paletteIdx === 7) return hexToRgb(state.solidColor);
+    return cosinePalette(paletteIdx, t);
+  }
+  function hexToRgb(hex){
+    const n = parseInt(hex.slice(1),16);
+    return [(n>>16)&255,(n>>8)&255,n&255];
+  }
+  function hslToRgb(h,s,l){
+    s/=100; l/=100;
+    const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2;
+    let r,g,b;
+    if(h<60){r=c;g=x;b=0;} else if(h<120){r=x;g=c;b=0;} else if(h<180){r=0;g=c;b=x;}
+    else if(h<240){r=0;g=x;b=c;} else if(h<300){r=x;g=0;b=c;} else {r=c;g=0;b=x;}
+    return [(r+m)*255|0,(g+m)*255|0,(b+m)*255|0];
+  }
+  function rgbToCss(rgb, alpha){
+    return alpha===undefined ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]})` : `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
+  }
+
+  // ---------- state ----------
+  const state = {
+    presetKey: 'blueNoise',
+    seed: 1,
+    siteCount: 48,
+    sites: [],          // live positions (may be dragged/relaxed away from the generated layout)
+    metric: 'euclidean',
+    showDelaunay: false,
+    fillCells: true,
+    showSites: true,
+    edgeWidth: 1.4,
+    palette: 1, solidColor: '#57d9c4', brightness: 0.9,
+    glow: true, glowIntensity: 8,
+    probeMode: false,
+    autoRelax: false,
+    theme: 'dark'
+  };
+
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let cells = [];        // Euclidean: polygon per site. Non-Euclidean: null (raster mode instead).
+  let delaunayTris = [];
+  let rasterCanvas = null; // offscreen low-res buffer for non-Euclidean metrics
+
+  // ---------- distance metrics ----------
+  function dist(ax,ay,bx,by,metric){
+    const dx = ax-bx, dy = ay-by;
+    if(metric==='manhattan') return Math.abs(dx)+Math.abs(dy);
+    if(metric==='chebyshev') return Math.max(Math.abs(dx),Math.abs(dy));
+    return Math.sqrt(dx*dx+dy*dy);
+  }
+  function nearestSite(x,y,metric){
+    let best=-1, bestD=Infinity;
+    for(let i=0;i<state.sites.length;i++){
+      const s = state.sites[i];
+      const d = dist(x,y,s.x,s.y,metric);
+      if(d<bestD){ bestD=d; best=i; }
+    }
+    return {index:best, dist:bestD};
+  }
+
+  // ---------- Euclidean cells: half-plane clipping (Sutherland-Hodgman) ----------
+  function clipHalfPlane(poly, nx, ny, c){
+    const out = [];
+    const n = poly.length;
+    for(let i=0;i<n;i++){
+      const cur = poly[i], prev = poly[(i-1+n)%n];
+      const fCur = nx*cur.x+ny*cur.y-c, fPrev = nx*prev.x+ny*prev.y-c;
+      const curIn = fCur <= 0, prevIn = fPrev <= 0;
+      if(curIn){
+        if(!prevIn){
+          const t = fPrev/(fPrev-fCur);
+          out.push({x: prev.x+t*(cur.x-prev.x), y: prev.y+t*(cur.y-prev.y)});
+        }
+        out.push(cur);
+      } else if(prevIn){
+        const t = fPrev/(fPrev-fCur);
+        out.push({x: prev.x+t*(cur.x-prev.x), y: prev.y+t*(cur.y-prev.y)});
+      }
+    }
+    return out;
+  }
+  function computeEuclideanCells(sites, w, h){
+    const rect = [{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+    return sites.map((si,i) => {
+      let poly = rect;
+      for(let j=0;j<sites.length && poly.length>0;j++){
+        if(j===i) continue;
+        const sj = sites[j];
+        const nx = sj.x-si.x, ny = sj.y-si.y;
+        const c = (sj.x*sj.x+sj.y*sj.y - si.x*si.x - si.y*si.y)/2;
+        poly = clipHalfPlane(poly, nx, ny, c);
+      }
+      return poly;
+    });
+  }
+  function polygonArea(poly){
+    let a=0;
+    for(let i=0;i<poly.length;i++){ const p=poly[i], q=poly[(i+1)%poly.length]; a += p.x*q.y - q.x*p.y; }
+    return a/2;
+  }
+  function polygonCentroid(poly){
+    let a=0, cx=0, cy=0;
+    for(let i=0;i<poly.length;i++){
+      const p=poly[i], q=poly[(i+1)%poly.length];
+      const cross = p.x*q.y - q.x*p.y;
+      a += cross; cx += (p.x+q.x)*cross; cy += (p.y+q.y)*cross;
+    }
+    a/=2;
+    if(Math.abs(a) < 1e-6){
+      let sx=0,sy=0; poly.forEach(p=>{sx+=p.x;sy+=p.y;});
+      return { x: sx/poly.length, y: sy/poly.length };
+    }
+    return { x: cx/(6*a), y: cy/(6*a) };
+  }
+
+  // ---------- Delaunay triangulation (Bowyer-Watson) ----------
+  function computeDelaunay(sitesIn){
+    if(sitesIn.length < 3) return [];
+    const sites = sitesIn.map((s,i) => ({
+      x: s.x + ((i*9301+49297)%233280)/233280*1e-3,
+      y: s.y + ((i*4321+12345)%233280)/233280*1e-3,
+      _i:i
+    }));
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const s of sites){ minX=Math.min(minX,s.x); minY=Math.min(minY,s.y); maxX=Math.max(maxX,s.x); maxY=Math.max(maxY,s.y); }
+    const dmax=Math.max(maxX-minX,maxY-minY)||1, midx=(minX+maxX)/2, midy=(minY+maxY)/2;
+    const superA = {x: midx-20*dmax, y: midy-dmax, _i:-1};
+    const superB = {x: midx, y: midy+20*dmax, _i:-2};
+    const superC = {x: midx+20*dmax, y: midy-dmax, _i:-3};
+
+    function circumcircle(a,b,c){
+      const ax=a.x,ay=a.y,bx=b.x,by=b.y,cx=c.x,cy=c.y;
+      const d = 2*(ax*(by-cy)+bx*(cy-ay)+cx*(ay-by));
+      if(Math.abs(d) < 1e-9) return null;
+      const ux = ((ax*ax+ay*ay)*(by-cy)+(bx*bx+by*by)*(cy-ay)+(cx*cx+cy*cy)*(ay-by))/d;
+      const uy = ((ax*ax+ay*ay)*(cx-bx)+(bx*bx+by*by)*(ax-cx)+(cx*cx+cy*cy)*(bx-ax))/d;
+      return {x:ux,y:uy,r2:(ax-ux)**2+(ay-uy)**2};
+    }
+
+    let triangles = [{a:superA,b:superB,c:superC, cc:circumcircle(superA,superB,superC)}];
+    for(const p of sites){
+      const bad = [];
+      for(const t of triangles){
+        const cc = t.cc;
+        if(cc && ((p.x-cc.x)**2+(p.y-cc.y)**2) <= cc.r2 + 1e-7) bad.push(t);
+      }
+      const edgeCount = new Map();
+      const key = (u,v) => u._i<v._i ? u._i+'_'+v._i : v._i+'_'+u._i;
+      for(const t of bad){
+        for(const [u,v] of [[t.a,t.b],[t.b,t.c],[t.c,t.a]]){
+          const k = key(u,v);
+          if(edgeCount.has(k)) edgeCount.get(k).count++;
+          else edgeCount.set(k, {count:1,u,v});
+        }
+      }
+      triangles = triangles.filter(t => !bad.includes(t));
+      for(const {count,u,v} of edgeCount.values()){
+        if(count===1){
+          const nt = {a:u,b:v,c:p};
+          nt.cc = circumcircle(nt.a,nt.b,nt.c);
+          triangles.push(nt);
+        }
+      }
+    }
+    return triangles.filter(t => t.a._i>=0 && t.b._i>=0 && t.c._i>=0).map(t => [t.a._i,t.b._i,t.c._i]);
+  }
+
+  // ---------- raster cells for non-Euclidean metrics ----------
+  function computeRaster(w, h, metric){
+    const budget = 900000; // target sample count, tuned for interactive recompute cost
+    const block = Math.max(2, Math.round(Math.sqrt((w*h*Math.max(state.sites.length,1))/budget)));
+    const cols = Math.ceil(w/block), rows = Math.ceil(h/block);
+    const owner = new Int16Array(cols*rows);
+    const sums = state.sites.map(() => ({x:0,y:0,n:0}));
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const x = c*block+block/2, y = r*block+block/2;
+        const near = nearestSite(x,y,metric);
+        owner[r*cols+c] = near.index;
+        if(near.index>=0){ const s=sums[near.index]; s.x+=x; s.y+=y; s.n++; }
+      }
+    }
+    return { owner, cols, rows, block, sums };
+  }
+
+  // ---------- recompute pipeline ----------
+  function recompute(){
+    const w = canvas.width, h = canvas.height;
+    if(state.metric === 'euclidean'){
+      cells = computeEuclideanCells(state.sites, w, h);
+      rasterCanvas = null;
+      delaunayTris = state.showDelaunay ? computeDelaunay(state.sites) : [];
+    } else {
+      cells = [];
+      delaunayTris = [];
+      rasterCanvas = computeRaster(w, h, state.metric);
+    }
+    updateHud();
+    render();
+  }
+
+  // ---------- rendering ----------
+  function siteColorRGB(i){
+    const t = state.sites.length<=1 ? 0 : i/state.sites.length;
+    return getCellColorRGB(state.palette, t, i);
+  }
+
+  function render(){
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.globalAlpha = state.brightness;
+
+    if(state.metric === 'euclidean'){
+      cells.forEach((poly,i) => {
+        if(poly.length<3) return;
+        const rgb = siteColorRGB(i);
+        ctx.beginPath();
+        ctx.moveTo(poly[0].x, poly[0].y);
+        for(let k=1;k<poly.length;k++) ctx.lineTo(poly[k].x, poly[k].y);
+        ctx.closePath();
+        if(state.fillCells){
+          ctx.fillStyle = rgbToCss(rgb, 0.34);
+          ctx.fill();
+        }
+        ctx.lineWidth = state.edgeWidth*dpr;
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = rgbToCss(rgb);
+        if(state.glow){ ctx.shadowColor = rgbToCss(rgb); ctx.shadowBlur = state.glowIntensity*dpr; }
+        else ctx.shadowBlur = 0;
+        ctx.stroke();
+      });
+      ctx.shadowBlur = 0;
+
+      if(state.showDelaunay && delaunayTris.length){
+        ctx.globalAlpha = state.brightness*0.55;
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#8A97A8';
+        ctx.lineWidth = Math.max(1, state.edgeWidth*0.6)*dpr;
+        ctx.setLineDash([dpr*3, dpr*3]);
+        delaunayTris.forEach(([a,b,c]) => {
+          const A=state.sites[a], B=state.sites[b], C=state.sites[c];
+          ctx.beginPath();
+          ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.lineTo(C.x,C.y); ctx.closePath();
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+        ctx.globalAlpha = state.brightness;
+      }
+    } else if(rasterCanvas){
+      const { owner, cols, rows, block } = rasterCanvas;
+      if(state.fillCells){
+        for(let r=0;r<rows;r++){
+          for(let c=0;c<cols;c++){
+            const idx = owner[r*cols+c];
+            if(idx<0) continue;
+            const rgb = siteColorRGB(idx);
+            ctx.fillStyle = rgbToCss(rgb, 0.34);
+            ctx.fillRect(c*block, r*block, block+1, block+1);
+          }
+        }
+      }
+      // boundary pixels: mark blocks whose right/bottom neighbor has a different owner
+      ctx.globalAlpha = state.brightness;
+      for(let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+          const idx = owner[r*cols+c];
+          const rightDiff = c+1<cols && owner[r*cols+c+1]!==idx;
+          const downDiff = r+1<rows && owner[(r+1)*cols+c]!==idx;
+          if(!rightDiff && !downDiff) continue;
+          const rgb = siteColorRGB(idx);
+          ctx.fillStyle = rgbToCss(rgb);
+          if(state.glow){ ctx.shadowColor = rgbToCss(rgb); ctx.shadowBlur = state.glowIntensity*dpr*0.6; }
+          const bw = Math.max(1, state.edgeWidth*dpr*0.8);
+          if(rightDiff) ctx.fillRect((c+1)*block-bw/2, r*block, bw, block+1);
+          if(downDiff) ctx.fillRect(c*block, (r+1)*block-bw/2, block+1, bw);
+        }
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.globalAlpha = 1;
+
+    if(state.showSites){
+      state.sites.forEach((s,i) => {
+        const rgb = siteColorRGB(i);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 3.4*dpr, 0, Math.PI*2);
+        ctx.fillStyle = rgbToCss(rgb);
+        ctx.shadowBlur = 0;
+        ctx.fill();
+        ctx.lineWidth = 1*dpr;
+        ctx.strokeStyle = state.theme==='dark' ? 'rgba(10,14,22,0.85)' : 'rgba(255,255,255,0.85)';
+        ctx.stroke();
+      });
+    }
+
+    if(state.probeMode && probe.active){
+      const rgb = probe.index>=0 ? siteColorRGB(probe.index) : [255,255,255];
+      ctx.strokeStyle = rgbToCss(rgb);
+      ctx.lineWidth = 1.4*dpr;
+      ctx.setLineDash([dpr*4, dpr*3]);
+      ctx.beginPath();
+      ctx.moveTo(probe.x, probe.y);
+      if(probe.index>=0) ctx.lineTo(state.sites[probe.index].x, state.sites[probe.index].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(probe.x, probe.y, 4*dpr, 0, Math.PI*2);
+      ctx.fillStyle = rgbToCss(rgb);
+      ctx.fill();
+    }
+  }
+
+  // ---------- HUD + math panel live stats ----------
+  function updateHud(){
+    document.getElementById('hname').textContent = PRESETS[state.presetKey] ? PRESETS[state.presetKey].label : 'Custom';
+    document.getElementById('hsites').textContent = state.sites.length;
+    document.getElementById('hmetric').textContent = state.metric[0].toUpperCase()+state.metric.slice(1);
+    updateMathStats();
+  }
+  function updateMathStats(){
+    const el = document.getElementById('mathStats');
+    if(!el) return;
+    const name = PRESETS[state.presetKey] ? PRESETS[state.presetKey].label : 'Custom';
+    let cellInfo = '';
+    if(state.metric==='euclidean'){
+      const validCells = cells.filter(p=>p.length>=3).length;
+      cellInfo = `Cells drawn: ${validCells}`;
+      if(state.showDelaunay) cellInfo += ` · Delaunay triangles: ${delaunayTris.length}`;
+    } else {
+      cellInfo = `Cells approximated on a ${rasterCanvas ? rasterCanvas.cols+'&times;'+rasterCanvas.rows : '—'} sample grid`;
+    }
+    el.innerHTML = `Layout: ${name}<br>Sites: ${state.sites.length}<br>Metric: ${state.metric[0].toUpperCase()+state.metric.slice(1)}<br>${cellInfo}`;
+  }
+
+  // ---------- resize ----------
+  // The pane can report a zero-sized layout box on its very first observation
+  // (before the surrounding page has finished laying out), so guard against
+  // sizing the canvas — and generating sites — against a 0x0 rect. Initial
+  // site generation is deferred to this function's first *valid* firing
+  // instead of a synchronous call at the bottom of this script.
+  let initialized = false;
+  function resize(){
+    const w = Math.round(wrap.clientWidth * dpr);
+    const h = Math.round(wrap.clientHeight * dpr);
+    if(w<=0 || h<=0) return;
+    const changed = canvas.width!==w || canvas.height!==h;
+    if(!changed && initialized) return;
+    const ow = canvas.width || w, oh = canvas.height || h;
+    if(initialized && state.sites.length && (ow!==w || oh!==h)){
+      const sx = w/ow, sy = h/oh;
+      state.sites.forEach(s => { s.x*=sx; s.y*=sy; });
+    }
+    canvas.width = w; canvas.height = h;
+    if(!initialized){
+      initialized = true;
+      loadFromUrl();
+    } else {
+      recompute();
+    }
+  }
+  new ResizeObserver(resize).observe(wrap);
+
+  // ---------- site layout loading ----------
+  function loadPreset(key, opts){
+    opts = opts || {};
+    state.presetKey = key;
+    if(!opts.keepSeed) state.seed = Math.floor(Math.random()*1e9);
+    const rng = mulberry32(state.seed);
+    state.sites = PRESETS[key].gen(state.siteCount, rng, canvas.width, canvas.height);
+    presetSelect.value = key;
+    recompute();
+  }
+
+  // ---------- Lloyd's relaxation ----------
+  function relaxStep(){
+    if(state.sites.length < 2) return;
+    if(state.metric === 'euclidean'){
+      const c = computeEuclideanCells(state.sites, canvas.width, canvas.height);
+      state.sites = state.sites.map((s,i) => {
+        const poly = c[i];
+        if(!poly || poly.length<3) return s;
+        const cen = polygonCentroid(poly);
+        return { x: lerp(s.x, cen.x, 0.6), y: lerp(s.y, cen.y, 0.6) };
+      });
+    } else {
+      const r = computeRaster(canvas.width, canvas.height, state.metric);
+      state.sites = state.sites.map((s,i) => {
+        const sum = r.sums[i];
+        if(!sum || sum.n===0) return s;
+        return { x: lerp(s.x, sum.x/sum.n, 0.6), y: lerp(s.y, sum.y/sum.n, 0.6) };
+      });
+    }
+    recompute();
+  }
+
+  let autoRelaxTimer = null;
+  function setAutoRelax(on){
+    state.autoRelax = on;
+    if(autoRelaxTimer){ clearInterval(autoRelaxTimer); autoRelaxTimer=null; }
+    if(on) autoRelaxTimer = setInterval(relaxStep, 220);
+  }
+
+  // ---------- probe (nearest-neighbor) mode ----------
+  const probe = { active:false, x:0, y:0, index:-1 };
+  const probeReadout = document.getElementById('probeReadout');
+  function updateProbe(px, py){
+    probe.active = true;
+    probe.x = px; probe.y = py;
+    const near = nearestSite(px, py, state.metric);
+    probe.index = near.index;
+    probeReadout.style.display = 'block';
+    probeReadout.style.left = (px/dpr + 12) + 'px';
+    probeReadout.style.top = (py/dpr - 10) + 'px';
+    probeReadout.textContent = near.index>=0 ? `nearest: site ${near.index} · dist=${(near.dist/dpr).toFixed(1)}px` : '';
+    render();
+  }
+  function hideProbe(){
+    probe.active = false;
+    probeReadout.style.display = 'none';
+    render();
+  }
+
+  // ---------- pointer interaction: add / drag / remove sites, or probe ----------
+  let dragIndex = -1, dragMoved = false;
+  const HIT_R = 12; // device px hit radius for grabbing an existing site
+
+  function toDevice(clientX, clientY){
+    const r = canvas.getBoundingClientRect();
+    return [ (clientX-r.left)*dpr, (clientY-r.top)*dpr ];
+  }
+  function hitTestSite(x,y){
+    let best=-1, bestD=Infinity;
+    state.sites.forEach((s,i) => {
+      const d = Math.hypot(s.x-x, s.y-y);
+      if(d<bestD){ bestD=d; best=i; }
+    });
+    return bestD<=HIT_R*dpr ? best : -1;
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    const [x,y] = toDevice(e.clientX, e.clientY);
+    if(state.probeMode){ updateProbe(x,y); return; }
+    const hit = hitTestSite(x,y);
+    if(hit>=0){
+      dragIndex = hit; dragMoved = false;
+      canvas.classList.add('dragging');
+    } else {
+      state.sites.push({x,y});
+      state.presetKey = 'custom';
+      recompute();
+    }
+  });
+  window.addEventListener('mousemove', e => {
+    const [x,y] = toDevice(e.clientX, e.clientY);
+    if(state.probeMode){ if(isOverCanvas(e)) updateProbe(x,y); return; }
+    if(dragIndex<0) return;
+    dragMoved = true;
+    state.sites[dragIndex].x = clamp(x, 0, canvas.width);
+    state.sites[dragIndex].y = clamp(y, 0, canvas.height);
+    state.presetKey = 'custom';
+    recompute();
+  });
+  window.addEventListener('mouseup', () => {
+    if(dragIndex>=0){ dragIndex=-1; canvas.classList.remove('dragging'); }
+  });
+  canvas.addEventListener('dblclick', e => {
+    if(state.probeMode) return;
+    const [x,y] = toDevice(e.clientX, e.clientY);
+    const hit = hitTestSite(x,y);
+    if(hit>=0 && state.sites.length>2){
+      state.sites.splice(hit,1);
+      state.presetKey = 'custom';
+      recompute();
+    }
+  });
+  canvas.addEventListener('mouseleave', () => { if(state.probeMode) hideProbe(); });
+  function isOverCanvas(e){
+    const r = canvas.getBoundingClientRect();
+    return e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+  }
+
+  // touch support: single touch = add/drag (or probe); no multi-touch gestures needed
+  canvas.addEventListener('touchstart', e => {
+    if(e.touches.length!==1) return;
+    const t = e.touches[0];
+    const [x,y] = toDevice(t.clientX, t.clientY);
+    if(state.probeMode){ updateProbe(x,y); return; }
+    const hit = hitTestSite(x,y);
+    if(hit>=0){ dragIndex=hit; dragMoved=false; }
+    else { state.sites.push({x,y}); state.presetKey='custom'; recompute(); }
+  }, {passive:true});
+  canvas.addEventListener('touchmove', e => {
+    if(e.touches.length!==1) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const [x,y] = toDevice(t.clientX, t.clientY);
+    if(state.probeMode){ updateProbe(x,y); return; }
+    if(dragIndex<0) return;
+    dragMoved = true;
+    state.sites[dragIndex].x = clamp(x,0,canvas.width);
+    state.sites[dragIndex].y = clamp(y,0,canvas.height);
+    state.presetKey = 'custom';
+    recompute();
+  }, {passive:false});
+  canvas.addEventListener('touchend', () => { dragIndex=-1; });
+
+  // ---------- panel toggles ----------
+  const panel = document.getElementById('panel');
+  const gearBtn = document.getElementById('gearBtn');
+  gearBtn.addEventListener('click', () => {
+    const open = panel.classList.toggle('open');
+    gearBtn.classList.toggle('open', open);
+    gearBtn.setAttribute('aria-expanded', open);
+  });
+  const mathPanel = document.getElementById('mathPanel');
+  const explainBtn = document.getElementById('explainBtn');
+  explainBtn.addEventListener('click', () => {
+    const open = mathPanel.classList.toggle('open');
+    explainBtn.classList.toggle('open', open);
+    explainBtn.setAttribute('aria-expanded', open);
+    if(open) updateMathStats();
+  });
+
+  // ---------- theme ----------
+  const themeBtn = document.getElementById('themeBtn');
+  const iconMoon = themeBtn.querySelector('.icon-moon');
+  const iconSun = themeBtn.querySelector('.icon-sun');
+  function setTheme(theme){
+    state.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    iconMoon.style.display = theme === 'dark' ? '' : 'none';
+    iconSun.style.display = theme === 'light' ? '' : 'none';
+    themeBtn.setAttribute('aria-pressed', theme === 'light');
+    const nextLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    themeBtn.setAttribute('aria-label', nextLabel);
+    themeBtn.title = nextLabel;
+    render();
+  }
+  themeBtn.addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+  // ---------- download ----------
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    render();
+    const name = (PRESETS[state.presetKey] ? PRESETS[state.presetKey].label : 'custom-voronoi').toLowerCase().replace(/\s+/g,'-');
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    const link = document.createElement('a');
+    link.download = `voronoi-${name}-${stamp}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // ---------- preset select ----------
+  const presetSelect = document.getElementById('presetSelect');
+  PRESET_ORDER.forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = PRESETS[key].label;
+    presetSelect.appendChild(opt);
+  });
+  presetSelect.addEventListener('change', () => loadPreset(presetSelect.value));
+
+  const siteCountSlider = document.getElementById('siteCountSlider');
+  const siteCountVal = document.getElementById('siteCountVal');
+  siteCountSlider.addEventListener('input', () => {
+    state.siteCount = +siteCountSlider.value;
+    siteCountVal.textContent = state.siteCount;
+    const key = state.presetKey==='custom' ? 'blueNoise' : state.presetKey;
+    loadPreset(key, {keepSeed:true});
+  });
+
+  document.getElementById('randomizeBtn').addEventListener('click', () => {
+    const key = state.presetKey==='custom' ? 'blueNoise' : state.presetKey;
+    loadPreset(key);
+  });
+
+  // ---------- diagram controls ----------
+  const metricSelect = document.getElementById('metricSelect');
+  const delaunayToggle = document.getElementById('delaunayToggle');
+  function syncDelaunayAvailability(){
+    const available = state.metric === 'euclidean';
+    delaunayToggle.classList.toggle('disabled', !available);
+    if(!available && state.showDelaunay){ state.showDelaunay=false; delaunayToggle.classList.remove('on'); }
+  }
+  metricSelect.addEventListener('change', () => {
+    state.metric = metricSelect.value;
+    syncDelaunayAvailability();
+    recompute();
+  });
+
+  function wireSwitch(id, stateKey, after){
+    const el = document.getElementById(id);
+    el.addEventListener('click', () => {
+      if(el.classList.contains('disabled')) return;
+      state[stateKey] = !state[stateKey];
+      el.classList.toggle('on', state[stateKey]);
+      if(after) after();
+    });
+    return el;
+  }
+  wireSwitch('delaunayToggle', 'showDelaunay', recompute);
+  wireSwitch('fillToggle', 'fillCells', render);
+  wireSwitch('sitesToggle', 'showSites', render);
+
+  const edgeWidthSlider = document.getElementById('edgeWidthSlider');
+  const edgeWidthVal = document.getElementById('edgeWidthVal');
+  edgeWidthSlider.addEventListener('input', () => {
+    state.edgeWidth = +edgeWidthSlider.value;
+    edgeWidthVal.textContent = state.edgeWidth.toFixed(1);
+    render();
+  });
+
+  // ---------- color controls ----------
+  const swatches = document.getElementById('paletteSwatches');
+  const customColorRow = document.getElementById('customColorRow');
+  const customColorPicker = document.getElementById('customColorPicker');
+  const customColorHex = document.getElementById('customColorHex');
+  const customSwatch = document.getElementById('customSwatch');
+  function selectPalette(idx){
+    state.palette = idx;
+    [...swatches.children].forEach(s => s.classList.remove('active'));
+    swatches.children[idx].classList.add('active');
+    customColorRow.classList.toggle('open', idx === 7);
+    render();
+  }
+  swatches.addEventListener('click', e => {
+    const sw = e.target.closest('.swatch');
+    if(!sw) return;
+    selectPalette(parseInt(sw.dataset.p,10));
+  });
+  customColorPicker.addEventListener('input', () => {
+    state.solidColor = customColorPicker.value;
+    customColorHex.textContent = state.solidColor;
+    customSwatch.style.background = state.solidColor;
+    if(state.palette===7) render();
+  });
+
+  const brightnessSlider = document.getElementById('brightnessSlider');
+  const brightnessVal = document.getElementById('brightnessVal');
+  brightnessSlider.addEventListener('input', () => {
+    state.brightness = +brightnessSlider.value;
+    brightnessVal.textContent = state.brightness.toFixed(2);
+    render();
+  });
+  const glowIntensitySlider = document.getElementById('glowIntensitySlider');
+  const glowIntensityVal = document.getElementById('glowIntensityVal');
+  glowIntensitySlider.addEventListener('input', () => {
+    state.glowIntensity = +glowIntensitySlider.value;
+    glowIntensityVal.textContent = state.glowIntensity;
+    render();
+  });
+  wireSwitch('glowToggle', 'glow', render);
+
+  document.getElementById('randomizeColorBtn').addEventListener('click', () => {
+    const idx = Math.floor(Math.random()*7);
+    selectPalette(idx);
+    state.brightness = 0.7+Math.random()*0.3;
+    brightnessSlider.value = state.brightness;
+    brightnessVal.textContent = state.brightness.toFixed(2);
+    render();
+  });
+
+  // ---------- explore controls ----------
+  wireSwitch('probeToggle', 'probeMode', () => {
+    canvas.classList.toggle('probing', state.probeMode);
+    if(!state.probeMode) hideProbe();
+  });
+  document.getElementById('relaxBtn').addEventListener('click', relaxStep);
+  document.getElementById('resetLayoutBtn').addEventListener('click', () => loadPreset(state.presetKey==='custom' ? 'blueNoise' : state.presetKey, {keepSeed:true}));
+  wireSwitch('autoRelaxToggle', 'autoRelax', () => setAutoRelax(state.autoRelax));
+
+  // ---------- shareable link ----------
+  function buildShareUrl(){
+    const u = new URL(window.location.href);
+    u.search = '';
+    const p = u.searchParams;
+    p.set('preset', state.presetKey);
+    p.set('seed', state.seed);
+    p.set('n', state.siteCount);
+    p.set('metric', state.metric);
+    p.set('delaunay', state.showDelaunay ? 1 : 0);
+    p.set('palette', state.palette);
+    if(state.palette===7) p.set('color', state.solidColor.replace('#',''));
+    p.set('theme', state.theme);
+    return u.toString();
+  }
+  const linkBtn = document.getElementById('linkBtn');
+  linkBtn.addEventListener('click', async () => {
+    const url = buildShareUrl();
+    history.replaceState(null, '', url);
+    try{
+      await navigator.clipboard.writeText(url);
+      linkBtn.classList.add('copied');
+      setTimeout(() => linkBtn.classList.remove('copied'), 1400);
+    } catch(err){ /* clipboard unavailable — URL bar was still updated above */ }
+  });
+
+  function loadFromUrl(){
+    const q = new URLSearchParams(window.location.search);
+    if(q.has('n')) state.siteCount = clamp(parseInt(q.get('n'),10)||state.siteCount, 5, 150);
+    if(q.has('metric') && ['euclidean','manhattan','chebyshev'].includes(q.get('metric'))) state.metric = q.get('metric');
+    if(q.has('delaunay')) state.showDelaunay = q.get('delaunay')==='1';
+    if(q.has('palette')) state.palette = clamp(parseInt(q.get('palette'),10),0,7);
+    if(q.has('color')) state.solidColor = '#'+q.get('color');
+    if(q.has('theme') && (q.get('theme')==='light'||q.get('theme')==='dark')) setTheme(q.get('theme'));
+    const presetParam = q.get('preset');
+    const seedParam = q.get('seed');
+    if(presetParam && PRESETS[presetParam]){
+      if(seedParam) state.seed = parseInt(seedParam,10) || state.seed;
+      loadPreset(presetParam, {keepSeed: !!seedParam});
+    } else {
+      loadPreset('blueNoise');
+    }
+  }
+
+  // ---------- init ----------
+  siteCountSlider.value = state.siteCount;
+  siteCountVal.textContent = state.siteCount;
+  metricSelect.value = state.metric;
+  syncDelaunayAvailability();
+  customColorPicker.value = state.solidColor;
+  customColorHex.textContent = state.solidColor;
+  customSwatch.style.background = state.solidColor;
+  selectPalette(state.palette);
+  setTheme(state.theme);
+
+  resize(); // if the pane is already laid out, this both sizes the canvas and (via loadFromUrl) generates the initial sites; otherwise the ResizeObserver's first valid firing does it
+
+  const hint = document.getElementById('hint');
+  if(window.matchMedia('(pointer: coarse)').matches){
+    hint.innerHTML = 'Tap empty space to add a site · Drag a site to move it<br>Gear = tune the diagram · &Sigma; = explain the math';
+  }
+  const fadeHint = () => { hint.style.opacity='0'; setTimeout(()=>hint.remove(),700); };
+  setTimeout(fadeHint, 4500);
+  canvas.addEventListener('pointerdown', fadeHint, {once:true});
+})();
+</script>
+</body>
+</html>
