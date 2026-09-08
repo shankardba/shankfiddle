@@ -89,6 +89,11 @@
     font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; fill:var(--ink-soft);
     font-family:'Inter', sans-serif; text-anchor:middle;
   }
+  .fretboard .octave-label{
+    font-family:'Fraunces', serif; font-weight:700; font-size:13px; fill:var(--wood); text-anchor:middle;
+  }
+
+  .mode-btn.disabled{ opacity:0.35; cursor:not-allowed; pointer-events:none; }
 
   .bug-summary{
     font-size:14px; color:var(--gold-light); display:flex; align-items:center; gap:8px;
@@ -124,7 +129,7 @@
 <body>
 <div class="stage">
   <h1>Violin Scale Bugs</h1>
-  <p class="sub">Each key has its own beginner fingering on two strings — some start on an open string, some don't. Wherever the half step lands between two actual fingers, there's a bug; each finger-pair has its own.</p>
+  <p class="sub">Each key has its own beginner fingering — one string per tetrachord, some starting open, some not. Wherever the half step lands between two actual fingers, there's a bug; each finger-pair has its own.</p>
 
   <div class="row">
     <button class="key-btn" data-key="G">G</button>
@@ -136,6 +141,11 @@
     <button class="mode-btn active" data-mode="major">Major</button>
     <button class="mode-btn" data-mode="minor">Natural minor</button>
   </div>
+  <div class="row">
+    <button class="mode-btn octave-btn active" data-octaves="1">1 Octave</button>
+    <button class="mode-btn octave-btn" data-octaves="2">2 Octaves</button>
+  </div>
+  <p class="sub" id="octaveNote" style="display:none;">D and E would need a position shift to complete a second octave in first position, so they stay one octave for now.</p>
 
   <div class="scale-name" id="scaleName">A Major</div>
   <button class="play-btn" id="playBtn">&#9658; play scale</button>
@@ -193,11 +203,21 @@
     G: {
       major: {
         lower: { string: 'G', positions: [{f:'open',n:'G'},{f:1,n:'A'},{f:2,n:'B'},{f:3,n:'C'}] },
-        upper: { string: 'D', positions: [{f:'open',n:'D'},{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G'}] }
+        upper: { string: 'D', positions: [{f:'open',n:'D'},{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G'}] },
+        // Second octave continues onto the A and E strings the same way —
+        // open string, then fingers walk up. The E string only needs two
+        // fingers to reach the top of the second octave.
+        lower2: { string: 'A', positions: [{f:'open',n:'A'},{f:1,n:'B'},{f:2,n:'C'},{f:3,n:'D'}] },
+        upper2: { string: 'E', positions: [{f:'open',n:'E'},{f:1,n:'F#'},{f:2,n:'G'}] }
       },
       minor: {
         lower: { string: 'G', positions: [{f:'open',n:'G'},{f:1,n:'A'},{f:2,n:'Bb'},{f:3,n:'C'}] },
-        upper: { string: 'D', positions: [{f:'open',n:'D'},{f:1,n:'Eb'},{f:2,n:'F'},{f:3,n:'G'}] }
+        upper: { string: 'D', positions: [{f:'open',n:'D'},{f:1,n:'Eb'},{f:2,n:'F'},{f:3,n:'G'}] },
+        // The A string needs a low 4th finger (Eb) to keep the scale in
+        // first position; the E string then starts on a low 1st finger (F)
+        // instead of the open string, since open E is a half step too high.
+        lower2: { string: 'A', positions: [{f:'open',n:'A'},{f:1,n:'Bb'},{f:2,n:'C'},{f:3,n:'D'},{f:4,n:'Eb'}] },
+        upper2: { string: 'E', positions: [{f:1,n:'F'},{f:2,n:'G'}] }
       }
     },
     D: {
@@ -213,11 +233,18 @@
     A: {
       major: {
         lower: { string: 'G', positions: [{f:1,n:'A'},{f:2,n:'B'},{f:3,n:'C#'},{f:4,n:'D'}] },
-        upper: { string: 'D', positions: [{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G#'},{f:4,n:'A'}] }
+        upper: { string: 'D', positions: [{f:1,n:'E'},{f:2,n:'F#'},{f:3,n:'G#'},{f:4,n:'A'}] },
+        // Same no-open-string approach continues onto A and E: finger 1
+        // picks up right where the D string left off, no open string needed
+        // since A major's own tonic never lands on an open note here either.
+        lower2: { string: 'A', positions: [{f:1,n:'B'},{f:2,n:'C#'},{f:3,n:'D'},{f:4,n:'E'}] },
+        upper2: { string: 'E', positions: [{f:1,n:'F#'},{f:2,n:'G#'},{f:3,n:'A'}] }
       },
       minor: {
         lower: { string: 'G', positions: [{f:1,n:'A'},{f:2,n:'B'},{f:3,n:'C'},{f:4,n:'D'}] },
-        upper: { string: 'D', positions: [{f:1,n:'E'},{f:2,n:'F'},{f:3,n:'G'},{f:4,n:'A'}] }
+        upper: { string: 'D', positions: [{f:1,n:'E'},{f:2,n:'F'},{f:3,n:'G'},{f:4,n:'A'}] },
+        lower2: { string: 'A', positions: [{f:1,n:'B'},{f:2,n:'C'},{f:3,n:'D'},{f:4,n:'E'}] },
+        upper2: { string: 'E', positions: [{f:1,n:'F'},{f:2,n:'G'},{f:3,n:'A'}] }
       }
     },
     E: {
@@ -231,17 +258,11 @@
       }
     }
   };
-  // Octave (scientific pitch notation) for each position, per key — the
-  // same regardless of major/minor (an accidental never changes which
-  // octave a letter falls in). Hardcoded since there are only 4 keys, to
-  // keep the letter-to-octave-wrap logic (which only changes at C) out of
-  // the rendering code entirely.
-  const OCTAVES = {
-    G: { lower: [3,3,3,4], upper: [4,4,4,4] },
-    D: { lower: [4,4,4,4], upper: [4,4,5,5] },
-    A: { lower: [3,3,4,4], upper: [4,4,4,4] },
-    E: { lower: [4,4,4,4], upper: [4,5,5,5] }
-  };
+  // Octave (scientific pitch notation) of each key's very first note — the
+  // rest are derived from this by walking the semitone distance between
+  // consecutive notes (see buildScaleGroups), so a 2-octave run can't drift
+  // out of sync the way a hand-typed table could.
+  const STARTING_OCTAVE = { G: 3, D: 4, A: 3, E: 4 };
 
   // Which bug lives on a half step between two ADJACENT FINGER NUMBERS
   // (never involving the open string — that gap is just labeled "half
@@ -348,16 +369,39 @@
 
   let currentKey = 'A';
   let currentMode = 'major';
-  let firstKeyChange = true, firstModeChange = true, firstPlay = true;
+  let currentOctaves = 1;
+  let firstKeyChange = true, firstModeChange = true, firstPlay = true, firstTwoOctaves = true;
 
-  function buildTetrachord(half, tetra, octaves){
-    const positions = tetra.positions.map((p, i) => ({
-      finger: p.f,
-      note: p.n,
-      octave: octaves[i],
-      degree: half === 'lower' ? i + 1 : i + 5
-    }));
-    return { string: tetra.string, positions };
+  // Turns a key/mode's string groups into fully-resolved positions: scale
+  // degree and octave are both derived by walking the notes in order (degree
+  // counts up continuously; octave increments whenever the cumulative
+  // semitone distance from the very first note crosses a 12-semitone
+  // boundary), rather than being baked into the data — so a second octave's
+  // extra groups just slot in without needing their own hardcoded degree/
+  // octave tables.
+  function buildScaleGroups(key, mode, twoOctaves){
+    const scale = SCALES[key][mode];
+    const groupDefs = [scale.lower, scale.upper];
+    if(twoOctaves && scale.lower2){ groupDefs.push(scale.lower2, scale.upper2); }
+
+    let degree = 0;
+    let prevNote = null;
+    let absPitch = 0;
+    return groupDefs.map(def => {
+      const positions = def.positions.map(p => {
+        degree++;
+        absPitch = (prevNote === null) ? pitchClass(p.n) : absPitch + stepSize(prevNote, p.n);
+        prevNote = p.n;
+        return {
+          finger: p.f,
+          note: p.n,
+          octave: STARTING_OCTAVE[key] + Math.floor(absPitch / 12),
+          degree: degree,
+          displayDegree: ((degree - 1) % 7) + 1
+        };
+      });
+      return { string: def.string, positions };
+    });
   }
 
   // --- fretboard diagram (vertical, guitar-chart style) ---
@@ -390,99 +434,130 @@
     });
   }
 
-  function buildFretboardSVG(lower, upper){
-    const bugsFound = [];
+  // blocks: an array of [lowerGroup, upperGroup] pairs — one pair per
+  // octave — stacked top to bottom in a single diagram. Two octaves means
+  // two blocks, each drawn exactly like the one-octave diagram, with an
+  // "Octave N" label between them.
+  const BLOCK_GAP = 30;
+
+  function buildFretboardSVG(blocks){
+    const blockBugs = [];
+    let hiddenCount = 0;
     let svg = '';
-    const lowerPos = withOffsets(lower);
-    const upperPos = withOffsets(upper);
-    const maxOffset = Math.max(lowerPos[lowerPos.length-1].offset, upperPos[upperPos.length-1].offset);
-    // A true nut (thick bar) only where the diagram's top row really is the
-    // open string (G/D); A/E's top row is finger 1, so it gets a plain
-    // fret line instead — there's no open string sitting above it here.
-    const topIsNut = lower.positions[0].finger === 'open';
+    let yOffset = 0;
 
-    for(let f = 0; f <= maxOffset; f++){
-      svg += `<line class="${f === 0 && topIsNut ? 'nut' : 'fret-line'}" x1="${X_LOWER}" y1="${fretY(f)}" x2="${X_UPPER}" y2="${fretY(f)}"/>`;
-    }
-    [X_LOWER, X_UPPER].forEach(x => {
-      svg += `<line class="string-line" x1="${x}" y1="${fretY(0)}" x2="${x}" y2="${fretY(maxOffset) + 16}"/>`;
-    });
-    svg += `<text class="string-name" x="${X_LOWER}" y="18">${lower.string} string</text>`;
-    svg += `<text class="string-name" x="${X_UPPER}" y="18">${upper.string} string</text>`;
+    blocks.forEach(([lower, upper], blockIdx) => {
+      const bugsInBlock = [];
+      const lowerPos = withOffsets(lower);
+      const upperPos = withOffsets(upper);
+      const maxOffset = Math.max(lowerPos[lowerPos.length-1].offset, upperPos[upperPos.length-1].offset);
+      // A true nut (thick bar) only where the diagram's top row really is
+      // an open string (G/D, and G/A's second-octave A string); a plain
+      // fret line otherwise — there's no open string sitting above it here.
+      const topIsNut = lower.positions[0].finger === 'open';
 
-    [ { positions: lowerPos, x: X_LOWER, side: -1 },
-      { positions: upperPos, x: X_UPPER, side: 1 }
-    ].forEach(({ positions, x, side }) => {
-      const labelX = x + side * LABEL_OFFSET;
-      const bugX = x + side * BUG_OFFSET;
-      const anchor = side < 0 ? 'end' : 'start';
+      if(blocks.length > 1){
+        svg += `<text class="octave-label" x="150" y="${yOffset + 14}" text-anchor="middle">Octave ${blockIdx + 1}</text>`;
+        yOffset += 26;
+      }
 
-      positions.forEach((p, i) => {
-        const y = fretY(p.offset);
-        const isOpen = p.finger === 'open';
-        const degreeLabel = (currentMode === 'minor' && FLATTED_DEGREES.includes(p.degree))
-          ? '♭' + p.degree : String(p.degree);
-        svg += `<g class="note-dot${isOpen ? ' open' : ''}" data-midi="${noteToMidi(p.note, p.octave)}">
-          <circle cx="${x}" cy="${y}" r="${DOT_R}"/>
-          <text class="finger-num" x="${x}" y="${y+1}">${isOpen ? 'O' : p.finger}</text>
-        </g>`;
-        svg += `<text class="note-label" x="${labelX}" y="${y-3}" text-anchor="${anchor}">${noteLabel(p.note)}</text>`;
-        svg += `<text class="degree-label" x="${labelX}" y="${y+12}" text-anchor="${anchor}">${degreeLabel}</text>`;
-
-        if(i < positions.length - 1){
-          const next = positions[i + 1];
-          const gapY = (y + fretY(next.offset)) / 2;
-          const isHalf = (next.offset - p.offset) === 1;
-          // A bug only exists between two actual fingers, adjacent by
-          // number — never on the open-string gap, even if that gap
-          // happens to be the half step (see the natural-minor case where
-          // this hides one bug entirely).
-          const bug = (!isOpen && next.finger !== 'open' && next.finger === p.finger + 1 && isHalf)
-            ? BUG_BY_FINGER_PAIR[p.finger] : null;
-          if(bug){
-            bugsFound.push(bug);
-            svg += `<g transform="translate(${bugX - 11}, ${gapY - 11})">${bugIconSVG(bug, 22)}</g>`;
-            svg += `<text class="bug-label" x="${bugX}" y="${gapY + 21}">${BUG_LABEL[bug]}</text>`;
-          } else {
-            svg += `<text class="step-label" x="${bugX}" y="${gapY + 3}" text-anchor="middle">${isHalf ? 'half step' : 'whole step'}</text>`;
-          }
-        }
+      for(let f = 0; f <= maxOffset; f++){
+        const y = yOffset + fretY(f);
+        svg += `<line class="${f === 0 && topIsNut ? 'nut' : 'fret-line'}" x1="${X_LOWER}" y1="${y}" x2="${X_UPPER}" y2="${y}"/>`;
+      }
+      [X_LOWER, X_UPPER].forEach(x => {
+        svg += `<line class="string-line" x1="${x}" y1="${yOffset + fretY(0)}" x2="${x}" y2="${yOffset + fretY(maxOffset) + 16}"/>`;
       });
+      svg += `<text class="string-name" x="${X_LOWER}" y="${yOffset + 18}">${lower.string} string</text>`;
+      svg += `<text class="string-name" x="${X_UPPER}" y="${yOffset + 18}">${upper.string} string</text>`;
+
+      [ { positions: lowerPos, x: X_LOWER, side: -1 },
+        { positions: upperPos, x: X_UPPER, side: 1 }
+      ].forEach(({ positions, x, side }) => {
+        const labelX = x + side * LABEL_OFFSET;
+        const bugX = x + side * BUG_OFFSET;
+        const anchor = side < 0 ? 'end' : 'start';
+
+        positions.forEach((p, i) => {
+          const y = yOffset + fretY(p.offset);
+          const isOpen = p.finger === 'open';
+          const degreeLabel = (currentMode === 'minor' && FLATTED_DEGREES.includes(p.displayDegree))
+            ? '♭' + p.displayDegree : String(p.displayDegree);
+          svg += `<g class="note-dot${isOpen ? ' open' : ''}" data-midi="${noteToMidi(p.note, p.octave)}">
+            <circle cx="${x}" cy="${y}" r="${DOT_R}"/>
+            <text class="finger-num" x="${x}" y="${y+1}">${isOpen ? 'O' : p.finger}</text>
+          </g>`;
+          svg += `<text class="note-label" x="${labelX}" y="${y-3}" text-anchor="${anchor}">${noteLabel(p.note)}</text>`;
+          svg += `<text class="degree-label" x="${labelX}" y="${y+12}" text-anchor="${anchor}">${degreeLabel}</text>`;
+
+          if(i < positions.length - 1){
+            const next = positions[i + 1];
+            const gapY = yOffset + (fretY(p.offset) + fretY(next.offset)) / 2;
+            const isHalf = (next.offset - p.offset) === 1;
+            // A bug only exists between two actual fingers, adjacent by
+            // number — never on the open-string gap, even if that gap
+            // happens to be the half step (see the natural-minor case where
+            // this hides one bug entirely).
+            const bug = (!isOpen && next.finger !== 'open' && next.finger === p.finger + 1 && isHalf)
+              ? BUG_BY_FINGER_PAIR[p.finger] : null;
+            if(bug){
+              bugsInBlock.push(bug);
+              svg += `<g transform="translate(${bugX - 11}, ${gapY - 11})">${bugIconSVG(bug, 22)}</g>`;
+              svg += `<text class="bug-label" x="${bugX}" y="${gapY + 21}">${BUG_LABEL[bug]}</text>`;
+            } else {
+              svg += `<text class="step-label" x="${bugX}" y="${gapY + 3}" text-anchor="middle">${isHalf ? 'half step' : 'whole step'}</text>`;
+              if(isOpen && isHalf) hiddenCount++;
+            }
+          }
+        });
+      });
+
+      blockBugs.push(bugsInBlock);
+      yOffset += fretY(maxOffset) + 36 + (blockIdx < blocks.length - 1 ? BLOCK_GAP : 0);
     });
 
-    return { svg, bugsFound, height: fretY(maxOffset) + 36 };
+    return { svg, blockBugs, bugsFound: blockBugs.flat(), hiddenCount, height: yOffset };
   }
 
   function render(){
     const scale = SCALES[currentKey][currentMode];
-    const octaves = OCTAVES[currentKey];
-    const lower = buildTetrachord('lower', scale.lower, octaves.lower);
-    const upper = buildTetrachord('upper', scale.upper, octaves.upper);
+    const twoOctaves = currentOctaves === 2 && !!scale.lower2;
+    const groups = buildScaleGroups(currentKey, currentMode, twoOctaves);
+    const blocks = [];
+    for(let i = 0; i < groups.length; i += 2){ blocks.push([groups[i], groups[i+1]]); }
 
     document.getElementById('scaleName').textContent =
-      currentKey + (currentMode === 'major' ? ' Major' : ' Natural Minor');
+      currentKey + (currentMode === 'major' ? ' Major' : ' Natural Minor') + (twoOctaves ? ' (2 octaves)' : '');
 
-    const { svg: fretboardInner, bugsFound, height } = buildFretboardSVG(lower, upper);
+    const { svg: fretboardInner, blockBugs, bugsFound, hiddenCount, height } = buildFretboardSVG(blocks);
     const wrap = document.getElementById('stringsWrap');
     wrap.innerHTML = `<svg class="fretboard" viewBox="0 0 300 ${height}" xmlns="http://www.w3.org/2000/svg">${fretboardInner}</svg>`;
 
     const summary = document.getElementById('bugSummary');
     summary.innerHTML = bugsFound.map(b => `${bugIconSVG(b,22)} <span>${BUG_LABEL[b]}</span>`).join('&nbsp;&nbsp;')
-      + (bugsFound.length < 2 ? ' <span style="opacity:0.7">(the other half step sits right off the open string — no bug there)</span>' : '');
+      + (hiddenCount > 0 ? ' <span style="opacity:0.7">(the other half step sits right off the open string — no bug there)</span>' : '');
 
     const why = document.getElementById('whyPanel');
     if(currentMode === 'major'){
+      const oct1Bug = blockBugs[0] && blockBugs[0][0];
+      const oct2Bug = blockBugs[1] && blockBugs[1][0];
+      let sentence = `Shift the same finger shape to any starting note and the bug travels with it: this key's fingering means the half step sits between <b>${fingerPairText(oct1Bug)}</b>, on both strings.`;
+      if(twoOctaves){
+        sentence += oct2Bug && oct2Bug !== oct1Bug
+          ? ` The second octave shifts it to <b>${fingerPairText(oct2Bug)}</b> instead — same key, different segment of the scale, different bug.`
+          : ` The second octave keeps the same pattern.`;
+      }
       why.innerHTML = `<h2>Why major sounds the way it does</h2>
-        <p>Major keeps every scale degree natural (unraised, unlowered) — a bright, open sound. Shift the same finger shape to any starting note and the bug travels with it: this key's fingering means the half step sits between <b>${lastMajorFingerPair()}</b>, on both strings.</p>`;
+        <p>Major keeps every scale degree natural (unraised, unlowered) — a bright, open sound. ${sentence}</p>`;
     } else {
       why.innerHTML = `<h2>Why minor sounds the way it does</h2>
         <p>Natural minor lowers the 3rd, 6th, and 7th scale degrees (♭3, ♭6, ♭7) compared to major — that's the darker color you hear. It also moves where the half steps fall compared to major's fingering.</p>
         <div class="callout">That ♭7 is called the <b>subtonic</b> — a whole step below the octave, so the scale doesn't pull strongly back to the tonic. Raise it a half step and it becomes a <b>leading tone</b> (like major's 7th) that does pull back hard — that's what a harmonic minor scale does. This app sticks to natural minor for now.</p>`;
     }
 
-    function lastMajorFingerPair(){
+    function fingerPairText(bug){
       const pairs = { mantis: '1 and 2', spider: '2 and 3', ladybug: '3 and 4' };
-      return bugsFound.length ? pairs[bugsFound[0]] : 'open string';
+      return bug ? pairs[bug] : 'open string';
     }
   }
 
@@ -505,22 +580,49 @@
     if(firstPlay){ firstPlay = false; sendBoyGoal('play_scale'); }
   }
 
+  // Only G and A complete a second octave without leaving first position —
+  // D and E run out of string on the E string and would need a shift. This
+  // grays out (and, if it was active, backs out of) the 2-octave button
+  // whenever a key without a lower2/upper2 pair is selected.
+  function updateOctaveAvailability(){
+    const available = !!SCALES[currentKey][currentMode].lower2;
+    const twoBtn = document.querySelector('.octave-btn[data-octaves="2"]');
+    twoBtn.classList.toggle('disabled', !available);
+    document.getElementById('octaveNote').style.display = available ? 'none' : 'block';
+    if(!available && currentOctaves === 2){
+      currentOctaves = 1;
+      document.querySelectorAll('.octave-btn').forEach(b => b.classList.toggle('active', b.dataset.octaves === '1'));
+    }
+  }
+
   document.querySelectorAll('.key-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.key-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentKey = btn.dataset.key;
+      updateOctaveAvailability();
       render();
       if(firstKeyChange){ firstKeyChange = false; sendBoyGoal('key_change'); }
     });
   });
-  document.querySelectorAll('.mode-btn').forEach(btn => {
+  document.querySelectorAll('.mode-btn:not(.octave-btn)').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.mode-btn:not(.octave-btn)').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentMode = btn.dataset.mode;
+      updateOctaveAvailability();
       render();
       if(currentMode === 'minor' && firstModeChange){ firstModeChange = false; sendBoyGoal('mode_change'); }
+    });
+  });
+  document.querySelectorAll('.octave-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(btn.classList.contains('disabled')) return;
+      document.querySelectorAll('.octave-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentOctaves = parseInt(btn.dataset.octaves, 10);
+      render();
+      if(currentOctaves === 2 && firstTwoOctaves){ firstTwoOctaves = false; sendBoyGoal('two_octaves'); }
     });
   });
   document.getElementById('playBtn').addEventListener('click', playScale);
@@ -529,6 +631,7 @@
   document.getElementById('legendSpider').innerHTML = bugIconSVG('spider', 28);
   document.getElementById('legendLadybug').innerHTML = bugIconSVG('ladybug', 28);
 
+  updateOctaveAvailability();
   render();
 })();
 </script>
