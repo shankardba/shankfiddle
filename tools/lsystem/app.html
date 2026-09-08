@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<!--
+  L-Systems — embeddable widget
+  ------------------------------
+  Copyright (c) 2026 Shankar Srinivasan. All rights reserved.
+  See LICENSE in the repository root.
+
+  Lindenmayer systems (parallel string-rewriting grammars) interpreted by a
+  turtle, following the conventions laid out at
+  https://en.wikipedia.org/wiki/L-system — alphabet/axiom/production rules,
+  and the standard turtle symbol set (F/G draw forward, f/g move without
+  drawing, +/- turn, [/] push/pop state for branching).
+
+  The "Randomize system" button's approach — guarantee at least one F exists
+  somewhere in the generated rules, and blend a curated "nice angle" pool
+  with fully random angles rather than always fully random — is adapted from
+  ehrenjn's L-Systems visualizer (https://ehrenjn.github.io/LSystems/,
+  https://github.com/ehrenjn/LSystems). That tool continuously auto-
+  regenerates a new random system forever with fading trail lines; this one
+  deliberately doesn't do that (matching Spirograph/Fractal's model of
+  picking something and tuning it) — Randomize just loads one random system
+  into the custom editor for you to look at and tweak.
+
+  A "the math" panel explains the rewriting-grammar formalism, the turtle
+  symbol legend, and the live axiom/rules/angle/string-length for whatever
+  is currently on screen.
+
+  Self-contained: no build step, no dependencies beyond two Google Fonts.
+  To embed:
+    1) Easiest / safest: <iframe src="app.html" style="width:100%;height:600px;border:0;"></iframe>
+    2) Inline: paste this whole file's body into a page (it sizes itself to its
+       parent container, so wrap it in a div with a fixed height if you don't
+       want it filling the viewport).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L-Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E16;
+    --surface:#121822;
+    --surface-2:#1A2230;
+    --border:#232D3B;
+    --text:#E7ECF2;
+    --text-muted:#8A97A8;
+    --warm:#F2A65A;
+    --cool:#57D9C4;
+    --error:#FF8A8A;
+    --chip-bg:rgba(18,24,34,0.72);
+    --panel-bg:rgba(15,20,29,0.94);
+    --mathpanel-bg:rgba(10,14,22,0.97);
+    --hint-bg:rgba(10,14,22,0.6);
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF;
+    --surface:#F1F3F6;
+    --surface-2:#E5E9EE;
+    --border:#D4D9E0;
+    --text:#14181F;
+    --text-muted:#5B6472;
+    --warm:#B45309;
+    --cool:#0F766E;
+    --error:#B3261E;
+    --chip-bg:rgba(255,255,255,0.82);
+    --panel-bg:rgba(255,255,255,0.96);
+    --mathpanel-bg:rgba(248,249,251,0.98);
+    --hint-bg:rgba(255,255,255,0.8);
+    color-scheme:light;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'Space Grotesk',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    overflow:hidden;
+  }
+  #wrap{position:relative;width:100%;height:100vh;min-height:320px;background:var(--bg);}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;}
+  canvas.dragging{cursor:grabbing;}
+
+  .hud{
+    position:absolute;left:14px;bottom:14px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px);
+    background:var(--chip-bg);
+    border:1px solid var(--border);
+    padding:7px 12px;border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;color:var(--text-muted);
+    pointer-events:none;
+    backdrop-filter:blur(2px);
+  }
+  .hud span{color:var(--cool);}
+
+  .gear-btn, .download-btn, .explain-btn, .link-btn, .theme-btn{
+    position:absolute;top:14px;z-index:2;
+    width:36px;height:36px;border-radius:4px;
+    background:var(--chip-bg);
+    border:1px solid var(--border);
+    color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .gear-btn{right:14px;}
+  .download-btn{left:14px;}
+  .explain-btn{left:58px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
+  .link-btn{left:102px;}
+  .theme-btn{left:146px;}
+  .gear-btn:hover, .download-btn:hover, .explain-btn:hover, .link-btn:hover, .theme-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .explain-btn:focus-visible, .link-btn:focus-visible, .theme-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .gear-btn.open, .explain-btn.open{border-color:var(--warm);color:var(--warm);}
+  .gear-btn svg, .download-btn svg, .link-btn svg, .theme-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
+  .gear-btn.open svg{transform:rotate(75deg);}
+  .link-btn.copied{border-color:var(--cool);color:var(--cool);}
+
+  .zoom-controls{
+    position:absolute;right:14px;bottom:54px;z-index:2;
+    display:flex;flex-direction:column;
+  }
+  .zoom-controls button{
+    width:32px;height:28px;
+    background:var(--chip-bg);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:inherit;font-size:16px;line-height:1;
+    cursor:pointer;
+  }
+  .zoom-controls button:first-child{border-radius:4px 4px 0 0;border-bottom:none;}
+  .zoom-controls button:last-child{border-radius:0 0 4px 4px;}
+  .zoom-controls button:hover{background:var(--surface-2);border-color:var(--cool);}
+
+  .panel{
+    position:absolute;top:0;right:0;height:100%;width:300px;z-index:1;
+    background:var(--panel-bg);
+    border-left:1px solid var(--border);
+    padding:60px 18px 18px;
+    transform:translateX(100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .panel.open{transform:translateX(0);}
+
+  .math-panel{
+    position:absolute;top:0;left:0;height:100%;width:340px;max-width:88vw;z-index:1;
+    background:var(--mathpanel-bg);
+    border-right:1px solid var(--border);
+    padding:60px 22px 24px;
+    transform:translateX(-100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .math-panel.open{transform:translateX(0);}
+  .math-title{font-size:15px;font-weight:600;margin-bottom:4px;color:var(--text);}
+  .math-subtitle{font-size:11px;color:var(--text-muted);margin-bottom:20px;line-height:1.5;}
+  .math-section{margin-bottom:22px;}
+  .math-section + .math-section{border-top:1px solid var(--border);padding-top:18px;}
+  .math-sub{font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--cool);margin-bottom:10px;}
+  .math-prose{font-size:12.5px;line-height:1.75;color:var(--text-muted);margin:0;}
+  .math-block{
+    background:var(--surface);border:1px solid var(--border);border-radius:6px;
+    padding:12px 14px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--text);line-height:1.85;word-break:break-word;
+  }
+  .math-block .rule-arrow{color:var(--text-muted);}
+  .math-block .rule-sym{color:var(--warm);}
+  .math-legend{font-size:11px;line-height:1.9;color:var(--text-muted);margin:0 0 4px;}
+  .math-legend b{color:var(--warm);font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .math-caption{
+    font-size:10px;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--text-muted);margin:0 0 8px;
+  }
+
+  .section{margin-bottom:22px;}
+  .section + .section{border-top:1px solid var(--border);padding-top:20px;}
+  .label{
+    font-size:11px;letter-spacing:0.02em;color:var(--text-muted);
+    margin-bottom:9px;
+  }
+
+  select{
+    width:100%;padding:9px 10px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:13px;cursor:pointer;
+  }
+  select:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+
+  .field{display:flex;flex-direction:column;gap:4px;margin-top:12px;}
+  .field label{font-size:10px;color:var(--text-muted);}
+  .field input[type=text], .field input[type=number], .field textarea{
+    width:100%;padding:8px 9px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+  }
+  .field textarea{resize:vertical;min-height:64px;line-height:1.6;}
+  .field input:focus-visible, .field textarea:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+  .field-error{font-size:10.5px;color:var(--error);margin-top:6px;min-height:14px;line-height:1.5;}
+
+  .swatches{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .swatch{
+    width:34px;height:34px;border-radius:4px;cursor:pointer;
+    border:2px solid transparent;
+  }
+  .swatch.active{border-color:var(--cool);}
+  .swatch:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .custom-color-row{display:none;align-items:center;gap:10px;margin-bottom:16px;}
+  .custom-color-row.open{display:flex;}
+  .custom-color-row input[type=color]{
+    width:40px;height:34px;padding:0;border:1px solid var(--border);border-radius:4px;
+    background:var(--surface);cursor:pointer;
+  }
+  .custom-color-row .hex-readout{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--cool);
+  }
+
+  .slider-row{display:flex;align-items:center;gap:10px;}
+  .slider-row + .slider-row{margin-top:12px;}
+  .slider-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+  input[type=range]{
+    flex:1;accent-color:var(--warm);height:4px;
+  }
+  .val{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--cool);
+    min-width:44px;text-align:right;
+  }
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .toggle-row .label{margin:0;}
+  .switch{
+    position:relative;width:36px;height:20px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:10px;cursor:pointer;flex-shrink:0;
+  }
+  .switch::after{
+    content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;
+    background:var(--text-muted);border-radius:50%;transition:transform 0.15s, background 0.15s;
+  }
+  .switch.on{border-color:var(--cool);}
+  .switch.on::after{transform:translateX(16px);background:var(--cool);}
+
+  .btn{
+    width:100%;padding:9px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:12px;cursor:pointer;margin-top:8px;
+  }
+  .btn:hover{border-color:var(--warm);color:var(--warm);}
+  .btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .btn-accent{border-color:var(--cool);color:var(--cool);}
+  .btn-accent:hover{border-color:var(--warm);color:var(--warm);}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .btn-row .btn{margin-top:0;}
+
+  .cap-note{font-size:10.5px;color:var(--warm);margin-top:6px;line-height:1.5;display:none;}
+  .cap-note.show{display:block;}
+
+  .credit{
+    font-size:10px;line-height:1.6;color:var(--text-muted);opacity:0.75;
+  }
+  .credit a{color:var(--cool);}
+
+  .hint{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:13px;color:var(--text-muted);
+    background:var(--hint-bg);padding:10px 16px;border-radius:4px;
+    pointer-events:none;transition:opacity 0.6s ease;
+    text-align:center;line-height:1.5;
+  }
+  @media (prefers-reduced-motion:reduce){
+    .hint{transition:none;}
+    .panel,.math-panel{transition:none;}
+    .gear-btn svg{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+
+  <div class="hud" id="hud">
+    <span id="hname">Koch Curve</span> ·
+    depth=<span id="hdepth">4</span> ·
+    &theta;=<span id="hangle">90°</span> ·
+    len=<span id="hlen">341</span>
+  </div>
+
+  <button class="download-btn" id="downloadBtn" aria-label="Download image">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v12"></path>
+      <path d="M7 10l5 5 5-5"></path>
+      <path d="M5 21h14"></path>
+    </svg>
+  </button>
+
+  <button class="explain-btn" id="explainBtn" aria-label="Explain the math" aria-expanded="false" title="Explain the math">&Sigma;</button>
+
+  <button class="link-btn" id="linkBtn" aria-label="Copy link to this system" title="Copy link to this system">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+    </svg>
+  </button>
+
+  <button class="theme-btn" id="themeBtn" aria-label="Switch to light mode" aria-pressed="false" title="Switch to light mode">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2"></path><path d="M12 20v2"></path>
+      <path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path>
+      <path d="M2 12h2"></path><path d="M20 12h2"></path>
+      <path d="M6.34 17.66l-1.41 1.41"></path><path d="M19.07 4.93l-1.41 1.41"></path>
+    </svg>
+  </button>
+
+  <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+
+  <div class="zoom-controls">
+    <button id="zoomInBtn" aria-label="Zoom in">+</button>
+    <button id="zoomOutBtn" aria-label="Zoom out">&minus;</button>
+  </div>
+
+  <div class="math-panel" id="mathPanel">
+    <div class="math-title">The Math Behind This Drawing</div>
+    <p class="math-subtitle">Every number below updates live as you change the system, so this always describes exactly what's on screen.</p>
+
+    <div class="math-section">
+      <div class="math-sub">What an L-system is</div>
+      <p class="math-prose">A Lindenmayer system rewrites a string of symbols in parallel: starting from an <b style="color:var(--text)">axiom</b>, every symbol in the string is replaced at once, every generation, according to a fixed set of <b style="color:var(--text)">production rules</b> — not one symbol at a time, like most formal grammars. Formally, a system is a triple G = (V, &omega;, P): an alphabet V, an axiom &omega;, and rules P. Iterating the rules a few times turns a short seed into a long string that a turtle can draw.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Turtle interpretation</div>
+      <p class="math-legend">
+        <b>F</b>, <b>G</b> — move forward, drawing a line<br>
+        <b>f</b>, <b>g</b> — move forward without drawing<br>
+        <b>+</b> — turn left by the angle &theta;<br>
+        <b>&minus;</b> — turn right by the angle &theta;<br>
+        <b>[</b> — push the current position &amp; heading onto a stack<br>
+        <b>]</b> — pop a position &amp; heading off the stack<br>
+        anything else — ignored by the turtle (bookkeeping symbols only)
+      </p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">This system</div>
+      <div class="math-caption">Axiom &amp; rules</div>
+      <div class="math-block" id="mathRules"></div>
+      <p class="math-legend" id="mathParams"></p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">Variations not built into this tool</div>
+      <p class="math-prose">Three well-known extensions to the basic grammar above: <b style="color:var(--text)">context-sensitive</b> systems, where a rule only fires when its symbol has specific neighbors (e.g. "b &lt; a &gt; c &rarr; aa" rewrites a only between b and c); <b style="color:var(--text)">stochastic</b> systems, where a symbol has several possible replacements, each chosen by chance every generation; and <b style="color:var(--text)">parametric</b> systems, where symbols carry numeric parameters (e.g. a(x,y)) that rules can read and rewrite. This tool sticks to plain deterministic, context-free rules (a "D0L system").</p>
+    </div>
+
+    <div class="math-section" style="border-top:1px solid var(--border);padding-top:14px;">
+      <p class="credit">
+        Grammar &amp; turtle conventions from the
+        <a href="https://en.wikipedia.org/wiki/L-system" target="_blank" rel="noopener">Wikipedia L-system article</a>.
+        "Randomize system" is adapted from
+        <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>
+        (guarantee-at-least-one-F, and blending curated "nice" angles with fully random ones).
+      </p>
+    </div>
+  </div>
+
+  <div class="panel" id="panel">
+    <div class="section">
+      <div class="label">System</div>
+      <select id="presetSelect"></select>
+      <button class="btn btn-accent" id="randomizeBtn">🎲 Randomize system</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Rules</div>
+      <div class="field">
+        <label for="axiomInput">Axiom</label>
+        <input type="text" id="axiomInput" spellcheck="false" autocapitalize="off" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="rulesInput">Production rules — one per line, e.g. F=F+F-F-F+F</label>
+        <textarea id="rulesInput" spellcheck="false" autocapitalize="off" autocomplete="off" rows="4"></textarea>
+      </div>
+      <div class="field">
+        <label for="angleInput">Angle &theta; (degrees)</label>
+        <input type="number" id="angleInput" step="0.5">
+      </div>
+      <div class="field-error" id="rulesError"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Growth</div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Iterations</span><span class="val" id="depthVal">4</span></div>
+          <input type="range" id="depthSlider" min="0" max="4" step="1" value="4">
+        </div>
+      </div>
+      <div class="cap-note" id="capNote"></div>
+      <div class="slider-row" style="margin-top:12px;">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Line width</span><span class="val" id="lineWidthVal">1.6</span></div>
+          <input type="range" id="lineWidthSlider" min="0.5" max="4" step="0.1" value="1.6">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">Color</div>
+      <div class="swatches" id="paletteSwatches">
+        <div class="swatch active" data-p="0" style="background:linear-gradient(135deg,#3a1a05,#f2a65a)" title="Amber"></div>
+        <div class="swatch" data-p="1" style="background:linear-gradient(135deg,#0a1f2b,#57d9c4)" title="Teal"></div>
+        <div class="swatch" data-p="2" style="background:linear-gradient(135deg,#1a0a2b,#c77af2)" title="Violet"></div>
+        <div class="swatch" data-p="3" style="background:linear-gradient(135deg,#111,#eee)" title="Mono"></div>
+        <div class="swatch" data-p="4" style="background:linear-gradient(135deg,#f24a4a,#57d9c4)" title="Fire &amp; Ice"></div>
+        <div class="swatch" data-p="5" style="background:conic-gradient(from 0deg,red,orange,yellow,limegreen,cyan,blue,violet,red)" title="Rainbow"></div>
+        <div class="swatch" data-p="6" style="background:linear-gradient(135deg,#f2a65a 50%,#57d9c4 50%)" title="Zebra"></div>
+        <div class="swatch" data-p="7" style="background:#f2a65a" title="Custom color" id="customSwatch"></div>
+      </div>
+      <div class="custom-color-row" id="customColorRow">
+        <input type="color" id="customColorPicker" value="#f2a65a">
+        <span class="hex-readout" id="customColorHex">#f2a65a</span>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Brightness</span><span class="val" id="brightnessVal">0.90</span></div>
+          <input type="range" id="brightnessSlider" min="0.25" max="1" step="0.05" value="0.9">
+        </div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Glow intensity</span><span class="val" id="glowIntensityVal">8</span></div>
+          <input type="range" id="glowIntensitySlider" min="0" max="20" step="1" value="8">
+        </div>
+      </div>
+      <div class="toggle-row" style="margin-top:12px;">
+        <div class="label" style="margin:0;">Glow</div>
+        <div class="switch on" id="glowToggle"></div>
+      </div>
+      <button class="btn btn-accent" id="randomizeColorBtn">🎲 Randomize color</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Motion</div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Reveal animation</div>
+        <div class="switch on" id="animateToggle"></div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Speed</span><span class="val" id="speedVal">1.0x</span></div>
+          <input type="range" id="speedSlider" min="0.1" max="2.5" step="0.05" value="1">
+        </div>
+      </div>
+      <button class="btn" id="replayBtn">Replay growth</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Explore</div>
+      <button class="btn" id="resetViewBtn">Reset view</button>
+    </div>
+
+    <div class="section" style="border-top:1px solid var(--border);padding-top:14px;">
+      <p class="credit">
+        Grammar from the <a href="https://en.wikipedia.org/wiki/L-system" target="_blank" rel="noopener">Wikipedia L-system article</a>.
+        Random-system generation adapted from <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>.
+      </p>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Drag to pan · Scroll to zoom · Double-click to reset view<br>Gear = tune the system · &Sigma; = explain the math</div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('cv');
+  const wrap = document.getElementById('wrap');
+  const ctx = canvas.getContext('2d');
+
+  const MAX_CHARS = 400000;   // hard cap on the generated string, so a runaway custom rule can't hang the tab
+  const MAX_DEPTH_SEARCH = 24; // depths beyond this aren't worth probing when clamping the slider
+
+  function clamp(v,lo,hi){ return Math.min(hi, Math.max(lo, v)); }
+
+  // ---------- presets (axiom/rules/angle straight from the standard L-system table) ----------
+  const PRESETS = {
+    koch: { label:'Koch Curve', axiom:'F', rules:{F:'F+F-F-F+F'}, angle:90, depth:4, heading:0 },
+    kochSnowflake: { label:'Koch Snowflake', axiom:'F++F++F', rules:{F:'F+F-F-F+F'}, angle:60, depth:4, heading:0 },
+    sierpinski: { label:'Sierpinski Triangle', axiom:'F-G-G', rules:{F:'F-G+F+G-F', G:'GG'}, angle:120, depth:5, heading:0 },
+    arrowhead: { label:'Sierpinski Arrowhead', axiom:'A', rules:{A:'B-A-B', B:'A+B+A'}, angle:60, depth:6, heading:0, drawSymbols:['A','B'] },
+    dragon: { label:'Dragon Curve', axiom:'F', rules:{F:'F+G', G:'F-G'}, angle:90, depth:11, heading:0 },
+    plant: { label:'Fractal Plant', axiom:'X', rules:{X:'F+[[X]-X]-F[-FX]+X', F:'FF'}, angle:25, depth:5, heading:90 },
+    tree: { label:'Binary Tree', axiom:'F', rules:{F:'F[+F]F[-F]F'}, angle:30, depth:5, heading:90 },
+    cantor: { label:'Cantor Set', axiom:'F', rules:{F:'FfF', f:'fff'}, angle:0, depth:5, heading:0, cantor:true }
+  };
+  const PRESET_ORDER = ['koch','kochSnowflake','sierpinski','arrowhead','dragon','plant','tree','cantor'];
+
+  // ---------- color palettes (same cosine family as the fractal explorer / spirograph) ----------
+  const PALETTES = [
+    { a:[0.55,0.35,0.20], b:[0.55,0.35,0.20], c:[1.0,0.7,0.4], d:[0.0,0.15,0.2] },
+    { a:[0.15,0.35,0.45], b:[0.25,0.35,0.45], c:[0.6,0.8,1.0], d:[0.3,0.5,0.7] },
+    { a:[0.45,0.25,0.55], b:[0.45,0.25,0.55], c:[1.0,0.6,1.0], d:[0.1,0.5,0.9] },
+    { a:[0.5,0.5,0.5],    b:[0.5,0.5,0.5],    c:[1.0,1.0,1.0], d:[0.0,0.0,0.0] },
+    { a:[0.5,0.5,0.5],    b:[0.5,0.5,0.5],    c:[1.0,1.0,1.0], d:[0.0,0.33,0.67] }
+  ];
+  function cosinePalette(idx, t){
+    const P = PALETTES[idx];
+    const r = clamp(P.a[0] + P.b[0]*Math.cos(6.28318*(P.c[0]*t + P.d[0])), 0, 1);
+    const g = clamp(P.a[1] + P.b[1]*Math.cos(6.28318*(P.c[1]*t + P.d[1])), 0, 1);
+    const b = clamp(P.a[2] + P.b[2]*Math.cos(6.28318*(P.c[2]*t + P.d[2])), 0, 1);
+    return `rgb(${(r*255)|0},${(g*255)|0},${(b*255)|0})`;
+  }
+  function getStrokeColor(paletteIdx, t, segIdx){
+    if(paletteIdx === 5){
+      const hue = (((t % 1) + 1) % 1) * 360;
+      return `hsl(${hue.toFixed(1)},85%,60%)`;
+    }
+    if(paletteIdx === 6) return (segIdx % 2 === 0) ? '#f2a65a' : '#57d9c4';
+    if(paletteIdx === 7) return state.solidColor;
+    return cosinePalette(paletteIdx, t);
+  }
+
+  // ---------- state ----------
+  const state = {
+    presetKey: 'koch',
+    axiom: 'F', rules: {F:'F+F-F-F+F'}, angle: 90, heading: 0, drawSymbols: ['F','G'], cantorMode: false,
+    depth: 4, depthMax: 4,
+    lineWidth: 1.6, glow: true, glowIntensity: 8,
+    palette: 0, solidColor: '#f2a65a', brightness: 0.9,
+    animate: true, speedMult: 1,
+    theme: 'dark'
+  };
+
+  // ---------- L-system string generation, with a hard length cap ----------
+  // Tracked as symbol -> count (not the actual string) so a wildly explosive custom
+  // rule can be detected and refused cheaply, without ever materializing a huge string.
+  function predictLength(axiom, rules, depth){
+    let counts = {};
+    for(const ch of axiom) counts[ch] = (counts[ch]||0) + 1;
+    for(let i=0;i<depth;i++){
+      const next = {};
+      let total = 0;
+      for(const ch in counts){
+        const n = counts[ch];
+        const repl = rules[ch];
+        if(repl !== undefined){
+          for(const c of repl){ next[c] = (next[c]||0) + n; total += n; }
+        } else {
+          next[ch] = (next[ch]||0) + n; total += n;
+        }
+      }
+      counts = next;
+      if(total > MAX_CHARS * 4) return Infinity; // already way past the cap, no need to keep simulating
+    }
+    let total = 0;
+    for(const ch in counts) total += counts[ch];
+    return total;
+  }
+
+  function maxSafeDepth(axiom, rules){
+    let d = 0;
+    while(d < MAX_DEPTH_SEARCH && predictLength(axiom, rules, d+1) <= MAX_CHARS) d++;
+    return d;
+  }
+
+  function generateString(axiom, rules, depth){
+    let s = axiom;
+    for(let i=0;i<depth;i++){
+      let next = '';
+      let capped = false;
+      for(const ch of s){
+        next += rules[ch] !== undefined ? rules[ch] : ch;
+        if(next.length > MAX_CHARS){ capped = true; break; }
+      }
+      s = next;
+      if(capped) break;
+    }
+    if(s.length > MAX_CHARS) s = s.slice(0, MAX_CHARS);
+    return s;
+  }
+
+  // ---------- turtle interpretation ----------
+  // drawSymbols lets a preset use its own letters for "draw forward" (e.g. the Sierpinski
+  // Arrowhead's A/B) instead of the standard F/G — defaults to F/G for custom/random systems.
+  function interpret(str, angleDeg, headingDeg, drawSymbols){
+    const drawSet = new Set(drawSymbols || ['F','G']);
+    const moveSet = new Set(['f','g']);
+    const angle = angleDeg * Math.PI/180;
+    let x=0, y=0, heading = headingDeg * Math.PI/180;
+    const stack = [];
+    const segs = [];
+    for(let i=0;i<str.length;i++){
+      const ch = str[i];
+      if(drawSet.has(ch) || moveSet.has(ch)){
+        const nx = x + Math.cos(heading), ny = y + Math.sin(heading);
+        segs.push(x, y, nx, ny, drawSet.has(ch) ? 1 : 0);
+        x = nx; y = ny;
+      } else if(ch==='+'){
+        heading += angle;
+      } else if(ch==='-'){
+        heading -= angle;
+      } else if(ch==='['){
+        stack.push([x,y,heading]);
+      } else if(ch===']'){
+        const s = stack.pop();
+        if(s){ x=s[0]; y=s[1]; heading=s[2]; }
+      }
+    }
+    return segs; // flat array: x1,y1,x2,y2,draw, repeated
+  }
+
+  // Classic middle-thirds Cantor set, drawn as one row per depth (0..depth) stacked
+  // vertically — each row uses a step length of (1/3)^d so every row spans the same
+  // total width, subdivided one level finer than the row above.
+  function interpretCantor(depth){
+    const segs = [];
+    for(let d=0; d<=depth; d++){
+      let s = 'F';
+      for(let i=0;i<d;i++) s = s.split('').map(c => (c==='F'?'FfF':c==='f'?'fff':c)).join('');
+      const step = Math.pow(1/3, d);
+      const y = d * 1.4;
+      let x = 0;
+      for(const ch of s){
+        const nx = x + step;
+        if(ch === 'F') segs.push(x, y, nx, y, 1);
+        x = nx;
+      }
+    }
+    return segs;
+  }
+
+  // ---------- random system generation (technique adapted from ehrenjn's LSystems) ----------
+  const NICE_ANGLES = [15,18,20,22.5,25,30,36,45,60,72,90,120,135];
+  function randInt(lo,hi){ return lo + Math.floor(Math.random()*(hi-lo+1)); }
+  function randomSystem(){
+    const angle = Math.random() < 0.5
+      ? NICE_ANGLES[randInt(0, NICE_ANGLES.length-1)]
+      : Math.round(randInt(5,179));
+    const pool = ['F','+','-','A','B'];
+    function randSeq(len, allowBrackets){
+      let s = '';
+      let i = 0;
+      while(i < len){
+        if(allowBrackets && Math.random() < 0.14){
+          s += '[' + randSeq(randInt(1,3), false) + ']';
+        } else {
+          s += pool[randInt(0, pool.length-1)];
+        }
+        i++;
+      }
+      return s;
+    }
+    const axiom = randSeq(randInt(1,2), false);
+    const ruleKeys = ['F','A','B'].slice(0, randInt(1,3));
+    const rules = {};
+    let hasF = false;
+    ruleKeys.forEach(k => {
+      const seq = randSeq(randInt(4,10), true);
+      rules[k] = seq;
+      if(seq.includes('F')) hasF = true;
+    });
+    if(!hasF) rules[ruleKeys[0]] += 'F';
+    return { axiom, rules, angle, heading: 90 };
+  }
+
+  // ---------- view (pan/zoom) ----------
+  const view = { zoom:1, offX:0, offY:0 };
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let baseScale = 1;
+  let bbox = { minX:0, maxX:1, minY:0, maxY:1 };
+  let segments = new Float64Array(0);
+  let segCount = 0;
+
+  function computeBBox(segs){
+    let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+    for(let i=0;i<segs.length;i+=5){
+      minX = Math.min(minX, segs[i], segs[i+2]);
+      maxX = Math.max(maxX, segs[i], segs[i+2]);
+      minY = Math.min(minY, segs[i+1], segs[i+3]);
+      maxY = Math.max(maxY, segs[i+1], segs[i+3]);
+    }
+    if(!isFinite(minX)){ minX=0;maxX=1;minY=0;maxY=1; }
+    return { minX, maxX, minY, maxY };
+  }
+
+  function fitScale(){
+    const w = bbox.maxX - bbox.minX || 1;
+    const h = bbox.maxY - bbox.minY || 1;
+    const size = Math.min(canvas.width, canvas.height);
+    baseScale = (size * 0.8) / Math.max(w, h);
+  }
+
+  function worldToScreen(x,y){
+    const s = baseScale * view.zoom;
+    const cx = (bbox.minX + bbox.maxX)/2, cy = (bbox.minY + bbox.maxY)/2;
+    return [
+      canvas.width/2 + view.offX + s*(x - cx),
+      canvas.height/2 + view.offY - s*(y - cy)
+    ];
+  }
+  function screenToWorld(px,py){
+    const s = baseScale * view.zoom;
+    const cx = (bbox.minX + bbox.maxX)/2, cy = (bbox.minY + bbox.maxY)/2;
+    return [ (px - canvas.width/2 - view.offX)/s + cx, cy - (py - canvas.height/2 - view.offY)/s ];
+  }
+  function zoomAt(px,py,factor){
+    const w = screenToWorld(px,py);
+    view.zoom = clamp(view.zoom*factor, 0.2, 60);
+    const s = baseScale*view.zoom;
+    const cx = (bbox.minX + bbox.maxX)/2, cy = (bbox.minY + bbox.maxY)/2;
+    view.offX = px - canvas.width/2 - s*(w[0]-cx);
+    view.offY = py - canvas.height/2 + s*(w[1]-cy);
+    render();
+  }
+  function resetView(){ view.zoom=1; view.offX=0; view.offY=0; render(); }
+
+  // ---------- rendering ----------
+  let animFrame = null;
+  let animProgress = 1;
+
+  function render(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(!segCount) return;
+
+    const revealCount = Math.max(1, Math.round(segCount * animProgress));
+    ctx.lineWidth = (state.lineWidth + (state.glow ? 0.2 : 0)) * dpr;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = state.brightness;
+
+    for(let s=0; s<revealCount; s++){
+      const i = s*5;
+      const draw = segments[i+4] === 1;
+      if(!draw) continue;
+      const [sx,sy] = worldToScreen(segments[i], segments[i+1]);
+      const [ex,ey] = worldToScreen(segments[i+2], segments[i+3]);
+      const t = s/segCount;
+      const color = getStrokeColor(state.palette, t, s);
+      ctx.beginPath();
+      ctx.moveTo(sx,sy); ctx.lineTo(ex,ey);
+      ctx.strokeStyle = color;
+      if(state.glow){
+        ctx.shadowColor = color;
+        ctx.shadowBlur = state.glowIntensity*dpr;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+
+  function startAnimation(){
+    cancelAnimationFrame(animFrame);
+    if(!state.animate){ animProgress = 1; render(); return; }
+    const dur = Math.max(300, 1800/state.speedMult);
+    const t0 = performance.now();
+    function step(now){
+      const f = clamp((now-t0)/dur, 0, 1);
+      animProgress = 1 - Math.pow(1-f, 2);
+      render();
+      if(f < 1) animFrame = requestAnimationFrame(step);
+      else { animProgress = 1; render(); }
+    }
+    animFrame = requestAnimationFrame(step);
+  }
+
+  // ---------- recompute pipeline ----------
+  function doRecompute(animate){
+    state.depthMax = state.cantorMode ? 9 : maxSafeDepth(state.axiom, state.rules);
+    depthSlider.max = state.depthMax;
+    if(state.depth > state.depthMax) state.depth = state.depthMax;
+    depthSlider.value = state.depth;
+    depthVal.textContent = state.depth;
+
+    const wantedDepth = PRESETS[state.presetKey] ? PRESETS[state.presetKey].depth : state.depth;
+    const capped = wantedDepth > state.depthMax && state.presetKey !== 'custom';
+    capNote.textContent = capped
+      ? `Capped at ${state.depthMax} iterations to stay smooth (this system grows fast).`
+      : '';
+    capNote.classList.toggle('show', capped);
+
+    if(state.cantorMode){
+      segments = new Float64Array(interpretCantor(state.depth));
+    } else {
+      const str = generateString(state.axiom, state.rules, state.depth);
+      segments = new Float64Array(interpret(str, state.angle, state.heading, state.drawSymbols));
+    }
+    segCount = segments.length / 5;
+    bbox = computeBBox(segments);
+    fitScale();
+
+    updateHud(state.cantorMode ? (state.depth+1)*'F'.length : generateString(state.axiom, state.rules, state.depth).length);
+    updateMathPanel();
+
+    if(animate) startAnimation();
+    else { animProgress = 1; render(); }
+  }
+
+  function updateHud(strLen){
+    document.getElementById('hname').textContent = PRESETS[state.presetKey] ? PRESETS[state.presetKey].label : 'Custom system';
+    document.getElementById('hdepth').textContent = state.depth;
+    document.getElementById('hangle').textContent = state.cantorMode ? '—' : state.angle + '°';
+    document.getElementById('hlen').textContent = state.cantorMode ? segCount : strLen;
+  }
+
+  function formatRules(){
+    const lines = [`<span class="rule-sym">${escapeHtml(state.axiom)}</span> <span class="rule-arrow">(axiom)</span>`];
+    for(const k in state.rules){
+      lines.push(`<span class="rule-sym">${escapeHtml(k)}</span> <span class="rule-arrow">&rarr;</span> ${escapeHtml(state.rules[k])}`);
+    }
+    return lines.join('<br>');
+  }
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function updateMathPanel(){
+    document.getElementById('mathRules').innerHTML = formatRules();
+    const name = PRESETS[state.presetKey] ? PRESETS[state.presetKey].label : 'Custom system';
+    document.getElementById('mathParams').innerHTML =
+      `<b>System</b>: ${name} · <b>&theta;</b>=${state.cantorMode ? 'n/a (fixed thirds)' : state.angle+'&deg;'} · `+
+      `<b>Iterations</b>=${state.depth} · <b>Segments drawn</b>=${segCount.toLocaleString()}`;
+  }
+
+  function resize(){
+    const w = Math.round(wrap.clientWidth * dpr);
+    const h = Math.round(wrap.clientHeight * dpr);
+    if(canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+      fitScale();
+    }
+    render();
+  }
+  new ResizeObserver(resize).observe(wrap);
+
+  // ---------- pointer interaction: pan + zoom ----------
+  let dragging=false, lastX=0, lastY=0, pinchDist=null;
+  function toDevice(clientX, clientY){
+    const r = canvas.getBoundingClientRect();
+    return [ (clientX-r.left)*dpr, (clientY-r.top)*dpr ];
+  }
+  canvas.addEventListener('mousedown', e => {
+    dragging=true; canvas.classList.add('dragging');
+    [lastX,lastY] = toDevice(e.clientX,e.clientY);
+  });
+  window.addEventListener('mouseup', () => { dragging=false; canvas.classList.remove('dragging'); });
+  window.addEventListener('mousemove', e => {
+    if(!dragging) return;
+    const [px,py] = toDevice(e.clientX,e.clientY);
+    view.offX += px-lastX; view.offY += py-lastY;
+    lastX=px; lastY=py;
+    render();
+  });
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const [px,py] = toDevice(e.clientX,e.clientY);
+    zoomAt(px,py, e.deltaY<0 ? 1.15 : 1/1.15);
+  }, {passive:false});
+  canvas.addEventListener('dblclick', resetView);
+  canvas.addEventListener('touchstart', e => {
+    if(e.touches.length===1){ dragging=true; [lastX,lastY]=toDevice(e.touches[0].clientX,e.touches[0].clientY); }
+    else if(e.touches.length===2){
+      dragging=false;
+      const [x1,y1]=toDevice(e.touches[0].clientX,e.touches[0].clientY);
+      const [x2,y2]=toDevice(e.touches[1].clientX,e.touches[1].clientY);
+      pinchDist = Math.hypot(x2-x1,y2-y1);
+    }
+  }, {passive:true});
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if(e.touches.length===1 && dragging){
+      const [px,py]=toDevice(e.touches[0].clientX,e.touches[0].clientY);
+      view.offX += px-lastX; view.offY += py-lastY;
+      lastX=px; lastY=py;
+      render();
+    } else if(e.touches.length===2){
+      const [x1,y1]=toDevice(e.touches[0].clientX,e.touches[0].clientY);
+      const [x2,y2]=toDevice(e.touches[1].clientX,e.touches[1].clientY);
+      const dist = Math.hypot(x2-x1,y2-y1);
+      const mid = [(x1+x2)/2,(y1+y2)/2];
+      if(pinchDist) zoomAt(mid[0], mid[1], dist/pinchDist);
+      pinchDist = dist;
+    }
+  }, {passive:false});
+  canvas.addEventListener('touchend', e => {
+    if(e.touches.length===0){ dragging=false; pinchDist=null; }
+  });
+
+  document.getElementById('zoomInBtn').addEventListener('click', () => zoomAt(canvas.width/2, canvas.height/2, 1.3));
+  document.getElementById('zoomOutBtn').addEventListener('click', () => zoomAt(canvas.width/2, canvas.height/2, 1/1.3));
+
+  // ---------- panel toggles ----------
+  const panel = document.getElementById('panel');
+  const gearBtn = document.getElementById('gearBtn');
+  gearBtn.addEventListener('click', () => {
+    const open = panel.classList.toggle('open');
+    gearBtn.classList.toggle('open', open);
+    gearBtn.setAttribute('aria-expanded', open);
+  });
+
+  const mathPanel = document.getElementById('mathPanel');
+  const explainBtn = document.getElementById('explainBtn');
+  explainBtn.addEventListener('click', () => {
+    const open = mathPanel.classList.toggle('open');
+    explainBtn.classList.toggle('open', open);
+    explainBtn.setAttribute('aria-expanded', open);
+    if(open) updateMathPanel();
+  });
+
+  // ---------- theme ----------
+  const themeBtn = document.getElementById('themeBtn');
+  const iconMoon = themeBtn.querySelector('.icon-moon');
+  const iconSun = themeBtn.querySelector('.icon-sun');
+  function setTheme(theme){
+    state.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    iconMoon.style.display = theme === 'dark' ? '' : 'none';
+    iconSun.style.display = theme === 'light' ? '' : 'none';
+    themeBtn.setAttribute('aria-pressed', theme === 'light');
+    const nextLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    themeBtn.setAttribute('aria-label', nextLabel);
+    themeBtn.title = nextLabel;
+  }
+  themeBtn.addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+  // ---------- download ----------
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    render();
+    const name = (PRESETS[state.presetKey] ? PRESETS[state.presetKey].label : 'custom-lsystem').toLowerCase().replace(/\s+/g,'-');
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    const link = document.createElement('a');
+    link.download = `lsystem-${name}-${stamp}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // ---------- preset select ----------
+  const presetSelect = document.getElementById('presetSelect');
+  PRESET_ORDER.forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = PRESETS[key].label;
+    presetSelect.appendChild(opt);
+  });
+  const customOpt = document.createElement('option');
+  customOpt.value = 'custom';
+  customOpt.textContent = 'Custom';
+  presetSelect.appendChild(customOpt);
+
+  const axiomInput = document.getElementById('axiomInput');
+  const rulesInput = document.getElementById('rulesInput');
+  const angleInput = document.getElementById('angleInput');
+  const rulesError = document.getElementById('rulesError');
+  const depthSlider = document.getElementById('depthSlider');
+  const depthVal = document.getElementById('depthVal');
+  const capNote = document.getElementById('capNote');
+
+  function rulesToText(rules){
+    return Object.keys(rules).map(k => `${k}=${rules[k]}`).join('\n');
+  }
+  function parseRulesText(text){
+    const rules = {};
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    for(const line of lines){
+      const eq = line.indexOf('=');
+      if(eq < 1) throw new Error(`Bad rule "${line}" — expected SYMBOL=REPLACEMENT`);
+      const key = line.slice(0, eq).trim();
+      const val = line.slice(eq+1).trim();
+      if(key.length !== 1) throw new Error(`Rule keys must be a single symbol (got "${key}")`);
+      if(key === '[' || key === ']') throw new Error('[ and ] are reserved for branching and can\'t be rule keys');
+      if(!val) throw new Error(`Rule for "${key}" has no replacement`);
+      rules[key] = val;
+    }
+    return rules;
+  }
+
+  function loadPreset(key){
+    const p = PRESETS[key];
+    state.presetKey = key;
+    state.axiom = p.axiom;
+    state.rules = {...p.rules};
+    state.angle = p.angle;
+    state.heading = p.heading;
+    state.drawSymbols = p.drawSymbols || ['F','G'];
+    state.cantorMode = !!p.cantor;
+    state.depth = p.depth;
+    axiomInput.value = state.axiom;
+    rulesInput.value = rulesToText(state.rules);
+    angleInput.value = state.angle;
+    angleInput.disabled = state.cantorMode;
+    rulesError.textContent = '';
+    presetSelect.value = key;
+    resetView();
+    doRecompute(true);
+  }
+
+  function applyCustomFromFields(){
+    let rules;
+    try{
+      rules = parseRulesText(rulesInput.value);
+    } catch(err){
+      rulesError.textContent = err.message;
+      return;
+    }
+    const axiom = axiomInput.value.trim();
+    if(!axiom){ rulesError.textContent = 'Axiom can\'t be empty.'; return; }
+    const angle = parseFloat(angleInput.value);
+    if(!isFinite(angle)){ rulesError.textContent = 'Angle must be a number.'; return; }
+    rulesError.textContent = '';
+    state.presetKey = 'custom';
+    state.axiom = axiom;
+    state.rules = rules;
+    state.angle = angle;
+    state.heading = 90;
+    state.drawSymbols = ['F','G'];
+    state.cantorMode = false;
+    angleInput.disabled = false;
+    presetSelect.value = 'custom';
+    doRecompute(true);
+  }
+
+  presetSelect.addEventListener('change', () => {
+    if(presetSelect.value === 'custom') applyCustomFromFields();
+    else loadPreset(presetSelect.value);
+  });
+  [axiomInput, rulesInput, angleInput].forEach(el => {
+    el.addEventListener('change', applyCustomFromFields);
+  });
+
+  document.getElementById('randomizeBtn').addEventListener('click', () => {
+    const sys = randomSystem();
+    axiomInput.value = sys.axiom;
+    rulesInput.value = rulesToText(sys.rules);
+    angleInput.value = sys.angle;
+    angleInput.disabled = false;
+    rulesError.textContent = '';
+    state.presetKey = 'custom';
+    state.axiom = sys.axiom;
+    state.rules = sys.rules;
+    state.angle = sys.angle;
+    state.heading = sys.heading;
+    state.drawSymbols = ['F','G'];
+    state.cantorMode = false;
+    presetSelect.value = 'custom';
+    state.depth = Math.min(6, maxSafeDepth(state.axiom, state.rules));
+    resetView();
+    doRecompute(true);
+  });
+
+  // ---------- growth controls ----------
+  depthSlider.addEventListener('input', () => {
+    state.depth = +depthSlider.value;
+    depthVal.textContent = state.depth;
+    doRecompute(true);
+  });
+
+  const lineWidthSlider = document.getElementById('lineWidthSlider');
+  const lineWidthVal = document.getElementById('lineWidthVal');
+  lineWidthSlider.addEventListener('input', () => {
+    state.lineWidth = +lineWidthSlider.value;
+    lineWidthVal.textContent = state.lineWidth.toFixed(1);
+    render();
+  });
+
+  // ---------- color controls ----------
+  const swatches = document.getElementById('paletteSwatches');
+  const customColorRow = document.getElementById('customColorRow');
+  const customColorPicker = document.getElementById('customColorPicker');
+  const customColorHex = document.getElementById('customColorHex');
+  const customSwatch = document.getElementById('customSwatch');
+
+  function selectPalette(idx){
+    state.palette = idx;
+    [...swatches.children].forEach(s => s.classList.remove('active'));
+    swatches.children[idx].classList.add('active');
+    customColorRow.classList.toggle('open', idx === 7);
+    render();
+  }
+  swatches.addEventListener('click', e => {
+    const sw = e.target.closest('.swatch');
+    if(!sw) return;
+    selectPalette(parseInt(sw.dataset.p, 10));
+  });
+  customColorPicker.addEventListener('input', () => {
+    state.solidColor = customColorPicker.value;
+    customColorHex.textContent = state.solidColor;
+    customSwatch.style.background = state.solidColor;
+    if(state.palette === 7) render();
+  });
+
+  const brightnessSlider = document.getElementById('brightnessSlider');
+  const brightnessVal = document.getElementById('brightnessVal');
+  brightnessSlider.addEventListener('input', () => {
+    state.brightness = +brightnessSlider.value;
+    brightnessVal.textContent = state.brightness.toFixed(2);
+    render();
+  });
+
+  const glowIntensitySlider = document.getElementById('glowIntensitySlider');
+  const glowIntensityVal = document.getElementById('glowIntensityVal');
+  glowIntensitySlider.addEventListener('input', () => {
+    state.glowIntensity = +glowIntensitySlider.value;
+    glowIntensityVal.textContent = state.glowIntensity;
+    render();
+  });
+
+  function wireSwitch(id, stateKey, after){
+    const el = document.getElementById(id);
+    el.addEventListener('click', () => {
+      state[stateKey] = !state[stateKey];
+      el.classList.toggle('on', state[stateKey]);
+      if(after) after();
+    });
+    return el;
+  }
+  wireSwitch('glowToggle', 'glow', render);
+  wireSwitch('animateToggle', 'animate');
+
+  document.getElementById('randomizeColorBtn').addEventListener('click', () => {
+    const idx = randInt(0, 6);
+    selectPalette(idx);
+    state.brightness = 0.7 + Math.random()*0.3;
+    brightnessSlider.value = state.brightness;
+    brightnessVal.textContent = state.brightness.toFixed(2);
+    render();
+  });
+
+  // ---------- motion ----------
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal = document.getElementById('speedVal');
+  speedSlider.addEventListener('input', () => {
+    state.speedMult = +speedSlider.value;
+    speedVal.textContent = state.speedMult.toFixed(2) + 'x';
+  });
+  document.getElementById('replayBtn').addEventListener('click', () => { animProgress = 0; startAnimation(); });
+
+  document.getElementById('resetViewBtn').addEventListener('click', resetView);
+
+  // ---------- shareable link ----------
+  function buildShareUrl(){
+    const u = new URL(window.location.href);
+    u.search = '';
+    const p = u.searchParams;
+    p.set('preset', state.presetKey);
+    if(state.presetKey === 'custom'){
+      p.set('axiom', state.axiom);
+      p.set('rules', Object.keys(state.rules).map(k => `${k}=${state.rules[k]}`).join(';'));
+      p.set('angle', state.angle);
+      p.set('heading', state.heading);
+    }
+    p.set('depth', state.depth);
+    p.set('palette', state.palette);
+    if(state.palette === 7) p.set('color', state.solidColor.replace('#',''));
+    p.set('theme', state.theme);
+    return u.toString();
+  }
+  const linkBtn = document.getElementById('linkBtn');
+  linkBtn.addEventListener('click', async () => {
+    const url = buildShareUrl();
+    history.replaceState(null, '', url);
+    try{
+      await navigator.clipboard.writeText(url);
+      linkBtn.classList.add('copied');
+      setTimeout(() => linkBtn.classList.remove('copied'), 1400);
+    } catch(err){ /* clipboard unavailable — URL bar was still updated above */ }
+  });
+
+  function loadFromUrl(){
+    const q = new URLSearchParams(window.location.search);
+    const presetParam = q.get('preset');
+    if(presetParam === 'custom'){
+      const axiom = q.get('axiom');
+      const rulesStr = q.get('rules');
+      const angle = parseFloat(q.get('angle'));
+      if(axiom && rulesStr && isFinite(angle)){
+        try{
+          const rules = {};
+          rulesStr.split(';').forEach(part => {
+            const eq = part.indexOf('=');
+            if(eq > 0) rules[part.slice(0,eq)] = part.slice(eq+1);
+          });
+          axiomInput.value = axiom;
+          rulesInput.value = rulesToText(rules);
+          angleInput.value = angle;
+          state.presetKey = 'custom';
+          state.axiom = axiom;
+          state.rules = rules;
+          state.angle = angle;
+          state.heading = q.has('heading') ? parseFloat(q.get('heading')) : 90;
+          state.drawSymbols = ['F','G'];
+          state.cantorMode = false;
+          presetSelect.value = 'custom';
+        } catch(err){ /* malformed link — fall through to the default preset below */ }
+      }
+    } else if(presetParam && PRESETS[presetParam]){
+      loadPreset(presetParam); // sets depth/axiom/etc; depth below may still override
+    }
+    if(q.has('depth')) state.depth = clamp(parseInt(q.get('depth'),10) || state.depth, 0, MAX_DEPTH_SEARCH);
+    if(q.has('palette')){
+      const pal = clamp(parseInt(q.get('palette'),10), 0, 7);
+      state.palette = pal;
+    }
+    if(q.has('color')) state.solidColor = '#' + q.get('color');
+    if(q.has('theme') && (q.get('theme')==='light' || q.get('theme')==='dark')) setTheme(q.get('theme'));
+  }
+
+  // ---------- init ----------
+  loadPreset('koch');
+  loadFromUrl();
+  customColorPicker.value = state.solidColor;
+  customColorHex.textContent = state.solidColor;
+  customSwatch.style.background = state.solidColor;
+  selectPalette(state.palette);
+  depthSlider.value = state.depth;
+  depthVal.textContent = state.depth;
+
+  setTheme(state.theme);
+  resize();
+  doRecompute(true);
+
+  const hint = document.getElementById('hint');
+  if(window.matchMedia('(pointer: coarse)').matches){
+    hint.innerHTML = 'Drag to pan · Pinch to zoom · Double-tap to reset view<br>Gear = tune the system · &Sigma; = explain the math';
+  }
+  const fadeHint = () => { hint.style.opacity='0'; setTimeout(()=>hint.remove(),700); };
+  setTimeout(fadeHint, 4000);
+  canvas.addEventListener('pointerdown', fadeHint, {once:true});
+})();
+</script>
+</body>
+</html>
