@@ -110,7 +110,7 @@
   }
   .hud span{color:var(--cool);}
 
-  .gear-btn, .download-btn, .explain-btn{
+  .gear-btn, .download-btn, .explain-btn, .theme-btn{
     position:absolute;top:14px;z-index:2;
     width:36px;height:36px;border-radius:4px;
     background:var(--chip-bg);
@@ -123,10 +123,11 @@
   .gear-btn{right:14px;}
   .download-btn{left:14px;}
   .explain-btn{left:58px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
-  .gear-btn:hover, .download-btn:hover, .explain-btn:hover{background:var(--surface-2);border-color:var(--cool);}
-  .gear-btn:focus-visible, .download-btn:focus-visible, .explain-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .theme-btn{left:102px;}
+  .gear-btn:hover, .download-btn:hover, .explain-btn:hover, .theme-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .explain-btn:focus-visible, .theme-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
   .gear-btn.open, .explain-btn.open{border-color:var(--warm);color:var(--warm);}
-  .gear-btn svg, .download-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
+  .gear-btn svg, .download-btn svg, .theme-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
   .gear-btn.open svg{transform:rotate(75deg);}
 
   .zoom-controls{
@@ -270,20 +271,6 @@
   .switch.on{border-color:var(--cool);}
   .switch.on::after{transform:translateX(16px);background:var(--cool);}
 
-  .theme-toggle{
-    display:flex;gap:2px;background:var(--surface-2);
-    border:1px solid var(--border);border-radius:8px;padding:2px;flex-shrink:0;
-  }
-  .theme-opt{
-    width:28px;height:26px;display:flex;align-items:center;justify-content:center;
-    background:transparent;border:none;border-radius:6px;cursor:pointer;
-    color:var(--text-muted);transition:background 0.15s, color 0.15s;
-  }
-  .theme-opt svg{width:15px;height:15px;stroke:currentColor;}
-  .theme-opt:hover{color:var(--text);}
-  .theme-opt.active{background:var(--surface);color:var(--cool);}
-  .theme-opt:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
-
   .btn{
     width:100%;padding:9px;background:var(--surface);color:var(--text);
     border:1px solid var(--border);border-radius:4px;font-family:inherit;
@@ -352,6 +339,19 @@
   </button>
 
   <button class="explain-btn" id="explainBtn" aria-label="Explain the math" aria-expanded="false" title="Explain the math">&Sigma;</button>
+
+  <button class="theme-btn" id="themeBtn" aria-label="Switch to light mode" aria-pressed="false" title="Switch to light mode">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2"></path><path d="M12 20v2"></path>
+      <path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path>
+      <path d="M2 12h2"></path><path d="M20 12h2"></path>
+      <path d="M6.34 17.66l-1.41 1.41"></path><path d="M19.07 4.93l-1.41 1.41"></path>
+    </svg>
+  </button>
 
   <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -459,25 +459,6 @@
 
     <div class="section">
       <div class="label">Display</div>
-      <div class="toggle-row">
-        <div class="label" style="margin:0;">Theme</div>
-        <div class="theme-toggle" id="themeToggle" role="group" aria-label="Color theme">
-          <button type="button" class="theme-opt active" id="themeDarkBtn" aria-pressed="true" aria-label="Dark mode" title="Dark mode">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          </button>
-          <button type="button" class="theme-opt" id="themeLightBtn" aria-pressed="false" aria-label="Light mode" title="Light mode">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="4"></circle>
-              <path d="M12 2v2"></path><path d="M12 20v2"></path>
-              <path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path>
-              <path d="M2 12h2"></path><path d="M20 12h2"></path>
-              <path d="M6.34 17.66l-1.41 1.41"></path><path d="M19.07 4.93l-1.41 1.41"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
       <div class="toggle-row">
         <div class="label" style="margin:0;">Show gear mechanism</div>
         <div class="switch" id="circlesToggle"></div>
@@ -1431,19 +1412,21 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   document.getElementById('zoomOutBtn').addEventListener('click', () => zoomAt(canvas.width/2, canvas.height/2, 1/1.3));
 
   // ---------- UI wiring ----------
-  const themeDarkBtn = document.getElementById('themeDarkBtn');
-  const themeLightBtn = document.getElementById('themeLightBtn');
+  const themeBtn = document.getElementById('themeBtn');
+  const iconMoon = themeBtn.querySelector('.icon-moon');
+  const iconSun = themeBtn.querySelector('.icon-sun');
   function setTheme(theme){
     state.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
-    themeDarkBtn.classList.toggle('active', theme === 'dark');
-    themeDarkBtn.setAttribute('aria-pressed', theme === 'dark');
-    themeLightBtn.classList.toggle('active', theme === 'light');
-    themeLightBtn.setAttribute('aria-pressed', theme === 'light');
+    iconMoon.style.display = theme === 'dark' ? '' : 'none';
+    iconSun.style.display = theme === 'light' ? '' : 'none';
+    themeBtn.setAttribute('aria-pressed', theme === 'light');
+    const nextLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    themeBtn.setAttribute('aria-label', nextLabel);
+    themeBtn.title = nextLabel;
     render();
   }
-  themeDarkBtn.addEventListener('click', () => setTheme('dark'));
-  themeLightBtn.addEventListener('click', () => setTheme('light'));
+  themeBtn.addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
 
   const panel = document.getElementById('panel');
   const gearBtn = document.getElementById('gearBtn');
