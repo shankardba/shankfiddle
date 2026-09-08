@@ -1,5 +1,5 @@
 // Data layer: fetch + cache daily OHLCV bars via the stock-sonifier-proxy Worker
-// (a thin caching proxy over Twelve Data — see ~/stock-sonifier-worker). The proxy
+// (a thin caching proxy over Twelve Data — see ~/claude-applets/stock-sonifier-worker). The proxy
 // keeps the real API key server-side and edge-caches responses so the shared free
 // quota (800 req/day) stretches across every visitor, not per-browser.
 (function () {

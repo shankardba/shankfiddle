@@ -16,10 +16,13 @@ tools/circle-of-fifths/
   app.html                     NOT a plain copy — see note below
 tools/synth/
   index.html                  Wrapper
-  app.html                     Unmodified copy of modular-synth-widget/index.html
+  app.html                     Unmodified copy of claude-applets/modular-synth-widget/index.html
 tools/fractal/
   index.html                  Wrapper
-  app.html                     Unmodified copy of fractal-widget/index.html
+  app.html                     Unmodified copy of claude-applets/fractal-widget/index.html
+tools/flute-circle-of-fifths/
+  index.html                  Wrapper
+  app.html                     Unmodified copy of claude-applets/flute-circle-of-fifths/index.html
 tools/boy/
   index.html                  Wrapper
   app.html                     Unmodified copy of boy-game/index.html
@@ -34,8 +37,9 @@ straight from the tool's own repo — to pull in updates, just re-copy
 the file:
 
 ```bash
-cp ~/fractal-widget/index.html tools/fractal/app.html
-cp ~/modular-synth-widget/index.html tools/synth/app.html
+cp ~/claude-applets/fractal-widget/index.html tools/fractal/app.html
+cp ~/claude-applets/modular-synth-widget/index.html tools/synth/app.html
+cp ~/claude-applets/flute-circle-of-fifths/index.html tools/flute-circle-of-fifths/app.html
 cp ~/boy-game/index.html tools/boy/app.html
 ```
 
@@ -67,6 +71,34 @@ python3 -m http.server 8420
 
 Colors are drawn from the shankFiddle logo (gold treble clef, magenta neon
 glow, on black) — see `:root` in `css/styles.css`.
+
+## Sandbox: Stock Sonifier
+
+`sandbox/stock-sonifier/` follows the same wrapper+iframe pattern as `tools/`,
+just with a few extra files instead of a single `app.html`:
+
+```
+sandbox/stock-sonifier/
+  index.html                  Wrapper
+  app.html                     Unmodified copy of claude-applets/stock-sonifier-widget/index.html
+  css/styles.css                Unmodified copy of the same repo's css/styles.css
+  js/                          Unmodified copy of the same repo's js/*.js
+```
+
+To pull in updates:
+
+```bash
+cp ~/claude-applets/stock-sonifier-widget/index.html sandbox/stock-sonifier/app.html
+cp ~/claude-applets/stock-sonifier-widget/css/styles.css sandbox/stock-sonifier/css/styles.css
+cp ~/claude-applets/stock-sonifier-widget/js/*.js sandbox/stock-sonifier/js/
+```
+
+It also depends on a companion Cloudflare Worker
+(`~/claude-applets/stock-sonifier-worker`) that proxies and caches Twelve
+Data so the API key stays server-side. `js/data.js` in both copies points at
+the deployed Worker (`stock-sonifier-proxy.shankfiddle.workers.dev`) unless
+the page is running on `localhost`, in which case it talks to `wrangler dev`
+on port 8787 instead — no manual toggle needed between the two.
 
 ## To do
 
