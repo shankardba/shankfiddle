@@ -394,6 +394,11 @@
         <div class="switch" id="labelsToggle"></div>
       </div>
       <p class="math-prose">Turning this on (and "Show gear mechanism" in the settings panel) draws the actual wheels to scale, labeled, and lets you watch them turn while it draws.</p>
+      <div class="toggle-row" style="margin-top:14px;">
+        <div class="label" style="margin:0;">Show equations on canvas</div>
+        <div class="switch" id="equationsToggle"></div>
+      </div>
+      <p class="math-prose">Prints the live x(t) and y(t) equations underneath the drawing itself — independent of the part labels above, and included in downloaded images.</p>
     </div>
   </div>
 
@@ -636,7 +641,7 @@
     n0:140, n1:128, n2:54, n3:45,
     h:0.48, p:0.8, phi:0, holeMm:3,
     extraWheel:false, n4:30, n5:18, h2:0.3,
-    showCircles:false, showSymm:false, showF0:false, showLabels:false,
+    showCircles:false, showSymm:false, showF0:false, showLabels:false, showEquations:false,
     palette:0, solidColor:'#f2a65a', density:2.0, brightness:0.9, glow:true,
     lineWidth:1.6, glowIntensity:8, ptDens:512,
     animate:true, loop:false, speedMult:1,
@@ -665,6 +670,7 @@
 
   let derived = null;
   let f0points = null;
+  let eqCaption = {x:'', y:''}; // plain-text x(t)/y(t), refreshed in updateMathPanel(), drawn on-canvas by drawEquationCaption()
 
   // The full example gallery from the reference tool (all 34 srset(...) buttons).
   const PRESETS = [
@@ -1066,6 +1072,52 @@
     ctx.restore();
   }
 
+  // Independent of drawMechanismLabels/showLabels — a fixed caption under the
+  // drawing, not tied to the mechanism overlay, so it stays put through pan/zoom.
+  function drawEquationCaption(){
+    if(!eqCaption.x) return;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+
+    // Narrow/embedded viewports (and the longer third-order equations) may not fit on
+    // one line each even after shrinking, so wrap at a '+' near the middle first, then
+    // shrink the font only if that still doesn't fit.
+    const maxWidth = canvas.width - 24*dpr;
+    const minFontPx = 8*dpr;
+    let fontPx = 11*dpr;
+    ctx.font = `${fontPx}px 'IBM Plex Mono', monospace`;
+
+    function splitToFit(text){
+      if(ctx.measureText(text).width <= maxWidth) return [text];
+      const plusPositions = [];
+      for(let i=0;i<text.length;i++) if(text[i] === '+') plusPositions.push(i);
+      if(!plusPositions.length) return [text];
+      const mid = text.length/2;
+      let bestIdx = plusPositions[0], bestDist = Math.abs(bestIdx-mid);
+      for(const p of plusPositions){
+        const d = Math.abs(p-mid);
+        if(d < bestDist){ bestDist = d; bestIdx = p; }
+      }
+      return [text.slice(0,bestIdx).trim(), text.slice(bestIdx).trim()];
+    }
+
+    const lines = [...splitToFit(eqCaption.x), ...splitToFit(eqCaption.y)];
+    const widest = Math.max(...lines.map(l => ctx.measureText(l).width));
+    if(widest > maxWidth){
+      fontPx = Math.max(minFontPx, fontPx * maxWidth / widest);
+      ctx.font = `${fontPx}px 'IBM Plex Mono', monospace`;
+    }
+
+    ctx.fillStyle = mc().label;
+    const cx = canvas.width/2;
+    const lineGap = fontPx*1.35;
+    const yBottom = canvas.height - 118*dpr; // clears the HUD chip (bottom-left) and zoom buttons (bottom-right)
+    const yStart = yBottom - lineGap*(lines.length-1);
+    lines.forEach((line,i) => ctx.fillText(line, cx, yStart + lineGap*i));
+    ctx.restore();
+  }
+
   function drawSymmetry(){
     if(derived.nsymm <= 1) return;
     const ang = Math.atan2(derived.ymax, derived.xmax);
@@ -1154,6 +1206,7 @@
     if(state.showF0 && f0points) drawCurve(f0points.points, f0points.npts, 1, {withColor:false, showTip:false});
     drawCurve(derived.points, derived.npts, animProgress);
     if(state.showCircles) drawMechanismLabels(derived.tend * animProgress);
+    if(state.showEquations) drawEquationCaption();
   }
 
   function startAnimation(){
@@ -1310,6 +1363,16 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     renderTex('mathEqLive', liveTex);
     document.getElementById('mathEqLiveCaption').textContent =
       `t runs from 0 to 2π·T, where T = ${derived.T}`;
+
+    // Plain-text mirror of liveTex (no LaTeX), for the on-canvas "Show equations" overlay —
+    // canvas fillText can't render KaTeX, so this is drawn separately by drawEquationCaption().
+    eqCaption = extraOn ? {
+      x: `x(t) = ${n0-n1}cos t + ${fmt(n1*h,2)}cos a0 + ${n2-n3}cos(a0+t2) + ${fmt(n3*h2,2)}cos a1 + ${n4-n5}cos(a1+t3c) + ${fmt(rp,2)}cos(a2+φ)`,
+      y: `y(t) = ${n0-n1}sin t + ${fmt(n1*h,2)}sin a0 + ${n2-n3}sin(a0+t2) + ${fmt(n3*h2,2)}sin a1 + ${n4-n5}sin(a1+t3c) + ${fmt(rp,2)}sin(a2+φ)`
+    } : {
+      x: `x(t) = ${n0-n1}cos t + ${fmt(n1*h,2)}cos a0 + ${n2-n3}cos(a0+t2) + ${fmt(rp,2)}cos(a1+φ)`,
+      y: `y(t) = ${n0-n1}sin t + ${fmt(n1*h,2)}sin a0 + ${n2-n3}sin(a0+t2) + ${fmt(rp,2)}sin(a1+φ)`
+    };
 
     const symmSentence = derived.nsymm > 1
       ? `Because that shared factor is ${derived.nsymm}, the finished drawing has exact ${derived.nsymm}-fold rotational symmetry — spin it by 360°/${derived.nsymm} ≈ ${(360/derived.nsymm).toFixed(1)}° and it lines up with itself.`
@@ -1570,6 +1633,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   wireSwitch('f0Toggle','showF0', scheduleUpdate);
   wireSwitch('glowToggle','glow', render);
   wireSwitch('labelsToggle','showLabels', render);
+  wireSwitch('equationsToggle','showEquations', render);
   wireSwitch('animateToggle','animate', () => {});
   wireSwitch('loopToggle','loop', startAnimation);
 
