@@ -290,7 +290,7 @@
   const SVG_W = 640, SVG_H = 330;
   const STRING_X0 = 40, STRING_X1 = 600, STRING_LEN = STRING_X1 - STRING_X0;
   const MID_Y = 90;
-  const GHOST_AMP = 15;
+  const GHOST_AMP = 74;
   const BASE_OMEGA = 1.05;
   const NODE_ROW_Y0 = 190, NODE_ROW_H = 15;
 
@@ -384,19 +384,27 @@
     const sumPath = document.getElementById('sumPath');
     if(sumPath){
       sumPath.setAttribute('d', samplePath(s => {
-        let disp = 0;
+        // Weighted average (not a raw sum) so the bold curve's amplitude
+        // stays around GHOST_AMP no matter how many harmonics are active —
+        // it fills the same vertical space with 1 harmonic toggled as with
+        // all 10, instead of shrinking back toward the midline as more
+        // 1/n-weighted terms average each other out.
+        let disp = 0, totalWeight = 0;
         activeHarmonics.forEach(n => {
+          const weight = 1 / n;
           const omega = BASE_OMEGA * n;
-          disp += (amp / n) * Math.sin(n*Math.PI*s) * Math.cos(omega*t);
+          disp += weight * Math.sin(n*Math.PI*s) * Math.cos(omega*t);
+          totalWeight += weight;
         });
-        return MID_Y - disp;
+        const norm = totalWeight > 0 ? disp / totalWeight : 0;
+        return MID_Y - amp * norm;
       }));
     }
     requestAnimationFrame(animate);
   }
 
   function pluck(){
-    pluckEnvelope = 1.7;
+    pluckEnvelope = 1.25;
     playCheckedTogether();
   }
 
