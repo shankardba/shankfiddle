@@ -68,21 +68,35 @@
         <span id="playIcon">▶</span>
       </button>
 
-      <div class="transport-controls" id="candlestickControls">
-        <div class="control">
-          <label for="tempoSlider">Tempo <span id="tempoVal" class="mono">8/s</span></label>
-          <input id="tempoSlider" type="range" min="1" max="30" value="8" />
+      <div class="transport-controls has-extra" id="candlestickControls">
+        <div class="control-grid">
+          <div class="control">
+            <label for="tempoSlider">Tempo <span id="tempoVal" class="mono">8/s</span></label>
+            <input id="tempoSlider" type="range" min="1" max="30" value="8" />
+          </div>
+          <div class="control">
+            <label for="candlestickVolumeSlider">Volume <span id="candlestickVolumeVal" class="mono">50%</span></label>
+            <input id="candlestickVolumeSlider" type="range" min="0" max="100" value="50" />
+          </div>
+          <div class="control control-toggle">
+            <label for="quantizeToggle">Quantize <span id="quantizeVal" class="mono">On</span></label>
+            <label class="switch">
+              <input type="checkbox" id="quantizeToggle" checked />
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div class="control control-toggle">
+            <label for="percussionToggle">Percussion <span id="percussionVal" class="mono">Off</span></label>
+            <label class="switch">
+              <input type="checkbox" id="percussionToggle" />
+              <span class="switch-track"></span>
+            </label>
+          </div>
         </div>
-        <div class="control">
-          <label for="candlestickVolumeSlider">Volume <span id="candlestickVolumeVal" class="mono">50%</span></label>
-          <input id="candlestickVolumeSlider" type="range" min="0" max="100" value="50" />
-        </div>
-        <div class="control control-toggle">
-          <label for="quantizeToggle">Quantize <span id="quantizeVal" class="mono">On</span></label>
-          <label class="switch">
-            <input type="checkbox" id="quantizeToggle" checked />
-            <span class="switch-track"></span>
-          </label>
+        <div class="compare-row">
+          <label for="compareInput">Compare <span class="hint">optional · up to 2 tickers, comma-separated</span></label>
+          <input id="compareInput" type="text" class="mono compare-input" placeholder="e.g. MSFT, GOOGL" spellcheck="false" autocomplete="off" />
+          <p id="compareStatus" class="compare-status" hidden></p>
         </div>
       </div>
 
@@ -130,15 +144,36 @@
 
     const RANGE_LABELS = { '1m': '1M', '3m': '3M', '6m': '6M', ytd: 'YTD', '1y': '1Y', '5y': '5Y', '10y': '10Y', max: 'Max' };
 
-    const state = { symbol: 'AAPL', range: 'max', bars: [], loading: false, instrument: 'candlestick' };
+    const state = {
+      symbol: 'AAPL',
+      range: 'max',
+      bars: [],
+      loading: false,
+      instrument: 'candlestick',
+      compareSymbols: [], // up to 2 extra tickers layered into candlestick playback
+      compareBars: {}, // symbol -> raw bars
+    };
 
     const scrubber = new WavetableScrubber();
     const candlestick = new SonicCandlestick();
 
+    // Takes displayBars explicitly (rather than reading chart.displayBars) because
+    // this also runs synchronously from inside StockChart's own constructor (via
+    // onRecompute), before the `chart` const below finishes being assigned.
+    function rebuildCandlestickTracks(displayBars) {
+      const targetLen = displayBars.length;
+      const rawTracks = [{ symbol: state.symbol, bars: state.bars }];
+      for (const sym of state.compareSymbols) {
+        const raw = state.compareBars[sym];
+        if (raw && raw.length) rawTracks.push({ symbol: sym, bars: raw });
+      }
+      candlestick.setTracksFromRaw(rawTracks, targetLen);
+    }
+
     const chart = new StockChart(document.getElementById('chartCanvas'), {
       mode: 'candles',
       onHover: (bar) => showTooltip(bar),
-      onRecompute: (displayBars) => candlestick.setBars(displayBars),
+      onRecompute: (displayBars) => rebuildCandlestickTracks(displayBars),
     });
 
     function fmt(n, digits = 2) {
@@ -214,10 +249,11 @@
         const { bars } = await window.StockData.fetchBars(state.symbol, state.range);
         if (myToken !== loadToken) return; // a newer load() superseded this one
         state.bars = bars;
-        chart.setData(bars); // triggers onRecompute -> candlestick.setBars(displayBars)
+        chart.setData(bars); // triggers onRecompute -> rebuildCandlestickTracks()
         scrubber.setBars(bars);
         updateQuoteHeader();
         setOverlay(null);
+        await loadCompareSymbols(myToken);
       } catch (err) {
         if (myToken !== loadToken) return;
         state.bars = [];
@@ -228,6 +264,43 @@
       } finally {
         if (myToken === loadToken) state.loading = false;
       }
+    }
+
+    const compareStatus = $('#compareStatus');
+
+    function setCompareStatus(msg, isIssue) {
+      if (!msg) {
+        compareStatus.hidden = true;
+        return;
+      }
+      compareStatus.textContent = msg;
+      compareStatus.className = 'compare-status' + (isIssue ? ' has-issue' : '');
+      compareStatus.hidden = false;
+    }
+
+    async function loadCompareSymbols(myToken) {
+      if (!state.compareSymbols.length) {
+        state.compareBars = {};
+        setCompareStatus(null);
+        rebuildCandlestickTracks(chart.displayBars);
+        return;
+      }
+      const results = await Promise.all(
+        state.compareSymbols.map((sym) =>
+          window.StockData.fetchBars(sym, state.range)
+            .then(({ bars }) => ({ sym, bars }))
+            .catch((err) => ({ sym, error: err.message }))
+        )
+      );
+      if (myToken !== loadToken) return;
+      const failed = [];
+      state.compareBars = {};
+      for (const r of results) {
+        if (r.bars) state.compareBars[r.sym] = r.bars;
+        else failed.push(r.sym);
+      }
+      setCompareStatus(failed.length ? `Unavailable: ${failed.join(', ')}` : null, true);
+      rebuildCandlestickTracks(chart.displayBars);
     }
 
     symbolForm.addEventListener('submit', (e) => {
@@ -351,6 +424,32 @@
       if (candlestick.playing) candlestick.play(); // restart to apply cleanly to the whole schedule
     });
 
+    const percussionToggle = $('#percussionToggle');
+    const percussionVal = $('#percussionVal');
+    percussionToggle.addEventListener('change', () => {
+      candlestick.setPercussion(percussionToggle.checked);
+      percussionVal.textContent = percussionToggle.checked ? 'On' : 'Off';
+      if (candlestick.playing) candlestick.play();
+    });
+
+    const compareInput = $('#compareInput');
+    function commitCompareInput() {
+      const symbols = compareInput.value
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s && s !== state.symbol)
+        .slice(0, 2);
+      state.compareSymbols = symbols;
+      loadCompareSymbols(loadToken);
+    }
+    compareInput.addEventListener('change', commitCompareInput);
+    compareInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        compareInput.blur(); // triggers 'change'
+      }
+    });
+
     candlestick.onPlayheadUpdate = (idx) => chart.setPlayheadIndex(idx);
     candlestick.onEnded = () => setPlayButtonState(false);
 
@@ -386,6 +485,7 @@
     scrubber.setVolume(0.5);
     candlestick.setNotesPerSecond(8);
     candlestick.setVolume(0.5);
+    candlestick.setPercussion(false);
 
     load();
   </script>

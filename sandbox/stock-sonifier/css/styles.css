@@ -257,6 +257,41 @@ body {
   grid-template-columns: repeat(4, 1fr);
   gap: 0.9rem 1.2rem;
 }
+.transport-controls.has-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.9rem 1.2rem;
+}
+
+.compare-row { display: flex; flex-direction: column; gap: 0.35rem; }
+.compare-row label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.compare-row .hint { text-transform: none; letter-spacing: normal; font-size: 0.68rem; opacity: 0.75; }
+.compare-input {
+  width: 100%;
+  background: #1d0f1a;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+.compare-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(240, 168, 60, 0.15); }
+.compare-status { font-size: 0.72rem; color: var(--text-muted); margin: 0; }
+.compare-status.has-issue { color: #ffb3dc; }
 
 .control { display: flex; flex-direction: column; gap: 0.35rem; }
 .control label {
@@ -343,7 +378,8 @@ body {
 
 @media (max-width: 640px) {
   .transport-panel { flex-direction: column; align-items: stretch; }
-  .transport-controls { grid-template-columns: repeat(2, 1fr); }
+  .transport-controls, .control-grid { grid-template-columns: repeat(2, 1fr); }
+  .control label { flex-direction: column; align-items: flex-start; gap: 0.15rem; }
 }
 
 .status {
