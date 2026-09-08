@@ -200,10 +200,15 @@
   // brightness blends the day's own high-low range with trailing volatility,
   // velocity tracks volume, and up/down days get distinct envelope character
   // (a bright plucked attack vs. a duller thud). An optional percussion layer
-  // adds a volume-driven filtered noise hit under each note. Supports multiple
-  // simultaneous tracks (e.g. comparing tickers), panned apart for clarity.
-  // All notes are scheduled up front against precise AudioContext times — cheap
-  // for Web Audio even at a few hundred notes per track, and avoids a rolling
+  // adds a volume-driven filtered noise hit under each note. Two more optional
+  // toggles: Gap plays a short chirp for the overnight jump between the previous
+  // close and this bar's open (skipped when too small to matter), and Wick Shape
+  // extends the note's pitch glide with a brief flick toward whichever candle
+  // shadow (upper/lower wick) reached furthest before settling back to close.
+  // Supports multiple simultaneous tracks (e.g. comparing tickers), panned apart
+  // for clarity. All notes are scheduled up front against precise AudioContext
+  // times — cheap for Web Audio even at a few hundred notes per track, and
+  // avoids a rolling
   // scheduler for a bounded, non-live sequence.
   class SonicCandlestick {
     constructor() {
@@ -218,6 +223,8 @@
       this.quantize = true;
       this.scaleName = 'majorPentatonic';
       this.percussion = false;
+      this.gapEnabled = false;
+      this.wickShapeEnabled = false;
       this.onPlayheadUpdate = null;
       this.onEnded = null;
       this._rafId = null;
@@ -294,6 +301,14 @@
       this.percussion = on;
     }
 
+    setGapEnabled(on) {
+      this.gapEnabled = on;
+    }
+
+    setWickShapeEnabled(on) {
+      this.wickShapeEnabled = on;
+    }
+
     _priceToFreq(price, track) {
       const span = track.priceHi - track.priceLo || 1;
       const t = Math.max(0, Math.min(1, (price - track.priceLo) / span));
@@ -345,9 +360,26 @@
 
       const freqOpen = this._priceToFreq(bar.open, track);
       const freqClose = this._priceToFreq(bar.close, track);
-      osc.frequency.setValueAtTime(Math.max(20, freqOpen), t0);
-      osc.frequency.linearRampToValueAtTime(Math.max(20, freqClose), t0 + dur);
       osc.type = up ? 'sawtooth' : 'triangle';
+
+      // Wick shape: after the open->close glide, flick briefly toward whichever
+      // wick (upper or lower shadow) reached further, then settle back to close —
+      // the "reach and reject" a long wick represents on the chart, made audible.
+      const flickDur = this.wickShapeEnabled ? Math.min(0.05, dur * 0.25) : 0;
+      const mainDur = dur - flickDur;
+      osc.frequency.setValueAtTime(Math.max(20, freqOpen), t0);
+      osc.frequency.linearRampToValueAtTime(Math.max(20, freqClose), t0 + mainDur);
+      if (this.wickShapeEnabled) {
+        const upperWick = bar.high - Math.max(bar.open, bar.close);
+        const lowerWick = Math.min(bar.open, bar.close) - bar.low;
+        const wickLen = Math.max(upperWick, lowerWick);
+        if (wickLen > 0) {
+          const wickPrice = upperWick > lowerWick ? bar.high : bar.low;
+          const freqWick = this._priceToFreq(wickPrice, track);
+          osc.frequency.linearRampToValueAtTime(Math.max(20, freqWick), t0 + mainDur + flickDur * 0.6);
+          osc.frequency.linearRampToValueAtTime(Math.max(20, freqClose), t0 + dur);
+        }
+      }
 
       const priceSpan = track.priceHi - track.priceLo || 1;
       const rangeFrac = Math.max(0, Math.min(1, (bar.high - bar.low) / (priceSpan * 0.08)));
@@ -401,6 +433,51 @@
         noiseSrc.stop(t0 + 0.1);
         this.scheduledNodes.push(noiseSrc);
       }
+
+      if (this.gapEnabled && i > 0) {
+        this._scheduleGapChirp(track, bar, i, t0, dur, pan, numTracks);
+      }
+    }
+
+    // Overnight gap: the jump between the previous bar's close and this bar's
+    // open, distinct from the open->close move the main note already glides
+    // through. A short sine chirp glissandos between the two, skipped entirely
+    // when the gap is too small to matter (avoids a wall of near-silent clicks).
+    _scheduleGapChirp(track, bar, i, t0, dur, pan, numTracks) {
+      const prevClose = track.bars[i - 1].close;
+      const priceSpan = track.priceHi - track.priceLo || 1;
+      const gapFrac = Math.min(1, Math.abs(bar.open - prevClose) / (priceSpan * 0.04));
+      if (gapFrac < 0.05) return;
+
+      const ctx = this.ctx;
+      const balance = 1 / Math.sqrt(numTracks);
+      const chirpDur = Math.min(0.035, dur * 0.3);
+      const freqFrom = Math.max(20, this._priceToFreq(prevClose, track));
+      const freqTo = Math.max(20, this._priceToFreq(bar.open, track));
+
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freqFrom, t0);
+      osc.frequency.exponentialRampToValueAtTime(freqTo, t0 + chirpDur);
+
+      const gain = ctx.createGain();
+      const peakGain = gapFrac * 0.35 * balance;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.linearRampToValueAtTime(peakGain, t0 + chirpDur * 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.0005, t0 + chirpDur);
+
+      osc.connect(gain);
+      if (ctx.createStereoPanner) {
+        const panner = ctx.createStereoPanner();
+        panner.pan.value = pan;
+        gain.connect(panner);
+        panner.connect(this.master);
+      } else {
+        gain.connect(this.master);
+      }
+      osc.start(t0);
+      osc.stop(t0 + chirpDur + 0.02);
+      this.scheduledNodes.push(osc);
     }
 
     _startPlayheadLoop() {

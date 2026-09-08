@@ -92,6 +92,20 @@
               <span class="switch-track"></span>
             </label>
           </div>
+          <div class="control control-toggle">
+            <label for="gapToggle">Gap <span id="gapVal" class="mono">Off</span></label>
+            <label class="switch">
+              <input type="checkbox" id="gapToggle" />
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div class="control control-toggle">
+            <label for="wickShapeToggle">Wick Shape <span id="wickShapeVal" class="mono">Off</span></label>
+            <label class="switch">
+              <input type="checkbox" id="wickShapeToggle" />
+              <span class="switch-track"></span>
+            </label>
+          </div>
         </div>
         <!-- Hidden for now: the demo Twelve Data key only resolves AAPL, so comparing
              tickers isn't usable yet. Code stays wired up (rebuildCandlestickTracks,
@@ -436,6 +450,22 @@
       if (candlestick.playing) candlestick.play();
     });
 
+    const gapToggle = $('#gapToggle');
+    const gapVal = $('#gapVal');
+    gapToggle.addEventListener('change', () => {
+      candlestick.setGapEnabled(gapToggle.checked);
+      gapVal.textContent = gapToggle.checked ? 'On' : 'Off';
+      if (candlestick.playing) candlestick.play();
+    });
+
+    const wickShapeToggle = $('#wickShapeToggle');
+    const wickShapeVal = $('#wickShapeVal');
+    wickShapeToggle.addEventListener('change', () => {
+      candlestick.setWickShapeEnabled(wickShapeToggle.checked);
+      wickShapeVal.textContent = wickShapeToggle.checked ? 'On' : 'Off';
+      if (candlestick.playing) candlestick.play();
+    });
+
     const compareInput = $('#compareInput');
     function commitCompareInput() {
       const symbols = compareInput.value
@@ -490,6 +520,8 @@
     candlestick.setNotesPerSecond(8);
     candlestick.setVolume(0.5);
     candlestick.setPercussion(false);
+    candlestick.setGapEnabled(false);
+    candlestick.setWickShapeEnabled(false);
 
     load();
   </script>
