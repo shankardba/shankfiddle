@@ -294,10 +294,14 @@
   .layer-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
   .layer-empty{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);}
   .layer-row{
-    display:flex;align-items:center;gap:8px;
+    display:flex;align-items:center;gap:8px;cursor:pointer;
     background:var(--surface);border:1px solid var(--border);border-radius:6px;
     padding:7px 8px;
+    transition:border-color 0.15s, background 0.15s;
   }
+  .layer-row:hover{border-color:var(--cool);}
+  .layer-row.selected{border-color:var(--cool);background:var(--surface-2);}
+  .layer-row.selected .layer-label{color:var(--cool);}
   .layer-row .switch{flex-shrink:0;}
   .layer-label{
     flex:1;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
@@ -565,7 +569,7 @@
 
     <div class="section">
       <div class="label">Canvas layers</div>
-      <p class="math-prose" style="margin-bottom:8px;">Keep the current drawing, tweak the gears, and draw a new one on top — like the physical toy, without erasing what's already there.</p>
+      <p class="math-prose" style="margin-bottom:8px;">Keep the current drawing, tweak the gears, and draw a new one on top — like the physical toy, without erasing what's already there. Click a kept layer below to load its parameters back into every control and keep tweaking it in place, without disturbing the others.</p>
       <div class="btn-row">
         <button class="btn btn-accent" id="keepLayerBtn">Keep this drawing</button>
         <button class="btn" id="dimLayersBtn">Dim canvas</button>
@@ -665,7 +669,7 @@
     palette:0, solidColor:'#f2a65a', density:2.0, brightness:0.9, glow:true,
     lineWidth:1.6, glowIntensity:8, ptDens:512,
     animate:true, loop:false, speedMult:1,
-    layers:[], theme:'dark'
+    layers:[], selectedLayer:null, theme:'dark'
   };
 
   // Mechanism-overlay colors (rings, links, symmetry rays, on-canvas labels) can't
@@ -1225,7 +1229,9 @@
     if(state.showCircles) drawMechanism(derived.tend * animProgress);
     if(state.showSymm) drawSymmetry();
     if(state.showF0 && f0points) drawCurve(f0points.points, f0points.npts, 1, {withColor:false, showTip:false});
-    drawCurve(derived.points, derived.npts, animProgress);
+    // While a layer is selected, its entry in the loop above already shows the live edits
+    // (kept in sync by syncSelectedLayerFromState) — drawing it again here would double it up.
+    if(state.selectedLayer === null) drawCurve(derived.points, derived.npts, animProgress);
     if(state.showCircles) drawMechanismLabels(derived.tend * animProgress);
     if(state.showEquations) drawEquationCaption();
   }
@@ -1268,11 +1274,28 @@
     derived = computeDerived();
     f0points = state.showF0 ? computeF0() : null;
     fitScale();
+    syncSelectedLayerFromState();
     updateHud();
     updateFrequencyFields();
     updateMathPanel();
     if(animate || state.loop) startAnimation();
     else { animProgress = 1; render(); }
+  }
+
+  // Keeps the selected layer's stored snapshot (shape + style) live-updated as its
+  // source params in `state` change, so edits stick to that layer while every other
+  // layer — older or newer — stays exactly as it was.
+  function syncSelectedLayerFromState(){
+    if(state.selectedLayer === null) return;
+    const L = state.layers[state.selectedLayer];
+    if(!L){ state.selectedLayer = null; return; }
+    L.points = derived.points; L.npts = derived.npts;
+    L.n0=state.n0; L.n1=state.n1; L.n2=state.n2; L.n3=state.n3;
+    L.n4=state.n4; L.n5=state.n5; L.extraWheel=state.extraWheel;
+    L.h=state.h; L.p=state.p; L.phi=state.phi; L.holeMm=state.holeMm;
+    L.palette=state.palette; L.density=state.density; L.glow=state.glow;
+    L.opacity=state.brightness; L.solidColor=state.solidColor;
+    renderLayerList();
   }
 
   function updateHud(){
@@ -1425,13 +1448,85 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     }
     list.innerHTML = state.layers.map((layer,i) => {
       const on = layer.visible !== false;
-      return `<div class="layer-row ${on ? '' : 'off'}">
+      const sel = state.selectedLayer === i;
+      return `<div class="layer-row ${on ? '' : 'off'} ${sel ? 'selected' : ''}" data-layer-idx="${i}">
         <div class="switch ${on ? 'on' : ''}" data-layer-toggle="${i}" role="button" aria-label="Toggle layer ${i+1}"></div>
         <div class="layer-label">Layer ${i+1} — ${layerGearLabel(layer)}</div>
         <button class="layer-del" data-layer-del="${i}" aria-label="Delete layer ${i+1}" title="Delete layer ${i+1}">&#10005;</button>
       </div>`;
     }).join('');
   }
+
+  // Selecting a layer loads its saved gear/hoop/pen/color parameters back into every
+  // control, so editing it works exactly like editing the live curve — except the result
+  // is written back into that layer's own slot (see syncSelectedLayerFromState), leaving
+  // every other layer, older or newer, untouched.
+  function selectLayer(i){
+    const layer = state.layers[i];
+    if(!layer) return;
+    if(state.selectedLayer === i){
+      state.selectedLayer = null;
+      renderLayerList();
+      render();
+      return;
+    }
+    state.selectedLayer = i;
+
+    document.getElementById('n0').value = layer.n0;
+    document.getElementById('n1').value = layer.n1;
+    document.getElementById('n2').value = layer.n2;
+    document.getElementById('n3').value = layer.n3;
+    state.n0=layer.n0; state.n1=layer.n1; state.n2=layer.n2; state.n3=layer.n3;
+
+    state.extraWheel = !!layer.extraWheel;
+    extraToggleEl.classList.toggle('on', state.extraWheel);
+    extraFieldsEl.style.display = state.extraWheel ? 'block' : 'none';
+    state.n4 = layer.n4; state.n5 = layer.n5; state.h2 = layer.h2 !== undefined ? layer.h2 : state.h2;
+    document.getElementById('n4').value = state.n4;
+    document.getElementById('n5').value = state.n5;
+
+    state.h = layer.h; state.p = layer.p; state.phi = layer.phi; state.holeMm = layer.holeMm;
+    refreshHRange();
+    pSlider.value = state.p; pVal.textContent = state.p.toFixed(3);
+    phiSlider.value = state.phi; phiVal.textContent = state.phi + '°';
+    holeSlider.value = state.holeMm; holeVal.textContent = state.holeMm.toFixed(1) + 'mm';
+    if(state.extraWheel) refreshH2Range();
+
+    state.density = layer.density;
+    densitySlider.value = state.density; densityVal.textContent = state.density.toFixed(1);
+
+    state.brightness = layer.opacity;
+    brightnessSlider.value = clamp(state.brightness, 0.25, 1);
+    brightnessVal.textContent = state.brightness.toFixed(2);
+
+    state.glow = layer.glow;
+    document.getElementById('glowToggle').classList.toggle('on', state.glow);
+
+    state.solidColor = layer.solidColor;
+    if(layer.palette === 7){
+      setSolidMode(true);
+      if(syncColorWheelFromHex) syncColorWheelFromHex(layer.solidColor);
+    } else {
+      setSolidMode(false);
+      lastBlendPalette = layer.palette;
+      state.palette = layer.palette;
+      [...swatches.children].forEach(s=>s.classList.remove('active'));
+      swatches.children[state.palette].classList.add('active');
+    }
+
+    resetView();
+    renderLayerList();
+    doRecompute(false);
+  }
+
+  function deleteLayer(i){
+    state.layers.splice(i,1);
+    if(state.selectedLayer === i) state.selectedLayer = null;
+    else if(state.selectedLayer !== null && state.selectedLayer > i) state.selectedLayer -= 1;
+    renderLayerList();
+    render();
+  }
+
   document.getElementById('layerList').addEventListener('click', e => {
     const toggleIdx = e.target.dataset.layerToggle;
     const delIdx = e.target.dataset.layerDel;
@@ -1441,11 +1536,14 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
       layer.visible = layer.visible === false ? true : false;
       renderLayerList();
       render();
-    } else if(delIdx !== undefined){
-      state.layers.splice(+delIdx, 1);
-      renderLayerList();
-      render();
+      return;
     }
+    if(delIdx !== undefined){
+      deleteLayer(+delIdx);
+      return;
+    }
+    const row = e.target.closest('.layer-row');
+    if(row) selectLayer(+row.dataset.layerIdx);
   });
 
   function resize(){
@@ -1730,6 +1828,8 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
 
   // Set by initColorWheel below; lets the "Brightness" slider drive the wheel's V while in solid mode.
   let syncSolidValueFromSlider = null;
+  // Set by initColorWheel below; lets selecting a layer push its saved solid color into the wheel/bar UI.
+  let syncColorWheelFromHex = null;
 
   // ---------- "Solid" pen style: a simple HSV color-wheel + brightness-bar picker ----------
   (function initColorWheel(){
@@ -1886,6 +1986,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     }
 
     setFromHex(state.solidColor);
+    syncColorWheelFromHex = setFromHex;
 
     // Lets the horizontal "Brightness" slider drive the wheel's V in the other direction.
     syncSolidValueFromSlider = function(v){
@@ -1943,18 +2044,28 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
       palette: state.palette, density: state.density, glow: state.glow,
       opacity: state.brightness, solidColor: state.solidColor, visible: true,
       n0: state.n0, n1: state.n1, n2: state.n2, n3: state.n3,
-      n4: state.n4, n5: state.n5, extraWheel: state.extraWheel
+      n4: state.n4, n5: state.n5, h2: state.h2, extraWheel: state.extraWheel,
+      h: state.h, p: state.p, phi: state.phi, holeMm: state.holeMm
     });
     if(state.layers.length > MAX_LAYERS) state.layers.shift();
+    // "Keep" always freezes the current work into a fresh layer and clears selection,
+    // so the panel goes back to editing a blank scratch curve on top.
+    state.selectedLayer = null;
     renderLayerList();
     render();
   });
   document.getElementById('dimLayersBtn').addEventListener('click', () => {
     state.layers.forEach(l => { l.opacity *= 0.5; });
+    if(state.selectedLayer !== null && state.layers[state.selectedLayer]){
+      state.brightness = state.layers[state.selectedLayer].opacity;
+      brightnessSlider.value = clamp(state.brightness, 0.25, 1);
+      brightnessVal.textContent = state.brightness.toFixed(2);
+    }
     render();
   });
   document.getElementById('clearLayersBtn').addEventListener('click', () => {
     state.layers = [];
+    state.selectedLayer = null;
     renderLayerList();
     render();
   });
@@ -2181,6 +2292,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
 
   document.getElementById('resetBtn').addEventListener('click', () => {
     state.layers = [];
+    state.selectedLayer = null;
     renderLayerList();
     state.extraWheel = DEFAULTS.extraWheel;
     state.n4 = DEFAULTS.n4; state.n5 = DEFAULTS.n5; state.h2 = DEFAULTS.h2;
