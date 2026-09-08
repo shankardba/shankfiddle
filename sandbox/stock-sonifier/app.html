@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stock Sonifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark">♪</span>
+        <span class="brand-name">Stock Sonifier</span>
+      </div>
+      <form class="symbol-form" id="symbolForm">
+        <input id="symbolInput" class="symbol-input mono" type="text" value="AAPL" spellcheck="false" autocomplete="off" maxlength="15" />
+        <button type="submit" class="go-btn" aria-label="Load symbol">→</button>
+      </form>
+    </header>
+
+    <section class="quote-header">
+      <div class="quote-id">
+        <h1 id="quoteSymbol">AAPL</h1>
+        <span id="quoteRangeLabel" class="quote-range-label">Max</span>
+      </div>
+      <div class="quote-price-row">
+        <span id="quotePrice" class="quote-price mono">—</span>
+        <span id="quoteChange" class="quote-change mono">—</span>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div class="pills" id="rangePills" role="tablist" aria-label="Date range">
+        <button class="pill" data-range="1m">1M</button>
+        <button class="pill" data-range="6m">6M</button>
+        <button class="pill" data-range="ytd">YTD</button>
+        <button class="pill" data-range="1y">1Y</button>
+        <button class="pill" data-range="5y">5Y</button>
+        <button class="pill" data-range="10y">10Y</button>
+        <button class="pill is-active" data-range="max">Max</button>
+      </div>
+      <div class="mode-toggle" id="modeToggle" role="tablist" aria-label="Chart style">
+        <button class="mode-btn" data-mode="line" aria-label="Line view" title="Line">〜</button>
+        <button class="mode-btn is-active" data-mode="candles" aria-label="Candlestick view" title="Candles">▤</button>
+      </div>
+    </section>
+
+    <section class="chart-panel">
+      <div class="chart-frame">
+        <canvas id="chartCanvas"></canvas>
+        <div id="chartTooltip" class="chart-tooltip mono" hidden></div>
+        <div id="chartOverlay" class="chart-overlay" hidden>
+          <span id="chartOverlayText">Loading…</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="transport-panel">
+      <div class="instrument-toggle" id="instrumentToggle" role="tablist" aria-label="Instrument">
+        <button class="pill is-active" data-instrument="candlestick">Play</button>
+        <button class="pill" data-instrument="scrub">Scrub</button>
+      </div>
+      <button id="playBtn" class="play-btn" aria-pressed="false">
+        <span id="playIcon">▶</span>
+      </button>
+
+      <div class="transport-controls" id="candlestickControls">
+        <div class="control">
+          <label for="tempoSlider">Tempo <span id="tempoVal" class="mono">8/s</span></label>
+          <input id="tempoSlider" type="range" min="1" max="30" value="8" />
+        </div>
+        <div class="control">
+          <label for="candlestickVolumeSlider">Volume <span id="candlestickVolumeVal" class="mono">50%</span></label>
+          <input id="candlestickVolumeSlider" type="range" min="0" max="100" value="50" />
+        </div>
+        <div class="control control-toggle">
+          <label for="quantizeToggle">Quantize <span id="quantizeVal" class="mono">On</span></label>
+          <label class="switch">
+            <input type="checkbox" id="quantizeToggle" checked />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="transport-controls" id="scrubControls" hidden>
+        <div class="control">
+          <label for="startSlider">Start <span id="startVal" class="mono">0%</span></label>
+          <input id="startSlider" type="range" min="0" max="1000" value="0" />
+        </div>
+        <div class="control">
+          <label for="stopSlider">Stop <span id="stopVal" class="mono">8%</span></label>
+          <input id="stopSlider" type="range" min="0" max="1000" value="80" />
+        </div>
+        <div class="control">
+          <label for="speedSlider">Speed <span id="speedVal" class="mono">1.00×</span></label>
+          <input id="speedSlider" type="range" min="-300" max="300" value="0" />
+        </div>
+        <div class="control">
+          <label for="volumeSlider">Volume <span id="volumeVal" class="mono">50%</span></label>
+          <input id="volumeSlider" type="range" min="0" max="100" value="50" />
+        </div>
+      </div>
+    </section>
+
+    <p id="status" class="status" hidden></p>
+  </main>
+
+  <script src="js/data.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/scales.js"></script>
+  <script src="js/audio.js"></script>
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const symbolForm = $('#symbolForm');
+    const symbolInput = $('#symbolInput');
+    const quoteSymbol = $('#quoteSymbol');
+    const quoteRangeLabel = $('#quoteRangeLabel');
+    const quotePrice = $('#quotePrice');
+    const quoteChange = $('#quoteChange');
+    const rangePills = $('#rangePills');
+    const modeToggle = $('#modeToggle');
+    const chartOverlay = $('#chartOverlay');
+    const chartOverlayText = $('#chartOverlayText');
+    const chartTooltip = $('#chartTooltip');
+    const statusEl = $('#status');
+
+    const RANGE_LABELS = { '1m': '1M', '3m': '3M', '6m': '6M', ytd: 'YTD', '1y': '1Y', '5y': '5Y', '10y': '10Y', max: 'Max' };
+
+    const state = { symbol: 'AAPL', range: 'max', bars: [], loading: false, instrument: 'candlestick' };
+
+    const scrubber = new WavetableScrubber();
+    const candlestick = new SonicCandlestick();
+
+    const chart = new StockChart(document.getElementById('chartCanvas'), {
+      mode: 'candles',
+      onHover: (bar) => showTooltip(bar),
+      onRecompute: (displayBars) => candlestick.setBars(displayBars),
+    });
+
+    function fmt(n, digits = 2) {
+      return n == null || Number.isNaN(n) ? '—' : n.toFixed(digits);
+    }
+
+    function setOverlay(text) {
+      if (text) {
+        chartOverlayText.textContent = text;
+        chartOverlay.hidden = false;
+      } else {
+        chartOverlay.hidden = true;
+      }
+    }
+
+    function setError(msg) {
+      if (msg) {
+        statusEl.textContent = msg;
+        statusEl.hidden = false;
+      } else {
+        statusEl.hidden = true;
+      }
+    }
+
+    function showTooltip(bar) {
+      if (!bar) {
+        chartTooltip.hidden = true;
+        return;
+      }
+      chartTooltip.hidden = false;
+      const up = bar.close >= bar.open;
+      chartTooltip.innerHTML = `
+        <div class="tt-date">${bar.date}</div>
+        <div class="tt-row"><span>O</span>${fmt(bar.open)}</div>
+        <div class="tt-row"><span>H</span>${fmt(bar.high)}</div>
+        <div class="tt-row"><span>L</span>${fmt(bar.low)}</div>
+        <div class="tt-row tt-close ${up ? 'tt-up' : 'tt-down'}"><span>C</span>${fmt(bar.close)}</div>
+        <div class="tt-row"><span>Vol</span>${bar.volume.toLocaleString()}</div>
+      `;
+    }
+
+    function updateQuoteHeader() {
+      const bars = state.bars;
+      quoteSymbol.textContent = state.symbol;
+      quoteRangeLabel.textContent = RANGE_LABELS[state.range] || state.range;
+      if (!bars.length) {
+        quotePrice.textContent = '—';
+        quoteChange.textContent = '—';
+        quoteChange.className = 'quote-change mono';
+        return;
+      }
+      const first = bars[0];
+      const last = bars[bars.length - 1];
+      const change = last.close - first.open;
+      const pct = (change / first.open) * 100;
+      const up = change >= 0;
+      const pctDigits = Math.abs(pct) >= 1000 ? 0 : 2;
+      const pctStr = Math.abs(pct).toLocaleString(undefined, { minimumFractionDigits: pctDigits, maximumFractionDigits: pctDigits });
+      quotePrice.textContent = fmt(last.close);
+      quoteChange.textContent = `${up ? '▲' : '▼'} ${fmt(Math.abs(change))} (${pctStr}%)`;
+      quoteChange.className = 'quote-change mono ' + (up ? 'is-up' : 'is-down');
+    }
+
+    let loadToken = 0;
+
+    async function load() {
+      const myToken = ++loadToken;
+      state.loading = true;
+      setError(null);
+      setOverlay('Loading…');
+      stopActiveInstrument();
+      try {
+        const { bars } = await window.StockData.fetchBars(state.symbol, state.range);
+        if (myToken !== loadToken) return; // a newer load() superseded this one
+        state.bars = bars;
+        chart.setData(bars); // triggers onRecompute -> candlestick.setBars(displayBars)
+        scrubber.setBars(bars);
+        updateQuoteHeader();
+        setOverlay(null);
+      } catch (err) {
+        if (myToken !== loadToken) return;
+        state.bars = [];
+        chart.setData([]);
+        updateQuoteHeader();
+        setOverlay(null);
+        setError(err.message);
+      } finally {
+        if (myToken === loadToken) state.loading = false;
+      }
+    }
+
+    symbolForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = symbolInput.value.trim().toUpperCase();
+      if (!val) return;
+      state.symbol = val;
+      load();
+    });
+
+    rangePills.addEventListener('click', (e) => {
+      const btn = e.target.closest('.pill');
+      if (!btn) return;
+      rangePills.querySelectorAll('.pill').forEach((p) => p.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      state.range = btn.dataset.range;
+      load();
+    });
+
+    modeToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.mode-btn');
+      if (!btn) return;
+      modeToggle.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      chart.setMode(btn.dataset.mode);
+    });
+
+    // --- Transport: two instruments sharing one play button ---
+    const instrumentToggle = $('#instrumentToggle');
+    const scrubControls = $('#scrubControls');
+    const candlestickControls = $('#candlestickControls');
+    const playBtn = $('#playBtn');
+    const playIcon = $('#playIcon');
+
+    const startSlider = $('#startSlider');
+    const stopSlider = $('#stopSlider');
+    const speedSlider = $('#speedSlider');
+    const volumeSlider = $('#volumeSlider');
+    const startVal = $('#startVal');
+    const stopVal = $('#stopVal');
+    const speedVal = $('#speedVal');
+    const volumeVal = $('#volumeVal');
+
+    const tempoSlider = $('#tempoSlider');
+    const tempoVal = $('#tempoVal');
+    const candlestickVolumeSlider = $('#candlestickVolumeSlider');
+    const candlestickVolumeVal = $('#candlestickVolumeVal');
+
+    function activeEngine() {
+      return state.instrument === 'candlestick' ? candlestick : scrubber;
+    }
+
+    function stopActiveInstrument() {
+      scrubber.stop();
+      candlestick.stop();
+      chart.setPlayheadIndex(null);
+      setPlayButtonState(false);
+    }
+
+    function setPlayButtonState(playing) {
+      playBtn.classList.toggle('is-playing', playing);
+      playBtn.setAttribute('aria-pressed', String(playing));
+      playIcon.textContent = playing ? '■' : '▶';
+    }
+
+    function speedFromSlider(v) {
+      return Math.pow(2, v / 100); // -300..300 -> 0.125x..8x
+    }
+
+    function applyLoopWindow() {
+      let s = Number(startSlider.value);
+      let e = Number(stopSlider.value);
+      if (s >= e) {
+        e = Math.min(1000, s + 2);
+        stopSlider.value = e;
+      }
+      const startFrac = s / 1000;
+      const stopFrac = e / 1000;
+      scrubber.setLoopWindow(startFrac, stopFrac);
+      if (state.instrument === 'scrub') chart.setLoopWindow(startFrac, stopFrac);
+      startVal.textContent = (startFrac * 100).toFixed(1) + '%';
+      stopVal.textContent = (stopFrac * 100).toFixed(1) + '%';
+    }
+
+    startSlider.addEventListener('input', applyLoopWindow);
+    stopSlider.addEventListener('input', applyLoopWindow);
+
+    speedSlider.addEventListener('input', () => {
+      const speed = speedFromSlider(Number(speedSlider.value));
+      scrubber.setSpeed(speed);
+      speedVal.textContent = speed.toFixed(2) + '×';
+    });
+
+    volumeSlider.addEventListener('input', () => {
+      const v = Number(volumeSlider.value) / 100;
+      scrubber.setVolume(v);
+      volumeVal.textContent = Math.round(v * 100) + '%';
+    });
+
+    tempoSlider.addEventListener('input', () => {
+      const n = Number(tempoSlider.value);
+      candlestick.setNotesPerSecond(n);
+      tempoVal.textContent = n + '/s';
+      if (candlestick.playing) {
+        // restart to apply new tempo cleanly to the remaining schedule
+        candlestick.play();
+      }
+    });
+
+    candlestickVolumeSlider.addEventListener('input', () => {
+      const v = Number(candlestickVolumeSlider.value) / 100;
+      candlestick.setVolume(v);
+      candlestickVolumeVal.textContent = Math.round(v * 100) + '%';
+    });
+
+    const quantizeToggle = $('#quantizeToggle');
+    const quantizeVal = $('#quantizeVal');
+    quantizeToggle.addEventListener('change', () => {
+      candlestick.setQuantize(quantizeToggle.checked);
+      quantizeVal.textContent = quantizeToggle.checked ? 'On' : 'Off';
+      if (candlestick.playing) candlestick.play(); // restart to apply cleanly to the whole schedule
+    });
+
+    candlestick.onPlayheadUpdate = (idx) => chart.setPlayheadIndex(idx);
+    candlestick.onEnded = () => setPlayButtonState(false);
+
+    instrumentToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.pill');
+      if (!btn) return;
+      const instrument = btn.dataset.instrument;
+      if (instrument === state.instrument) return;
+      stopActiveInstrument();
+      state.instrument = instrument;
+      instrumentToggle.querySelectorAll('.pill').forEach((p) => p.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      if (instrument === 'candlestick') {
+        scrubControls.hidden = true;
+        candlestickControls.hidden = false;
+        chart.setLoopWindow(null);
+        modeToggle.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === 'candles'));
+        chart.setMode('candles');
+      } else {
+        candlestickControls.hidden = true;
+        scrubControls.hidden = false;
+        applyLoopWindow();
+      }
+    });
+
+    playBtn.addEventListener('click', () => {
+      const nowPlaying = activeEngine().toggle();
+      setPlayButtonState(nowPlaying);
+    });
+
+    applyLoopWindow();
+    scrubber.setSpeed(speedFromSlider(0));
+    scrubber.setVolume(0.5);
+    candlestick.setNotesPerSecond(8);
+    candlestick.setVolume(0.5);
+
+    load();
+  </script>
+</body>
+</html>
