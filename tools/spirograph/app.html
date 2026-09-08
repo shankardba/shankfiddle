@@ -567,7 +567,7 @@
       <div class="slider-row">
         <div style="flex:1;">
           <div class="slider-label"><span>Speed</span><span class="val" id="speedVal">1.0x</span></div>
-          <input type="range" id="speedSlider" min="0.25" max="4" step="0.05" value="1">
+          <input type="range" id="speedSlider" min="0.1" max="2.5" step="0.05" value="1">
         </div>
       </div>
       <button class="btn" id="replayBtn">Replay drawing</button>
@@ -1102,7 +1102,7 @@
       return [text.slice(0,bestIdx).trim(), text.slice(bestIdx).trim()];
     }
 
-    const lines = [...splitToFit(eqCaption.x), ...splitToFit(eqCaption.y)];
+    const lines = [...splitToFit(eqCaption.x), '', ...splitToFit(eqCaption.y)];
     const widest = Math.max(...lines.map(l => ctx.measureText(l).width));
     if(widest > maxWidth){
       fontPx = Math.max(minFontPx, fontPx * maxWidth / widest);
@@ -2179,6 +2179,11 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
 
   // fade hint
   const hint = document.getElementById('hint');
+  if(window.matchMedia('(pointer: coarse)').matches){
+    // Touch devices have no scroll wheel — pinch (already wired up in the touch handlers
+    // above) is the natural zoom gesture there, so the hint should say so instead.
+    hint.innerHTML = 'Drag to pan · Pinch to zoom · Double-tap to reset view<br>Gear = tweak the wheels · &Sigma; = explain the math';
+  }
   const fadeHint = () => { hint.style.opacity='0'; setTimeout(()=>hint.remove(),700); };
   setTimeout(fadeHint, 4000);
   canvas.addEventListener('pointerdown', fadeHint, {once:true});
