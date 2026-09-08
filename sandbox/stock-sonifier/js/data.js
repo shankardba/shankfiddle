@@ -3,9 +3,10 @@
 // keeps the real API key server-side and edge-caches responses so the shared free
 // quota (800 req/day) stretches across every visitor, not per-browser.
 (function () {
-  // TODO: swap for the deployed Worker URL (https://stock-sonifier-proxy.<subdomain>.workers.dev)
-  // once it's live. Local dev talks to `wrangler dev` on 8787.
-  const API_BASE = 'http://localhost:8787';
+  // Local dev (python http.server / wrangler dev) talks to the local Worker; any
+  // other host (the deployed site) talks to the real deployed Worker.
+  const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+  const API_BASE = IS_LOCAL ? 'http://localhost:8787' : 'https://stock-sonifier-proxy.shankfiddle.workers.dev';
 
   const CACHE_PREFIX = 'stocksonifier:v1:';
   const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4h, matches the Worker's edge cache TTL
