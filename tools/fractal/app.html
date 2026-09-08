@@ -215,29 +215,7 @@
   <div class="panel" id="panel">
     <div class="section">
       <div class="label">Algorithm</div>
-      <select id="modeSelect">
-        <option value="0">Mandelbrot</option>
-        <option value="1">Burning Ship</option>
-        <option value="2">Tricorn (Mandelbar)</option>
-        <option value="3">Celtic Mandelbrot</option>
-        <option value="4">Perpendicular Burning Ship</option>
-        <option value="5">Buffalo</option>
-        <option value="6">Celtic Burning Ship</option>
-        <option value="7">Perpendicular Celtic</option>
-        <option value="8">Barnsley 1</option>
-        <option value="9">Barnsley 2</option>
-        <option value="10">Sine</option>
-        <option value="11">Magnet</option>
-        <option value="12">Nova</option>
-        <option value="13">Newton (root-finding)</option>
-      </select>
-    </div>
-
-    <div class="section" id="juliaModeSection">
-      <div class="toggle-row">
-        <div class="label" style="margin:0;">Julia mode (fixed c / z₀)</div>
-        <div class="switch" id="juliaModeToggle"></div>
-      </div>
+      <select id="modeSelect"></select>
     </div>
 
     <div class="section">
@@ -643,6 +621,8 @@
   };
   const juliaDefaultView = { center: [0.0, 0.0], zoom: 0.5 };
   const modeNames = ['Mandelbrot','Burning Ship','Tricorn','Celtic','Perpendicular','Buffalo','Celtic Burning Ship','Perpendicular Celtic','Barnsley 1','Barnsley 2','Sine','Magnet','Nova','Newton'];
+  const dropdownLabels = ['Mandelbrot','Burning Ship','Tricorn (Mandelbar)','Celtic Mandelbrot','Perpendicular Burning Ship','Buffalo','Celtic Burning Ship','Perpendicular Celtic','Barnsley 1','Barnsley 2','Sine','Magnet','Nova','Newton (root-finding)'];
+  const JULIA_BASE = 100;
   const shapeDefaults = { power: 2.0, bailout: 16.0, colorScale: 0.035, colorOffset: 0.0, rotation: 0, relax: 1.0 };
 
   let dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -683,7 +663,7 @@
 
   function updateHud(){
     const isPowerFamily = state.mode <= 7;
-    const juliaSuffix = (state.juliaMode && state.mode !== NEWTON) ? ' · Julia' : '';
+    const juliaSuffix = state.juliaMode ? ' · Julia' : '';
     const feedbackSuffix = (state.phoenixOn && isPowerFamily) ? ' · Feedback' : '';
     document.getElementById('halgo').textContent = modeNames[state.mode] + juliaSuffix + feedbackSuffix;
     document.getElementById('hx').textContent = state.center[0].toFixed(4);
@@ -715,7 +695,7 @@
   }
 
   function isLiveSeedActive(){
-    return state.juliaMode && state.mode !== NEWTON && state.liveSeed;
+    return state.juliaMode && state.liveSeed;
   }
 
   // ---------- pointer interaction ----------
@@ -838,14 +818,17 @@
     return pairs.filter(Boolean).map(([k, v]) => `<div><span class="k">${k}:</span> ${v}</div>`).join('');
   }
 
+  // pre: applied to z before raising to the power. post: applied to the
+  // power's result (z^d), before rotation/c are added. Matches the shader's
+  // zc -> cpow -> (post fold) -> rotate -> +c order exactly.
   const foldRules = {
-    1: 'z&prime; = |Re z<sub>n</sub>| + i|Im z<sub>n</sub>|  (fold into one quadrant)',
-    2: 'z&prime; = conjugate of z<sub>n</sub>  (flip the imaginary part)',
-    3: 'after squaring: |Re(z<sub>n</sub><sup>d</sup>)| + i&middot;Im(z<sub>n</sub><sup>d</sup>)',
-    4: 'z&prime; = Re z<sub>n</sub> &minus; i|Im z<sub>n</sub>|',
-    5: 'z&prime; = |Re z<sub>n</sub>| &minus; i|Im z<sub>n</sub>|',
-    6: 'z&prime; = |Re z<sub>n</sub>| + i|Im z<sub>n</sub>|, then take |Re| of z&prime;<sup>d</sup>',
-    7: 'z&prime; = Re z<sub>n</sub> &minus; i|Im z<sub>n</sub>|, then take |Re| of z&prime;<sup>d</sup>'
+    1: { pre: 'z&prime; = |Re z<sub>n</sub>| + i|Im z<sub>n</sub>|' },
+    2: { pre: 'z&prime; = conjugate of z<sub>n</sub> (flip the imaginary part)' },
+    3: { postNote: '(z<sub>n</sub><sup>d</sup>)&Prime; = |Re(z<sub>n</sub><sup>d</sup>)| + i&middot;Im(z<sub>n</sub><sup>d</sup>)' },
+    4: { pre: 'z&prime; = Re z<sub>n</sub> &minus; i|Im z<sub>n</sub>|' },
+    5: { pre: 'z&prime; = |Re z<sub>n</sub>| &minus; i|Im z<sub>n</sub>|' },
+    6: { pre: 'z&prime; = |Re z<sub>n</sub>| + i|Im z<sub>n</sub>|', postNote: '(z&prime;<sup>d</sup>)&Prime; = |Re(z&prime;<sup>d</sup>)| + i&middot;Im(z&prime;<sup>d</sup>)' },
+    7: { pre: 'z&prime; = Re z<sub>n</sub> &minus; i|Im z<sub>n</sub>|', postNote: '(z&prime;<sup>d</sup>)&Prime; = |Re(z&prime;<sup>d</sup>)| + i&middot;Im(z&prime;<sup>d</sup>)' }
   };
 
   const descriptions = {
@@ -871,18 +854,22 @@
     const isSimple = m >= 8 && m <= 11;
     const isNewton = m === NEWTON;
     const isNova = m === NOVA;
-    const julia = state.juliaMode && !isNewton;
+    const julia = state.juliaMode;
     const d = state.power.toFixed(1);
 
     let eq, note = '', startLine, stopLine, colorLine, values;
 
     if(isPowerFamily){
-      const zTerm = foldRules[m] ? 'z&prime;' : 'z<sub>n</sub>';
-      eq = `z<sub>n+1</sub> = ${zTerm}<sup>${d}</sup>`;
+      const rule = foldRules[m];
+      const hasPre = !!(rule && rule.pre);
+      const hasPost = !!(rule && rule.postNote);
+      let powerTerm = `${hasPre ? 'z&prime;' : 'z<sub>n</sub>'}<sup>${d}</sup>`;
+      if(hasPost) powerTerm = `(${powerTerm})&Prime;`;
+      eq = `z<sub>n+1</sub> = ${powerTerm}`;
       if(state.rotation !== 0) eq += ` &middot; e<sup>i${state.rotation}&deg;</sup>`;
       eq += ' + c';
-      if(state.phoenixOn) eq += ` + (${fmtComplex(state.phoenixP, 2)})&middot;z<sub>n</sub><sub>&minus;1</sub>`;
-      note = foldRules[m] || '';
+      if(state.phoenixOn) eq += ` + (${fmtComplex(state.phoenixP, 2)})&middot;z<sub>n&minus;1</sub>`;
+      note = [hasPre ? rule.pre : null, hasPost ? rule.postNote : null].filter(Boolean).join('<br>');
       startLine = julia
         ? `z<sub>0</sub> = p &nbsp; c = ${fmtComplex(state.juliaC)} (fixed)`
         : 'z<sub>0</sub> = 0 &nbsp; c = p (each pixel)';
@@ -926,7 +913,7 @@
     }
 
     mathPanel.innerHTML = `
-      <h2>${modeNames[m]}</h2>
+      <h2>${julia ? 'Julia (' + modeNames[m] + ')' : modeNames[m]}</h2>
       <div class="sub">${isNewton ? 'root-finding' : (julia ? 'Julia-type' : 'Mandelbrot-type')} iteration</div>
       <div class="eq-block">
         <div class="eq">${eq}</div>
@@ -946,7 +933,7 @@
   document.getElementById('downloadBtn').addEventListener('click', () => {
     render();
     let name = modeNames[state.mode].toLowerCase().replace(/\s+/g, '-');
-    if(state.juliaMode && state.mode !== NEWTON) name += '-julia';
+    if(state.juliaMode) name += '-julia';
     if(state.phoenixOn && state.mode <= 7) name += '-feedback';
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const link = document.createElement('a');
@@ -956,8 +943,6 @@
   });
 
   const modeSelect = document.getElementById('modeSelect');
-  const juliaModeSection = document.getElementById('juliaModeSection');
-  const juliaModeToggle = document.getElementById('juliaModeToggle');
   const juliaControls = document.getElementById('juliaControls');
   const phoenixSection = document.getElementById('phoenixSection');
   const phoenixToggle = document.getElementById('phoenixToggle');
@@ -968,21 +953,46 @@
   const rotationRow = document.getElementById('rotationRow');
   const powerLabel = document.getElementById('powerLabel');
 
+  // Julia variants live in the same dropdown as their family, offset by
+  // JULIA_BASE (e.g. "103" = Julia · Celtic). Newton has no Julia variant:
+  // its z0 is always the pixel and c is always 0, so there's nothing to fix.
+  function populateModeSelect(){
+    const famGroup = document.createElement('optgroup');
+    famGroup.label = 'Mandelbrot-type';
+    dropdownLabels.forEach((label, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = label;
+      famGroup.appendChild(opt);
+    });
+    const juliaGroup = document.createElement('optgroup');
+    juliaGroup.label = 'Julia-type';
+    modeNames.forEach((name, i) => {
+      if(i === NEWTON) return;
+      const opt = document.createElement('option');
+      opt.value = JULIA_BASE + i;
+      opt.textContent = 'Julia (' + name + ')';
+      juliaGroup.appendChild(opt);
+    });
+    modeSelect.appendChild(famGroup);
+    modeSelect.appendChild(juliaGroup);
+  }
+  populateModeSelect();
+
   function applyModeVisibility(){
     const m = state.mode;
     const isPowerFamily = m <= 7;
-    const isSimpleJulia = m >= 8 && m <= 11;
+    const isSimpleFamily = m >= 8 && m <= 11;
     const isNova = m === NOVA;
     const isNewton = m === NEWTON;
 
-    juliaModeSection.style.display = isNewton ? 'none' : 'block';
-    juliaControls.style.display = (state.juliaMode && !isNewton) ? 'block' : 'none';
+    juliaControls.style.display = state.juliaMode ? 'block' : 'none';
 
     phoenixSection.style.display = isPowerFamily ? 'block' : 'none';
     phoenixControls.style.display = (state.phoenixOn && isPowerFamily) ? 'block' : 'none';
 
     powerRow.style.display = (isPowerFamily || isNova || isNewton) ? 'flex' : 'none';
-    bailoutRow.style.display = (isPowerFamily || isSimpleJulia) ? 'flex' : 'none';
+    bailoutRow.style.display = (isPowerFamily || isSimpleFamily) ? 'flex' : 'none';
     rotationRow.style.display = isPowerFamily ? 'flex' : 'none';
 
     rootControls.style.display = (isNova || isNewton) ? 'block' : 'none';
@@ -991,28 +1001,20 @@
   }
 
   function updateView(){
-    const d = (state.juliaMode && state.mode !== NEWTON) ? juliaDefaultView : defaults[state.mode];
+    const d = state.juliaMode ? juliaDefaultView : defaults[state.mode];
     state.center = [...d.center];
     state.zoom = d.zoom;
   }
 
-  modeSelect.addEventListener('change', () => {
-    state.mode = parseInt(modeSelect.value, 10);
-    if (state.mode !== 0) sendBoyGoal('algorithm');
-    if(state.mode === NEWTON && state.juliaMode){
-      state.juliaMode = false;
-      juliaModeToggle.classList.remove('on');
-    }
-    applyModeVisibility();
-    updateView();
-    if(state.juliaMode) syncJuliaSliders();
-    render();
-  });
+  function applyModeSelectValue(v){
+    state.juliaMode = v >= JULIA_BASE;
+    state.mode = state.juliaMode ? v - JULIA_BASE : v;
+  }
 
-  juliaModeToggle.addEventListener('click', () => {
-    state.juliaMode = !state.juliaMode;
+  modeSelect.addEventListener('change', () => {
+    applyModeSelectValue(parseInt(modeSelect.value, 10));
+    if (state.mode !== 0) sendBoyGoal('algorithm');
     if (state.juliaMode) sendBoyGoal('julia');
-    juliaModeToggle.classList.toggle('on', state.juliaMode);
     applyModeVisibility();
     updateView();
     if(state.juliaMode) syncJuliaSliders();
@@ -1197,10 +1199,8 @@
 
   document.getElementById('randomizeAllBtn').addEventListener('click', () => {
     state.mode = Math.floor(Math.random()*modeNames.length);
-    modeSelect.value = state.mode;
-
     state.juliaMode = state.mode !== NEWTON && Math.random() < 0.6;
-    juliaModeToggle.classList.toggle('on', state.juliaMode);
+    modeSelect.value = state.juliaMode ? JULIA_BASE + state.mode : state.mode;
 
     state.phoenixOn = state.mode <= 7 && Math.random() < 0.35;
     phoenixToggle.classList.toggle('on', state.phoenixOn);
