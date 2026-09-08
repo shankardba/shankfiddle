@@ -487,7 +487,11 @@
   const wrap = document.getElementById('wrap');
   const ctx = canvas.getContext('2d');
 
-  const MAX_CHARS = 400000;   // hard cap on the generated string, so a runaway custom rule can't hang the tab
+  const MAX_CHARS = 120000;   // hard cap on the generated string, so a runaway custom rule can't hang the tab
+  const RENDER_CHUNKS = 240;  // segments are batched into this many stroke() calls, regardless of how many
+                               // turtle moves there are — drawing one stroke per segment was the original
+                               // performance bug: tens of thousands of individual shadowBlur'd stroke() calls
+                               // per animation frame, which could take seconds and made the tab look frozen.
   const MAX_DEPTH_SEARCH = 24; // depths beyond this aren't worth probing when clamping the slider
 
   function clamp(v,lo,hi){ return Math.min(hi, Math.max(lo, v)); }
@@ -738,16 +742,25 @@
     ctx.lineJoin = 'round';
     ctx.globalAlpha = state.brightness;
 
-    for(let s=0; s<revealCount; s++){
-      const i = s*5;
-      const draw = segments[i+4] === 1;
-      if(!draw) continue;
-      const [sx,sy] = worldToScreen(segments[i], segments[i+1]);
-      const [ex,ey] = worldToScreen(segments[i+2], segments[i+3]);
-      const t = s/segCount;
-      const color = getStrokeColor(state.palette, t, s);
+    // Batch segments into a fixed number of chunks (one stroke() call each) instead of one
+    // stroke() per turtle move — a system with tens of thousands of segments would otherwise
+    // mean tens of thousands of individual shadowBlur'd stroke() calls per animation frame.
+    const chunkCount = Math.min(RENDER_CHUNKS, revealCount);
+    const perChunk = Math.max(1, Math.ceil(revealCount / chunkCount));
+
+    for(let c=0; c*perChunk < revealCount; c++){
+      const start = c*perChunk;
+      const end = Math.min(revealCount, start+perChunk);
+      const t = start/segCount;
+      const color = getStrokeColor(state.palette, t, start);
       ctx.beginPath();
-      ctx.moveTo(sx,sy); ctx.lineTo(ex,ey);
+      for(let s=start; s<end; s++){
+        const i = s*5;
+        if(segments[i+4] !== 1) continue;
+        const [sx,sy] = worldToScreen(segments[i], segments[i+1]);
+        const [ex,ey] = worldToScreen(segments[i+2], segments[i+3]);
+        ctx.moveTo(sx,sy); ctx.lineTo(ex,ey);
+      }
       ctx.strokeStyle = color;
       if(state.glow){
         ctx.shadowColor = color;
@@ -759,6 +772,17 @@
     }
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
+  }
+
+  // Coalesces rapid-fire 'input' events (dragging the depth slider) to at most one recompute
+  // per animation frame, and skips the reveal animation for those — the same slider-drag
+  // still fired a full doRecompute(true) (string generation + a whole reveal animation) on
+  // every single pixel of drag before this, which is what made deep/custom systems freeze up.
+  let rafPending = false;
+  function scheduleUpdate(){
+    if(rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => { rafPending = false; doRecompute(false); });
   }
 
   function startAnimation(){
@@ -791,17 +815,20 @@
       : '';
     capNote.classList.toggle('show', capped);
 
+    let strLen = 0;
     if(state.cantorMode){
       segments = new Float64Array(interpretCantor(state.depth));
     } else {
       const str = generateString(state.axiom, state.rules, state.depth);
+      strLen = str.length;
       segments = new Float64Array(interpret(str, state.angle, state.heading, state.drawSymbols));
     }
     segCount = segments.length / 5;
+    if(state.cantorMode) strLen = segCount; // no single "generated string" for the multi-row Cantor renderer
     bbox = computeBBox(segments);
     fitScale();
 
-    updateHud(state.cantorMode ? (state.depth+1)*'F'.length : generateString(state.axiom, state.rules, state.depth).length);
+    updateHud(strLen);
     updateMathPanel();
 
     if(animate) startAnimation();
@@ -1061,7 +1088,7 @@
   depthSlider.addEventListener('input', () => {
     state.depth = +depthSlider.value;
     depthVal.textContent = state.depth;
-    doRecompute(true);
+    scheduleUpdate();
   });
 
   const lineWidthSlider = document.getElementById('lineWidthSlider');
