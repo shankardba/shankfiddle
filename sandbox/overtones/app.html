@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overtone Series — Trumpet &amp; Guitar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a1024;
+    --panel: #101a38;
+    --panel-dim: #0c1530;
+    --ink: #eef1ff;
+    --ink-soft: #93a2cf;
+    --line: #24345f;
+    --accent: #39e0c4;
+    --accent-soft: #1c4a45;
+    --muted: #6b7aa8;
+    --h1: #ffb84d; --h2: #ff8a5c; --h3: #ff5c8a; --h4: #d162ea;
+    --h5: #8b7dff; --h6: #5a9dff; --h7: #4fc1e0; --h8: #35c9a4;
+    --h9: #6fcf6f; --h10: #b7d94c;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+  }
+  .stage{
+    max-width:700px; margin:0 auto; padding:36px 20px 84px;
+    display:flex; flex-direction:column; align-items:center; gap:24px;
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:clamp(24px,4.6vw,32px);
+    margin:0; color:var(--ink); text-align:center; letter-spacing:0.2px;
+    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+  }
+  h1 select{
+    font-family:'Fraunces', serif; font-weight:700; font-size:inherit;
+    background:var(--panel); color:var(--accent); border:1.5px solid var(--accent);
+    border-radius:10px; padding:2px 10px; cursor:pointer;
+  }
+  h2{ font-family:'Fraunces', serif; font-weight:700; font-size:16px; margin:0 0 8px; color:var(--h1); }
+  h3{ font-family:'Fraunces', serif; font-weight:700; font-size:15px; margin:0 0 6px; color:var(--accent); }
+  .sub{ margin:0; text-align:center; color:var(--muted); font-size:14px; line-height:1.55; max-width:52ch; }
+  #fundamentalReadout{ font-size:12.5px; color:var(--accent); }
+
+  .row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
+
+  /* harmonic pills */
+  .harmonic-pill{
+    font-family:'Inter', sans-serif; border:1.5px solid var(--hcolor, var(--line));
+    background:transparent; color:var(--hcolor, var(--ink-soft)); border-radius:12px;
+    padding:6px 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center;
+    gap:1px; min-width:52px; transition:background 0.15s, color 0.15s, transform 0.1s;
+  }
+  .harmonic-pill .hnum{ font-family:'Fraunces', serif; font-weight:700; font-size:16px; }
+  .harmonic-pill .hlabel{ font-size:8.5px; text-transform:uppercase; letter-spacing:0.3px; opacity:0.85; }
+  .harmonic-pill.active{ background:var(--hcolor); color:#0a1024; }
+  .harmonic-pill.locked{ opacity:0.95; cursor:default; }
+  .harmonic-pill:not(.locked):hover{ background:rgba(255,255,255,0.08); }
+  .harmonic-pill.active:not(.locked):hover{ background:var(--hcolor); }
+  .harmonic-pill.flash{ transform:scale(1.15); }
+
+  .play-btn{
+    font-family:'Inter', sans-serif; font-size:13px; font-weight:600; border:1px solid var(--accent);
+    color:var(--accent); background:transparent; border-radius:18px; padding:8px 16px;
+    cursor:pointer; transition:background 0.15s, color 0.15s;
+  }
+  .play-btn:hover{ background:var(--accent); color:#0a1024; }
+  .play-btn.secondary{ border-color:var(--muted); color:var(--ink-soft); }
+  .play-btn.secondary:hover{ background:var(--muted); color:#0a1024; }
+
+  .engine-wrap{ width:100%; background:var(--panel); border-radius:14px; padding:10px 6px; }
+  .engine-wrap svg{ width:100%; height:auto; display:block; overflow:visible; }
+  .ghost-path{ fill:none; stroke-width:1.6; opacity:0.55; }
+  .sum-path{ fill:none; stroke:var(--ink); stroke-width:2.6; stroke-linecap:round; }
+  .midline{ stroke:var(--line); stroke-width:1; stroke-dasharray:3 4; }
+  .node-tick{ stroke-width:3; stroke-linecap:round; }
+  .node-row-label{ font-size:9px; fill:var(--muted); font-family:'Inter',sans-serif; }
+  .fund-mark{ fill:var(--h1); }
+
+  .panel{
+    width:100%; background:var(--panel); border-radius:12px; padding:14px 16px;
+    color:var(--ink-soft); font-size:13.5px; line-height:1.55;
+  }
+  .panel p{ margin:0 0 8px; color:var(--ink-soft); }
+  .panel p:last-child{ margin-bottom:0; }
+  .panel .callout{
+    background:rgba(57,224,196,0.08); border:1px solid rgba(57,224,196,0.3); border-radius:8px;
+    padding:8px 10px; margin-top:8px; font-size:12.5px; color:var(--ink);
+  }
+  .legend-panel .legend-item{ display:flex; align-items:center; gap:10px; margin-bottom:6px; font-size:12.5px; }
+  .legend-swatch{ width:14px; height:14px; border-radius:4px; flex-shrink:0; }
+
+  .instrument-panel{
+    width:100%; display:flex; flex-direction:column; align-items:center; gap:16px;
+    background:var(--panel-dim); border-radius:14px; padding:18px 16px;
+  }
+  .instrument-panel[hidden]{ display:none; }
+  .guitar-sub{ width:100%; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .guitar-sub + .guitar-sub{ border-top:1px solid var(--line); padding-top:16px; }
+  .caption{ font-size:13px; color:var(--ink-soft); text-align:center; max-width:54ch; line-height:1.5; }
+
+  .bugle-wrap svg, .guitar-sub svg{ width:100%; max-width:520px; height:auto; display:block; }
+  .harmonic-btn{
+    font-family:'Fraunces', serif; font-weight:700; border:2px solid var(--hcolor, var(--line));
+    background:transparent; color:var(--hcolor, var(--ink)); border-radius:50%;
+    width:38px; height:38px; cursor:pointer; transition:background 0.15s, color 0.15s;
+  }
+  .harmonic-btn:hover{ background:var(--hcolor); color:#0a1024; }
+
+  .string-marker{ cursor:pointer; }
+  .string-marker circle{ transition:r 0.1s; }
+  .string-marker:hover circle{ r:9; }
+  .marker-label{ font-size:9.5px; fill:var(--ink-soft); text-anchor:middle; font-family:'Inter',sans-serif; }
+
+  .chord-string-btn{
+    font-family:'Inter', sans-serif; font-size:11.5px; font-weight:600; border-radius:14px;
+    border:1.5px solid var(--hcolor, var(--line)); color:var(--hcolor, var(--ink)); background:transparent;
+    padding:5px 10px; cursor:pointer;
+  }
+  .chord-string-btn:hover{ background:var(--hcolor); color:#0a1024; }
+
+  .timbre-wrap{ width:100%; display:flex; flex-direction:column; align-items:center; gap:10px; }
+
+  .foot{ font-size:12px; color:var(--muted); text-align:center; max-width:52ch; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <h1>Overtone Series on
+    <select id="instrumentSelect">
+      <option value="trumpet">Trumpet</option>
+      <option value="guitar">Guitar</option>
+    </select>
+  </h1>
+  <p class="sub">Pluck a string or buzz a horn and you never get just one pitch — you get a whole stack of them at once, for free. Toggle harmonics 1&ndash;10 below to see (and hear) the stack build up.</p>
+  <p class="sub" id="fundamentalReadout"></p>
+
+  <div class="row" id="harmonicsRow"></div>
+
+  <div class="engine-wrap">
+    <svg id="stringSvg" viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <p class="caption">Slowed way down so you can actually see it — a real string wiggles thousands of times a second. Higher harmonics wiggle proportionally faster, which is exactly why they sound higher.</p>
+
+  <div class="row">
+    <button class="play-btn" id="playFundamentalBtn">&#9658; Play fundamental</button>
+    <button class="play-btn" id="playCheckedBtn">&#9658; Play checked harmonics</button>
+    <button class="play-btn secondary" id="pluckBtn">Pluck &#9658;</button>
+  </div>
+
+  <div class="instrument-panel" id="panel-trumpet">
+    <h2>Try it: bugle calls</h2>
+    <div class="bugle-wrap"><svg id="bugleSvg" viewBox="0 0 320 110" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="row" id="bugleButtons"></div>
+    <button class="play-btn" id="bugleCallBtn">&#9658; Play a bugle call</button>
+    <p class="caption">A bugle has no valves at all. Every note in every bugle call is just a different harmonic of the same tube — the player's air and lips pick which one sounds, nothing else changes.</p>
+  </div>
+
+  <div class="instrument-panel" id="panel-guitar" hidden>
+    <div class="guitar-sub">
+      <h2>Try it: string harmonics</h2>
+      <svg id="guitarStringSvg" viewBox="0 0 640 110" xmlns="http://www.w3.org/2000/svg"></svg>
+      <p class="caption">Touch the string lightly at one of these spots &mdash; don't press down &mdash; and everything mutes except the part that was already sitting still: the node. That's the bell-like harmonic tone (real guitarists call it a "natural harmonic").</p>
+    </div>
+    <div class="guitar-sub">
+      <h2>The E major chord *is* the overtone series</h2>
+      <svg id="chordSvg" viewBox="0 0 300 250" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="row" id="chordButtons"></div>
+      <p class="caption" id="chordCaption"></p>
+    </div>
+  </div>
+
+  <div class="timbre-wrap">
+    <h2>Bonus: recipes for timbre</h2>
+    <p class="sub">Every instrument is playing roughly the same harmonic series &mdash; what makes them sound different is which harmonics are loud and which are quiet. Try a few mixtures:</p>
+    <div class="row" id="timbreButtons"></div>
+  </div>
+
+  <div class="panel legend-panel" id="legendPanel"></div>
+  <div class="panel why-panel" id="whyPanel"></div>
+
+  <p class="foot">Harmonic 1 (the fundamental) can't be switched off &mdash; it's the pitch you'd actually call "the note." Everything from 2 up is riding along on top of it, whether you can consciously hear it or not.</p>
+</div>
+
+<script>
+(function(){
+  const svgNS = 'http://www.w3.org/2000/svg';
+
+  const HARMONIC_COLORS = ['h1','h2','h3','h4','h5','h6','h7','h8','h9','h10']
+    .map(v => getComputedStyle(document.documentElement).getPropertyValue('--'+v).trim());
+
+  const HARMONIC_SHORT = {
+    1:'root', 2:'octave', 3:'8ve+5th', 4:'2 oct', 5:'~3rd',
+    6:'~5th', 7:'oddball', 8:'3 oct', 9:'+step', 10:'+3rd'
+  };
+  const HARMONIC_FULL = {
+    1:'The fundamental — the pitch you actually call "the note."',
+    2:'One octave up. The simplest overtone there is.',
+    3:'An octave plus a fifth up.',
+    4:'Two octaves up.',
+    5:'Roughly two octaves plus a major third up.',
+    6:'Roughly two octaves plus a fifth up.',
+    7:'The oddball — doesn\'t line up with any normal note. Sounds a bit flat and bluesy.',
+    8:'Three octaves up.',
+    9:'Roughly three octaves plus a whole step up.',
+    10:'Roughly three octaves plus a third up.'
+  };
+
+  const INSTRUMENTS = {
+    trumpet: { fundamental: 116.54, noteLabel: 'Bb2 — a bugle’s pedal tone' },
+    guitar:  { fundamental: 82.41,  noteLabel: 'E2 — the open low string' }
+  };
+
+  let currentInstrument = 'trumpet';
+  let activeHarmonics = new Set([1]);
+  let audioCtx = null;
+
+  function ensureAudio(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+  function harmonicFreq(n){ return INSTRUMENTS[currentInstrument].fundamental * n; }
+  function playTone(freq, startTime, dur, peakGain){
+    const ctx = ensureAudio();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.02);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + dur - 0.08);
+    gain.gain.linearRampToValueAtTime(0, startTime + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + dur);
+  }
+
+  function flashPill(n){
+    const pill = document.querySelector('.harmonic-pill[data-n="'+n+'"]');
+    if(!pill) return;
+    pill.classList.add('flash');
+    setTimeout(() => pill.classList.remove('flash'), 220);
+  }
+
+  function playHarmonic(n, dur){
+    dur = dur || 0.9;
+    const ctx = ensureAudio();
+    playTone(harmonicFreq(n), ctx.currentTime, dur, 0.22);
+    flashPill(n);
+  }
+
+  function playFundamental(){ playHarmonic(1, 1.1); }
+
+  function playCheckedTogether(){
+    const ctx = ensureAudio();
+    const now = ctx.currentTime;
+    const count = Math.max(activeHarmonics.size, 1);
+    const gain = Math.min(0.5 / count, 0.24);
+    activeHarmonics.forEach(n => { playTone(harmonicFreq(n), now, 1.2, gain); flashPill(n); });
+  }
+
+  // --- harmonic toggle pills ---
+  function renderPills(){
+    const row = document.getElementById('harmonicsRow');
+    row.innerHTML = '';
+    for(let n = 1; n <= 10; n++){
+      const btn = document.createElement('button');
+      const locked = n === 1;
+      btn.className = 'harmonic-pill' + (activeHarmonics.has(n) ? ' active' : '') + (locked ? ' locked' : '');
+      btn.style.setProperty('--hcolor', HARMONIC_COLORS[n-1]);
+      btn.dataset.n = n;
+      btn.title = HARMONIC_FULL[n];
+      btn.innerHTML = '<span class="hnum">'+n+'</span><span class="hlabel">'+HARMONIC_SHORT[n]+'</span>';
+      if(!locked){
+        btn.addEventListener('click', () => {
+          if(activeHarmonics.has(n)) activeHarmonics.delete(n); else activeHarmonics.add(n);
+          renderPills();
+          renderEngine();
+        });
+      }
+      row.appendChild(btn);
+    }
+  }
+
+  // --- animated string engine ---
+  const SVG_W = 640, SVG_H = 330;
+  const STRING_X0 = 40, STRING_X1 = 600, STRING_LEN = STRING_X1 - STRING_X0;
+  const MID_Y = 90;
+  const GHOST_AMP = 15;
+  const BASE_OMEGA = 1.05;
+  const NODE_ROW_Y0 = 190, NODE_ROW_H = 15;
+
+  let pluckEnvelope = 1;
+  const animStart = performance.now();
+
+  function nodeFractions(n){
+    const arr = [];
+    for(let k = 1; k < n; k++) arr.push(k / n);
+    return arr;
+  }
+
+  function initStringSvg(){
+    const svg = document.getElementById('stringSvg');
+    svg.setAttribute('viewBox', '0 0 '+SVG_W+' '+SVG_H);
+    svg.innerHTML =
+      '<line class="midline" x1="'+STRING_X0+'" y1="'+MID_Y+'" x2="'+STRING_X1+'" y2="'+MID_Y+'"/>' +
+      '<circle class="fund-mark" cx="'+STRING_X0+'" cy="'+MID_Y+'" r="4"/>' +
+      '<circle class="fund-mark" cx="'+STRING_X1+'" cy="'+MID_Y+'" r="4"/>' +
+      '<g id="ghostLayer"></g>' +
+      '<path id="sumPath" class="sum-path"/>' +
+      '<g id="nodeRuler"></g>';
+  }
+
+  function renderEngine(){
+    const layer = document.getElementById('ghostLayer');
+    layer.innerHTML = '';
+    const sorted = Array.from(activeHarmonics).sort((a,b) => a - b);
+    sorted.forEach(n => {
+      const p = document.createElementNS(svgNS, 'path');
+      p.setAttribute('id', 'ghost-'+n);
+      p.setAttribute('class', 'ghost-path');
+      p.setAttribute('stroke', HARMONIC_COLORS[n-1]);
+      layer.appendChild(p);
+    });
+
+    const ruler = document.getElementById('nodeRuler');
+    ruler.innerHTML = '';
+    sorted.forEach((n, i) => {
+      const y = NODE_ROW_Y0 + i * NODE_ROW_H;
+      const label = document.createElementNS(svgNS, 'text');
+      label.setAttribute('class', 'node-row-label');
+      label.setAttribute('x', STRING_X0 - 26);
+      label.setAttribute('y', y + 3);
+      label.textContent = 'h'+n;
+      ruler.appendChild(label);
+      const track = document.createElementNS(svgNS, 'line');
+      track.setAttribute('x1', STRING_X0); track.setAttribute('x2', STRING_X1);
+      track.setAttribute('y1', y); track.setAttribute('y2', y);
+      track.setAttribute('stroke', 'var(--line)'); track.setAttribute('stroke-width', '1');
+      ruler.appendChild(track);
+      nodeFractions(n).forEach(f => {
+        const x = STRING_X0 + f * STRING_LEN;
+        const tick = document.createElementNS(svgNS, 'line');
+        tick.setAttribute('class', 'node-tick');
+        tick.setAttribute('x1', x); tick.setAttribute('x2', x);
+        tick.setAttribute('y1', y - 4); tick.setAttribute('y2', y + 4);
+        tick.setAttribute('stroke', HARMONIC_COLORS[n-1]);
+        ruler.appendChild(tick);
+      });
+    });
+
+    document.getElementById('fundamentalReadout').textContent =
+      'Fundamental: ' + INSTRUMENTS[currentInstrument].fundamental.toFixed(1) + ' Hz ('+INSTRUMENTS[currentInstrument].noteLabel+')';
+  }
+
+  function samplePath(fn){
+    const STEPS = 72;
+    let d = '';
+    for(let i = 0; i <= STEPS; i++){
+      const s = i / STEPS;
+      const x = STRING_X0 + s * STRING_LEN;
+      const y = fn(s);
+      d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    return d;
+  }
+
+  function animate(now){
+    const t = (now - animStart) / 1000;
+    pluckEnvelope += (1 - pluckEnvelope) * 0.05;
+    const amp = GHOST_AMP * pluckEnvelope;
+
+    activeHarmonics.forEach(n => {
+      const el = document.getElementById('ghost-'+n);
+      if(!el) return;
+      const omega = BASE_OMEGA * n;
+      el.setAttribute('d', samplePath(s => MID_Y - amp * Math.sin(n*Math.PI*s) * Math.cos(omega*t)));
+    });
+
+    const sumPath = document.getElementById('sumPath');
+    if(sumPath){
+      sumPath.setAttribute('d', samplePath(s => {
+        let disp = 0;
+        activeHarmonics.forEach(n => {
+          const omega = BASE_OMEGA * n;
+          disp += (amp / n) * Math.sin(n*Math.PI*s) * Math.cos(omega*t);
+        });
+        return MID_Y - disp;
+      }));
+    }
+    requestAnimationFrame(animate);
+  }
+
+  function pluck(){
+    pluckEnvelope = 1.7;
+    playCheckedTogether();
+  }
+
+  // --- trumpet panel ---
+  const TRUMPET_HARMONICS = [2,3,4,5,6,8];
+  const BUGLE_CALL = [
+    {n:3,d:0.3}, {n:3,d:0.3}, {n:3,d:0.3}, {n:3,d:0.55},
+    {n:4,d:0.3}, {n:5,d:0.3}, {n:4,d:0.3}, {n:3,d:0.7}
+  ];
+
+  function initBugleSvg(){
+    const svg = document.getElementById('bugleSvg');
+    svg.innerHTML =
+      '<g fill="none" stroke="var(--ink-soft)" stroke-width="4" stroke-linecap="round">' +
+      '<path d="M20 55 C 90 30, 160 30, 210 45"/>' +
+      '<path d="M210 45 C 250 55, 265 40, 300 20"/>' +
+      '<path d="M210 65 C 250 75, 270 90, 300 95"/>' +
+      '<path d="M20 55 L20 55"/>' +
+      '</g>' +
+      '<ellipse cx="300" cy="57" rx="14" ry="42" fill="none" stroke="var(--ink-soft)" stroke-width="4"/>' +
+      '<circle cx="20" cy="55" r="6" fill="var(--ink-soft)"/>';
+  }
+
+  function renderBugleButtons(){
+    const row = document.getElementById('bugleButtons');
+    row.innerHTML = '';
+    TRUMPET_HARMONICS.forEach(n => {
+      const btn = document.createElement('button');
+      btn.className = 'harmonic-btn';
+      btn.style.setProperty('--hcolor', HARMONIC_COLORS[n-1]);
+      btn.textContent = n;
+      btn.title = 'Harmonic '+n+' — '+HARMONIC_FULL[n];
+      btn.addEventListener('click', () => playHarmonic(n, 0.7));
+      row.appendChild(btn);
+    });
+  }
+
+  function playBugleCall(){
+    const ctx = ensureAudio();
+    let t = ctx.currentTime;
+    BUGLE_CALL.forEach(step => {
+      playTone(harmonicFreq(step.n), t, step.d * 0.92, 0.22);
+      const delay = (t - ctx.currentTime) * 1000;
+      setTimeout(() => flashPill(step.n), Math.max(delay, 0));
+      t += step.d;
+    });
+  }
+
+  // --- guitar panel ---
+  const GUITAR_TOUCH_POINTS = [
+    { n:2, fret:12, fracs:[1/2] },
+    { n:3, fret:7,  fracs:[1/3] },
+    { n:3, fret:19, fracs:[2/3] },
+    { n:4, fret:5,  fracs:[1/4] },
+    { n:5, fret:4,  fracs:[1/5] },
+    { n:6, fret:3,  fracs:[1/6] }
+  ];
+
+  function initGuitarStringSvg(){
+    const svg = document.getElementById('guitarStringSvg');
+    const x0 = 30, x1 = 610, y = 55;
+    let inner = '<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="var(--ink-soft)" stroke-width="2.5"/>';
+    GUITAR_TOUCH_POINTS.forEach(pt => {
+      const x = x0 + pt.fracs[0] * (x1 - x0);
+      const color = HARMONIC_COLORS[pt.n-1];
+      inner += '<g class="string-marker" data-n="'+pt.n+'">' +
+        '<circle cx="'+x+'" cy="'+y+'" r="7" fill="'+color+'" stroke="var(--bg)" stroke-width="1.5"/>' +
+        '<text class="marker-label" x="'+x+'" y="'+(y-14)+'">h'+pt.n+'</text>' +
+        '<text class="marker-label" x="'+x+'" y="'+(y+24)+'">fret '+pt.fret+'</text>' +
+      '</g>';
+    });
+    svg.innerHTML = inner;
+    svg.querySelectorAll('.string-marker').forEach(g => {
+      g.addEventListener('click', () => playHarmonic(parseInt(g.dataset.n, 10), 1.0));
+    });
+  }
+
+  // note: [string label, fret label, note name, freq, harmonic, exact octave match?]
+  const E_CHORD = [
+    { string:'Low E', fret:'open', note:'E2',  freq:82.41,  n:1, exact:true  },
+    { string:'A',      fret:2,      note:'B2',  freq:123.47, n:3, exact:false },
+    { string:'D',      fret:2,      note:'E3',  freq:164.81, n:2, exact:true  },
+    { string:'G',      fret:1,      note:'G#3', freq:207.65, n:5, exact:false },
+    { string:'B',      fret:'open', note:'B3',  freq:246.94, n:3, exact:true  },
+    { string:'High E', fret:'open', note:'E4',  freq:329.63, n:4, exact:true  }
+  ];
+
+  function initChordSvg(){
+    const svg = document.getElementById('chordSvg');
+    const xs = [30,84,138,192,246,300].map(x => x - 15);
+    const nutY = 30, fretH = 42, topPad = 55;
+    let inner = '';
+    // nut + 2 frets
+    inner += '<line x1="'+xs[0]+'" y1="'+nutY+'" x2="'+xs[5]+'" y2="'+nutY+'" stroke="var(--ink)" stroke-width="4"/>';
+    for(let f = 1; f <= 2; f++){
+      const y = nutY + f * fretH;
+      inner += '<line x1="'+xs[0]+'" y1="'+y+'" x2="'+xs[5]+'" y2="'+y+'" stroke="var(--line)" stroke-width="1.5"/>';
+    }
+    xs.forEach(x => {
+      inner += '<line x1="'+x+'" y1="'+nutY+'" x2="'+x+'" y2="'+(nutY + 2*fretH + 10)+'" stroke="var(--ink-soft)" stroke-width="2"/>';
+    });
+
+    E_CHORD.forEach((note, i) => {
+      const x = xs[i];
+      const color = HARMONIC_COLORS[note.n-1];
+      let cy;
+      if(note.fret === 'open'){
+        cy = nutY - 18;
+        inner += '<circle cx="'+x+'" cy="'+cy+'" r="9" fill="none" stroke="'+color+'" stroke-width="3"/>';
+      } else {
+        cy = nutY + (note.fret - 0.5) * fretH;
+        inner += '<circle cx="'+x+'" cy="'+cy+'" r="9" fill="'+color+'" stroke="var(--bg)" stroke-width="1.5"/>';
+      }
+      inner += '<text class="marker-label" x="'+x+'" y="'+(nutY + 2*fretH + 28)+'">'+note.string+'</text>';
+      inner += '<text class="marker-label" x="'+x+'" y="'+(nutY + 2*fretH + 40)+'" fill="'+color+'">'+note.note+'</text>';
+      inner += '<text class="marker-label" x="'+x+'" y="'+(nutY + 2*fretH + 52)+'">h'+note.n+'</text>';
+    });
+    svg.innerHTML = inner;
+  }
+
+  function renderChordButtons(){
+    const row = document.getElementById('chordButtons');
+    row.innerHTML = '';
+    E_CHORD.forEach(note => {
+      const btn = document.createElement('button');
+      btn.className = 'chord-string-btn';
+      btn.style.setProperty('--hcolor', HARMONIC_COLORS[note.n-1]);
+      btn.textContent = note.string;
+      btn.title = 'Hear harmonic '+note.n+', then the actual '+note.note+' chord note';
+      btn.addEventListener('click', () => {
+        const ctx = ensureAudio();
+        const now = ctx.currentTime;
+        playTone(harmonicFreq(note.n), now, 0.55, 0.22);
+        flashPill(note.n);
+        playTone(note.freq, now + 0.62, 0.55, 0.22);
+      });
+      row.appendChild(btn);
+    });
+    document.getElementById('chordCaption').textContent =
+      'This is why it’s called a “major” chord — you’re not memorizing an arbitrary shape, ' +
+      'you’re playing the first five notes the open low E string already wants to make (root, octave, fifth, ' +
+      'another octave, third), just rearranged across six strings to fit under four fingers. Click a string to hear ' +
+      'its matching harmonic, then the real chord note — three of them line up exactly.';
+  }
+
+  // --- timbre presets (bonus) ---
+  const TIMBRE_PRESETS = [
+    { label:'Pure tone', set:[1] },
+    { label:'Buzzy / bright', set:[1,2,3,4,5,6,7,8,9,10] },
+    { label:'Hollow / clarinet-ish', set:[1,3,5,7,9] },
+    { label:'Warm / mellow', set:[1,2,3] }
+  ];
+
+  function renderTimbreButtons(){
+    const row = document.getElementById('timbreButtons');
+    row.innerHTML = '';
+    TIMBRE_PRESETS.forEach(preset => {
+      const btn = document.createElement('button');
+      btn.className = 'play-btn secondary';
+      btn.textContent = preset.label;
+      btn.addEventListener('click', () => {
+        activeHarmonics = new Set(preset.set);
+        renderPills();
+        renderEngine();
+        playCheckedTogether();
+      });
+      row.appendChild(btn);
+    });
+  }
+
+  // --- legend + why panels ---
+  function renderLegend(){
+    const panel = document.getElementById('legendPanel');
+    let inner = '<h2>Color legend</h2>';
+    for(let n = 1; n <= 10; n++){
+      inner += '<div class="legend-item"><span class="legend-swatch" style="background:'+HARMONIC_COLORS[n-1]+'"></span>' +
+        '<span>Harmonic '+n+' &mdash; '+HARMONIC_FULL[n]+'</span></div>';
+    }
+    panel.innerHTML = inner;
+  }
+
+  function renderWhy(){
+    const panel = document.getElementById('whyPanel');
+    let inner = '<h2>Why this happens</h2>' +
+      '<p>A string (or a column of air in a horn) can’t help but vibrate in several ways at once: as one long wave ' +
+      'end-to-end (the fundamental), but also as two shorter waves, three shorter waves, and so on, all layered on top ' +
+      'of each other simultaneously. Each of those layers is a harmonic, and its frequency is always a whole-number ' +
+      'multiple of the fundamental — 2×, 3×, 4×... never a fraction in between.</p>' +
+      '<p>A <b>node</b> is a spot along the string that doesn’t move for a given harmonic, because that harmonic’s ' +
+      'wave happens to cross zero right there. Every harmonic has its own set of nodes — that’s the color-coded ' +
+      'row of ticks under the animation above.</p>';
+    if(currentInstrument === 'trumpet'){
+      inner += '<div class="callout">The French horn was originally built with no valves at all — it could only ' +
+        'play notes from this harmonic series. Valves came later just to let players shift the whole series to a ' +
+        'different fundamental, giving them more notes to work with.</div>';
+    } else {
+      inner += '<div class="callout">Every open-position major chord shape on guitar is quietly doing the same trick ' +
+        'as the E major chord above: stacking the early, consonant harmonics of a low root note across several ' +
+        'strings so they’re all playable at once.</div>';
+    }
+    panel.innerHTML = inner;
+  }
+
+  // --- wiring ---
+  document.getElementById('instrumentSelect').addEventListener('change', e => {
+    currentInstrument = e.target.value;
+    document.getElementById('panel-trumpet').hidden = currentInstrument !== 'trumpet';
+    document.getElementById('panel-guitar').hidden = currentInstrument !== 'guitar';
+    renderEngine();
+    renderWhy();
+  });
+  document.getElementById('playFundamentalBtn').addEventListener('click', playFundamental);
+  document.getElementById('playCheckedBtn').addEventListener('click', playCheckedTogether);
+  document.getElementById('pluckBtn').addEventListener('click', pluck);
+  document.getElementById('bugleCallBtn').addEventListener('click', playBugleCall);
+
+  initStringSvg();
+  renderPills();
+  renderEngine();
+  initBugleSvg();
+  renderBugleButtons();
+  initGuitarStringSvg();
+  initChordSvg();
+  renderChordButtons();
+  renderTimbreButtons();
+  renderLegend();
+  renderWhy();
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
