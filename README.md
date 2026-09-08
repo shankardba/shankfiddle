@@ -26,6 +26,10 @@ tools/flute-circle-of-fifths/
 tools/boy/
   index.html                  Wrapper
   app.html                     Unmodified copy of boy-game/index.html
+tools/spirograph/
+  index.html                  Wrapper
+  app.html                     Canonical source — mirrored OUT to the private
+                                spirograph-studio repo, not copied in from it
 ```
 
 Each tool lives in an iframe (`app.html`) inside a small shankFiddle-branded
@@ -72,6 +76,22 @@ python3 -m http.server 8420
 Colors are drawn from the shankFiddle logo (gold treble clef, magenta neon
 glow, on black) — see `:root` in `css/styles.css`.
 
+## Spirograph Studio
+
+`tools/spirograph/` follows the same wrapper+iframe pattern as the tools
+above, but the sync direction is reversed from all of them: `app.html` here
+is the **canonical source** — edited directly in place — and the private
+`spirograph-studio` repo (cloned locally at
+`~/claude-applets/spirograph-studio`) is kept as a mirror of it, not the
+other way around. After editing `tools/spirograph/app.html`, push the change
+out to the private repo instead of pulling one in:
+
+```bash
+cp tools/spirograph/app.html ~/claude-applets/spirograph-studio/index.html
+cd ~/claude-applets/spirograph-studio
+git add index.html && git commit -m "..." && git push
+```
+
 ## Sandbox: Stock Sonifier
 
 `sandbox/stock-sonifier/` follows the same wrapper+iframe pattern as `tools/`,
@@ -99,6 +119,22 @@ Data so the API key stays server-side. `js/data.js` in both copies points at
 the deployed Worker (`stock-sonifier-proxy.shankfiddle.workers.dev`) unless
 the page is running on `localhost`, in which case it talks to `wrangler dev`
 on port 8787 instead — no manual toggle needed between the two.
+
+## Sandbox: Overtone Series
+
+`sandbox/overtones/` follows the same wrapper+iframe pattern as `tools/`:
+
+```
+sandbox/overtones/
+  index.html                  Wrapper
+  app.html                     Unmodified copy of claude-applets/overtone-series/index.html
+```
+
+To pull in updates:
+
+```bash
+cp ~/claude-applets/overtone-series/index.html sandbox/overtones/app.html
+```
 
 ## To do
 
