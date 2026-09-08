@@ -827,6 +827,24 @@
     render();
   }
 
+  // Coalesces rapid-fire pointer/slider events (dragging a site, dragging the site-count
+  // slider) into at most one recompute() per animation frame — the same fix as the
+  // lsystem-widget/L-Systems slowdown: without this, each raw mousemove/input tick fired a
+  // full O(n^2) half-plane clip (plus Delaunay rebuild, plus up to 150 shadowBlur'd stroke()
+  // calls) synchronously, which could take longer than a frame and made dragging feel frozen.
+  let recomputeRafPending = false;
+  function scheduleRecompute(){
+    if(recomputeRafPending) return;
+    recomputeRafPending = true;
+    requestAnimationFrame(() => { recomputeRafPending = false; recompute(); });
+  }
+  let loadPresetRafPending = false;
+  function scheduleLoadPreset(key, opts){
+    if(loadPresetRafPending) return;
+    loadPresetRafPending = true;
+    requestAnimationFrame(() => { loadPresetRafPending = false; loadPreset(key, opts); });
+  }
+
   // ---------- rendering ----------
   function siteColorRGB(i){
     const t = state.sites.length<=1 ? 0 : i/state.sites.length;
@@ -1086,7 +1104,7 @@
     state.sites[dragIndex].x = clamp(x, 0, canvas.width);
     state.sites[dragIndex].y = clamp(y, 0, canvas.height);
     state.presetKey = 'custom';
-    recompute();
+    scheduleRecompute();
   });
   window.addEventListener('mouseup', () => {
     if(dragIndex>=0){ dragIndex=-1; canvas.classList.remove('dragging'); }
@@ -1128,7 +1146,7 @@
     state.sites[dragIndex].x = clamp(x,0,canvas.width);
     state.sites[dragIndex].y = clamp(y,0,canvas.height);
     state.presetKey = 'custom';
-    recompute();
+    scheduleRecompute();
   }, {passive:false});
   canvas.addEventListener('touchend', () => { dragIndex=-1; });
 
@@ -1193,7 +1211,7 @@
     state.siteCount = +siteCountSlider.value;
     siteCountVal.textContent = state.siteCount;
     const key = state.presetKey==='custom' ? 'blueNoise' : state.presetKey;
-    loadPreset(key, {keepSeed:true});
+    scheduleLoadPreset(key, {keepSeed:true});
   });
 
   document.getElementById('randomizeBtn').addEventListener('click', () => {
