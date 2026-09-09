@@ -383,7 +383,7 @@
   </div>
   <div id="toast" class="hud"></div>
   <div id="car-menu" class="hud">
-    <div class="car-menu-title">Drive to&hellip;</div>
+    <div class="car-menu-title" id="car-menu-title">Drive to&hellip;</div>
     <div id="car-menu-list"></div>
     <div class="prompt">&#9660; space to close</div>
   </div>
@@ -491,6 +491,20 @@
   //             // skin defaults to SKIN_LIGHT (everyone else in the world);
   //             // Boy's family uses SKIN_BROWN (0xa9714a) — pass it as the
   //             // literal since this data runs before those are defined.
+  //             // bedridden: true swaps the whole standing figure for a
+  //             // self-contained bed+patient prop (createBedriddenHuman()) —
+  //             // only skin/hair still apply; pieceType/top/bottom/tieDye
+  //             // are ignored lying down. Dad uses this from his diagnosis
+  //             // onward (Hospital) and through hospice (Home) — see
+  //             // appearanceDuring below for how Home's Dad stays standing
+  //             // in earlier chapters on that same tile.
+  //             appearanceDuring: { hospice: { bedridden: true, skin: ... } },
+  //             // optional — a per-chapter override map, checked before the
+  //             // base `appearance` above (see the npc-creation line in
+  //             // buildWorldGroup()). Lets one NPC def look different across
+  //             // the chapters it's presentDuring/presentFrom, without a
+  //             // second map tile — e.g. Dad standing, then bedridden, on
+  //             // the exact same spot in the room.
   //             dialogue: { childhood: '...', diagnosis: '...', ... },
   //             presentFrom: 'diagnosis',  // absent BEFORE this chapter —
   //             absentFrom: 'grief',       // and gone FROM this chapter on.
@@ -558,7 +572,7 @@
   //             // there's a real tool the skill maps to, use `goal` and
   //             // wire up that tool's own instrumentation (see the sibling
   //             // apps' `sendBoyGoal`) — that's how Sora/flute (its own
-  //             // fluteCircleOfFifths tool) and Whitfield/Jax (sharing
+  //             // fluteCircleOfFifths tool) and Whitfield/Eric (sharing
   //             // circle-of-fifths/app.html's "practicing for" selector —
   //             // see its sendBoyGoal for how their goal ids stay distinct
   //             // from Sir Earth's) all work. Reach for a `job`'s
@@ -572,7 +586,10 @@
   //             // tool/id/href/linkLabel once that game is ready.
   //             // Dr. Voss/research (Hospital) is the one bare `threshold`
   //             // grind left — debt, not the pattern to copy, kept only
-  //             // because no real task exists to point it at yet.
+  //             // because no real task exists to point it at yet. His own
+  //             // first progressLine now explains WHY Boy's there at all
+  //             // (Mom's making him volunteer) — that's lore, not a fix;
+  //             // the mechanic itself is still the debt.
   //             job: {                  // optional — instead of dialogue or
   //               pay: 5,               // a challenge, an indefinitely
   //               reputation: 1,        // repeatable source of money, this
@@ -697,9 +714,16 @@
   //
   // A level itself may optionally set `availableFrom: '<chapter>'` — until
   // story.chapter has reached (or passed) that chapter, the level is left
-  // out of the car's destination menu. The Hospital below uses this so it
-  // only appears once the story reaches 'diagnosis'; it isn't wired to any
-  // walking exit at all, so the car is the only way in or out of it.
+  // out of the car's destination menu. The Hospital and the High School
+  // both use this, from 'earning_respect' on (Boy's hospital-volunteering
+  // and school years, well before Dad's diagnosis reveal); neither is
+  // wired to any walking exit at all, so a ride is the only way in or out
+  // of either one. Before the car itself unlocks, that ride comes from
+  // Mom instead — see momRideLink()/openMomRideMenu(), which hangs a
+  // filtered version of the same destination menu off her own dialogue at
+  // Home, listing only `availableFrom` levels (never the walkable
+  // hometown, which needs no ride at all). Once hasCar, momRideLink()
+  // stops offering itself — the real car supersedes it.
   //
   // A level can also be locked from the INSIDE — exploration gated behind
   // a real conversation, not a threshold grind. There's no generic data
@@ -736,6 +760,14 @@
           id: 'dad',
           name: 'Dad',
           appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'short', skin: 0xa9714a, pieceType: 'king' },
+          // Standing (above) for childhood/earning_respect — but bedridden
+          // for hospice, the same tile now holding a sickbed instead of a
+          // king piece. See appearanceDuring's doc above LEVELS: it's
+          // checked first, keyed by story.chapter, before falling back to
+          // the base `appearance`. He's back at the Hospital (see that
+          // level) for diagnosis, presentDuring below skips straight from
+          // standing to bedridden with no in-between here.
+          appearanceDuring: { hospice: { skin: 0xa9714a, bedridden: true } },
           isFamily: true,
           dialogue: {
             // Preserve this exact line — it's the story's signature opening
@@ -891,7 +923,7 @@
           appearance: { top: 0x6b2338, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xc9c9c9, pieceType: 'bishop' },
           // Violin is the FIRST instrument taught in the story, and it
           // does NOT share the Circle of Fifths tool the way Whitfield/
-          // Jax do (see their missions, Hollow/Riverside levels) — a
+          // Eric do (see their missions, Hollow/Riverside levels) — a
           // separate violin game is being built and will plug in here.
           // This `goal` is a placeholder: `tool`/`id`/`href`/`linkLabel`
           // all need to change to match whatever that game actually
@@ -1094,8 +1126,8 @@
           id: 'whitfield',
           name: 'Ms. Whitfield',
           appearance: { top: 0x2a4a3a, bottom: 0x1f2a2a, hairStyle: 'long', hair: 0xb8b8b8, pieceType: 'queen' },
-          // Same Circle of Fifths app as Alden/Jax/Sir Earth, set to Piano
-          // — see the doc note on Alden's missions above (Clearing level)
+          // Same Circle of Fifths app as Eric/Sir Earth, set to Piano — see
+          // the doc note on Alden's missions above (Clearing level)
           // for how the shared tool keeps every teacher's goals separate.
           missions: [
             {
@@ -1156,50 +1188,60 @@
       ],
       npcs: {
         G: {
-          id: 'jax',
-          name: 'Jax',
-          appearance: { top: 0x3a5a8a, bottom: 0x8a7a5a, hairStyle: 'short', hair: 0x2a2018, pieceType: 'rook' },
+          id: 'eric',
+          name: 'Eric',
+          // A friend, not a mentor — the only recurring character who
+          // learns something alongside Boy instead of teaching it down to
+          // him. Deliberately skips the tone-arc convention (see "writing
+          // convention: tone arcs with respect" above): he's never
+          // dismissive to begin with, so there's no put-down to earn his
+          // way out of, and he never calls Boy "boy" the way every adult
+          // in the story does. Pawn piece, same as Boy and Milo — the
+          // cast's other kids — set apart from every adult mentor's taller
+          // piece. "White" pawn: a light, undyed costume color, distinct
+          // from Boy's blue.
+          appearance: { top: 0xf0ece0, bottom: 0x3a5a8a, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'pawn' },
           // Same Circle of Fifths app as Alden/Whitfield/Sir Earth, set to
           // Guitar — see the doc note on Alden's missions (Clearing level)
           // for how the shared tool keeps every teacher's goals separate.
           missions: [
             {
               key: 'guitar_wheel',
-              introLine: "Nah man, you're strangling those strings. Loosen up, boy — every key's got a home on that wheel. Set it to Guitar and go find yours.",
-              completeLine: "Okay okay, that had a groove to it.",
+              introLine: "Dude, neither of us actually knows what we're doing — let's just mess with this wheel until something clicks. Find your key.",
+              completeLine: "Wait, that actually sounded good. We're doing this.",
               learnedMessage: 'You found your key on the wheel! 🎸',
               goal: { tool: 'circleOfFifths', id: 'wheel_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel and find your key →' }
             },
             {
               key: 'guitar_minor',
-              introLine: "Every key's got a minor side — moodier, bluesier. Switch it up and feel the difference.",
-              completeLine: "Yeah. Now you're bending more than just strings.",
+              introLine: "Okay, switch it to minor — I want to hear what happens.",
+              completeLine: "Whoa. Same key, totally different mood. That's actually kind of sick.",
               learnedMessage: 'You learned minor keys! 🌘',
               goal: { tool: 'circleOfFifths', id: 'minor_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Find the relative minor →' }
             },
             {
               key: 'guitar_progression',
-              introLine: "One more run-through and I'll know you're serious, boy — pick a progression and ride it all the way out.",
-              completeLine: "Yeah, that run had heart in it.",
+              introLine: "Let's actually try to play something instead of just noodling — pick a progression and run it.",
+              completeLine: "See, that's a real song now, not just noise.",
               learnedMessage: 'You learned to play a progression! 🎼',
               goal: { tool: 'circleOfFifths', id: 'progression_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
             },
             {
               key: 'guitar_extensions',
-              introLine: "Plain chords are fine, but 7ths and 9ths are where the flavor's at. Turn 'em on.",
-              completeLine: "Now THAT'S a chord, boy. That's got some flavor to it.",
+              introLine: "Try stacking a 7th or 9th on there — apparently that's what makes it sound cooler.",
+              completeLine: "Okay yeah, that's the cool-sounding chord. Calling it.",
               learnedMessage: 'You learned guitar extensions! 🎨',
               goal: { tool: 'circleOfFifths', id: 'extensions_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
             },
             {
               key: 'guitar_charts',
-              introLine: "Read it a different way for me, boy — switch the chart, change the clef.",
-              completeLine: "Alright, you've got heart, boy. Let's actually learn some guitar — for real, this time.",
+              introLine: "Switch the chart, or the clef, whatever — let's see if it still reads the same.",
+              completeLine: "We actually figured this whole thing out. Not bad for two guys with one guitar.",
               learnedMessage: 'You learned to read every chart! 📖',
               goal: { tool: 'circleOfFifths', id: 'charts_guitar', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
             }
           ],
-          dialogue: { default: "Pull up a seat, boy. Strings are always ready." },
+          dialogue: { default: "Hey — bring the guitar next time. Or don't, I'll just hum it at you." },
           instrumentSting: 'guitar'
         }
       },
@@ -1500,7 +1542,7 @@
             key: 'research',
             threshold: 4,
             progressLines: [
-              "Sterile technique first. Touch that flask again with ungloved hands and we start over.",
+              "So you're the one your mother's been talking about — volunteering here, learning real research, whether you asked for it or not. Fine. Sterile technique first. Touch that flask again with ungloved hands and we start over.",
               "Careful — reverse transcriptase is temperamental. Keep it on ice until the last second.",
               "Now we amplify. Watch the primers, watch the cycles — RT-PCR doesn't forgive sloppy hands.",
               "The mice are next. Gentle, deliberate, respectful — this is the real work now."
@@ -1513,7 +1555,13 @@
         D: {
           id: 'dad',
           name: 'Dad',
-          appearance: { top: 0xb9c2c9, bottom: 0x8a9096, hairStyle: 'short', skin: 0xa9714a, pieceType: 'king' },
+          // Bedridden from the diagnosis trigger on — see createBedriddenHuman()
+          // and the `bedridden` flag doc above LEVELS. He's presentDuring
+          // diagnosis only here, so a flat `bedridden: true` is enough; Home's
+          // Dad (Home level, above in LEVELS) needs the appearanceDuring
+          // override instead, since he's also standing on that same tile in
+          // earlier chapters and only goes bedridden once hospice starts.
+          appearance: { skin: 0xa9714a, bedridden: true },
           isFamily: true,
           dialogue: {
             // A caregiving arc, not a static line — see dialogueFor() and
@@ -1562,6 +1610,42 @@
           presentFrom: 'diagnosis'
         }
       }
+    },
+    {
+      // The literal high school — distinct from The Schoolhouse (Mr.
+      // Wainwright's fractal mentorship, a walkable hometown location this
+      // is deliberately NOT replacing). Second car-gated location alongside
+      // the Hospital: no walking exit exists at all, so it's unreachable
+      // until either the car unlocks or Mom drives you there directly —
+      // see momRideLink()/openMomRideMenu() below. No NPCs live here yet;
+      // the volunteering/research thread lives at the Hospital with Dr.
+      // Voss instead. Structurally wired now on purpose, content pending —
+      // deliberately no 'H' building block yet, either: createHouse()'s
+      // cottage roof is a 4-sided cone sized off Math.max(width, depth),
+      // and on a small single-room map like this one even a modest block
+      // overhangs enough to swallow most of the frame (learned this the
+      // hard way — Hospital never hits it because it passes the
+      // 'clinical' theme, which swaps in a flat capped roof instead of
+      // the cone). Simplest to leave it an open yard, same scale as
+      // Hollow/Riverside/Meadow, until real content picks a shape for it.
+      id: 'school',
+      name: 'The High School',
+      availableFrom: 'earning_respect',
+      map: [
+        "###########",
+        "#..o...o..#",
+        "#.,.....,.#",
+        "#.........#",
+        "#....@....#",
+        "#.S.....S.#",
+        "#.,.....,.#",
+        "#..o...o..#",
+        "###########"
+      ],
+      signs: [
+        "A hand-lettered banner strung between two posts: \"GO WILDCATS.\"",
+        "A corkboard on a post, three flyers deep — SAT prep, a bake sale, a college fair next month."
+      ]
     }
   ];
 
@@ -1592,8 +1676,49 @@
   // listener (GOAL_INDEX) below and talkToNpc's mission-step branch.
   // fieldSeedsPlanted: set once, permanently, by Jono's oneTime
   // plantsSeeds job tier — see updateCropRespawns()/FIELD_REGROW_FAST.
-  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, fieldSeedsPlanted: false };
+  // colorRestored: which GREYSCALE_ROSTER members you've reconnected with
+  // since Dad died — see worldColorFactor()/markReconnected() below.
+  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, fieldSeedsPlanted: false, colorRestored: {} };
   var CAR_FAMILY_RESPECT_THRESHOLD = 3;
+
+  // ----------------------------------------------------------------------
+  // Grief's greyscale — from the moment Dad dies (setChapter('grief')) the
+  // whole world desaturates. Mom is the one permanent exception (colorful
+  // from the start of grief); everyone and everything else — ground,
+  // props, every other NPC, Boy himself — follows ONE shared dial:
+  // worldColorFactor(). It climbs as you genuinely reconnect with each
+  // person in GREYSCALE_ROSTER (see markReconnected(), called from three
+  // places in talkToNpc() — a job's real payout, a kindness act, and a
+  // mission/challenge step's completion — plus the "already fully
+  // mastered before Dad died, so just showing up again is the real thing
+  // now" fallback in the `if (!ch)` branch). Boy is the deliberate last
+  // exception: no matter how many others are restored, he only rejoins
+  // in color once 'duty' begins (see applyWorldColor()) — Mom's own arc
+  // finishing is what closes his.
+  //
+  // Alden is left out of this roster on purpose: his violin `goal` points
+  // at a tool that doesn't exist yet (see the debt note above LEVELS), so
+  // "their next real interaction" can never actually happen for him —
+  // including him would make full restoration permanently impossible.
+  // Dr. Voss and Nurse Odalys are out too: Voss is absentFrom diagnosis
+  // (gone for good long before grief), and Nurse is flavor-only with no
+  // real mechanic to reconnect through.
+  var GREYSCALE_ROSTER = ['farmer_jono', 'elsie', 'hungry_kid', 'whitfield', 'eric', 'sora', 'wainwright', 'coffee', 'sir_earth'];
+  function worldColorFactor() {
+    if (CHAPTERS.indexOf(story.chapter) < CHAPTERS.indexOf('grief')) return 1;
+    var n = GREYSCALE_ROSTER.filter(function (id) { return story.colorRestored[id]; }).length;
+    return n / GREYSCALE_ROSTER.length;
+  }
+  // Idempotent and safe to call for anyone, not just roster members — see
+  // the three call sites in talkToNpc(). Silently a no-op before grief, or
+  // for a second reconnection with someone already restored.
+  function markReconnected(npcId) {
+    if (CHAPTERS.indexOf(story.chapter) < CHAPTERS.indexOf('grief')) return;
+    if (GREYSCALE_ROSTER.indexOf(npcId) === -1 || story.colorRestored[npcId]) return;
+    story.colorRestored[npcId] = true;
+    showToast('🎨 A little color comes back to the world.', 2400);
+    applyWorldColor();
+  }
   // Community reputation gained once an NPC's whole `missions` chain is
   // finished — same idea as a job's per-visit `reputation`, but paid out
   // once, in full, as the reward for mastering what that mentor teaches.
@@ -2447,11 +2572,68 @@
     bishop: createBallTopper
   };
 
+  // A bed, not a body — swapped in wherever `appearance.bedridden: true` is
+  // set (see createHuman() below and the doc above LEVELS). Self-contained:
+  // the bed frame is part of the returned group, so it can drop into
+  // whichever tile the standing version used to occupy with no map changes.
+  // Only skin/hair carry over from a normal appearance; pieceType, top,
+  // bottom, and every chess-piece-only field are irrelevant lying down.
+  function createBedriddenHuman(opts) {
+    opts = opts || {};
+    var skinColor = opts.skin || SKIN_LIGHT;
+    var hairColor = opts.hair || 0x3a2a22;
+    var g = new THREE.Group();
+
+    // Frame and legs sit OUTSIDE the pivot on purpose — the per-frame idle
+    // animation in update() scales n.obj.userData.pivot to fake breathing,
+    // and a wooden bed frame pulsing along with it would look wrong. Only
+    // the patient (blanket/pillow/head/hair) goes in the pivot, same
+    // contract createHuman()'s standing figures use.
+    var frameMat = new THREE.MeshStandardMaterial({ color: 0x5a4230, roughness: 0.8 });
+    var frame = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.16, 0.5), frameMat);
+    frame.position.y = 0.22;
+    frame.castShadow = true;
+    g.add(frame);
+    [[-0.38, -0.19], [0.38, -0.19], [-0.38, 0.19], [0.38, 0.19]].forEach(function (p) {
+      var leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), frameMat);
+      leg.position.set(p[0], 0.11, p[1]);
+      g.add(leg);
+    });
+
+    var pivot = new THREE.Group();
+    g.add(pivot);
+
+    var blanketMat = new THREE.MeshStandardMaterial({ color: 0xd8dde2, roughness: 0.85 });
+    var blanket = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.5, 4, 8), blanketMat);
+    blanket.rotation.z = Math.PI / 2;
+    blanket.position.set(-0.05, 0.36, 0);
+    blanket.castShadow = true;
+    pivot.add(blanket);
+
+    var pillowMat = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.8 });
+    var pillow = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.32), pillowMat);
+    pillow.position.set(0.34, 0.34, 0);
+    pivot.add(pillow);
+
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 12), new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 }));
+    head.position.set(0.4, 0.38, 0);
+    head.castShadow = true;
+    pivot.add(head);
+
+    var hair = new THREE.Mesh(new THREE.SphereGeometry(0.145, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 }));
+    hair.position.set(0.4, 0.42, 0);
+    pivot.add(hair);
+
+    g.userData = { pivot: pivot, idlePhase: rand(0, Math.PI * 2) };
+    return g;
+  }
+
   // Generic adult NPC — same low-poly-diorama vocabulary as the player,
   // but taller proportions and customizable clothing/hair so Mom, Dad, and
   // every future townsperson can share one builder.
   function createHuman(opts) {
     opts = opts || {};
+    if (opts.bedridden) return createBedriddenHuman(opts);
     var skinColor = opts.skin || SKIN_LIGHT;
     var hairColor = opts.hair || 0x3a2a22;
     var topColor = opts.tieDye ? getTieDyeTexture() : (opts.top || 0x6b7a8f);
@@ -2646,7 +2828,11 @@
 
     w.features.npcs.forEach(function (n) {
       var p = worldPos(w, n.x, n.y);
-      var obj = createHuman(n.def.appearance);
+      // appearanceDuring (see the doc above LEVELS) lets one NPC def look
+      // different across the chapters it's present for — e.g. Dad standing,
+      // then bedridden — without splitting into a second map tile.
+      var appearance = (n.def.appearanceDuring && n.def.appearanceDuring[story.chapter]) || n.def.appearance;
+      var obj = createHuman(appearance);
       obj.position.set(p.x, 0, p.z);
       group.add(obj);
       n.obj = obj;
@@ -2673,6 +2859,65 @@
         }
       }
     });
+  }
+
+  // ----------------------------------------------------------------------
+  // Grief's greyscale, applied to real materials rather than a screen-space
+  // filter — every prop/ground/NPC in this game is already just a
+  // MeshStandardMaterial with a flat color (or, for Sir Earth's tie-dye,
+  // a texture tinted through .color), so desaturating in place needs no
+  // new rendering pipeline: remember each material's original color once,
+  // then blend toward its grey equivalent by however much color the world
+  // has earned back. See worldColorFactor()/markReconnected() above.
+  // ----------------------------------------------------------------------
+  function luminanceGrey(hex) {
+    var r = (hex >> 16 & 255) / 255, g = (hex >> 8 & 255) / 255, b = (hex & 255) / 255;
+    var v = Math.round((0.2126 * r + 0.7152 * g + 0.0722 * b) * 255);
+    return (v << 16) | (v << 8) | v;
+  }
+  function tagBaseColors(root) {
+    root.traverse(function (obj) {
+      if (!obj.isMesh || !obj.material) return;
+      (Array.isArray(obj.material) ? obj.material : [obj.material]).forEach(function (m) {
+        if (m.color && m.userData.baseColor === undefined) m.userData.baseColor = m.color.getHex();
+        if (m.emissive && m.userData.baseEmissive === undefined) m.userData.baseEmissive = m.emissive.getHex();
+      });
+    });
+  }
+  function applyColorFactor(root, factor) {
+    root.traverse(function (obj) {
+      if (!obj.isMesh || !obj.material) return;
+      (Array.isArray(obj.material) ? obj.material : [obj.material]).forEach(function (m) {
+        if (m.userData.baseColor !== undefined) {
+          m.color.setHex(m.userData.baseColor).lerp(new THREE.Color(luminanceGrey(m.userData.baseColor)), 1 - factor);
+        }
+        if (m.userData.baseEmissive !== undefined) {
+          m.emissive.setHex(m.userData.baseEmissive).lerp(new THREE.Color(luminanceGrey(m.userData.baseEmissive)), 1 - factor);
+        }
+      });
+    });
+  }
+  // Re-tints whatever level is CURRENTLY loaded to match the current
+  // worldColorFactor() — called once from loadLevel() (a fresh level
+  // starts at today's factor) and again from markReconnected() (so
+  // reconnecting with someone recolors the world you're standing in
+  // immediately, with no level reload needed). Mom and Boy are the two
+  // standing exceptions to the shared dial — see the doc above it.
+  function applyWorldColor() {
+    if (!world) return;
+    var factor = worldColorFactor();
+    tagBaseColors(world.group);
+    applyColorFactor(world.group, factor);
+    world.features.npcs.forEach(function (n) {
+      if (n.def.id === 'mom') applyColorFactor(n.obj, 1);
+    });
+    // Boy's own exception is a hard binary, not a ride on the shared dial —
+    // "he's the LAST to return to color" means a distinct reveal the
+    // instant 'duty' begins, not whatever the world's factor happens to be
+    // at that moment (which could coincidentally already be 1 if every
+    // roster member was reconnected with before Mom's own arc finished).
+    tagBaseColors(player.obj);
+    applyColorFactor(player.obj, story.chapter === 'duty' ? 1 : 0);
   }
 
   // ----------------------------------------------------------------------
@@ -2772,7 +3017,11 @@
 
     // Indoors never shows the outdoor sky — swap the background/fog color
     // to this level's own interior tone, or back to SKY_COLOR outdoors.
+    // The sky/fog desaturates right along with everything else in grief —
+    // see applyWorldColor() below, called once world/player are in place.
     var bgColor = (INTERIOR_THEMES[levelDef.id] || { bg: SKY_COLOR }).bg;
+    var bgFactor = worldColorFactor();
+    if (bgFactor < 1) bgColor = new THREE.Color(bgColor).lerp(new THREE.Color(luminanceGrey(bgColor)), 1 - bgFactor).getHex();
     scene.background = new THREE.Color(bgColor);
     scene.fog.color.set(bgColor);
 
@@ -2784,6 +3033,7 @@
     world = newWorld;
     scene.add(world.group);
     world.group.add(player.obj);
+    applyWorldColor();
 
     var spawnTile = spawnOverride || world.playerStart;
     player.tileX = spawnTile.x;
@@ -2955,7 +3205,7 @@
       ]
     },
     riverside: {
-      // Jax teaches guitar — a syncopated blues-scale riff with a
+      // Eric teaches guitar — a syncopated blues-scale riff with a
       // square-wave "twang".
       tempo: 190, wave: 'square',
       pattern: [
@@ -3015,6 +3265,33 @@
     }
   };
 
+  // Grief's music — very slow, very sparse, one plain minor descent with
+  // more rest than notes. Not a per-level theme: while worldColorFactor()
+  // is below 1 (see the greyscale system above buildWorldGroup), this
+  // blends against whichever level you're actually standing in instead of
+  // replacing it outright — see effectiveMusicTheme() below. Tempo eases
+  // back toward that level's own pace as color returns; the melody itself
+  // switches at the halfway point rather than crossfading note-by-note,
+  // which the simple lockstep sequencer here has no way to do smoothly.
+  var GRIEF_THEME = {
+    tempo: 420, wave: 'sine',
+    pattern: [
+      ['A3', 'A2', 2], ['R', null, 2], ['G3', null, 2], ['R', null, 2],
+      ['F3', 'F2', 2], ['R', null, 2], ['E3', null, 3], ['R', null, 1]
+    ]
+  };
+  function effectiveMusicTheme(levelId) {
+    var base = MUSIC_THEMES[levelId];
+    if (!base) return null;
+    var factor = worldColorFactor();
+    if (factor >= 1) return base;
+    return {
+      tempo: GRIEF_THEME.tempo + (base.tempo - GRIEF_THEME.tempo) * factor,
+      wave: factor < 0.5 ? GRIEF_THEME.wave : base.wave,
+      pattern: factor < 0.5 ? GRIEF_THEME.pattern : base.pattern
+    };
+  }
+
   var NOTE_SEMITONES = { C: -9, 'C#': -8, D: -7, 'D#': -6, E: -5, F: -4, 'F#': -3, G: -2, 'G#': -1, A: 0, 'A#': 1, Bb: 1, B: 2 };
   function noteFreq(name) {
     var m = /^([A-G][#b]?)(\d)$/.exec(name);
@@ -3025,7 +3302,11 @@
 
   var musicState = { levelId: null, stepIndex: 0, timer: null };
   function scheduleNextMusicStep() {
-    var theme = MUSIC_THEMES[musicState.levelId];
+    // Re-evaluated on every single step rather than cached at
+    // startMusicForLevel() time — that's what makes the blend track
+    // worldColorFactor() live as you reconnect with people, with no
+    // separate "music changed" event needed.
+    var theme = effectiveMusicTheme(musicState.levelId);
     if (!theme || !audioCtx) { musicState.timer = null; return; }
     var step = theme.pattern[musicState.stepIndex % theme.pattern.length];
     var stepSeconds = (step[2] * theme.tempo) / 1000;
@@ -3072,6 +3353,9 @@
   // that tool right here in-game (see openToolFrame()) rather than a new
   // tab — used by a `goal` mission step, since the point of opening it is
   // to watch for the tool's own postMessage confirming the task was done.
+  // link.onClick: a plain callback instead of navigation at all — see
+  // momRideLink()/openMomRideMenu(), which hangs a "ride to..." menu off
+  // Mom's own dialogue without touching her regular respect-beat lines.
   function openDialogue(text, speaker, link) {
     dialogueSpeakerEl.textContent = speaker || '';
     dialogueSpeakerEl.style.display = speaker ? 'block' : 'none';
@@ -3085,6 +3369,14 @@
         a.addEventListener('click', function (e) {
           e.preventDefault();
           openToolFrame(link.href, link.label);
+        });
+      } else if (link.onClick) {
+        // A plain callback instead of navigation — used by momRideLink()
+        // to open the ride menu right from inside her dialogue box.
+        a.href = '#';
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          link.onClick();
         });
       } else {
         a.href = link.href;
@@ -3248,8 +3540,10 @@
   // existing map to be reachable, just an entry in LEVELS.
   var carMenuOpen = false;
   var carMenuEl = document.getElementById('car-menu');
+  var carMenuTitleEl = document.getElementById('car-menu-title');
   var carMenuListEl = document.getElementById('car-menu-list');
   function openCarMenu() {
+    carMenuTitleEl.textContent = 'Drive to…';
     carMenuListEl.innerHTML = '';
     var curChapterIdx = CHAPTERS.indexOf(story.chapter);
     LEVELS.forEach(function (lvl, i) {
@@ -3272,6 +3566,47 @@
   function closeCarMenu() {
     carMenuEl.classList.remove('open');
     carMenuOpen = false;
+  }
+
+  // A second, narrower way into the same #car-menu UI: before the car is
+  // earned, Mom can drive Boy to any location that actually needs a ride
+  // (any `availableFrom` level his own two feet can't reach yet — Hospital,
+  // then the High School) — see momRideLink(), which hangs this off her own
+  // dialogue rather than a whole separate NPC branch. Once hasCar, this
+  // never fires — the car itself supersedes it, see momRideLink() below.
+  function openMomRideMenu() {
+    closeDialogue();
+    carMenuTitleEl.textContent = 'Ride to…';
+    carMenuListEl.innerHTML = '';
+    var curChapterIdx = CHAPTERS.indexOf(story.chapter);
+    LEVELS.forEach(function (lvl, i) {
+      if (lvl.id === world.id || !lvl.availableFrom) return;
+      var fromIdx = CHAPTERS.indexOf(lvl.availableFrom);
+      if (fromIdx === -1 || curChapterIdx < fromIdx) return;
+      var btn = document.createElement('button');
+      btn.textContent = lvl.name;
+      btn.addEventListener('click', function () {
+        closeCarMenu();
+        loadLevel(i);
+      });
+      carMenuListEl.appendChild(btn);
+    });
+    carMenuEl.classList.add('open');
+    carMenuOpen = true;
+  }
+  // Returns a dialogue `link` (see openDialogue) offering Mom's ride, or
+  // undefined when it doesn't apply — safe to call for any isFamily NPC;
+  // only actually produces anything for Mom, at Home, before the car, and
+  // only once there's somewhere that ride would actually go.
+  function momRideLink(def) {
+    if (def.id !== 'mom' || world.id !== 'home' || story.hasCar) return undefined;
+    var curChapterIdx = CHAPTERS.indexOf(story.chapter);
+    var hasDestination = LEVELS.some(function (lvl) {
+      if (!lvl.availableFrom) return false;
+      var fromIdx = CHAPTERS.indexOf(lvl.availableFrom);
+      return fromIdx !== -1 && curChapterIdx >= fromIdx;
+    });
+    return hasDestination ? { label: '🚗 Ask Mom for a ride →', onClick: openMomRideMenu } : undefined;
   }
 
   // NPCs with a `challenge` turn talking into a repeatable respect grind
@@ -3351,6 +3686,7 @@
       // reference "have they done real work for Jono/Elsie/etc." without
       // caring about the current respect number, which keeps climbing.
       if (!story.learned['worked_' + jobKey]) story.learned['worked_' + jobKey] = true;
+      markReconnected(jobKey);
       if (tier.reputation) {
         var communityId = tier.community || job.community || world.id;
         story.communityRespect[communityId] = (story.communityRespect[communityId] || 0) + tier.reputation;
@@ -3385,6 +3721,7 @@
       // record that this act of generosity actually happened, so other
       // content can gate on it (see e.g. Dad's earning_respect beats).
       if (!story.learned['kindness_' + npcRespectKey(def)]) story.learned['kindness_' + npcRespectKey(def)] = true;
+      markReconnected(npcRespectKey(def));
       renderStats();
       var kindLine = kindness.lines[Math.floor(rand(0, kindness.lines.length))];
       openDialogue(kindLine, def.name);
@@ -3441,11 +3778,11 @@
       if (def.isFamily && chapterVisit < beatCount) {
         var pendingBeat = chapterDialogue[chapterVisit];
         if (pendingBeat && typeof pendingBeat === 'object' && pendingBeat.requires && !story.learned[pendingBeat.requires]) {
-          openDialogue(pendingBeat.reminder, def.name);
+          openDialogue(pendingBeat.reminder, def.name, momRideLink(def));
           return;
         }
       }
-      openDialogue(dialogueFor(def, chapterVisit), def.name);
+      openDialogue(dialogueFor(def, chapterVisit), def.name, momRideLink(def));
       if (def.isFamily) {
         story.chapterTalks[chapterTalkKey] = chapterVisit + 1;
         // Respect is earned by reaching a NEW beat of this chapter's
@@ -3472,6 +3809,12 @@
           showToast(careMessage || 'Family respect +1 💛', 2400);
         }
       }
+      // A roster mentor already fully mastered before Dad died has no
+      // further step left to complete — for them specifically, showing up
+      // again during grief IS the real reconnection (see the doc above
+      // GREYSCALE_ROSTER). Family is excluded — Dad/Mom's own arcs above
+      // already cover them, and neither is in the roster anyway.
+      if (!def.isFamily) markReconnected(def.id);
       return;
     }
 
@@ -3485,6 +3828,10 @@
         showToast(ch.learnedMessage || ('You learned ' + ch.key + '!'), 2800);
         sfxInstrumentLearned(ch.key);
       }
+      // Any real forward progress with this mentor — a new step, not just
+      // repeating one already done — is "their next real interaction" for
+      // the greyscale system. See markReconnected() above.
+      markReconnected(def.id);
       // A music challenge points its `link` at the Circle of Fifths so you
       // can go practice what the teacher just taught; a challenge with no
       // matching tool (e.g. the research bench) just omits `link`.
