@@ -799,7 +799,10 @@
         D: {
           id: 'dad',
           name: 'Dad',
-          appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'balding', hair: 0xece7dd, skin: 0x8a5a3a, pieceType: 'king' },
+          // Director's note: dropped 'balding' for fully 'bald' — with his
+          // white hair color, the balding style's horseshoe band read as a
+          // stark white ring around his head instead of a hairline.
+          appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'bald', hair: 0xece7dd, skin: 0x8a5a3a, pieceType: 'king' },
           // Standing (above) for childhood/earning_respect — but bedridden
           // for hospice, the same tile now holding a sickbed instead of a
           // king piece. See appearanceDuring's doc above LEVELS: it's
@@ -807,7 +810,7 @@
           // the base `appearance`. He's back at the Hospital (see that
           // level) for diagnosis, presentDuring below skips straight from
           // standing to bedridden with no in-between here.
-          appearanceDuring: { hospice: { skin: 0x8a5a3a, hair: 0xece7dd, bedridden: true } },
+          appearanceDuring: { hospice: { skin: 0x8a5a3a, hair: 0xece7dd, hairStyle: 'bald', bedridden: true } },
           isFamily: true,
           dialogue: {
             // Preserve this exact line — it's the story's signature opening
@@ -1597,7 +1600,11 @@
         L: {
           id: 'lab_supervisor',
           name: 'Dr. Voss',
-          appearance: { top: 0xe4e8ea, bottom: 0x3a4148, hairStyle: 'short', hair: 0x6a6a6a, pieceType: 'bishop' },
+          // Director's note: a distinctive swirl topper (see
+          // BISHOP_TOPPER_BUILDERS/createSwirlTopper()) instead of the
+          // plain bishop ball — one of a few select bishops meant to get
+          // this, not a blanket change to every bishop in the game.
+          appearance: { top: 0xe4e8ea, bottom: 0x3a4148, hairStyle: 'short', hair: 0x6a6a6a, pieceType: 'bishop', bishopTopperStyle: 'swirl' },
           challenge: {
             key: 'research',
             threshold: 4,
@@ -1621,7 +1628,7 @@
           // Dad (Home level, above in LEVELS) needs the appearanceDuring
           // override instead, since he's also standing on that same tile in
           // earlier chapters and only goes bedridden once hospice starts.
-          appearance: { skin: 0x8a5a3a, hair: 0xece7dd, bedridden: true },
+          appearance: { skin: 0x8a5a3a, hair: 0xece7dd, hairStyle: 'bald', bedridden: true },
           isFamily: true,
           dialogue: {
             // A caregiving arc, not a static line — see dialogueFor() and
@@ -1808,7 +1815,9 @@
         D: {
           id: 'devil',
           name: 'The Devil',
-          appearance: { top: 0x3a0a0a, bottom: 0x1a0a0a, hairStyle: 'bald', skin: 0xa01818, pieceType: 'king', pieceAccent: 0x2a1414, horns: true }
+          // Every Hell resident gets a tail (see buildTail()'s doc
+          // comment) — he's the first, not the only one meant to.
+          appearance: { top: 0x3a0a0a, bottom: 0x1a0a0a, hairStyle: 'bald', skin: 0xa01818, pieceType: 'king', pieceAccent: 0x2a1414, horns: true, tail: true }
         }
       },
       exits: { '3': { to: 'college', x: 5, y: 6 } }
@@ -2906,6 +2915,66 @@
   }
   var CROWN_STYLE_BUILDERS = { flower: createFlowerCrownTopper };
 
+  // Alternate bishop topper — two ribbon-like arcs twisting above the
+  // finial instead of a plain ball, inspired by a director's-note
+  // reference image (ornate glass chess pieces) — not a recreation of it,
+  // just borrowing its technique: a curved arc (partial TorusGeometry,
+  // the same primitive the tiara/thorn crowns above already use) reads as
+  // a ribbon/flame far more than any of our straight cones or spheres do.
+  // Picked via appearance.bishopTopperStyle: 'swirl' (bishop pieceType
+  // only, see createHuman() below); unset defaults to the plain ball
+  // above, so every already-authored bishop NPC is untouched — this is
+  // for select individual bishops (Dr. Watson first), not a blanket
+  // replacement.
+  //
+  // The two arcs are deliberately NOT mirror images of each other —
+  // different radii, angles, and tube thickness — per the director's
+  // second note on that reference image: asymmetry is what makes a piece
+  // read as distinctive/organic rather than a formal, evenly-balanced
+  // crown. Every other topper on this page (crown, tiara, cross) is
+  // symmetric on purpose; this one deliberately isn't.
+  function createSwirlTopper(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.35, roughness: 0.3, emissive: color, emissiveIntensity: 0.12 });
+    var big = new THREE.Mesh(new THREE.TorusGeometry(0.095, 0.02, 8, 16, Math.PI * 1.2), mat);
+    big.rotation.x = Math.PI * 0.32;
+    big.rotation.z = 0.45;
+    big.position.y = 0.11;
+    g.add(big);
+    var small = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.014, 8, 14, Math.PI * 1.35), mat);
+    small.rotation.x = Math.PI * 0.55;
+    small.rotation.z = -0.85;
+    small.position.set(0.02, 0.185, 0.01);
+    g.add(small);
+    var tip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), mat);
+    tip.position.set(0.03, 0.245, 0.015);
+    g.add(tip);
+    return g;
+  }
+  var BISHOP_TOPPER_BUILDERS = { swirl: createSwirlTopper };
+
+  // Small pawn-only flourish — a flame-like tuft instead of the plain
+  // collar every pawn has today. Opt-in via appearance.pawnFlair: true,
+  // deliberately NOT added to PIECE_TOPPER_BUILDERS.pawn (which would
+  // apply to every pawn in the game, including Boy, Eric, and every
+  // random crowd figure) — this is reserved for Hell's demon pawns
+  // specifically, same restraint as bishopTopperStyle above. Tilted
+  // slightly off-center rather than standing dead upright, the same
+  // asymmetry idea as the swirl topper.
+  function buildPawnFlair(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5, roughness: 0.4 });
+    var flame = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.13, 8), mat);
+    flame.position.y = 0.065;
+    flame.rotation.z = 0.22;
+    g.add(flame);
+    var wisp = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.075, 8), mat);
+    wisp.position.set(0.02, 0.1, 0);
+    wisp.rotation.z = -0.3;
+    g.add(wisp);
+    return g;
+  }
+
   // Purely decorative background figures for crowded places (School,
   // College) — no dialogue, no story.respect id, never affects gameplay.
   // Randomized only among pawn/bishop/rook; King/Queen are reserved for
@@ -3048,12 +3117,25 @@
   // Devil-style horns — REPLACES the normal piece topper (see createHuman())
   // rather than adding to it; opt in via appearance.horns: true.
   // Horn angle is a fixed design rule, not a per-character choice: each
-  // horn tilts OUTWARD from vertical by exactly 45° — halfway between
-  // straight up (0°) and fully horizontal (90°) — and must never exceed
-  // that 90° ceiling, on the Devil or any future horned character, since
-  // this is the one shared builder every appearance.horns: true character
-  // uses. A pure Z-axis rotation (no added forward/backward tilt) keeps
-  // that angle exact and verifiable rather than an eyeballed compound one.
+  // horn tilts OUTWARD from vertical by exactly 45° — like the 😈 emoji,
+  // diverging as they rise, never converging toward each other — halfway
+  // between straight up (0°, the most "inward" — i.e. no divergence at
+  // all — two horns can go) and fully horizontal (90°, the ceiling this
+  // must never exceed), on the Devil or any future horned character,
+  // since this is the one shared builder every appearance.horns: true
+  // character uses. A pure Z-axis rotation (no added forward/backward
+  // tilt) keeps that angle exact and verifiable rather than an eyeballed
+  // compound one.
+  //
+  // Sign matters here, not just magnitude: rotating a cone that points
+  // +Y by rotation.z = +θ swings its tip toward -X (see THREE's standard
+  // 2D rotation — x' = -y sinθ). The right horn (side=+1) sits at +X, so
+  // it needs rotation.z = -θ to swing its tip further +X (away from
+  // center, outward); by symmetry the left horn (side=-1) needs +θ. That
+  // pattern is exactly `-side * HORN_ANGLE` — `side * HORN_ANGLE` (the
+  // first version) swings each horn's tip toward the OTHER horn instead,
+  // which reads as horns curling inward/together rather than the 😈
+  // shape they're meant to be.
   var HORN_ANGLE = Math.PI / 4; // 45°, per the rule above — must stay <= Math.PI / 2 (90°)
   function buildHorns(color) {
     var g = new THREE.Group();
@@ -3061,10 +3143,43 @@
     [-1, 1].forEach(function (side) {
       var horn = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.34, 8), mat);
       horn.position.set(side * 0.1, 0.15, -0.03);
-      horn.rotation.z = side * HORN_ANGLE;
+      horn.rotation.z = -side * HORN_ANGLE;
       horn.castShadow = true;
       g.add(horn);
     });
+    return g;
+  }
+
+  // Devil-style tail — an ADD, not a replacement (unlike horns, which
+  // replace the topper): every Hell resident is a demon, so every one of
+  // them gets a tail regardless of what piece type or topper they
+  // otherwise have. Opt-in via appearance.tail: true, applied to every
+  // Hell NPC's appearance by convention (not hardcoded to the level —
+  // createHuman() has no idea what level it's rendering into), the same
+  // way appearance.horns is opt-in per-character rather than automatic.
+  //
+  // One clean curled hook, not a jointed/segmented tail — a single
+  // partial TorusGeometry arc with a tapered cone at its open end reads
+  // as a tail immediately at this low-poly scale, no separate curve/
+  // spline machinery needed. Anchored low and to one side (never
+  // mirrored — there's only ever one), which is inherently the
+  // asymmetric-silhouette idea the swirl topper above also uses: a
+  // single off-center element reads as more alive/organic than anything
+  // symmetric on this page.
+  function buildTail(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.45 });
+    var arc = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.02, 8, 16, Math.PI * 1.15), mat);
+    arc.rotation.y = Math.PI / 2;
+    arc.rotation.z = 0.5;
+    arc.position.set(0.2, 0.14, -0.02);
+    arc.castShadow = true;
+    g.add(arc);
+    var tip = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.09, 8), mat);
+    tip.position.set(0.2, 0.235, -0.09);
+    tip.rotation.set(-0.9, 0, 0.5);
+    tip.castShadow = true;
+    g.add(tip);
     return g;
   }
 
@@ -3195,6 +3310,10 @@
         var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceType];
         if (opts.pieceType === 'queen' && CROWN_STYLE_BUILDERS[opts.crownStyle]) {
           topperBuilder = CROWN_STYLE_BUILDERS[opts.crownStyle];
+        } else if (opts.pieceType === 'bishop' && BISHOP_TOPPER_BUILDERS[opts.bishopTopperStyle]) {
+          topperBuilder = BISHOP_TOPPER_BUILDERS[opts.bishopTopperStyle];
+        } else if (opts.pieceType === 'pawn' && opts.pawnFlair) {
+          topperBuilder = buildPawnFlair;
         }
         if (topperBuilder) {
           var topper = topperBuilder(opts.pieceAccent || 0xf0a83c);
@@ -3202,6 +3321,15 @@
           pivot.add(topper);
         }
       }
+    }
+
+    // Every Hell resident is a demon and gets a tail — see buildTail()'s
+    // doc comment. An ADD, independent of whichever branch above ran
+    // (horns replace the topper; a tail never does), so a horned King and
+    // a plain-topped Pawn can both have one without any special-casing here.
+    if (opts.tail) {
+      var tail = buildTail(opts.pieceAccent || 0x2a1414);
+      pivot.add(tail);
     }
 
     g.userData = { pivot: pivot, idlePhase: rand(0, Math.PI * 2) };
