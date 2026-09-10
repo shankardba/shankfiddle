@@ -906,7 +906,18 @@
                 line: "I heard you've been helping Elsie at the shop, Boy. That matters more than you know."
               },
               "You checked in on me today just because. That's rare in a boy your age.",
-              "I know your father is hard on you, Boy. I see how hard you're trying anyway."
+              "I know your father is hard on you, Boy. I see how hard you're trying anyway.",
+              // The one moment tied directly to growthScaleForChapter() —
+              // see its doc comment and the Character Gallery/Progression
+              // Map's 📏 notes. Gated on story.learned.visitedCollege
+              // (set in loadLevel() the first time 'college' loads), so it
+              // can only play once Boy has actually gone — not before, and
+              // not from talking alone.
+              {
+                requires: 'visitedCollege',
+                reminder: "You'll grow into it soon enough, Boy — there's a whole college waiting whenever you're ready to walk through those doors.",
+                line: "Look at you, Boy — all the way to college now. You've grown so much I can hardly believe it. Whatever comes next, I'm proud of who you're becoming."
+              }
             ],
             diagnosis: "I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know, Boy.",
             hospice: [
@@ -3541,6 +3552,12 @@
     // First step outside Home, into the village — respect-earning begins.
     if (levelDef.id === 'clearing' && story.chapter === 'childhood') {
       story.chapter = 'earning_respect';
+    }
+    // A real, checkable "graduated to college" flag — first time this
+    // level loads, not a talked-into-existence flag. Gates Mom's own
+    // growth-beat below (see her dialogue.earning_respect's last entry).
+    if (levelDef.id === 'college') {
+      story.learned.visitedCollege = true;
     }
     var newWorld = parseLevel(levelDef);
     var built = buildWorldGroup(newWorld);
