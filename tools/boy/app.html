@@ -160,6 +160,41 @@
   }
   #car-menu-list button:hover { border-color: #ffd27a; background: rgba(240,168,60,0.14); }
 
+  /* Generic reusable yes/no (or multi-option) choice prompt — first built
+     for the Devil's restart-the-game exchange in Hell, but deliberately
+     generic (see openChoice()) so any dialogue can ask a real question
+     instead of just displaying text. Styled to match #car-menu rather than
+     invent a third visual language for "a box with buttons." */
+  #choice-overlay {
+    display: none;
+    left: 50%; bottom: 8%;
+    transform: translateX(-50%);
+    width: min(88vw, 460px);
+    background: rgba(8,6,10,0.94);
+    border: 1px solid rgba(240,168,60,0.55);
+    border-radius: 14px;
+    padding: 18px 22px 14px;
+    color: #f7ece9;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  }
+  #choice-overlay.open { display: block; }
+  #choice-speaker { font-family: 'Cinzel', serif; font-weight: 700; color: #ffd27a; font-size: 0.95rem; margin-bottom: 6px; }
+  #choice-prompt { font-family: 'Inter', sans-serif; font-size: 0.95rem; line-height: 1.4; margin-bottom: 14px; }
+  #choice-options { display: flex; flex-direction: column; gap: 8px; }
+  #choice-options button {
+    text-align: left;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(240,168,60,0.3);
+    background: rgba(240,168,60,0.06);
+    color: #f7ece9;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  #choice-options button:hover { border-color: #ffd27a; background: rgba(240,168,60,0.14); }
+
   /* A `goal` mission step opens its tool right here, in-game, rather than
      a new tab — the whole point is watching for the tool's own
      postMessage confirming the task was actually done. */
@@ -386,6 +421,11 @@
     <div class="car-menu-title" id="car-menu-title">Drive to&hellip;</div>
     <div id="car-menu-list"></div>
     <div class="prompt">&#9660; space to close</div>
+  </div>
+  <div id="choice-overlay" class="hud">
+    <div id="choice-speaker"></div>
+    <div id="choice-prompt"></div>
+    <div id="choice-options"></div>
   </div>
   <div id="tool-frame-overlay">
     <div id="tool-frame-bar">
@@ -759,7 +799,7 @@
         D: {
           id: 'dad',
           name: 'Dad',
-          appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'short', skin: 0xa9714a, pieceType: 'king' },
+          appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'balding', hair: 0xece7dd, skin: 0xa9714a, pieceType: 'king' },
           // Standing (above) for childhood/earning_respect — but bedridden
           // for hospice, the same tile now holding a sickbed instead of a
           // king piece. See appearanceDuring's doc above LEVELS: it's
@@ -767,7 +807,7 @@
           // the base `appearance`. He's back at the Hospital (see that
           // level) for diagnosis, presentDuring below skips straight from
           // standing to bedridden with no in-between here.
-          appearanceDuring: { hospice: { skin: 0xa9714a, bedridden: true } },
+          appearanceDuring: { hospice: { skin: 0xa9714a, hair: 0xece7dd, bedridden: true } },
           isFamily: true,
           dialogue: {
             // Preserve this exact line — it's the story's signature opening
@@ -896,7 +936,7 @@
       id: 'clearing',
       name: 'The Clearing',
       map: [
-        "####5######3###6###",
+        "####5######3#######",
         "#........$........#",
         "#..o..,,..Vb...o..#",
         "#....=========....#",
@@ -910,7 +950,7 @@
         "#...~~~.....rrb...#",
         "#Y$.........or..$.#",
         "#..$.,,....eee,S..#",
-        "####7####4#########"
+        "#########4#########"
       ],
       signs: [
         "A crooked signpost: \"Six Light Shards sleep in this clearing. Gather them all to wake the grove.\"",
@@ -1070,8 +1110,10 @@
         '3': { to: 'riverside', x: 5, y: 7 },
         '4': { to: 'meadow', x: 5, y: 1 },
         '5': { to: 'schoolhouse', x: 5, y: 7 },
-        '6': { to: 'studio', x: 5, y: 7 },
-        '7': { to: 'conservatory', x: 5, y: 1 },
+        // Coffee's Studio and Sir Earth's Conservatory used to be reached
+        // from here (old digits '6'/'7') — relocated to College, reached
+        // via its basement stairs and forest trail respectively, since
+        // both are now college-era stops, not childhood ones.
         // Gated — see checkPortal()'s FIELD_ENTRY_RESPECT check. Jono
         // stands right beside this tile; below trust.need respect with
         // him, walking onto it bounces you back instead of loading 'field'.
@@ -1374,8 +1416,12 @@
       exits: { '1': { to: 'clearing', x: 4, y: 1 } }
     },
     {
+      // Reached via the basement stairs inside College's main building (see
+      // College's '1' exit and Liz's dialogue), not from the Clearing —
+      // this is college-era content now, gated the same way College is.
       id: 'studio',
       name: "Professor Coffee's Studio",
+      availableFrom: 'earning_respect',
       map: [
         "###########",
         "#..o...o..#",
@@ -1439,14 +1485,17 @@
           dialogue: { default: "Still here, boy? Good — the coffee's fresh. Come sit, patch something weird, stay as long as you like." }
         }
       },
-      exits: { '1': { to: 'clearing', x: 15, y: 1 } }
+      exits: { '1': { to: 'college', x: 8, y: 6 } }
     },
     {
       // A wooded clearing, not a recital room — see the note on
       // INTERIOR_THEMES above. Flowers replace two of the old rocks for
-      // undergrowth; the border '#' renders as real trees out here.
+      // undergrowth; the border '#' renders as real trees out here. Reached
+      // down a forest trail off College now (see College's '2' exit), not
+      // from the Clearing — college-era content, gated like College itself.
       id: 'conservatory',
       name: 'The Conservatory',
+      availableFrom: 'earning_respect',
       map: [
         "#####1#####",
         "#..o...o..#",
@@ -1512,7 +1561,7 @@
           dialogue: { default: "Come sit a while, boy. I could show you my trumpet, but the wheel's the real lesson — it'll still be turning when you return. It always is." }
         }
       },
-      exits: { '1': { to: 'clearing', x: 4, y: 13 } }
+      exits: { '1': { to: 'college', x: 3, y: 7 } }
     },
     {
       // One physical building, two very different reasons to be in it —
@@ -1561,7 +1610,7 @@
           // Dad (Home level, above in LEVELS) needs the appearanceDuring
           // override instead, since he's also standing on that same tile in
           // earlier chapters and only goes bedridden once hospice starts.
-          appearance: { skin: 0xa9714a, bedridden: true },
+          appearance: { skin: 0xa9714a, hair: 0xece7dd, bedridden: true },
           isFamily: true,
           dialogue: {
             // A caregiving arc, not a static line — see dialogueFor() and
@@ -1635,10 +1684,10 @@
         "###########",
         "#..o...o..#",
         "#.,.....,.#",
-        "#.........#",
+        "#..%...%..#",
         "#....@....#",
         "#.S.....S.#",
-        "#.,.....,.#",
+        "#.,..%..,.#",
         "#..o...o..#",
         "###########"
       ],
@@ -1646,6 +1695,79 @@
         "A hand-lettered banner strung between two posts: \"GO WILDCATS.\"",
         "A corkboard on a post, three flyers deep — SAT prep, a bake sale, a college fair next month."
       ]
+    },
+    {
+      // College — a later, separate stage of growing up, not a replacement
+      // for the High School (they coexist; both are just 'earning_respect'
+      // venues, same as Hospital, reached via the car/Mom's-ride menu once
+      // that chapter starts — see openCarMenu()/openMomRideMenu()). This
+      // first pass is the campus's main level only: styled like a
+      // classroom via INTERIOR_THEMES.college below, standing in for the
+      // fuller "grid of campus buildings, each with people inside" vision
+      // until the indoor/door architecture exists to build the rest of the
+      // grid as real separate interiors. Sir Earth's Conservatory and
+      // Professor Coffee's Studio are NOT relocated here despite the
+      // "forest trail" / "basement" notes describing them that way — both
+      // already ship as childhood-chapter stops off the Clearing, and
+      // moving or duplicating either is a real content decision, not a
+      // rendering one, so it's left alone pending that call. Hell (down in
+      // the basement/caves below this building — see Liz's dialogue) and
+      // Apple Hall (attached to this campus) are planned neighbors, not
+      // built yet.
+      id: 'college',
+      name: 'College',
+      availableFrom: 'earning_respect',
+      // A single classroom room (INTERIOR_THEMES.college below), not a
+      // literal multi-building grid — createHouse() only ever builds one
+      // bounding-box structure per level (see its call site in
+      // buildWorldGroup), so a real "grid of campus buildings, each with
+      // people inside" needs the indoor/door architecture to do properly.
+      // The wider campus (other buildings, Hell, Apple Hall) lives in
+      // signage and dialogue for now, standing in for geography not built yet.
+      // Exit '1' (interior, not on the border) is the basement stairwell
+      // down to Prof. Coffee's Studio; exit '2' (south edge) is the trail
+      // out to Sir Earth's Conservatory — see checkPortal(), which treats
+      // an interior digit exactly like a border one, same as Clearing's
+      // gated Field entrance ('8').
+      map: [
+        "###########",
+        "#.o.....o.#",
+        "#..S...S..#",
+        "#....@....#",
+        "#....L....#",
+        "#.........#",
+        "#.o.....1.#",
+        "#.........#",
+        "###2#######"
+      ],
+      signs: [
+        "A campus map under glass, buildings numbered one through six. Someone's taped a flyer over Building 4: \"APPLE HALL AUDITIONS — SEE MS. LIZ.\"",
+        "A small placard by the stairwell: \"BASEMENT — SYNTH LAB (PROF. COFFEE).\" Someone's scrawled an arrow toward the tree line outside too: \"Sir Earth's place — follow the trail.\""
+      ],
+      npcs: {
+        L: {
+          id: 'liz',
+          name: 'Liz',
+          appearance: { top: 0x6b4a7a, bottom: 0x2a2a30, hairStyle: 'long', hair: 0x8a4a2a, pieceType: 'queen' },
+          challenge: {
+            key: 'songwriting',
+            threshold: 4,
+            progressLines: [
+              "Everybody who walks in here already knows three chords and a feeling. Good. Now — verse, chorus, verse. Show me you understand why that order works before you fight it.",
+              "A bridge isn't a rule, it's a released tension. Write me one that actually earns its place instead of just being 'the different part.'",
+              "Lyrics aren't poetry with a beat under them — the meter has to survive being sung. Say your words out loud before you trust them.",
+              "Now put it together, start to finish, one real structure, not a pile of good ideas."
+            ],
+            completeLine: "That's a song, not a sketch. You understand structure now — what to keep, what to cut, and why.",
+            learnedMessage: 'You learned songwriting & structure! 🎶'
+          },
+          dialogue: { default: "Building 4's got a stage and an audition sheet, if you're brave enough. Everything else here, we can work on any time." }
+        }
+      },
+      exits: {
+        '1': { to: 'studio', x: 5, y: 7 },
+        '2': { to: 'conservatory', x: 5, y: 1 }
+      }
     }
   ];
 
@@ -1656,6 +1778,24 @@
   // currently advances it past 'childhood' — that's the next piece to build.
   // 'duty' is the story's final state: respect fully earned.
   var CHAPTERS = ['childhood', 'earning_respect', 'diagnosis', 'hospice', 'grief', 'duty'];
+
+  // Growth scaling — Boy (and Eric) stay pawns their whole life, but grow
+  // physically bigger as the story advances, reaching king-size by 'duty'.
+  // 1.278 is derived from the actual king/pawn body-height ratio (king's
+  // base+body = 0.1+1.05 = 1.15, pawn's = 0.08+0.82 = 0.90 — see
+  // createKingBody()/createPawnBody()), not an arbitrary number, so "grows
+  // to king-size" is literally true rather than just a vague upscale.
+  // Applied to the outer object (player.obj / npc.obj), never to
+  // userData.pivot — the idle-breathing animation in update() overwrites
+  // pivot.scale every frame, so growth has to live one level higher up to
+  // survive it.
+  var PAWN_TO_KING_SCALE = 1.278;
+  function growthScaleForChapter(chapter) {
+    var idx = CHAPTERS.indexOf(chapter);
+    if (idx < 0) idx = 0;
+    var t = idx / (CHAPTERS.length - 1);
+    return 1 + (PAWN_TO_KING_SCALE - 1) * t;
+  }
   // See "the three-tier respect model" above LEVELS for what respect vs.
   // communityRespect vs. familyRespect() each mean and why they're separate.
   // respect: individual standing per NPC id, e.g. respect.dad, respect.violin.
@@ -1801,6 +1941,7 @@
     var curIdx = CHAPTERS.indexOf(story.chapter);
     if (newIdx <= curIdx) return;
     story.chapter = newChapter;
+    player.obj.scale.setScalar(growthScaleForChapter(story.chapter));
     loadLevel(LEVEL_INDEX[world.id], { x: player.tileX, y: player.tileY });
   }
 
@@ -1833,7 +1974,7 @@
     var exits = levelDef.exits || {};
     var npcs = levelDef.npcs || {};
     var obstacles = new Set();
-    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], practiceSpots: [], car: null };
+    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null };
     var groundKinds = [];
     var playerStart = { x: 1, y: 1 };
 
@@ -1867,6 +2008,14 @@
           case 'r': features.crops.push({ x: x, y: y, collected: false, item: 'basket' }); break;
           case 'p': features.crops.push({ x: x, y: y, collected: false, item: 'seedrow' }); break;
           case 'e': features.crops.push({ x: x, y: y, collected: false, item: 'crate' }); break;
+          case '%':
+            // Decorative background crowd — see randomCrowdAppearance() and
+            // its render loop in buildWorldGroup(). Never a `npcs[c]` entry:
+            // no dialogue, no story.respect id, purely a randomized figure
+            // among Pawn/Bishop/Rook (King/Queen stay reserved for named
+            // characters). Still an obstacle, like every other standing
+            // figure, so Boy walks around them rather than through them.
+            obstacles.add(key(x, y)); features.crowd.push({ x: x, y: y }); break;
           case 'C': obstacles.add(key(x, y)); features.car = { x: x, y: y }; break;
           case 'V': obstacles.add(key(x, y)); features.practiceSpots.push({ x: x, y: y }); break;
           case '@': playerStart = { x: x, y: y }; break;
@@ -1950,7 +2099,8 @@
     home: { wall: 0xe0cba8, floor: 0x8a5c34, prop: 0x5a4230, bg: 0x2e2318 },
     hospital: { wall: 0xe3e8ea, floor: 0xeef1f2, prop: 0xc7d1d4, bg: 0xdfe6e8 },
     schoolhouse: { wall: 0x8a6a45, floor: 0xd8bd8a, prop: 0x2f4a3a, bg: 0x3a2e20 },
-    studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20 }
+    studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20 },
+    college: { wall: 0x5a4a3a, floor: 0x9c8560, prop: 0x2a2f3a, bg: 0x1f1a14 }
   };
 
   // levelId opts into a level-specific palette via INTERIOR_THEMES; a
@@ -2572,6 +2722,161 @@
     bishop: createBallTopper
   };
 
+  // Purely decorative background figures for crowded places (School,
+  // College) — no dialogue, no story.respect id, never affects gameplay.
+  // Randomized only among pawn/bishop/rook; King/Queen are reserved for
+  // named/special characters (see the '%' map symbol in parseLevel()).
+  var CROWD_PIECE_TYPES = ['pawn', 'bishop', 'rook'];
+  var CROWD_TOP_COLORS = [0x4b5566, 0x6b2338, 0x6f7d4a, 0x3f6b6b, 0x8a6a4a, 0x2a4a3a, 0xc9a84a, 0x5a4a35, 0x3a6b52, 0xe4e8ea];
+  var CROWD_BOTTOM_COLORS = [0x2a2730, 0x2a2a30, 0x4a3a28, 0x1f2a2a, 0x5a4a35, 0x3a2a35];
+  var CROWD_HAIR_COLORS = [0x3a2a22, 0x2a2018, 0x8a6a3a, 0xb8b8b8, 0x4a2f22, 0xd8d0b0, 0x6a6a6a];
+  var CROWD_SKIN_COLORS = [SKIN_LIGHT, SKIN_BROWN, 0xf0d0a8, 0x8a5a3a];
+  var CROWD_HAIR_STYLES = ['short', 'long', 'balding', 'full', 'tied_back'];
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function randomCrowdAppearance() {
+    return {
+      pieceType: pick(CROWD_PIECE_TYPES),
+      top: pick(CROWD_TOP_COLORS),
+      bottom: pick(CROWD_BOTTOM_COLORS),
+      hair: pick(CROWD_HAIR_COLORS),
+      skin: pick(CROWD_SKIN_COLORS),
+      hairStyle: pick(CROWD_HAIR_STYLES),
+      skirt: Math.random() < 0.5
+    };
+  }
+
+  function blendColor(a, b, t) {
+    var ca = new THREE.Color(a), cb = new THREE.Color(b);
+    return ca.lerp(cb, t == null ? 0.5 : t).getHex();
+  }
+
+  // Hair styles — 'short'/'long' are the original two; 'balding', 'full',
+  // 'tied_back', and 'bald' are ported from the Character Gallery workshop.
+  // Every partial-sphere style is positioned RELATIVE to headY (not a bare
+  // hardcoded Y) so it sits flush on both standing (headY 1.28) and
+  // bedridden (headY 0.38) heads. A thin hair/skin-blended seam ring
+  // (TorusGeometry, whose tube is naturally rounded) is layered along the
+  // sharpest boundary of each style — the crown line for 'balding' and the
+  // hairline for 'short'/'long'/'full' — so the edge reads as a soft
+  // hairline instead of a jagged two-tone polygon cutoff; 'balding' also
+  // gets two small blended temple caps to round off its horseshoe-gap
+  // corners, the other sharp edge that a plain ring doesn't cover.
+  function buildHair(headRadius, hairColor, style, isChess, headY, skinColor) {
+    var mat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 });
+    var seamColor = blendColor(hairColor, skinColor || SKIN_LIGHT, 0.5);
+    var seamMat = new THREE.MeshStandardMaterial({ color: seamColor, roughness: 0.7 });
+    var longOff = isChess ? 0.014 : 0.02;
+    var shortOff = isChess ? 0.008 : 0.01;
+    if (style === 'bald') {
+      return new THREE.Group();
+    }
+    if (style === 'balding') {
+      var frontGapDeg = 100;
+      var phiStart = (90 + frontGapDeg / 2) * Math.PI / 180;
+      var phiLength = (360 - frontGapDeg) * Math.PI / 180;
+      var g = new THREE.Group();
+      var ring = new THREE.Mesh(new THREE.SphereGeometry(headRadius + shortOff, 14, 12, phiStart, phiLength, Math.PI * 0.35, Math.PI * 0.55), mat);
+      ring.position.y = headY;
+      g.add(ring);
+      // Crown-line seam: a full torus at the band's top edge reads fine even
+      // though the band itself has a front gap — the gap is far enough
+      // toward the face that the torus's blended color there just looks
+      // like skin peeking through, not a visible ring across the forehead.
+      var crownR = (headRadius + shortOff) * Math.sin(Math.PI * 0.35);
+      var crownY = headY + (headRadius + shortOff) * Math.cos(Math.PI * 0.35);
+      var crownSeam = new THREE.Mesh(new THREE.TorusGeometry(Math.max(crownR, 0.01), headRadius * 0.09, 8, 16), seamMat);
+      crownSeam.position.y = crownY;
+      crownSeam.rotation.x = Math.PI / 2;
+      g.add(crownSeam);
+      // Round the two temple corners where the horseshoe's phi gap meets
+      // its theta band — a small blended cap at each end softens what
+      // would otherwise be a sharp rectangular corner.
+      [phiStart, phiStart + phiLength].forEach(function (phi) {
+        var midTheta = Math.PI * (0.35 + 0.55 / 2);
+        var cap = new THREE.Mesh(new THREE.SphereGeometry(headRadius * 0.16, 8, 8), seamMat);
+        cap.position.set(
+          (headRadius + shortOff) * Math.sin(midTheta) * Math.cos(phi),
+          headY + (headRadius + shortOff) * Math.cos(midTheta),
+          (headRadius + shortOff) * Math.sin(midTheta) * Math.sin(phi)
+        );
+        g.add(cap);
+      });
+      return g;
+    }
+    if (style === 'full') {
+      var g2 = new THREE.Group();
+      var full = new THREE.Mesh(new THREE.SphereGeometry(headRadius + longOff, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.85), mat);
+      full.position.y = headY;
+      g2.add(full);
+      var fR = (headRadius + longOff) * Math.sin(Math.PI * 0.85);
+      var fY = headY + (headRadius + longOff) * Math.cos(Math.PI * 0.85);
+      var fSeam = new THREE.Mesh(new THREE.TorusGeometry(Math.max(fR, 0.01), headRadius * 0.08, 8, 16), seamMat);
+      fSeam.position.y = fY;
+      fSeam.rotation.x = Math.PI / 2;
+      g2.add(fSeam);
+      return g2;
+    }
+    if (style === 'tied_back') {
+      var g3 = new THREE.Group();
+      var capRadius = headRadius + longOff;
+      var cap = new THREE.Mesh(new THREE.SphereGeometry(capRadius, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.85), mat);
+      cap.position.y = headY;
+      g3.add(cap);
+      var tR = capRadius * Math.sin(Math.PI * 0.85);
+      var tY = headY + capRadius * Math.cos(Math.PI * 0.85);
+      var tSeam = new THREE.Mesh(new THREE.TorusGeometry(Math.max(tR, 0.01), headRadius * 0.08, 8, 16), seamMat);
+      tSeam.position.y = tY;
+      tSeam.rotation.x = Math.PI / 2;
+      g3.add(tSeam);
+      var bunRadius = headRadius * 0.5;
+      var attach = capRadius + bunRadius * 0.6;
+      var bun = new THREE.Mesh(new THREE.SphereGeometry(bunRadius, 10, 10), mat);
+      bun.position.set(0, headY - attach * 0.301, -attach * 0.954);
+      g3.add(bun);
+      return g3;
+    }
+    if (style === 'long') {
+      var g4 = new THREE.Group();
+      var longHair = new THREE.Mesh(new THREE.SphereGeometry(headRadius + longOff, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.8), mat);
+      longHair.position.y = headY - 0.04;
+      g4.add(longHair);
+      var lR = (headRadius + longOff) * Math.sin(Math.PI * 0.8);
+      var lY = headY - 0.04 + (headRadius + longOff) * Math.cos(Math.PI * 0.8);
+      var lSeam = new THREE.Mesh(new THREE.TorusGeometry(Math.max(lR, 0.01), headRadius * 0.08, 8, 16), seamMat);
+      lSeam.position.y = lY;
+      lSeam.rotation.x = Math.PI / 2;
+      g4.add(lSeam);
+      return g4;
+    }
+    var g5 = new THREE.Group();
+    var shortHair = new THREE.Mesh(new THREE.SphereGeometry(headRadius + shortOff, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), mat);
+    shortHair.position.y = headY + 0.04;
+    g5.add(shortHair);
+    var sR = (headRadius + shortOff) * Math.sin(Math.PI * 0.55);
+    var sY = headY + 0.04 + (headRadius + shortOff) * Math.cos(Math.PI * 0.55);
+    var sSeam = new THREE.Mesh(new THREE.TorusGeometry(Math.max(sR, 0.01), headRadius * 0.07, 8, 16), seamMat);
+    sSeam.position.y = sY;
+    sSeam.rotation.x = Math.PI / 2;
+    g5.add(sSeam);
+    return g5;
+  }
+
+  // Devil-style horns — REPLACES the normal piece topper (see createHuman())
+  // rather than adding to it; opt in via appearance.horns: true.
+  function buildHorns(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 });
+    [-1, 1].forEach(function (side) {
+      var horn = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.34, 8), mat);
+      horn.position.set(side * 0.1, 0.15, -0.03);
+      horn.rotation.z = side * 0.8;
+      horn.rotation.x = -0.5;
+      horn.castShadow = true;
+      g.add(horn);
+    });
+    return g;
+  }
+
   // A bed, not a body — swapped in wherever `appearance.bedridden: true` is
   // set (see createHuman() below and the doc above LEVELS). Self-contained:
   // the bed frame is part of the returned group, so it can drop into
@@ -2620,8 +2925,9 @@
     head.castShadow = true;
     pivot.add(head);
 
-    var hair = new THREE.Mesh(new THREE.SphereGeometry(0.145, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 }));
-    hair.position.set(0.4, 0.42, 0);
+    var hair = buildHair(0.14, hairColor, opts.hairStyle, false, 0.38, skinColor);
+    hair.position.x = 0.4;
+    hair.position.z = 0;
     pivot.add(hair);
 
     g.userData = { pivot: pivot, idlePhase: rand(0, Math.PI * 2) };
@@ -2686,23 +2992,21 @@
     head.castShadow = true;
     pivot.add(head);
 
-    var hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 });
-    var hair;
-    if (opts.hairStyle === 'long') {
-      hair = new THREE.Mesh(new THREE.SphereGeometry(headRadius + (isChess ? 0.014 : 0.02), 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.8), hairMat);
-      hair.position.y = 1.24;
-    } else {
-      hair = new THREE.Mesh(new THREE.SphereGeometry(headRadius + (isChess ? 0.008 : 0.01), 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
-      hair.position.y = 1.32;
-    }
+    var hair = buildHair(headRadius, hairColor, opts.hairStyle, isChess, head.position.y, skinColor);
     pivot.add(hair);
 
     if (isChess) {
-      var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceType];
-      if (topperBuilder) {
-        var topper = topperBuilder(opts.pieceAccent || 0xf0a83c);
-        topper.position.y = head.position.y + 0.19;
-        pivot.add(topper);
+      if (opts.horns) {
+        var horns = buildHorns(opts.pieceAccent || 0x2a1414);
+        horns.position.y = head.position.y + 0.19;
+        pivot.add(horns);
+      } else {
+        var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceType];
+        if (topperBuilder) {
+          var topper = topperBuilder(opts.pieceAccent || 0xf0a83c);
+          topper.position.y = head.position.y + 0.19;
+          pivot.add(topper);
+        }
       }
     }
 
@@ -2834,8 +3138,24 @@
       var appearance = (n.def.appearanceDuring && n.def.appearanceDuring[story.chapter]) || n.def.appearance;
       var obj = createHuman(appearance);
       obj.position.set(p.x, 0, p.z);
+      // Eric grows up alongside Boy — see growthScaleForChapter()'s doc.
+      // Every other NPC stays whatever size their body/topper already imply.
+      if (n.def.id === 'eric') obj.scale.setScalar(growthScaleForChapter(story.chapter));
       group.add(obj);
       n.obj = obj;
+    });
+
+    // Decorative background crowd (School/College) — see randomCrowdAppearance()
+    // and the '%' map symbol above. Re-rolled fresh every time the level
+    // loads; "roughly Boy-sized" means matching Boy's CURRENT growth scale,
+    // not a fixed size, since Boy himself grows across the story.
+    w.features.crowd.forEach(function (spot) {
+      var p = worldPos(w, spot.x, spot.y);
+      var obj = createHuman(randomCrowdAppearance());
+      obj.position.set(p.x, 0, p.z);
+      obj.scale.setScalar(growthScaleForChapter(story.chapter));
+      obj.rotation.y = pick([0, Math.PI / 2, Math.PI, -Math.PI / 2]);
+      group.add(obj);
     });
 
     if (w.features.car) {
@@ -3568,6 +3888,41 @@
     carMenuOpen = false;
   }
 
+  // Generic reusable yes/no (or multi-option) choice prompt — first built
+  // for the Devil's restart-the-game exchange, but not specific to him.
+  // openChoice(promptText, speaker, options): options is an array of
+  // { label, onSelect } — onSelect is called (with no args) when that
+  // button is clicked, after the overlay is already closed, so it's safe
+  // for onSelect to immediately open another dialogue or choice of its
+  // own (exactly what the Devil's three-step exchange needs — a choice
+  // whose "yes" answer leads straight into a second choice).
+  var choiceOpen = false;
+  var choiceEl = document.getElementById('choice-overlay');
+  var choiceSpeakerEl = document.getElementById('choice-speaker');
+  var choicePromptEl = document.getElementById('choice-prompt');
+  var choiceOptionsEl = document.getElementById('choice-options');
+  function openChoice(promptText, speaker, options) {
+    choiceSpeakerEl.textContent = speaker || '';
+    choiceSpeakerEl.style.display = speaker ? 'block' : 'none';
+    choicePromptEl.textContent = promptText;
+    choiceOptionsEl.innerHTML = '';
+    options.forEach(function (opt) {
+      var btn = document.createElement('button');
+      btn.textContent = opt.label;
+      btn.addEventListener('click', function () {
+        closeChoice();
+        if (opt.onSelect) opt.onSelect();
+      });
+      choiceOptionsEl.appendChild(btn);
+    });
+    choiceEl.classList.add('open');
+    choiceOpen = true;
+  }
+  function closeChoice() {
+    choiceEl.classList.remove('open');
+    choiceOpen = false;
+  }
+
   // A second, narrower way into the same #car-menu UI: before the car is
   // earned, Mom can drive Boy to any location that actually needs a ride
   // (any `availableFrom` level his own two feet can't reach yet — Hospital,
@@ -3880,6 +4235,11 @@
   function handleAction() {
     if (toolFrameOpen) return;
     ensureAudio();
+    // choiceOpen is deliberately NOT closed here — a choice only advances
+    // via clicking one of its own buttons (see openChoice()), never via
+    // the space/E action key, so a pending decision (especially the
+    // Devil's) can't be casually dismissed the way a plain dialogue line can.
+    if (choiceOpen) return;
     if (carMenuOpen) { closeCarMenu(); return; }
     if (dialogueOpen) { closeDialogue(); return; }
 
@@ -4069,7 +4429,7 @@
           checkCropPickup(t);
           checkPortal();
         }
-      } else if (!dialogueOpen && !carMenuOpen && !toolFrameOpen) {
+      } else if (!dialogueOpen && !carMenuOpen && !toolFrameOpen && !choiceOpen) {
         var dir = pressedDirs[pressedDirs.length - 1];
         if (dir) attemptMove(dir);
         var breathe = 1 + Math.sin(t * 2.4) * 0.015;
