@@ -596,7 +596,7 @@
   //             // from Sir Earth's) all work. Reach for a `job`'s
   //             // `harvest` (below) instead when the task is physical
   //             // rather than app-based (Farmer Jono's field).
-  //             // Alden/violin is a `goal` pointed at a tool that doesn't
+  //             // Julia's violin (id: 'alden') is a `goal` pointed at a tool that doesn't
   //             // exist yet (a separate violin game is being built) — it
   //             // simply can't be completed by any real action right now,
   //             // which is correct: still no free respect from talking,
@@ -871,7 +871,7 @@
             // tone arc as Dad's: "Boy" starts curt, lands as endearment in
             // her duty line below.
             // Beats 0-1 are gated on real things (see the "requires" doc
-            // above LEVELS) — actually learning from Wainwright, actually
+            // above LEVELS) — actually learning from Lester, actually
             // working for Elsie. Beat 2 is fine ungated: it never claims a
             // physical task happened, just that you talked to her, which
             // is simply true whenever this line plays.
@@ -879,7 +879,7 @@
               {
                 requires: 'fractal_navigate',
                 reminder: "You've been home an awful lot for a boy your age. Isn't there somewhere in this village worth losing yourself in?",
-                line: "I heard you've been down at the schoolhouse, lost in Mr. Wainwright's fractals, Boy. Good — a mind like that shouldn't sit still."
+                line: "I heard you've been down at the schoolhouse, lost in Mr. Lester's fractals, Boy. Good — a mind like that shouldn't sit still."
               },
               {
                 requires: 'worked_elsie',
@@ -951,8 +951,8 @@
       npcs: {
         V: {
           id: 'alden',
-          name: 'Maestro Alden',
-          appearance: { top: 0x6b2338, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xc9c9c9, pieceType: 'bishop' },
+          name: 'Julia',
+          appearance: { top: 0x6b2338, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xc9c9c9, pieceType: 'bishop', bishopTopperStyle: 'scroll' },
           // Violin is the FIRST instrument taught in the story, and it
           // does NOT share the Circle of Fifths tool the way Whitfield/
           // Eric do (see their missions, Hollow/Riverside levels) — a
@@ -974,7 +974,7 @@
         F: {
           id: 'farmer_jono',
           name: 'Farmer Jono',
-          appearance: { top: 0x6f7d4a, bottom: 0x4a3a28, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'rook' },
+          appearance: { top: 0x6f7d4a, bottom: 0x4a3a28, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'rook', belt: true },
           job: {
             community: 'clearing',
             trust: {
@@ -1033,7 +1033,7 @@
         K: {
           id: 'elsie',
           name: 'Elsie',
-          appearance: { top: 0x3f6b6b, bottom: 0x2a2a30, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'bishop' },
+          appearance: { top: 0x3f6b6b, bottom: 0x2a2a30, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'bishop', earrings: true },
           job: {
             community: 'clearing',
             trust: {
@@ -1082,7 +1082,7 @@
         Y: {
           id: 'hungry_kid',
           name: 'Milo',
-          appearance: { top: 0x8a6a4a, bottom: 0x5a4a35, hairStyle: 'short', hair: 0x3a2a20, pieceType: 'pawn' },
+          appearance: { top: 0x8a6a4a, bottom: 0x5a4a35, hairStyle: 'short', hair: 0x3a2a20, pieceType: 'pawn', necklace: true },
           kindness: {
             cost: 3,
             reputation: 2,
@@ -1159,9 +1159,9 @@
         P: {
           id: 'whitfield',
           name: 'Ms. Whitfield',
-          appearance: { top: 0x2a4a3a, bottom: 0x1f2a2a, hairStyle: 'long', hair: 0xb8b8b8, pieceType: 'queen' },
+          appearance: { top: 0x2a4a3a, bottom: 0x1f2a2a, hairStyle: 'long', hair: 0xb8b8b8, pieceType: 'queen', crownStyle: 'tiara' },
           // Same Circle of Fifths app as Eric/Sir Earth, set to Piano — see
-          // the doc note on Alden's missions above (Clearing level)
+          // the doc note on Julia's missions above (Clearing level)
           // for how the shared tool keeps every teacher's goals separate.
           missions: [
             {
@@ -1234,9 +1234,9 @@
           // cast's other kids — set apart from every adult mentor's taller
           // piece. "White" pawn: a light, undyed costume color, distinct
           // from Boy's blue.
-          appearance: { top: 0xf0ece0, bottom: 0x3a5a8a, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'pawn' },
-          // Same Circle of Fifths app as Alden/Whitfield/Sir Earth, set to
-          // Guitar — see the doc note on Alden's missions (Clearing level)
+          appearance: { top: 0xf0ece0, bottom: 0x3a5a8a, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'pawn', sash: true },
+          // Same Circle of Fifths app as Julia/Whitfield/Sir Earth, set to
+          // Guitar — see the doc note on Julia's missions (Clearing level)
           // for how the shared tool keeps every teacher's goals separate.
           missions: [
             {
@@ -1299,9 +1299,9 @@
         F: {
           id: 'sora',
           name: 'Sora',
-          appearance: { top: 0xc9a84a, bottom: 0x5a4a3a, hairStyle: 'long', hair: 0x4a2f22, pieceType: 'queen' },
+          appearance: { top: 0xc9a84a, bottom: 0x5a4a3a, hairStyle: 'long', hair: 0x4a2f22, pieceType: 'queen', crownStyle: 'reed' },
           // Verified inside the actual Flute Circle of Fifths app, the same
-          // way Wainwright/Coffee/Sir Earth's missions are — see the
+          // way Lester/Coffee/Sir Earth's missions are — see the
           // "goal" doc above LEVELS. Talking alone earns nothing; you have
           // to go turn the wheel, switch modes, play a progression, etc.
           // for real, in the embedded tool.
@@ -1370,8 +1370,8 @@
       npcs: {
         W: {
           id: 'wainwright',
-          name: 'Mr. Wainwright',
-          appearance: { top: 0x5a4a35, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xb8b8b8, pieceType: 'rook' },
+          name: 'Mr. Lester',
+          appearance: { top: 0x5a4a35, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xb8b8b8, pieceType: 'rook', glasses: true },
           missions: [
             {
               key: 'fractal_navigate',
@@ -1429,7 +1429,7 @@
         C: {
           id: 'coffee',
           name: 'Professor Coffee',
-          appearance: { top: 0x3a6b52, bottom: 0x2a2a30, hairStyle: 'short', hair: 0x2a2018, pieceType: 'bishop' },
+          appearance: { top: 0x3a6b52, bottom: 0x2a2a30, hairStyle: 'short', hair: 0x2a2018, pieceType: 'bishop', bishopTopperStyle: 'antenna' },
           missions: [
             {
               key: 'synth_oscillator',
@@ -1654,7 +1654,7 @@
         N: {
           id: 'nurse',
           name: 'Nurse Odalys',
-          appearance: { top: 0xdfe6ea, bottom: 0xc7ced2, hairStyle: 'long', hair: 0x3a2f28, pieceType: 'bishop' },
+          appearance: { top: 0xdfe6ea, bottom: 0xc7ced2, hairStyle: 'long', hair: 0x3a2f28, pieceType: 'bishop', stethoscope: true },
           dialogue: {
             diagnosis: "He's resting. Visits like this do him more good than the medicine does, some days."
           },
@@ -1664,7 +1664,7 @@
     },
     {
       // The literal high school — distinct from The Schoolhouse (Mr.
-      // Wainwright's fractal mentorship, a walkable hometown location this
+      // Lester's fractal mentorship, a walkable hometown location this
       // is deliberately NOT replacing). Second car-gated location alongside
       // the Hospital: no walking exit exists at all, so it's unreachable
       // until either the car unlocks or Mom drives you there directly —
@@ -1926,7 +1926,7 @@
   // in color once 'duty' begins (see applyWorldColor()) — Mom's own arc
   // finishing is what closes his.
   //
-  // Alden is left out of this roster on purpose: his violin `goal` points
+  // Julia (id: 'alden') is left out of this roster on purpose: his violin `goal` points
   // at a tool that doesn't exist yet (see the debt note above LEVELS), so
   // "their next real interaction" can never actually happen for him —
   // including him would make full restoration permanently impossible.
@@ -2910,7 +2910,61 @@
     }
     return g;
   }
-  var CROWN_STYLE_BUILDERS = { flower: createFlowerCrownTopper };
+  // A thin, OPEN band with one raised point at the front instead of six
+  // evenly-spaced ones — built as a partial CylinderGeometry (its
+  // circular cross-section is already horizontal by construction, so no
+  // extra rotation guesswork). Picked via crownStyle: 'tiara'; given to
+  // Ms. Whitfield (piano) for recital elegance, distinct from Liz's
+  // flower crown and Sora's reed crown below.
+  function createTiaraTopper(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.55, roughness: 0.28, emissive: color, emissiveIntensity: 0.16 });
+    var gapDeg = 110;
+    var thetaStart = (90 + gapDeg / 2) * Math.PI / 180;
+    var thetaLength = (360 - gapDeg) * Math.PI / 180;
+    var band = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.17, 0.05, 16, 1, true, thetaStart, thetaLength), mat);
+    band.position.y = 0.025;
+    g.add(band);
+    var centerAngle = Math.PI / 2;
+    [[-0.5, 0.07], [0, 0.16], [0.5, 0.07]].forEach(function (pair) {
+      var a = centerAngle + pair[0];
+      var h = pair[1];
+      var spike = new THREE.Mesh(new THREE.ConeGeometry(0.02, h, 8), mat);
+      spike.position.set(Math.cos(a) * 0.16, 0.05 + h / 2, Math.sin(a) * 0.16);
+      g.add(spike);
+    });
+    var gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.03), mat);
+    gem.position.set(Math.cos(centerAngle) * 0.16, 0.05 + 0.09, Math.sin(centerAngle) * 0.16);
+    g.add(gem);
+    return g;
+  }
+
+  // Thin reed/pipe blades fanned across the front like panpipes, rooted
+  // in a stem-colored band the same way the flower crown is — natural
+  // material, so (like createFlowerCrownTopper) this ignores the passed
+  // accent color on purpose and uses its own fixed reed palette instead.
+  // Picked via crownStyle: 'reed'; given to Sora (flute, Meadow).
+  function createReedCrownTopper() {
+    var g = new THREE.Group();
+    var bandMat = new THREE.MeshStandardMaterial({ color: 0x4a6b3a, roughness: 0.85 });
+    var band = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.16, 0.03, 16), bandMat);
+    band.position.y = 0.015;
+    g.add(band);
+    var reedMat = new THREE.MeshStandardMaterial({ color: 0xc9a860, roughness: 0.6 });
+    var reedCount = 7;
+    var heights = [0.10, 0.16, 0.21, 0.24, 0.21, 0.16, 0.10];
+    var spread = Math.PI * 0.55;
+    for (var i = 0; i < reedCount; i++) {
+      var t = i / (reedCount - 1) - 0.5;
+      var a = Math.PI / 2 + t * spread;
+      var h = heights[i];
+      var reed = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, h, 8), reedMat);
+      reed.position.set(Math.cos(a) * 0.15, 0.03 + h / 2, Math.sin(a) * 0.15);
+      g.add(reed);
+    }
+    return g;
+  }
+  var CROWN_STYLE_BUILDERS = { flower: createFlowerCrownTopper, tiara: createTiaraTopper, reed: createReedCrownTopper };
 
   // Alternate bishop topper — two ribbon-like arcs twisting above the
   // finial instead of a plain ball, inspired by a director's-note
@@ -2948,7 +3002,56 @@
     g.add(tip);
     return g;
   }
-  var BISHOP_TOPPER_BUILDERS = { swirl: createSwirlTopper };
+  // A violin scroll — three concentric partial rings of shrinking radius,
+  // standing on edge (TorusGeometry is already flat in its local XY
+  // plane, which is vertical/side-on by default — no rotation needed),
+  // reading as a tight spiral silhouette at this game's abstraction
+  // level. Picked via bishopTopperStyle: 'scroll'; given to Julia
+  // (id: 'alden', violin) — distinct from Dr. Voss's swirl and
+  // Professor Coffee's antenna below.
+  function createScrollTopper(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.2 });
+    var stem = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.08, 8), mat);
+    stem.position.y = 0.04;
+    g.add(stem);
+    var radii = [0.075, 0.05, 0.026];
+    var tubes = [0.016, 0.014, 0.012];
+    radii.forEach(function (r, i) {
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(r, tubes[i], 8, 12, Math.PI * 1.5), mat);
+      ring.position.set(0, 0.08 + r, 0);
+      ring.rotation.z = i * 0.5;
+      g.add(ring);
+    });
+    return g;
+  }
+
+  // A coil/antenna — three shrinking horizontal loops stacked upward like
+  // a spring, each a full TorusGeometry ring tipped onto its side
+  // (rotation.x = 90°), topped with a small ball — an oscillator/antenna
+  // silhouette. Picked via bishopTopperStyle: 'antenna'; given to
+  // Professor Coffee (synth, Studio).
+  function createAntennaTopper(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.35, metalness: 0.5 });
+    var base = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.026, 0.03, 8), mat);
+    base.position.y = 0.015;
+    g.add(base);
+    var loopRadii = [0.05, 0.04, 0.03];
+    var y = 0.05;
+    loopRadii.forEach(function (r) {
+      var loop = new THREE.Mesh(new THREE.TorusGeometry(r, 0.012, 8, 12), mat);
+      loop.rotation.x = Math.PI / 2;
+      loop.position.y = y;
+      g.add(loop);
+      y += 0.055;
+    });
+    var tip = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), mat);
+    tip.position.y = y;
+    g.add(tip);
+    return g;
+  }
+  var BISHOP_TOPPER_BUILDERS = { swirl: createSwirlTopper, scroll: createScrollTopper, antenna: createAntennaTopper };
 
   // Small pawn-only flourish — a flame-like tuft instead of the plain
   // collar every pawn has today. Opt-in via appearance.pawnFlair: true,
@@ -3180,6 +3283,152 @@
     return g;
   }
 
+  // ------------------------------------------------------------------
+  // Small worn accessories — greyscale-recognition pass: every main
+  // character except Boy/Dad/Mom (unchanged) and whoever already had a
+  // distinct feature (Sir Earth's tie-dye, Liz's flower crown, Dr. Voss's
+  // swirl topper, the Devil's horns/tail) now gets exactly one real,
+  // role-tied SHAPE — never just a different color, since color is
+  // exactly what applyColorFactor() washes out under Grief's greyscale.
+  // Each is an unconditional ADD in createHuman() below, same pattern as
+  // buildTail() above — never competing with the horns/crown/topper slot.
+  // ------------------------------------------------------------------
+
+  // Connects two points with a cylinder of the given radius — precise by
+  // construction (length and orientation both derived from the two points
+  // themselves) rather than hand-picked rotation.x/z, which is exactly
+  // how a diagonal strap or tube ends up not actually reaching both ends.
+  function cylinderBetween(p1, p2, radius, mat) {
+    var dir = new THREE.Vector3().subVectors(p2, p1);
+    var mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, dir.length(), 8), mat);
+    mesh.position.copy(p1).addScaledVector(dir, 0.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+    return mesh;
+  }
+
+  // A thick workman's belt with a square buckle, sized to sit just
+  // outside a rook body's constant 0.24 radius. Opt-in via
+  // appearance.belt: true; given to Farmer Jono (fieldwork).
+  function buildBelt(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.6 });
+    var band = new THREE.Mesh(new THREE.TorusGeometry(0.275, 0.022, 8, 16), mat);
+    band.rotation.x = Math.PI / 2;
+    band.position.y = 0.75;
+    g.add(band);
+    var buckle = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.02), mat);
+    buckle.position.set(0, 0.75, 0.29);
+    g.add(buckle);
+    return g;
+  }
+
+  // Small hoop earrings flanking the head — the one personal-touch
+  // accessory in this pass rather than a role-tied prop. Opt-in via
+  // appearance.earrings: true; given to Elsie (the one main female-
+  // presenting NPC without a role-topper of her own).
+  function buildEarrings(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.5 });
+    [-1, 1].forEach(function (side) {
+      var hoop = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.006, 6, 10), mat);
+      hoop.position.set(side * 0.17, 1.22, 0.08);
+      g.add(hoop);
+    });
+    return g;
+  }
+
+  // A simple kept pendant on a cord, spanning the gap between a pawn's
+  // collar and its (fixed-height) head — a real cord (cylinderBetween,
+  // not two shapes left to float near each other) so it reads as one
+  // worn item, not floating debris. Something cared-for, not
+  // utilitarian. Opt-in via appearance.necklace: true; given to Milo
+  // (hungry_kid), the kindness-arc recipient.
+  function buildNecklace(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.3 });
+    var neckY = 1.14;
+    var pendantPos = new THREE.Vector3(0, 0.97, 0.05);
+    var loop = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.012, 8, 16), mat);
+    loop.rotation.x = Math.PI / 2;
+    loop.position.set(0, neckY, 0);
+    g.add(loop);
+    g.add(cylinderBetween(new THREE.Vector3(0, neckY, 0.09), pendantPos, 0.01, mat));
+    var pendant = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), mat);
+    pendant.position.copy(pendantPos);
+    g.add(pendant);
+    return g;
+  }
+
+  // A diagonal guitar-strap sash across the torso, built with
+  // cylinderBetween so it actually reaches both the shoulder and the
+  // opposite hip rather than a guessed rotation. Opt-in via
+  // appearance.sash: true; given to Eric — literally how a guitarist is
+  // silhouetted.
+  function buildSash(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.55 });
+    var shoulder = new THREE.Vector3(-0.13, 0.86, 0.1);
+    var hip = new THREE.Vector3(0.13, 0.16, 0.14);
+    g.add(cylinderBetween(shoulder, hip, 0.035, mat));
+    return g;
+  }
+
+  // Round spectacle rings with a bridge, floating just outside the
+  // head's own curved surface. Opt-in via appearance.glasses: true;
+  // given to Mr. Lester (id: 'wainwright') — scholarly, pattern-obsessed.
+  function buildGlasses(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.4 });
+    var lensY = 1.29, lensZ = 0.145;
+    [-1, 1].forEach(function (side) {
+      var lens = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.008, 8, 12), mat);
+      lens.position.set(side * 0.075, lensY, lensZ);
+      g.add(lens);
+    });
+    var bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 6), mat);
+    bridge.rotation.z = Math.PI / 2;
+    bridge.position.set(0, lensY, lensZ);
+    g.add(bridge);
+    return g;
+  }
+
+  // A doctor's accessory — real topology, not a decorative
+  // approximation: one piece goes around the BACK of the neck, its two
+  // ends come down the front and converge into a Y, and ONE tube
+  // continues from that join down to a SINGLE round chest piece. Built
+  // with cylinderBetween for the same reason as the sash above — a
+  // hand-picked rotation is exactly how an earlier draft of this ended
+  // up with tubes that never met. Opt-in via appearance.stethoscope:
+  // true; given to Nurse Odalys.
+  function buildStethoscope(color) {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.35, metalness: 0.25 });
+    var neckRadius = 0.165, neckTube = 0.03;
+    var arc = Math.PI * 1.5;
+    var drape = new THREE.Mesh(new THREE.TorusGeometry(neckRadius, neckTube, 8, 16, arc), mat);
+    var neckSpin = -Math.PI / 2 - arc / 2;
+    drape.rotation.x = Math.PI / 2;
+    drape.rotation.z = neckSpin;
+    drape.position.y = 1.09;
+    g.add(drape);
+    var neckLeft = new THREE.Vector3(neckRadius * Math.cos(neckSpin), 1.09, neckRadius * Math.sin(neckSpin));
+    var neckRight = new THREE.Vector3(neckRadius * Math.cos(arc + neckSpin), 1.09, neckRadius * Math.sin(arc + neckSpin));
+    var yJoint = new THREE.Vector3(0, 0.90, 0.26);
+    var chestCenter = new THREE.Vector3(0, 0.73, 0.30);
+    var tubeRadius = 0.026;
+    g.add(cylinderBetween(neckLeft, yJoint, tubeRadius, mat));
+    g.add(cylinderBetween(neckRight, yJoint, tubeRadius, mat));
+    g.add(cylinderBetween(yJoint, chestCenter, tubeRadius, mat));
+    var joint = new THREE.Mesh(new THREE.SphereGeometry(tubeRadius * 1.15, 8, 8), mat);
+    joint.position.copy(yJoint);
+    g.add(joint);
+    var chestPiece = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.035, 16), mat);
+    chestPiece.rotation.x = Math.PI / 2;
+    chestPiece.position.copy(chestCenter);
+    g.add(chestPiece);
+    return g;
+  }
+
   // A bed, not a body — swapped in wherever `appearance.bedridden: true` is
   // set (see createHuman() below and the doc above LEVELS). Self-contained:
   // the bed frame is part of the returned group, so it can drop into
@@ -3328,6 +3577,17 @@
       var tail = buildTail(opts.pieceAccent || 0x2a1414);
       pivot.add(tail);
     }
+
+    // Small worn accessories — see the doc block above buildBelt() for
+    // why these exist (greyscale recognition) and why each is an
+    // unconditional ADD like the tail above, never touching the
+    // horns/crown/topper slot.
+    if (opts.belt) pivot.add(buildBelt(opts.pieceAccent || 0x3a2a1a));
+    if (opts.earrings) pivot.add(buildEarrings(opts.pieceAccent || 0xd8b84a));
+    if (opts.necklace) pivot.add(buildNecklace(opts.pieceAccent || 0xc9a84a));
+    if (opts.sash) pivot.add(buildSash(opts.pieceAccent || 0x8a3a3a));
+    if (opts.glasses) pivot.add(buildGlasses(opts.pieceAccent || 0x2a2018));
+    if (opts.stethoscope) pivot.add(buildStethoscope(opts.pieceAccent || 0x232323));
 
     g.userData = { pivot: pivot, idlePhase: rand(0, Math.PI * 2) };
     return g;
@@ -3829,7 +4089,7 @@
   // Hospital cold and sparse, the Clearing a bright village jig, and each
   // single-teacher level (Hollow/Riverside/Meadow/Schoolhouse/Studio/
   // Conservatory) carrying that teacher's own instrument/subject motif.
-  // Maestro Alden is the one teacher without his own level (he shares the
+  // Julia (id: 'alden') is the one teacher without his own level (he shares the
   // Clearing with Jono/Elsie/Milo) — his motif lives in INSTRUMENT_STINGS
   // above instead of here, played once when the violin is actually learned.
   //
@@ -3905,7 +4165,7 @@
       ]
     },
     schoolhouse: {
-      // Mr. Wainwright teaches fractals — the melody is a single 3-note
+      // Mr. Lester teaches fractals — the melody is a single 3-note
       // cell (step, step, step) repeated at successively higher
       // transpositions before resolving, echoing self-similarity instead
       // of just being "a cheerful classroom tune."
