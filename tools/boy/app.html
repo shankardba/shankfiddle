@@ -799,7 +799,7 @@
         D: {
           id: 'dad',
           name: 'Dad',
-          appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'balding', hair: 0xece7dd, skin: 0xa9714a, pieceType: 'king' },
+          appearance: { top: 0x4b5566, bottom: 0x2a2730, hairStyle: 'balding', hair: 0xece7dd, skin: 0x8a5a3a, pieceType: 'king' },
           // Standing (above) for childhood/earning_respect — but bedridden
           // for hospice, the same tile now holding a sickbed instead of a
           // king piece. See appearanceDuring's doc above LEVELS: it's
@@ -807,7 +807,7 @@
           // the base `appearance`. He's back at the Hospital (see that
           // level) for diagnosis, presentDuring below skips straight from
           // standing to bedridden with no in-between here.
-          appearanceDuring: { hospice: { skin: 0xa9714a, hair: 0xece7dd, bedridden: true } },
+          appearanceDuring: { hospice: { skin: 0x8a5a3a, hair: 0xece7dd, bedridden: true } },
           isFamily: true,
           dialogue: {
             // Preserve this exact line — it's the story's signature opening
@@ -1610,7 +1610,7 @@
           // Dad (Home level, above in LEVELS) needs the appearanceDuring
           // override instead, since he's also standing on that same tile in
           // earlier chapters and only goes bedridden once hospice starts.
-          appearance: { skin: 0xa9714a, hair: 0xece7dd, bedridden: true },
+          appearance: { skin: 0x8a5a3a, hair: 0xece7dd, bedridden: true },
           isFamily: true,
           dialogue: {
             // A caregiving arc, not a static line — see dialogueFor() and
@@ -1726,29 +1726,31 @@
       // signage and dialogue for now, standing in for geography not built yet.
       // Exit '1' (interior, not on the border) is the basement stairwell
       // down to Prof. Coffee's Studio; exit '2' (south edge) is the trail
-      // out to Sir Earth's Conservatory — see checkPortal(), which treats
-      // an interior digit exactly like a border one, same as Clearing's
-      // gated Field entrance ('8').
+      // out to Sir Earth's Conservatory; exit '3' (interior) is a second,
+      // unmarked door further down — Hell — see checkPortal(), which
+      // treats an interior digit exactly like a border one, same as
+      // Clearing's gated Field entrance ('8').
       map: [
         "###########",
         "#.o.....o.#",
         "#..S...S..#",
         "#....@....#",
         "#....L....#",
-        "#.........#",
+        "#.S.....4.#",
         "#.o.....1.#",
-        "#.........#",
+        "#....3....#",
         "###2#######"
       ],
       signs: [
         "A campus map under glass, buildings numbered one through six. Someone's taped a flyer over Building 4: \"APPLE HALL AUDITIONS — SEE MS. LIZ.\"",
-        "A small placard by the stairwell: \"BASEMENT — SYNTH LAB (PROF. COFFEE).\" Someone's scrawled an arrow toward the tree line outside too: \"Sir Earth's place — follow the trail.\""
+        "A small placard by the stairwell: \"BASEMENT — SYNTH LAB (PROF. COFFEE).\" Someone's scrawled an arrow toward the tree line outside too: \"Sir Earth's place — follow the trail.\"",
+        "A hand-lettered warning nailed over a second, narrower door at the end of the hall: \"DO NOT GO DOWN.\" Someone's peeled back one corner of it."
       ],
       npcs: {
         L: {
           id: 'liz',
           name: 'Liz',
-          appearance: { top: 0x6b4a7a, bottom: 0x2a2a30, hairStyle: 'long', hair: 0x8a4a2a, pieceType: 'queen' },
+          appearance: { top: 0x6b4a7a, bottom: 0x2a2a30, hairStyle: 'long', hair: 0x8a4a2a, pieceType: 'queen', crownStyle: 'flower' },
           challenge: {
             key: 'songwriting',
             threshold: 4,
@@ -1766,8 +1768,94 @@
       },
       exits: {
         '1': { to: 'studio', x: 5, y: 7 },
-        '2': { to: 'conservatory', x: 5, y: 1 }
+        '2': { to: 'conservatory', x: 5, y: 1 },
+        '3': { to: 'hell', x: 5, y: 7 },
+        '4': { to: 'apple_hall', x: 5, y: 7 }
       }
+    },
+    {
+      // The Devil's one mechanic — restarting the game entirely — lives on
+      // his talkToNpc() special-case above (talkToDevil()); this level is
+      // just where he stands. "Weird crowns" on other Hell residents are
+      // mentioned in the story but nobody's designed one yet, so there's
+      // no crowd here — just the Devil.
+      id: 'hell',
+      name: 'Hell',
+      availableFrom: 'earning_respect',
+      map: [
+        "###########",
+        "#.o.....o.#",
+        "#.........#",
+        "#....D....#",
+        "#.........#",
+        "#....@....#",
+        "#.o.....o.#",
+        "#.........#",
+        "#####3#####"
+      ],
+      npcs: {
+        D: {
+          id: 'devil',
+          name: 'The Devil',
+          appearance: { top: 0x3a0a0a, bottom: 0x1a0a0a, hairStyle: 'bald', skin: 0xa01818, pieceType: 'king', pieceAccent: 0x2a1414, horns: true }
+        }
+      },
+      exits: { '3': { to: 'college', x: 5, y: 6 } }
+    },
+    {
+      // Attached to College's campus — see the sign in College's main
+      // room ("APPLE HALL AUDITIONS — SEE MS. LIZ"). The mechanic is
+      // decided even though the cast isn't (see the Environments/
+      // Progression Map artifacts): audience first, backstage only once
+      // there's real responsibility to go with the privilege. Liz's own
+      // songwriting challenge (see College) is that responsibility check
+      // — completing it is what "having an actual performance to give"
+      // means here, a real gate rather than a new invented flag. What
+      // actually happens once Boy's backstage — a performance, and the
+      // communityRespect payout the story describes — isn't designed yet
+      // (no cast, no mechanic beyond the door), so it's left as a sign
+      // rather than guessed at; see checkPortal()'s gate on exit '2'.
+      id: 'apple_hall',
+      name: 'Apple Hall',
+      availableFrom: 'earning_respect',
+      map: [
+        "###########",
+        "#.o.o.o.o.#",
+        "#.........#",
+        "#....@....#",
+        "#....2....#",
+        "#.........#",
+        "#.o.o.o.o.#",
+        "#.........#",
+        "#####1#####"
+      ],
+      signs: [
+        "A hand-lettered sign over the stage: \"AUDIENCE SEATING — BACKSTAGE BY INVITATION ONLY.\" Someone's added underneath: \"Ask Ms. Liz.\""
+      ],
+      exits: {
+        '1': { to: 'college', x: 5, y: 6 },
+        '2': { to: 'apple_hall_backstage', x: 5, y: 3 }
+      }
+    },
+    {
+      id: 'apple_hall_backstage',
+      name: 'Apple Hall — Backstage',
+      availableFrom: 'earning_respect',
+      map: [
+        "###########",
+        "#.........#",
+        "#....S....#",
+        "#.........#",
+        "#....@....#",
+        "#.........#",
+        "#.........#",
+        "#.........#",
+        "#####2#####"
+      ],
+      signs: [
+        "A checklist taped to a mirror: lighting, sound, set — and your name, finally, on the schedule. What actually happens once the curtain goes up hasn't been written yet."
+      ],
+      exits: { '2': { to: 'apple_hall', x: 5, y: 3 } }
     }
   ];
 
@@ -2099,8 +2187,20 @@
     home: { wall: 0xe0cba8, floor: 0x8a5c34, prop: 0x5a4230, bg: 0x2e2318 },
     hospital: { wall: 0xe3e8ea, floor: 0xeef1f2, prop: 0xc7d1d4, bg: 0xdfe6e8 },
     schoolhouse: { wall: 0x8a6a45, floor: 0xd8bd8a, prop: 0x2f4a3a, bg: 0x3a2e20 },
-    studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20 },
-    college: { wall: 0x5a4a3a, floor: 0x9c8560, prop: 0x2a2f3a, bg: 0x1f1a14 }
+    studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20, glow: { prop: 'panel', color: 0x4fd6c9 } },
+    college: { wall: 0x5a4a3a, floor: 0x9c8560, prop: 0x2a2f3a, bg: 0x1f1a14 },
+    // A cave-like environment unlocked from College, long before diagnosis
+    // — see the Devil's own talkToNpc() special-case and buildHorns() for
+    // the rest of what lives here. Dark base palette per the "maintain the
+    // dark feel" director's note, with fire braziers (the `glow` field) as
+    // the actual light source rather than just an emissive prop with no
+    // real illumination.
+    hell: { wall: 0x3a1f1a, floor: 0x241210, prop: 0x6b1f14, bg: 0x1a0d0a, glow: { prop: 'fire', color: 0xff8a3a } },
+    // A theater attached to College's campus — see the apple_hall LEVELS
+    // entry for the mechanic. Warm stage-light glow via the same `glow`
+    // system Hell/Studio use, just amber instead of fire-orange or teal.
+    apple_hall: { wall: 0x4a1a26, floor: 0x5a3a20, prop: 0x8a7030, bg: 0x150a10, glow: { prop: 'panel', color: 0xfff0c2 } },
+    apple_hall_backstage: { wall: 0x4a1a26, floor: 0x5a3a20, prop: 0x8a7030, bg: 0x150a10 }
   };
 
   // levelId opts into a level-specific palette via INTERIOR_THEMES; a
@@ -2122,7 +2222,12 @@
 
   // Boy is telling his own story: he and his family (Mom, Dad) are Indian
   // — everyone else in the world defaults to SKIN_LIGHT unless an NPC's
-  // appearance explicitly overrides it.
+  // appearance explicitly overrides it. Dad's own three appearance objects
+  // (Home standing/hospice, Hospital diagnosis) use a hand-picked darker
+  // 0x8a5a3a rather than this shared SKIN_BROWN — director's note: at
+  // SKIN_BROWN, next to his white balding hair, Dad read visibly lighter
+  // than Mom/Boy by contrast even though the hex was the same; darkening
+  // his own value directly is a real, deliberate difference now, not a bug.
   var SKIN_LIGHT = 0xe8b58c;
   var SKIN_BROWN = 0xa9714a;
 
@@ -2188,6 +2293,44 @@
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     g.add(mesh);
+    return g;
+  }
+
+  // A brazier + flame — for interior themes that want a real light source
+  // instead of a plain furniture prop (Hell, first). The flame mesh is
+  // emissive on its own material, which reads even without a light source;
+  // buildWorldGroup() also nests a real PointLight into this same group at
+  // each glow spot, so the light actually falls on neighboring tiles and
+  // props instead of just lighting itself. See INTERIOR_THEMES' `glow`
+  // field and its use in buildWorldGroup().
+  function createFire() {
+    var g = new THREE.Group();
+    var brazier = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.1, 0.22, 8), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.9 }));
+    brazier.position.y = 0.11;
+    brazier.castShadow = true;
+    g.add(brazier);
+    var flameMat = new THREE.MeshStandardMaterial({ color: 0xff7a2a, emissive: 0xff5a1a, emissiveIntensity: 1.4, roughness: 0.4 });
+    var flame = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.32, 8), flameMat);
+    flame.position.y = 0.38;
+    g.add(flame);
+    var innerFlame = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0xffc233, emissiveIntensity: 1.6 }));
+    innerFlame.position.y = 0.34;
+    g.add(innerFlame);
+    return g;
+  }
+
+  // A glowing instrument panel — same purpose as createFire() (an emissive
+  // prop paired with a real PointLight), for tech environments where an
+  // open flame wouldn't fit (Coffee's Studio). Color is caller-supplied so
+  // it's reusable for any tech-glow environment, not teal specifically.
+  function createGlowPanel(color) {
+    var g = new THREE.Group();
+    var frame = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.08), new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.7 }));
+    frame.position.y = 0.3;
+    g.add(frame);
+    var panel = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25), new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 1.6, roughness: 0.25 }));
+    panel.position.set(0, 0.3, 0.045);
+    g.add(panel);
     return g;
   }
 
@@ -2722,6 +2865,36 @@
     bishop: createBallTopper
   };
 
+  // Alternate queen crown, ported from the Character Gallery workshop —
+  // a ring of small faceted "blooms" on a plain stem-colored band, at the
+  // same abstraction level as the crown's cones or the bishop's finial.
+  // Picked via appearance.crownStyle: 'flower' (queen pieceType only, see
+  // createHuman() below); unset defaults to the plain crown above, so
+  // every already-authored queen NPC is untouched.
+  var FLOWER_CROWN_COLORS = [0xf2b6c6, 0xf7e07a, 0xffffff, 0xd9a8e0, 0xf5c99b];
+  function createFlowerCrownTopper() {
+    var g = new THREE.Group();
+    var bandMat = new THREE.MeshStandardMaterial({ color: 0x4a6b3a, roughness: 0.85 });
+    var band = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.16, 0.035, 16), bandMat);
+    band.position.y = 0.0175;
+    g.add(band);
+    var count = 8;
+    for (var i = 0; i < count; i++) {
+      var a = (i / count) * Math.PI * 2;
+      var petalMat = new THREE.MeshStandardMaterial({ color: FLOWER_CROWN_COLORS[i % FLOWER_CROWN_COLORS.length], roughness: 0.75 });
+      var flower = new THREE.Mesh(new THREE.IcosahedronGeometry(0.028, 0), petalMat);
+      flower.position.set(Math.cos(a) * 0.16, 0.035 + 0.02, Math.sin(a) * 0.16);
+      g.add(flower);
+      var centerMat = new THREE.MeshStandardMaterial({ color: 0xe0a83c, roughness: 0.6 });
+      var center = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), centerMat);
+      center.position.copy(flower.position);
+      center.position.y += 0.018;
+      g.add(center);
+    }
+    return g;
+  }
+  var CROWN_STYLE_BUILDERS = { flower: createFlowerCrownTopper };
+
   // Purely decorative background figures for crowded places (School,
   // College) — no dialogue, no story.respect id, never affects gameplay.
   // Randomized only among pawn/bishop/rook; King/Queen are reserved for
@@ -2863,14 +3036,21 @@
 
   // Devil-style horns — REPLACES the normal piece topper (see createHuman())
   // rather than adding to it; opt in via appearance.horns: true.
+  // Horn angle is a fixed design rule, not a per-character choice: each
+  // horn tilts OUTWARD from vertical by exactly 45° — halfway between
+  // straight up (0°) and fully horizontal (90°) — and must never exceed
+  // that 90° ceiling, on the Devil or any future horned character, since
+  // this is the one shared builder every appearance.horns: true character
+  // uses. A pure Z-axis rotation (no added forward/backward tilt) keeps
+  // that angle exact and verifiable rather than an eyeballed compound one.
+  var HORN_ANGLE = Math.PI / 4; // 45°, per the rule above — must stay <= Math.PI / 2 (90°)
   function buildHorns(color) {
     var g = new THREE.Group();
     var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 });
     [-1, 1].forEach(function (side) {
       var horn = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.34, 8), mat);
       horn.position.set(side * 0.1, 0.15, -0.03);
-      horn.rotation.z = side * 0.8;
-      horn.rotation.x = -0.5;
+      horn.rotation.z = side * HORN_ANGLE;
       horn.castShadow = true;
       g.add(horn);
     });
@@ -3002,6 +3182,9 @@
         pivot.add(horns);
       } else {
         var topperBuilder = PIECE_TOPPER_BUILDERS[opts.pieceType];
+        if (opts.pieceType === 'queen' && CROWN_STYLE_BUILDERS[opts.crownStyle]) {
+          topperBuilder = CROWN_STYLE_BUILDERS[opts.crownStyle];
+        }
         if (topperBuilder) {
           var topper = topperBuilder(opts.pieceAccent || 0xf0a83c);
           topper.position.y = head.position.y + 0.19;
@@ -3106,10 +3289,22 @@
 
     // An INTERIOR_THEMES level swaps the outdoor tree ring and rock
     // decorations for plain walls/furniture in its own palette, and drops
-    // flowers entirely — none of that reads as "indoors" otherwise.
+    // flowers entirely — none of that reads as "indoors" otherwise. A
+    // theme with a `glow` field (see Hell/Studio below) swaps the rock
+    // spots for an emissive fire/panel prop instead, each with a real
+    // PointLight nested right inside its own returned group — since that
+    // group is what place() positions, the light arrives at the correct
+    // world position for free, no separate light-placement pass needed.
     var interiorTheme = INTERIOR_THEMES[w.id];
     place(w.features.trees, interiorTheme ? function () { return createInteriorWall(interiorTheme.wall); } : createTree);
-    place(w.features.rocks, interiorTheme ? function () { return createInteriorProp(interiorTheme.prop); } : createRock);
+    place(w.features.rocks, interiorTheme ? function () {
+      if (!interiorTheme.glow) return createInteriorProp(interiorTheme.prop);
+      var glowGroup = interiorTheme.glow.prop === 'panel' ? createGlowPanel(interiorTheme.glow.color) : createFire();
+      var light = new THREE.PointLight(interiorTheme.glow.color, 2.4, 4.2, 2);
+      light.position.y = 0.4;
+      glowGroup.add(light);
+      return glowGroup;
+    } : createRock);
     place(w.features.bushes, createBush);
     if (!interiorTheme) place(w.features.flowers, createFlower);
     place(w.features.signs, createSignPost);
@@ -3923,6 +4118,48 @@
     choiceOpen = false;
   }
 
+  // Wipes every piece of run state back to its very first value (see the
+  // `var story = {...}` literal this mirrors) and reloads Home — a real
+  // restart, not a soft reset. Growth scaling (see growthScaleForChapter())
+  // is tied to story.chapter, so player.obj's scale is reset alongside it;
+  // everything else (level geometry, NPC defs) is stateless and just
+  // re-derives itself correctly once story.chapter is back to 'childhood'.
+  function restartGame() {
+    story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, fieldSeedsPlanted: false, colorRestored: {} };
+    player.obj.scale.setScalar(growthScaleForChapter(story.chapter));
+    loadLevel(0);
+    showToast('The game begins again.', 2400);
+  }
+
+  // The Devil's one mechanic — see the doc comment on his talkToNpc()
+  // special-case above. A fixed three-step exchange using openChoice()
+  // twice in a row (its own doc comment covers why onSelect can safely
+  // open a second choice): the warning text lives in the SECOND choice's
+  // own prompt, rather than a separate plain dialogue screen in between,
+  // since openChoice already renders a speaker + prompt like any dialogue
+  // box before its buttons. Saying "No" at step one, or "I can bear it" at
+  // the final choice, both just return to normal play with no side effect
+  // — the story doesn't say what "No" leads to beyond that, so this
+  // doesn't invent anything further for it.
+  function talkToDevil() {
+    openChoice('Do you want to end it?', 'The Devil', [
+      {
+        label: 'Yes',
+        onSelect: function () {
+          openChoice(
+            "I can do it, but you're not getting anything better, reincarnation, or heaven are bullshit, if you want to end it you will replay the same challenges over and over until you can handle it.",
+            'The Devil',
+            [
+              { label: 'I can bear it', onSelect: function () {} },
+              { label: 'Take me', onSelect: restartGame }
+            ]
+          );
+        }
+      },
+      { label: 'No', onSelect: function () {} }
+    ]);
+  }
+
   // A second, narrower way into the same #car-menu UI: before the car is
   // earned, Mom can drive Boy to any location that actually needs a ride
   // (any `availableFrom` level his own two feet can't reach yet — Hospital,
@@ -3977,6 +4214,12 @@
 
   function talkToNpc(npc) {
     var def = npc.def;
+
+    // The Devil doesn't fit job/challenge/missions/dialogue — his one
+    // mechanic is the game's restart offer, driven entirely by openChoice()
+    // (see its doc comment) rather than the respect/dialogue system every
+    // other NPC uses. See talkToDevil() below for the fixed three-step text.
+    if (def.id === 'devil') { talkToDevil(); return; }
 
     if (def.job) {
       var job = def.job;
@@ -4384,6 +4627,14 @@
       if (p.x === player.tileX && p.y === player.tileY) {
         if (p.to === 'field' && (story.respect.farmer_jono || 0) < FIELD_ENTRY_RESPECT) {
           showToast("The field's fenced off — Farmer Jono hasn't said you can go in yet.", 2200);
+          return;
+        }
+        // Backstage access gated on responsibility, not curiosity — see the
+        // doc comment on the apple_hall LEVELS entry. Liz's own songwriting
+        // challenge completing is the real, already-gated stand-in for
+        // "has an actual performance scheduled."
+        if (p.to === 'apple_hall_backstage' && !story.learned.songwriting) {
+          showToast("Backstage is by invitation only — nothing to perform yet.", 2200);
           return;
         }
         if (world.id === 'home' && p.to !== 'home' && !homeUnlocked()) {
