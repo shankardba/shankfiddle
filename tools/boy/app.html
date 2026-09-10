@@ -1525,6 +1525,12 @@
         E: {
           id: 'sir_earth',
           name: 'Sir Earth',
+          // Director's note: Sir Earth doesn't appear at the Conservatory
+          // at all until Boy has earned Liz's respect (her songwriting
+          // challenge, in College) — a real prerequisite, not two
+          // independently-reachable teachers. See npcAbsent()'s
+          // requiresLearned check.
+          requiresLearned: 'songwriting',
           // King-shaped body (tall and thick), its own white cross on top
           // — a cross, not a crown, is what actually marks a king apart
           // from a queen in chess — plus a painted tie-dye robe. See
@@ -1729,9 +1735,9 @@
       // already ship as childhood-chapter stops off the Clearing, and
       // moving or duplicating either is a real content decision, not a
       // rendering one, so it's left alone pending that call. Hell (down in
-      // the basement/caves below this building — see Liz's dialogue) and
-      // Apple Hall (attached to this campus) are planned neighbors, not
-      // built yet.
+      // the basement/caves below this building — see Liz's dialogue) is a
+      // planned neighbor, not built yet. Apple Hall was cut — no longer
+      // part of the story.
       id: 'college',
       name: 'College',
       availableFrom: 'earning_respect',
@@ -1740,8 +1746,8 @@
       // bounding-box structure per level (see its call site in
       // buildWorldGroup), so a real "grid of campus buildings, each with
       // people inside" needs the indoor/door architecture to do properly.
-      // The wider campus (other buildings, Hell, Apple Hall) lives in
-      // signage and dialogue for now, standing in for geography not built yet.
+      // The wider campus (other buildings, Hell) lives in signage and
+      // dialogue for now, standing in for geography not built yet.
       // Exit '1' (interior, not on the border) is the basement stairwell
       // down to Prof. Coffee's Studio; exit '2' (south edge) is the trail
       // out to Sir Earth's Conservatory; exit '3' (interior) is a second,
@@ -1754,13 +1760,13 @@
         "#..S...S..#",
         "#....@....#",
         "#....L....#",
-        "#.S.....4.#",
+        "#.S.......#",
         "#.o.....1.#",
         "#....3....#",
         "###2#######"
       ],
       signs: [
-        "A campus map under glass, buildings numbered one through six. Someone's taped a flyer over Building 4: \"APPLE HALL AUDITIONS — SEE MS. LIZ.\"",
+        "A campus map under glass, buildings numbered one through six.",
         "A small placard by the stairwell: \"BASEMENT — SYNTH LAB (PROF. COFFEE).\" Someone's scrawled an arrow toward the tree line outside too: \"Sir Earth's place — follow the trail.\"",
         "A hand-lettered warning nailed over a second, narrower door at the end of the hall: \"DO NOT GO DOWN.\" Someone's peeled back one corner of it."
       ],
@@ -1781,23 +1787,75 @@
             completeLine: "That's a song, not a sketch. You understand structure now — what to keep, what to cut, and why.",
             learnedMessage: 'You learned songwriting & structure! 🎶'
           },
-          dialogue: { default: "Building 4's got a stage and an audition sheet, if you're brave enough. Everything else here, we can work on any time." }
+          dialogue: { default: "Come by any time — there's always something worth working on." }
         }
       },
       exits: {
         '1': { to: 'studio', x: 5, y: 7 },
         '2': { to: 'conservatory', x: 5, y: 1 },
-        '3': { to: 'hell', x: 5, y: 7 },
-        '4': { to: 'apple_hall', x: 5, y: 7 }
+        '3': { to: 'hell', x: 5, y: 7 }
+      }
+    },
+    {
+      // Hell is three staircase-linked levels — reusing the exact
+      // basement-stairs pattern Coffee's Studio established (an interior
+      // portal digit, arrival adjacent to the shared tile on both ends),
+      // just chained twice instead of once. The Devil stands at the very
+      // bottom (hell_3, see its own comment below); these upper two are
+      // empty passages, each one level deeper and one shade darker (see
+      // INTERIOR_THEMES' hell/hell_2/hell_3 for the lighting gradient —
+      // brightest at the door, darkest at the Devil's level, but never as
+      // dark as Hell's original single-room version, so tails and horns
+      // stay visible the whole way down). '3' is "up" (out) and '4' is
+      // "down" on every one of the three levels, for readability, even
+      // though digits are otherwise just local map symbols.
+      id: 'hell',
+      name: 'Hell',
+      availableFrom: 'earning_respect',
+      map: [
+        "###########",
+        "#.o.....o.#",
+        "#.........#",
+        "#....4....#",
+        "#.........#",
+        "#....@....#",
+        "#.o.....o.#",
+        "#.........#",
+        "#####3#####"
+      ],
+      exits: {
+        '3': { to: 'college', x: 5, y: 6 },
+        '4': { to: 'hell_2', x: 5, y: 7 }
+      }
+    },
+    {
+      id: 'hell_2',
+      name: 'Hell',
+      availableFrom: 'earning_respect',
+      map: [
+        "###########",
+        "#.o.....o.#",
+        "#.........#",
+        "#....4....#",
+        "#.........#",
+        "#....@....#",
+        "#.o.....o.#",
+        "#.........#",
+        "#####3#####"
+      ],
+      exits: {
+        '3': { to: 'hell', x: 5, y: 4 },
+        '4': { to: 'hell_3', x: 5, y: 7 }
       }
     },
     {
       // The Devil's one mechanic — restarting the game entirely — lives on
       // his talkToNpc() special-case above (talkToDevil()); this level is
-      // just where he stands. "Weird crowns" on other Hell residents are
-      // mentioned in the story but nobody's designed one yet, so there's
-      // no crowd here — just the Devil.
-      id: 'hell',
+      // just where he stands, at the very bottom of the staircase (see the
+      // 'hell' entry's own comment above). "Weird crowns" on other Hell
+      // residents are mentioned in the story but nobody's designed one
+      // yet, so there's no crowd here — just the Devil.
+      id: 'hell_3',
       name: 'Hell',
       availableFrom: 'earning_respect',
       map: [
@@ -1820,62 +1878,7 @@
           appearance: { top: 0x3a0a0a, bottom: 0x1a0a0a, hairStyle: 'bald', skin: 0xa01818, pieceType: 'king', pieceAccent: 0x2a1414, horns: true, tail: true }
         }
       },
-      exits: { '3': { to: 'college', x: 5, y: 6 } }
-    },
-    {
-      // Attached to College's campus — see the sign in College's main
-      // room ("APPLE HALL AUDITIONS — SEE MS. LIZ"). The mechanic is
-      // decided even though the cast isn't (see the Environments/
-      // Progression Map artifacts): audience first, backstage only once
-      // there's real responsibility to go with the privilege. Liz's own
-      // songwriting challenge (see College) is that responsibility check
-      // — completing it is what "having an actual performance to give"
-      // means here, a real gate rather than a new invented flag. What
-      // actually happens once Boy's backstage — a performance, and the
-      // communityRespect payout the story describes — isn't designed yet
-      // (no cast, no mechanic beyond the door), so it's left as a sign
-      // rather than guessed at; see checkPortal()'s gate on exit '2'.
-      id: 'apple_hall',
-      name: 'Apple Hall',
-      availableFrom: 'earning_respect',
-      map: [
-        "###########",
-        "#.o.o.o.o.#",
-        "#.........#",
-        "#....@....#",
-        "#....2....#",
-        "#.........#",
-        "#.o.o.o.o.#",
-        "#.........#",
-        "#####1#####"
-      ],
-      signs: [
-        "A hand-lettered sign over the stage: \"AUDIENCE SEATING — BACKSTAGE BY INVITATION ONLY.\" Someone's added underneath: \"Ask Ms. Liz.\""
-      ],
-      exits: {
-        '1': { to: 'college', x: 5, y: 6 },
-        '2': { to: 'apple_hall_backstage', x: 5, y: 3 }
-      }
-    },
-    {
-      id: 'apple_hall_backstage',
-      name: 'Apple Hall — Backstage',
-      availableFrom: 'earning_respect',
-      map: [
-        "###########",
-        "#.........#",
-        "#....S....#",
-        "#.........#",
-        "#....@....#",
-        "#.........#",
-        "#.........#",
-        "#.........#",
-        "#####2#####"
-      ],
-      signs: [
-        "A checklist taped to a mirror: lighting, sound, set — and your name, finally, on the schedule. What actually happens once the curtain goes up hasn't been written yet."
-      ],
-      exits: { '2': { to: 'apple_hall', x: 5, y: 3 } }
+      exits: { '3': { to: 'hell_2', x: 5, y: 4 } }
     }
   ];
 
@@ -1931,9 +1934,10 @@
 
   // ----------------------------------------------------------------------
   // Grief's greyscale — from the moment Dad dies (setChapter('grief')) the
-  // whole world desaturates. Mom is the one permanent exception (colorful
-  // from the start of grief); everyone and everything else — ground,
-  // props, every other NPC, Boy himself — follows ONE shared dial:
+  // whole world desaturates. Mom and the Devil are the two permanent
+  // exceptions (colorful from the start of grief, see applyWorldColor());
+  // everyone and everything else — ground, props, every other NPC, Boy
+  // himself — follows ONE shared dial:
   // worldColorFactor(). It climbs as you genuinely reconnect with each
   // person in GREYSCALE_ROSTER (see markReconnected(), called from three
   // places in talkToNpc() — a job's real payout, a kindness act, and a
@@ -2000,6 +2004,12 @@
   // 'diagnosis') giving way to Dad and the nurse (both presentFrom
   // 'diagnosis') without any change to the level's map or tile layout.
   function npcAbsent(npcDef) {
+    // requiresLearned gates a character's very presence on a real,
+    // checkable fact — story.learned[key] — rather than a chapter. Sir
+    // Earth uses this: he doesn't appear at all until Boy has earned
+    // Liz's respect (learned.songwriting), a real prerequisite rather
+    // than two independent, order-free teachers.
+    if (npcDef.requiresLearned && !story.learned[npcDef.requiresLearned]) return true;
     // presentDuring is an explicit whitelist for a character who isn't
     // present for one contiguous stretch of chapters — see the doc above
     // LEVELS. It fully replaces the presentFrom/absentFrom range check
@@ -2211,16 +2221,25 @@
     college: { wall: 0x5a4a3a, floor: 0x9c8560, prop: 0x2a2f3a, bg: 0x1f1a14 },
     // A cave-like environment unlocked from College, long before diagnosis
     // — see the Devil's own talkToNpc() special-case and buildHorns() for
-    // the rest of what lives here. Dark base palette per the "maintain the
-    // dark feel" director's note, with fire braziers (the `glow` field) as
-    // the actual light source rather than just an emissive prop with no
-    // real illumination.
-    hell: { wall: 0x3a1f1a, floor: 0x241210, prop: 0x6b1f14, bg: 0x1a0d0a, glow: { prop: 'fire', color: 0xff8a3a } },
-    // A theater attached to College's campus — see the apple_hall LEVELS
-    // entry for the mechanic. Warm stage-light glow via the same `glow`
-    // system Hell/Studio use, just amber instead of fire-orange or teal.
-    apple_hall: { wall: 0x4a1a26, floor: 0x5a3a20, prop: 0x8a7030, bg: 0x150a10, glow: { prop: 'panel', color: 0xfff0c2 } },
-    apple_hall_backstage: { wall: 0x4a1a26, floor: 0x5a3a20, prop: 0x8a7030, bg: 0x150a10 }
+    // the rest of what lives here. Director's note: "too dark" — given the
+    // lighting Apple Hall used to have (that level is cut; its theater
+    // mechanic never got a cast or design beyond the door, and it wasn't
+    // needed) — lighter wall/floor/prop/bg values and Apple Hall's own
+    // warm near-white glow color, brighter than the fire-orange this used
+    // to be. Kept the fire-brazier PROP shape rather than Apple Hall's
+    // glowing stage panels — a floating rectangle would read as tech
+    // equipment in a cave, not hellfire — so only the color and base
+    // palette were actually "Apple Hall's lighting," not its literal prop.
+    hell: { wall: 0x4a1a26, floor: 0x5a3a20, prop: 0x8a7030, bg: 0x150a10, glow: { prop: 'fire', color: 0xfff0c2 } },
+    // hell_2/hell_3 — the staircase's lower two floors (see the 'hell'
+    // LEVELS entry). Each step down is a linear blend toward Hell's
+    // ORIGINAL pre-fix palette (wall 0x3a1f1a / floor 0x241210 /
+    // prop 0x6b1f14 / bg 0x1a0d0a / glow 0xff8a3a) — but capped well short
+    // of it (45% of the way at the bottom, hell_3), never actually
+    // reaching that original darkness, per the director's note: tails and
+    // horns should stay visible all the way down.
+    hell_2: { wall: 0x451b22, floor: 0x4b2f1c, prop: 0x815928, bg: 0x160b0e, glow: { prop: 'fire', color: 0xffd49c } },
+    hell_3: { wall: 0x411d1f, floor: 0x3c2417, prop: 0x794321, bg: 0x180c0d, glow: { prop: 'fire', color: 0xffb877 } }
   };
 
   // levelId opts into a level-specific palette via INTERIOR_THEMES; a
@@ -3555,15 +3574,18 @@
   // worldColorFactor() — called once from loadLevel() (a fresh level
   // starts at today's factor) and again from markReconnected() (so
   // reconnecting with someone recolors the world you're standing in
-  // immediately, with no level reload needed). Mom and Boy are the two
-  // standing exceptions to the shared dial — see the doc above it.
+  // immediately, with no level reload needed). Mom, the Devil, and Boy are
+  // the three standing exceptions to the shared dial — see the doc above
+  // it. Mom/Devil's line here is harmless before 'grief' too: the shared
+  // factor is already 1 for everyone then, so forcing them to 1 changes
+  // nothing until the world actually starts desaturating.
   function applyWorldColor() {
     if (!world) return;
     var factor = worldColorFactor();
     tagBaseColors(world.group);
     applyColorFactor(world.group, factor);
     world.features.npcs.forEach(function (n) {
-      if (n.def.id === 'mom') applyColorFactor(n.obj, 1);
+      if (n.def.id === 'mom' || n.def.id === 'devil') applyColorFactor(n.obj, 1);
     });
     // Boy's own exception is a hard binary, not a ride on the shared dial —
     // "he's the LAST to return to color" means a distinct reveal the
@@ -4315,7 +4337,25 @@
   // the final choice, both just return to normal play with no side effect
   // — the story doesn't say what "No" leads to beyond that, so this
   // doesn't invent anything further for it.
+  // From 'diagnosis' onward, the "end it" offer retires for good — the
+  // first visit that chapter (or any later one) plays a one-time respect
+  // beat instead (story.learned.devilFriend), then every visit after that
+  // is a placeholder for the task-giving mechanic described as "TBD" —
+  // no task system exists yet, so this just acknowledges there's nothing
+  // to hand over yet rather than faking one. Note this is a DIFFERENT
+  // trigger than his color exception in applyWorldColor(), which doesn't
+  // fire until 'grief' — he earns your respect two chapters before the
+  // world (and he) actually turns to color.
   function talkToDevil(npc) {
+    if (CHAPTERS.indexOf(story.chapter) >= CHAPTERS.indexOf('diagnosis')) {
+      if (!story.learned.devilFriend) {
+        story.learned.devilFriend = true;
+        openDialogue("Not anymore. I'm not going to be the one who ends it for you — not you. You're not a soul passing through down here. You're my friend.", 'The Devil', undefined, npc.obj);
+      } else {
+        openDialogue("Nothing for you to do yet. When I've got something worth asking, you'll be the first to know.", 'The Devil', undefined, npc.obj);
+      }
+      return;
+    }
     openChoice('Do you want to end it?', 'The Devil', [
       {
         label: 'Yes',
@@ -4802,14 +4842,6 @@
       if (p.x === player.tileX && p.y === player.tileY) {
         if (p.to === 'field' && (story.respect.farmer_jono || 0) < FIELD_ENTRY_RESPECT) {
           showToast("The field's fenced off — Farmer Jono hasn't said you can go in yet.", 2200);
-          return;
-        }
-        // Backstage access gated on responsibility, not curiosity — see the
-        // doc comment on the apple_hall LEVELS entry. Liz's own songwriting
-        // challenge completing is the real, already-gated stand-in for
-        // "has an actual performance scheduled."
-        if (p.to === 'apple_hall_backstage' && !story.learned.songwriting) {
-          showToast("Backstage is by invitation only — nothing to perform yet.", 2200);
           return;
         }
         if (world.id === 'home' && p.to !== 'home' && !homeUnlocked()) {
