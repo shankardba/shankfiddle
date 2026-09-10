@@ -231,17 +231,6 @@
   #tool-frame-close:hover { border-color: #ffd27a; background: rgba(240,168,60,0.14); }
   #tool-frame { flex: 1 1 auto; width: 100%; border: none; background: #fff; }
 
-  #tools-btn {
-    top: 16px; left: 50%; transform: translateX(-50%);
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    background: rgba(5,7,10,0.55);
-    border: 1px solid rgba(240,168,60,0.4);
-    font-size: 1.1rem;
-    backdrop-filter: blur(6px);
-    cursor: pointer;
-  }
-  #tools-btn:hover { border-color: #ffd27a; }
   #mute-btn {
     top: 64px; right: 16px;
     width: 40px; height: 40px;
@@ -255,25 +244,18 @@
   }
   #mute-btn:hover { border-color: #ffd27a; }
   #mute-btn.muted { color: #8a8f96; }
-  #tools-panel {
-    display: none;
-    top: 64px; left: 50%; transform: translateX(-50%);
-    flex-direction: column;
-    gap: 8px;
-    background: rgba(8,6,10,0.9);
-    border: 1px solid rgba(240,168,60,0.45);
-    border-radius: 12px;
-    padding: 12px 16px;
-    white-space: nowrap;
-  }
-  #tools-panel.open { display: flex; }
-  #tools-panel a {
+  #save-btn {
+    top: 112px; right: 16px;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(5,7,10,0.55);
+    border: 1px solid rgba(240,168,60,0.4);
     color: #f7ece9;
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 4px 6px;
+    font-size: 1.1rem;
+    backdrop-filter: blur(6px);
+    cursor: pointer;
   }
-  #tools-panel a:hover { color: #ffd27a; }
+  #save-btn:hover { border-color: #ffd27a; }
 
   #toast {
     left: 50%; top: 14%;
@@ -405,11 +387,7 @@
   </div>
   <div id="shard-counter" class="hud"><span class="icon">&#10022;</span><span id="shard-count-text">0 / 0</span></div>
   <button id="mute-btn" class="hud" title="Mute music &amp; sound effects">&#128266;</button>
-  <button id="tools-btn" class="hud" title="shankFiddle tools">&#127932;</button>
-  <div id="tools-panel" class="hud">
-    <a href="../circle-of-fifths/" target="_blank" rel="noopener">&#127932; Circle of Fifths</a>
-    <a href="../fractal/" target="_blank" rel="noopener">&#127744; Fractal Explorer</a>
-  </div>
+  <button id="save-btn" class="hud" title="Copy a save link (dev/testing stand-in for real progress-saving)">&#128279;</button>
   <div id="dialogue" class="hud">
     <div id="dialogue-speaker"></div>
     <div id="dialogue-text"></div>
@@ -4149,6 +4127,15 @@
     if (idx !== -1) pressedDirs.splice(idx, 1);
   }
 
+  // A hash-only address-bar edit (pasting/hand-editing a save link, see
+  // applySaveFromHash() below) doesn't reliably re-run this script on its
+  // own in every browser — some just fire hashchange without a real
+  // navigation. Forcing a reload here guarantees the new hash is actually
+  // read from scratch every time, regardless of that browser quirk. Our
+  // own writes (copySaveLink()) use history.replaceState, which never
+  // fires hashchange, so this can't loop back on itself.
+  window.addEventListener('hashchange', function () { location.reload(); });
+
   window.addEventListener('keydown', function (e) {
     if (toolFrameOpen) {
       if (e.key === 'Escape') closeToolFrame();
@@ -4171,23 +4158,12 @@
   });
   document.getElementById('action-btn').addEventListener('pointerdown', function (e) { e.preventDefault(); handleAction(); });
 
-  // Persistent, chapter-independent link out to the sibling shankFiddle
-  // tools — paths are relative to this file's embedded location
-  // (shankfiddle-site/tools/boy/app.html), so they only resolve when Boy
-  // is running inside the site, not when opened standalone.
-  var TOOL_LINKS = {
-    circleOfFifths: { href: '../circle-of-fifths/', label: 'Circle of Fifths' },
-    fractal: { href: '../fractal/', label: 'Fractal Explorer' }
-  };
-  document.getElementById('tools-btn').addEventListener('click', function () {
-    document.getElementById('tools-panel').classList.toggle('open');
-  });
-
   setMuted(muted); // sync the button's icon to the restored localStorage preference
   document.getElementById('mute-btn').addEventListener('click', function () {
     ensureAudio();
     setMuted(!muted);
   });
+  document.getElementById('save-btn').addEventListener('click', copySaveLink);
 
   function findNearbySign() {
     var signs = world.features.signs;
@@ -4312,6 +4288,66 @@
   function closeChoice() {
     choiceEl.classList.remove('open');
     choiceOpen = false;
+  }
+
+  // ----------------------------------------------------------------------
+  // URL-hash save link — a TESTING stand-in for real progress-saving, not
+  // the target design. It works by trusting the client completely: the
+  // whole `story` blob (the same one restartGame() resets to its initial
+  // literal) plus the current level id gets JSON-encoded straight into
+  // location.hash, and reading it back on load just overwrites `story`
+  // wholesale. That is exactly the property a real save system must NOT
+  // have once Google login exists — the eventual backend has to validate
+  // discrete, named events (a job payout, a challenge step) against
+  // server-held state, not accept a client-asserted "money is now 9999."
+  // Until then, this is deliberately hand-editable: JSON.stringify's
+  // output is encodeURIComponent'd for correctness, but every actual
+  // value (chapter names, numbers, npc ids) survives that encoding
+  // untouched — only the JSON punctuation turns into %7B/%22/%3A/%2C/%7D —
+  // so pasting the link into the address bar and editing a word or number
+  // directly, then hitting Enter, is the whole "hack in progress" workflow.
+  // Not tied to exact position — matches every other "resume" point in
+  // this game (loadLevel's own spawn tile), just like a real save reads.
+  var SAVE_HASH_PREFIX = 'save=';
+  function serializeSave() {
+    return '#' + SAVE_HASH_PREFIX + encodeURIComponent(JSON.stringify({ level: world.id, story: story }));
+  }
+  // Returns the saved level id if a save link was present and parsed, or
+  // null otherwise (including "no save link at all," a plain fresh visit).
+  // Overlays the save's fields onto a fresh default `story` rather than
+  // trusting the parsed object outright, so a hand-truncated/edited link
+  // missing a field (respect, learned, etc.) still gets a safe {} instead
+  // of crashing the first time something reads a missing key.
+  function applySaveFromHash() {
+    var prefix = '#' + SAVE_HASH_PREFIX;
+    if (location.hash.indexOf(prefix) !== 0) return null;
+    var payload;
+    try {
+      payload = JSON.parse(decodeURIComponent(location.hash.slice(prefix.length)));
+    } catch (e) {
+      console.warn('Boy: could not parse the save link, starting fresh.', e);
+      return null;
+    }
+    if (!payload || typeof payload.story !== 'object') return null;
+    story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, fieldSeedsPlanted: false, colorRestored: {} };
+    Object.keys(payload.story).forEach(function (k) { story[k] = payload.story[k]; });
+    return payload.level || null;
+  }
+  // Writes the current save link into the address bar (so it's always
+  // there to copy by hand, clipboard permission or not) and tries the
+  // clipboard as a convenience on top.
+  function copySaveLink() {
+    var url = location.origin + location.pathname + serializeSave();
+    history.replaceState(null, '', url);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () {
+        showToast('🔗 Save link copied — paste it anywhere to resume here.', 2600);
+      }).catch(function () {
+        showToast('🔗 Save link is in the address bar now — copy it from there.', 3200);
+      });
+    } else {
+      showToast('🔗 Save link is in the address bar now — copy it from there.', 3200);
+    }
   }
 
   // Wipes every piece of run state back to its very first value (see the
@@ -4937,7 +4973,12 @@
     requestAnimationFrame(update);
   }
 
-  loadLevel(0);
+  // A save link (see applySaveFromHash() above) starts Boy at whatever
+  // level it names instead of Home, at that level's own default spawn
+  // tile — the resume point is "which level," never an exact position.
+  var savedLevelId = applySaveFromHash();
+  if (savedLevelId !== null) player.obj.scale.setScalar(growthScaleForChapter(story.chapter));
+  loadLevel((savedLevelId !== null && LEVEL_INDEX.hasOwnProperty(savedLevelId)) ? LEVEL_INDEX[savedLevelId] : 0);
   requestAnimationFrame(update);
 })();
 </script>
