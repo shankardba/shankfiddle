@@ -3463,6 +3463,25 @@
 
   var MOVE_DURATION = 0.17;
 
+  // A one-shot "speak wiggle" — reuses Boy's own per-tile movement hop
+  // shape (position.y = sin(frac * PI) * amplitude, see the walking code
+  // in update() below) rather than inventing a new motion, so it reads as
+  // "similar to how Boy moves" instead of a generic wobble. Two quick
+  // bounces, not one — a single hop reads as a nod, not a wiggle — at a
+  // smaller amplitude than Boy's own travel hop, since this NPC isn't
+  // going anywhere, just reacting in place. triggerSpeakWiggle() just
+  // stamps a start time; update()'s NPC loop (which already runs every
+  // frame regardless of dialogueOpen, for the idle-breathing pulse) reads
+  // elapsed time off that stamp and stops touching position.y once the
+  // duration has passed — no separate "turn it off" bookkeeping needed.
+  var WIGGLE_DURATION = 0.32;
+  var WIGGLE_BOUNCES = 2;
+  var WIGGLE_AMPLITUDE = 0.07;
+  function triggerSpeakWiggle(obj) {
+    if (!obj) return;
+    obj.userData.wiggleAt = clock.elapsedTime;
+  }
+
   // ----------------------------------------------------------------------
   // Camera
   // ----------------------------------------------------------------------
@@ -3871,7 +3890,12 @@
   // link.onClick: a plain callback instead of navigation at all — see
   // momRideLink()/openMomRideMenu(), which hangs a "ride to..." menu off
   // Mom's own dialogue without touching her regular respect-beat lines.
-  function openDialogue(text, speaker, link) {
+  // speakerObj: optional — the speaking NPC's THREE object, passed straight
+  // to triggerSpeakWiggle() so it plays its one-shot wiggle the instant the
+  // line opens; omit it for narration with no character actually speaking
+  // (a sign's message, the car-key line, a bare violin-practice line).
+  function openDialogue(text, speaker, link, speakerObj) {
+    triggerSpeakWiggle(speakerObj);
     dialogueSpeakerEl.textContent = speaker || '';
     dialogueSpeakerEl.style.display = speaker ? 'block' : 'none';
     dialogueTextEl.textContent = text;
@@ -4085,18 +4109,23 @@
 
   // Generic reusable yes/no (or multi-option) choice prompt — first built
   // for the Devil's restart-the-game exchange, but not specific to him.
-  // openChoice(promptText, speaker, options): options is an array of
-  // { label, onSelect } — onSelect is called (with no args) when that
-  // button is clicked, after the overlay is already closed, so it's safe
-  // for onSelect to immediately open another dialogue or choice of its
-  // own (exactly what the Devil's three-step exchange needs — a choice
-  // whose "yes" answer leads straight into a second choice).
+  // openChoice(promptText, speaker, options, speakerObj): options is an
+  // array of { label, onSelect } — onSelect is called (with no args) when
+  // that button is clicked, after the overlay is already closed, so it's
+  // safe for onSelect to immediately open another dialogue or choice of
+  // its own (exactly what the Devil's three-step exchange needs — a
+  // choice whose "yes" answer leads straight into a second choice).
+  // speakerObj is optional — the speaking NPC's THREE object, passed
+  // straight to triggerSpeakWiggle() so it plays its one-shot wiggle the
+  // instant the choice opens; omit it for a system-level choice with no
+  // character actually speaking.
   var choiceOpen = false;
   var choiceEl = document.getElementById('choice-overlay');
   var choiceSpeakerEl = document.getElementById('choice-speaker');
   var choicePromptEl = document.getElementById('choice-prompt');
   var choiceOptionsEl = document.getElementById('choice-options');
-  function openChoice(promptText, speaker, options) {
+  function openChoice(promptText, speaker, options, speakerObj) {
+    triggerSpeakWiggle(speakerObj);
     choiceSpeakerEl.textContent = speaker || '';
     choiceSpeakerEl.style.display = speaker ? 'block' : 'none';
     choicePromptEl.textContent = promptText;
@@ -4141,7 +4170,7 @@
   // the final choice, both just return to normal play with no side effect
   // — the story doesn't say what "No" leads to beyond that, so this
   // doesn't invent anything further for it.
-  function talkToDevil() {
+  function talkToDevil(npc) {
     openChoice('Do you want to end it?', 'The Devil', [
       {
         label: 'Yes',
@@ -4152,12 +4181,13 @@
             [
               { label: 'I can bear it', onSelect: function () {} },
               { label: 'Take me', onSelect: restartGame }
-            ]
+            ],
+            npc.obj
           );
         }
       },
       { label: 'No', onSelect: function () {} }
-    ]);
+    ], npc.obj);
   }
 
   // A second, narrower way into the same #car-menu UI: before the car is
@@ -4219,7 +4249,7 @@
     // mechanic is the game's restart offer, driven entirely by openChoice()
     // (see its doc comment) rather than the respect/dialogue system every
     // other NPC uses. See talkToDevil() below for the fixed three-step text.
-    if (def.id === 'devil') { talkToDevil(); return; }
+    if (def.id === 'devil') { talkToDevil(npc); return; }
 
     if (def.job) {
       var job = def.job;
@@ -4235,7 +4265,7 @@
         var trustKey = jobKey + ':trust';
         var trustVisit = story.chapterTalks[trustKey] || 0;
         var trustLines = job.trust.lines;
-        openDialogue(trustLines[Math.min(trustVisit, trustLines.length - 1)], def.name);
+        openDialogue(trustLines[Math.min(trustVisit, trustLines.length - 1)], def.name, null, npc.obj);
         if (trustVisit < trustLines.length) {
           story.chapterTalks[trustKey] = trustVisit + 1;
           story.respect[jobKey] = jobRespect + 1;
@@ -4271,7 +4301,7 @@
           openDialogue(
             tier.harvest.needLine ||
               ('Bring me ' + tier.harvest.need + ' ' + tier.harvest.itemLabel + ' and I\'ll pay you for it. (' + haveProduce + ' / ' + tier.harvest.need + ')'),
-            def.name
+            def.name, null, npc.obj
           );
           return;
         }
@@ -4293,7 +4323,7 @@
       if (tier.plantsSeeds) story.fieldSeedsPlanted = true;
       renderStats();
       var jobLine = tier.lines[Math.floor(rand(0, tier.lines.length))];
-      openDialogue(jobLine, def.name);
+      openDialogue(jobLine, def.name, null, npc.obj);
       var parts = [];
       if (tier.pay) parts.push('+' + tier.pay + ' 💰');
       if (tier.reputation) parts.push('+' + tier.reputation + ' respect');
@@ -4309,7 +4339,7 @@
     if (def.kindness) {
       var kindness = def.kindness;
       if (story.money < kindness.cost) {
-        openDialogue(kindness.needLine || "...", def.name);
+        openDialogue(kindness.needLine || "...", def.name, null, npc.obj);
         return;
       }
       story.money -= kindness.cost;
@@ -4322,7 +4352,7 @@
       markReconnected(npcRespectKey(def));
       renderStats();
       var kindLine = kindness.lines[Math.floor(rand(0, kindness.lines.length))];
-      openDialogue(kindLine, def.name);
+      openDialogue(kindLine, def.name, null, npc.obj);
       showToast('-' + kindness.cost + ' 💰   +' + (kindness.reputation || 0) + ' respect', 1800);
       return;
     }
@@ -4376,11 +4406,11 @@
       if (def.isFamily && chapterVisit < beatCount) {
         var pendingBeat = chapterDialogue[chapterVisit];
         if (pendingBeat && typeof pendingBeat === 'object' && pendingBeat.requires && !story.learned[pendingBeat.requires]) {
-          openDialogue(pendingBeat.reminder, def.name, momRideLink(def));
+          openDialogue(pendingBeat.reminder, def.name, momRideLink(def), npc.obj);
           return;
         }
       }
-      openDialogue(dialogueFor(def, chapterVisit), def.name, momRideLink(def));
+      openDialogue(dialogueFor(def, chapterVisit), def.name, momRideLink(def), npc.obj);
       if (def.isFamily) {
         story.chapterTalks[chapterTalkKey] = chapterVisit + 1;
         // Respect is earned by reaching a NEW beat of this chapter's
@@ -4433,7 +4463,7 @@
       // A music challenge points its `link` at the Circle of Fifths so you
       // can go practice what the teacher just taught; a challenge with no
       // matching tool (e.g. the research bench) just omits `link`.
-      openDialogue(ch.completeLine, def.name, ch.link || null);
+      openDialogue(ch.completeLine, def.name, ch.link || null, npc.obj);
       if (missionIdx >= 0) {
         story.missionStep[def.id] = missionIdx + 1;
         if (story.missionStep[def.id] >= def.missions.length) {
@@ -4459,7 +4489,7 @@
         href: ch.goal.href,
         label: ch.goal.linkLabel || 'Open the tool →',
         frame: { tool: ch.goal.tool, id: ch.goal.id }
-      });
+      }, npc.obj);
       return;
     }
 
@@ -4471,7 +4501,7 @@
 
     story.respect[ch.key] = have + 1;
     var line = ch.progressLines[Math.min(have, ch.progressLines.length - 1)];
-    openDialogue(line, def.name);
+    openDialogue(line, def.name, null, npc.obj);
     showToast('Respect: ' + (have + 1) + ' / ' + ch.threshold, 1600);
   }
 
@@ -4704,6 +4734,20 @@
         if (!n.obj) return;
         var breathe = 1 + Math.sin(t * 1.8 + n.obj.userData.idlePhase) * 0.012;
         n.obj.userData.pivot.scale.set(1, breathe, 1);
+        // One-shot "speak wiggle" — see triggerSpeakWiggle()'s doc comment.
+        // Two quick bounces of Boy's own hop shape (abs(sin), always an
+        // upward bounce, never inverted), fading out across the duration
+        // so it reads as a quick reaction rather than a repeating loop.
+        if (n.obj.userData.wiggleAt != null) {
+          var wiggleElapsed = t - n.obj.userData.wiggleAt;
+          if (wiggleElapsed < WIGGLE_DURATION) {
+            var wiggleFrac = wiggleElapsed / WIGGLE_DURATION;
+            n.obj.position.y = Math.abs(Math.sin(wiggleFrac * WIGGLE_BOUNCES * Math.PI)) * WIGGLE_AMPLITUDE * (1 - wiggleFrac);
+          } else {
+            n.obj.position.y = 0;
+            n.obj.userData.wiggleAt = null;
+          }
+        }
       });
 
       var desiredCamPos = player.obj.position.clone().add(camOffset);
