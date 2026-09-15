@@ -160,6 +160,29 @@
   .math-panel .cite{font-size:11px;color:var(--text-muted);line-height:1.7;margin-top:16px;}
   .math-panel .cite a{color:var(--cool);text-decoration:none;}
   .math-panel .cite a:hover{text-decoration:underline;}
+  .math-panel .section-head{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--text);margin:22px 0 10px;padding-top:18px;border-top:1px solid var(--border);}
+  .math-panel .section-head:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+  .math-panel table.mesif-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:10.5px;margin-bottom:8px;}
+  .math-panel table.mesif-table th,.math-panel table.mesif-table td{border:1px solid var(--border);padding:5px 4px;text-align:center;}
+  .math-panel table.mesif-table th{color:var(--text-muted);font-weight:500;background:var(--surface-2);font-size:10px;}
+  .math-panel table.mesif-table td.rowhead{font-weight:700;background:var(--surface);}
+  .math-panel .state-M{color:var(--state-m);}
+  .math-panel .state-E{color:var(--state-e);}
+  .math-panel .state-S{color:var(--state-s);}
+  .math-panel .state-F{color:var(--state-f);}
+  .math-panel .state-I{color:var(--state-i);}
+  .math-panel .values .k.state-M{color:var(--state-m);}
+  .math-panel .values .k.state-E{color:var(--state-e);}
+  .math-panel .values .k.state-S{color:var(--state-s);}
+  .math-panel .values .k.state-F{color:var(--state-f);}
+  .math-panel .values .k.state-I{color:var(--state-i);}
+  .math-panel .table-note{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-muted);line-height:1.7;margin-bottom:4px;}
+  .math-panel .latency-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;}
+  .math-panel .latency-label{width:118px;flex-shrink:0;color:var(--text-muted);}
+  .math-panel .latency-bar-track{flex:1;background:var(--surface-2);border-radius:3px;height:11px;overflow:hidden;}
+  .math-panel .latency-bar-fill{height:100%;border-radius:3px;}
+  .math-panel .latency-val{width:56px;text-align:right;flex-shrink:0;color:var(--text);}
+  .math-panel .latency-caveat{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--text-muted);font-style:italic;margin-top:2px;}
 
   .section{margin-bottom:22px;}
   .section + .section{border-top:1px solid var(--border);padding-top:20px;}
@@ -431,15 +454,17 @@
         'main-memory lines. MESIF is the bookkeeping rule set — one state letter per cache ' +
         'line, per cache — that lets cores read and write their local copies while ' +
         'guaranteeing no core ever sees stale data. It extends the older MESI protocol ' +
-        '(Modified / Exclusive / Shared / Invalid) with a fifth state, Forward.</div>' +
+        '(Modified / Exclusive / Shared / Invalid) with a fifth state, Forward, to fix a ' +
+        'specific inefficiency MESI has whenever more than one cache shares a line.</div>' +
+
+        '<div class="section-head">1. The five states</div>' +
         '<div class="eq-block">' +
-        '<div class="row-label">States</div>' +
         '<div class="values">' +
-        '<div><span class="k">M</span> Modified — dirty, this cache is the only valid copy</div>' +
-        '<div><span class="k">E</span> Exclusive — clean, this cache is the only copy</div>' +
-        '<div><span class="k">S</span> Shared — clean, other caches may also hold it</div>' +
-        '<div><span class="k">F</span> Forward — a designated Shared copy that answers reads</div>' +
-        '<div><span class="k">I</span> Invalid — this cache\'s copy cannot be used</div>' +
+        '<div><span class="k state-M">M</span> Modified — dirty, this cache is the only valid copy</div>' +
+        '<div><span class="k state-E">E</span> Exclusive — clean, this cache is the only copy</div>' +
+        '<div><span class="k state-S">S</span> Shared — clean, other caches may also hold it</div>' +
+        '<div><span class="k state-F">F</span> Forward — a designated Shared copy that answers reads</div>' +
+        '<div><span class="k state-I">I</span> Invalid — this cache\'s copy cannot be used</div>' +
         '</div>' +
         '<div class="row-label">Bus &amp; processor events</div>' +
         '<div class="values">' +
@@ -449,14 +474,71 @@
         '<div><span class="k">BusRdX</span> another cache is writing (invalidate)</div>' +
         '<div><span class="k">Flush</span> supply this line\'s data to the requester</div>' +
         '</div>' +
-        '<div class="eq-note">The one rule that defines the protocol: at most one cache may ' +
-        'hold a given line in F at any time. Whichever cache most recently answered a read ' +
-        'request holds F; every earlier holder has already fallen back to S. That single ' +
-        'Forward copy — not main memory — answers the next read, at cache-to-cache speed.</div>' +
         '</div>' +
+
+        '<div class="section-head">2. Why Forward exists</div>' +
+        '<div class="desc">In plain MESI, once two or more caches share a line, nobody is ' +
+        'responsible for answering the next read of it — so it either goes all the way back ' +
+        'to main memory, or several caches redundantly reply at once. MESIF fixes this by ' +
+        'having exactly one cache — whichever most recently read the line — hold it in F and ' +
+        'act as the line\'s "phone number." A request for a shared line always finds one clear ' +
+        'answerer, and gets it at cache-to-cache speed instead of main-memory speed:</div>' +
+        '<div class="eq-block">' +
+        '<div class="latency-row"><span class="latency-label">Main memory</span>' +
+        '<span class="latency-bar-track"><span class="latency-bar-fill" style="width:100%;background:var(--state-m)"></span></span>' +
+        '<span class="latency-val">slowest</span></div>' +
+        '<div class="latency-row"><span class="latency-label">Cache‑to‑cache (F)</span>' +
+        '<span class="latency-bar-track"><span class="latency-bar-fill" style="width:38%;background:var(--cool)"></span></span>' +
+        '<span class="latency-val">faster</span></div>' +
+        '<div class="latency-caveat">Bars are illustrative — the source material gives the ' +
+        'relationship, not exact cycle counts.</div>' +
+        '</div>' +
+
+        '<div class="section-head">3. Full transition table</div>' +
+        '<div class="table-note">Row = current state, column = event. † a bus transaction ' +
+        'fires (BusRdX to invalidate, or Flush to answer a read). ‡ depends on whether another ' +
+        'cache currently holds the line.</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th></th><th>PrRd</th><th>PrWr</th><th>BusRd</th><th>BusRdX</th></tr>' +
+        '<tr><td class="rowhead state-M">M</td><td>M</td><td>M</td><td>S †</td><td>I</td></tr>' +
+        '<tr><td class="rowhead state-E">E</td><td>E</td><td>M</td><td>S</td><td>I</td></tr>' +
+        '<tr><td class="rowhead state-S">S</td><td>S</td><td>M †</td><td>S</td><td>I</td></tr>' +
+        '<tr><td class="rowhead state-F">F</td><td>F</td><td>M †</td><td>S †</td><td>I</td></tr>' +
+        '<tr><td class="rowhead state-I">I</td><td>E/F ‡</td><td>M †</td><td>—</td><td>—</td></tr>' +
+        '</table>' +
+
+        '<div class="section-head">4. MESIF\'s family</div>' +
+        '<div class="table-note">The same problem (who answers for a shared line?) has more ' +
+        'than one solution — comparing them is the fastest way to see what MESIF actually buys you.</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th>Protocol</th><th>States</th><th>Shared-line responder</th><th>Discard rule</th></tr>' +
+        '<tr><td>MESI</td><td>M E S I</td><td>none — falls back to memory</td><td>S: silent, any time</td></tr>' +
+        '<tr><td class="state-F">MESIF</td><td>M E S I F</td><td>the one F holder</td><td>F: silent, any time (clean)</td></tr>' +
+        '<tr><td>MOESI</td><td>M O S E I</td><td>the one O holder</td><td>O: must write back first (dirty)</td></tr>' +
+        '</table>' +
+        '<div class="eq-note">The key distinction is clean vs. dirty: F holds the same data as ' +
+        'memory, so it can vanish with no warning. O can hold data memory doesn\'t have yet, so ' +
+        'it must write that data back before it can be dropped. MESIF trades a little of ' +
+        'MOESI\'s flexibility for keeping every shared copy provably clean.</div>' +
+
+        '<div class="section-head">5. Where it\'s used</div>' +
+        '<div class="desc">MESIF is an Intel design, introduced with the Nehalem ' +
+        'microarchitecture (2008) as part of the Common System Interface — the point-to-point ' +
+        'link between sockets that replaced the old shared front-side bus. That interconnect ' +
+        'was renamed QuickPath Interconnect (QPI) at launch, and later Xeon generations moved ' +
+        'to its successor, UltraPath Interconnect (UPI) — both still coordinate cache lines ' +
+        'across sockets using this same F-state idea.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">The diagram and cache dock at the top of this page are a live, ' +
+        'correct implementation of the table in section 3 — not just a picture of it. Reset the ' +
+        'simulation, then read the same cache twice with a second cache: watch the first ' +
+        'reader hand its F badge to the second and drop to S, exactly as row F/BusRd says.</div>' +
+
         '<div class="cite">Diagram layout modeled on the MESIF automaton at ' +
         '<a href="https://texample.net/mesif/" target="_blank" rel="noopener">texample.net/mesif</a>. ' +
-        'State definitions and the Forward-uniqueness rule summarized from ' +
+        'States, transitions, the Forward-uniqueness rule, the MOESI comparison, and the ' +
+        'Nehalem/CSI/QPI history are summarized from ' +
         '<a href="https://en.wikipedia.org/wiki/MESIF_protocol" target="_blank" rel="noopener">Wikipedia — MESIF protocol</a>.</div>'
     }
   ];
