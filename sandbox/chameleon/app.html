@@ -48,18 +48,12 @@
   }
   .icon-btn:hover{transform:translateY(-1px);border-color:var(--accent);}
   .icon-btn:active{transform:translateY(0);}
+  .icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;display:block;transition:transform .4s ease;}
   #gearBtn{right:14px;}
   #downloadBtn{left:14px;}
   #diceBtn{left:58px;}
   #mathBtn{left:102px;}
   #themeBtn{left:146px;}
-
-  .logo-mark{position:fixed;top:14px;left:190px;z-index:40;display:flex;align-items:center;gap:8px;
-    background:color-mix(in srgb, var(--panel) 78%, transparent);border:1px solid var(--border);
-    border-radius:20px;padding:5px 12px 5px 6px;backdrop-filter:blur(6px);}
-  .logo-mark svg{width:26px;height:26px;display:block;}
-  .logo-mark span{font-weight:600;font-size:14px;letter-spacing:.02em;}
-  @media (max-width:820px){ .logo-mark span{display:none;} .logo-mark{padding:5px;} }
 
   /* ---- HUD: bottom-left, per convention ---- */
   #hud{
@@ -147,25 +141,27 @@
 <canvas id="stage"></canvas>
 <div id="overlay"></div>
 
-<div class="logo-mark">
-  <svg viewBox="0 0 100 100"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#86efac"/><stop offset=".55" stop-color="#22c55e"/><stop offset="1" stop-color="#15803d"/>
-  </linearGradient></defs>
-  <path d="M30,70 C20,75 10,70 12,60 C14,50 24,48 28,55 C31,61 27,65 23,61" fill="none" stroke="url(#lg)" stroke-width="5" stroke-linecap="round"/>
-  <path d="M30,70 Q40,40 65,35 Q85,32 91,45 Q93,56 79,59 Q58,63 44,66 Q35,69 30,70 Z" fill="url(#lg)"/>
-  <circle cx="24" cy="58" r="2.2" fill="#a855f7"/>
-  <circle cx="45" cy="50" r="3" fill="#ef4444"/>
-  <circle cx="55" cy="43" r="2.8" fill="#f97316"/>
-  <circle cx="66" cy="39" r="2.6" fill="#eab308"/>
-  <circle cx="76" cy="40" r="2.8" fill="#3b82f6"/>
-  <circle cx="88" cy="42" r="6" fill="#0b0d12"/><circle cx="90" cy="40" r="2" fill="#fff"/></svg>
-  <span>Chameleon</span>
-</div>
-
-<button class="icon-btn" id="downloadBtn" title="Download PNG">&#8681;</button>
+<button class="icon-btn" id="downloadBtn" aria-label="Download image" title="Download PNG">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3v12"></path>
+    <path d="M7 10l5 5 5-5"></path>
+    <path d="M5 21h14"></path>
+  </svg>
+</button>
 <button class="icon-btn" id="diceBtn" title="Randomize (this recipe)">&#9861;</button>
 <button class="icon-btn" id="mathBtn" title="The math">&Sigma;</button>
-<button class="icon-btn" id="themeBtn" title="Toggle theme">&#9788;</button>
+<button class="icon-btn" id="themeBtn" aria-label="Switch to light mode" aria-pressed="false" title="Switch to light mode">
+  <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+  </svg>
+  <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+    <circle cx="12" cy="12" r="4"></circle>
+    <path d="M12 2v2"></path><path d="M12 20v2"></path>
+    <path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path>
+    <path d="M2 12h2"></path><path d="M20 12h2"></path>
+    <path d="M6.34 17.66l-1.41 1.41"></path><path d="M19.07 4.93l-1.41 1.41"></path>
+  </svg>
+</button>
 <button class="icon-btn" id="gearBtn" title="Settings">&#9881;</button>
 
 <div id="hud" class="mono"></div>
@@ -881,11 +877,22 @@ $('#overlay').onclick = closePanels;
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closePanels());
 
 /* ---- theme ---- */
-$('#themeBtn').onclick = ()=>{
-  const cur = document.documentElement.getAttribute('data-theme');
-  document.documentElement.setAttribute('data-theme', cur==='light'?'dark':'light');
+const themeBtn = document.getElementById('themeBtn');
+const iconMoon = themeBtn.querySelector('.icon-moon');
+const iconSun = themeBtn.querySelector('.icon-sun');
+let currentTheme = 'dark';
+function setTheme(theme){
+  currentTheme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  iconMoon.style.display = theme === 'dark' ? '' : 'none';
+  iconSun.style.display = theme === 'light' ? '' : 'none';
+  themeBtn.setAttribute('aria-pressed', theme === 'light');
+  const nextLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  themeBtn.setAttribute('aria-label', nextLabel);
+  themeBtn.title = nextLabel;
   render();
-};
+}
+themeBtn.addEventListener('click', () => setTheme(currentTheme === 'dark' ? 'light' : 'dark'));
 
 /* ---- download ---- */
 $('#downloadBtn').onclick = ()=>{
