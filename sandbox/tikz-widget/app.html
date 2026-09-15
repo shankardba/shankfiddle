@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<!--
+  TikZ Explorer — embeddable widget
+  --------------------------------------
+  Copyright (c) 2026 Shankar Srinivasan. All rights reserved.
+  See LICENSE in the repository root.
+
+  Self-contained: no build step, no dependencies beyond two Google Fonts.
+  To embed:
+    1) Easiest / safest: <iframe src="index.html" style="width:100%;height:600px;border:0;"></iframe>
+    2) Inline: paste this whole file's body into a page (it sizes itself to its
+       parent container, so wrap it in a div with a fixed height if you don't
+       want it filling the viewport).
+
+  Diagrams here are reworkings of classic TikZ/LaTeX examples (texample.net
+  and similar) into interactive, tweakable widgets. Architecture: a DIAGRAMS
+  registry (see the "MESIF" entry below) drives the "Diagram" dropdown in
+  the settings panel, mirroring the fractal-widget's Algorithm select. Each
+  diagram supplies its own states, transition edges, a small read/write
+  simulation, and math-panel HTML — so a second, third, fourth diagram
+  (MESI, MOESI, a TCP state machine, whatever's next) slots in by pushing
+  another entry, no other code changes needed.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TikZ Explorer — MESIF Cache Coherence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E16;
+    --surface:#121822;
+    --surface-2:#1A2230;
+    --border:#232D3B;
+    --text:#E7ECF2;
+    --text-muted:#8A97A8;
+    --warm:#F2A65A;
+    --cool:#57D9C4;
+    /* state tokens: named for what they mean in the coherence domain,
+       not for their hex value (see webapp-conventions/css-token-baseline) */
+    --state-m:#F2545A;
+    --state-e:#57D9C4;
+    --state-s:#F2A65A;
+    --state-f:#C77AF2;
+    --state-i:#4A5568;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'Space Grotesk',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    overflow:hidden;
+  }
+  #wrap{position:relative;width:100%;height:100vh;min-height:420px;background:var(--bg);}
+  svg#diagram{display:block;width:100%;height:100%;}
+
+  .node-label{font-family:'Space Grotesk',sans-serif;font-weight:600;fill:var(--bg);}
+  .edge-label{font-family:'IBM Plex Mono',monospace;fill:var(--text-muted);}
+  .edge-label-bg{fill:var(--surface);opacity:0.88;}
+  .badge-text{font-family:'IBM Plex Mono',monospace;fill:var(--bg);font-weight:500;}
+
+  path.edge{fill:none;stroke:var(--border);stroke-width:1.6;transition:stroke 0.25s, stroke-width 0.25s, opacity 0.25s;}
+  path.edge.active{stroke-width:3;}
+  path.edge.active.read{stroke:var(--cool);}
+  path.edge.active.write{stroke:var(--warm);}
+  path.edge.active.inval{stroke:var(--state-m);}
+  circle.node-ring{transition:stroke-width 0.2s, r 0.2s;}
+  circle.node-ring.pulse{stroke-width:4;}
+
+  .dock{
+    position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+    width:min(720px, calc(100% - 28px));
+    background:rgba(18,24,34,0.86);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:12px 14px;
+    backdrop-filter:blur(3px);
+  }
+  .dock-title{font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:9px;}
+  .status-line{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:9px;}
+  .status-line span{color:var(--cool);}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{
+    display:flex;align-items:center;gap:8px;
+    background:var(--surface);border:1px solid var(--border);border-radius:20px;
+    padding:5px 6px 5px 12px;
+  }
+  .chip-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;transition:background 0.2s;}
+  .chip-label{font-family:'IBM Plex Mono',monospace;font-size:11.5px;}
+  .chip-state{font-weight:600;}
+  .chip-btn{
+    width:24px;height:24px;border-radius:50%;border:1px solid var(--border);
+    background:var(--surface-2);color:var(--text);font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .chip-btn:hover{border-color:var(--cool);color:var(--cool);}
+  .chip-btn.write:hover{border-color:var(--warm);color:var(--warm);}
+  .chip-btn:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+  .log-line{
+    margin-top:9px;padding-top:9px;border-top:1px solid var(--border);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .log-line span{color:var(--text);}
+
+  .gear-btn, .download-btn, .math-btn{
+    position:absolute;z-index:2;
+    width:36px;height:36px;border-radius:4px;
+    background:rgba(18,24,34,0.72);
+    border:1px solid var(--border);
+    color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .gear-btn{top:14px;right:14px;}
+  .download-btn{top:14px;left:14px;}
+  .math-btn{top:14px;left:60px;}
+  .gear-btn:hover, .download-btn:hover, .math-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .math-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .gear-btn svg, .download-btn svg, .math-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
+  .gear-btn.open svg{transform:rotate(75deg);}
+  .math-btn.open{border-color:var(--cool);}
+  .math-btn.open svg{stroke:var(--cool);}
+
+  .panel{
+    position:absolute;top:0;right:0;height:100%;width:290px;z-index:1;
+    background:rgba(15,20,29,0.96);
+    border-left:1px solid var(--border);
+    padding:60px 18px 18px;
+    transform:translateX(100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .panel.open{transform:translateX(0);}
+
+  .math-panel{
+    position:absolute;top:0;left:0;height:100%;width:min(340px, 92%);z-index:1;
+    background:rgba(15,20,29,0.96);
+    border-right:1px solid var(--border);
+    padding:64px 18px 18px;
+    transform:translateX(-100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .math-panel.open{transform:translateX(0);}
+  .math-panel h2{font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 3px;color:var(--text);}
+  .math-panel .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:16px;}
+  .math-panel .desc{font-family:'Space Grotesk',sans-serif;font-size:12.5px;color:var(--text);line-height:1.6;margin-bottom:16px;}
+  .math-panel .eq-block{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px;}
+  .math-panel .row-label{font-size:11px;letter-spacing:0.02em;color:var(--text-muted);margin-bottom:8px;}
+  .math-panel .row-label:not(:first-of-type){margin-top:16px;}
+  .math-panel .values{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text);line-height:1.85;}
+  .math-panel .values div{white-space:normal;}
+  .math-panel .values .k{color:var(--cool);font-weight:500;}
+  .math-panel .eq-note{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--border);line-height:1.6;}
+  .math-panel .cite{font-size:11px;color:var(--text-muted);line-height:1.7;margin-top:16px;}
+  .math-panel .cite a{color:var(--cool);text-decoration:none;}
+  .math-panel .cite a:hover{text-decoration:underline;}
+
+  .section{margin-bottom:22px;}
+  .section + .section{border-top:1px solid var(--border);padding-top:20px;}
+  .label{font-size:11px;letter-spacing:0.02em;color:var(--text-muted);margin-bottom:9px;}
+
+  select{
+    width:100%;padding:9px 10px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:13px;cursor:pointer;
+  }
+  select:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+
+  .swatches{display:flex;gap:8px;margin-bottom:16px;}
+  .swatch{width:34px;height:34px;border-radius:4px;cursor:pointer;border:2px solid transparent;}
+  .swatch.active{border-color:var(--cool);}
+  .swatch:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+
+  .slider-row{display:flex;align-items:center;gap:10px;}
+  .slider-row + .slider-row{margin-top:12px;}
+  .slider-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+  input[type=range]{flex:1;accent-color:var(--warm);height:4px;}
+  .val{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--cool);min-width:34px;text-align:right;}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .toggle-row .label{margin:0;}
+  .switch{position:relative;width:36px;height:20px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;cursor:pointer;flex-shrink:0;}
+  .switch::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--text-muted);border-radius:50%;transition:transform 0.15s, background 0.15s;}
+  .switch.on{border-color:var(--cool);}
+  .switch.on::after{transform:translateX(16px);background:var(--cool);}
+
+  .btn{
+    width:100%;padding:9px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:12px;cursor:pointer;margin-top:8px;
+  }
+  .btn:hover{border-color:var(--warm);color:var(--warm);}
+  .btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .btn-accent{border-color:var(--cool);color:var(--cool);}
+  .btn-accent:hover{border-color:var(--warm);color:var(--warm);}
+
+  .hint{
+    position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);
+    font-size:13px;color:var(--text-muted);
+    background:rgba(10,14,22,0.6);padding:10px 16px;border-radius:4px;
+    pointer-events:none;transition:opacity 0.6s ease;
+    text-align:center;line-height:1.5;
+  }
+  @media (prefers-reduced-motion:reduce){
+    .hint{transition:none;}
+    .panel{transition:none;}
+    .math-panel{transition:none;}
+    .gear-btn svg{transition:none;}
+    path.edge{transition:none;}
+  }
+  @media (max-width:640px){
+    .dock{width:calc(100% - 20px);padding:10px;}
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <svg id="diagram" viewBox="0 0 600 560" preserveAspectRatio="xMidYMid meet"></svg>
+
+  <button class="download-btn" id="downloadBtn" aria-label="Download image">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v12"></path>
+      <path d="M7 10l5 5 5-5"></path>
+      <path d="M5 21h14"></path>
+    </svg>
+  </button>
+
+  <button class="math-btn" id="mathBtn" aria-label="Show the math" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 15c1.5-7.5 3-7.5 4.5 0s3 7.5 4.5 0 3-7.5 4.5 0 3 7.5 4.5 0"></path>
+    </svg>
+  </button>
+
+  <div class="math-panel" id="mathPanel"></div>
+
+  <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+
+  <div class="panel" id="panel">
+    <div class="section">
+      <div class="label">Diagram</div>
+      <select id="diagramSelect"></select>
+    </div>
+
+    <div class="section">
+      <div class="label">Simulation</div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Caches</span><span class="val" id="cacheCountVal">3</span></div>
+          <input type="range" id="cacheCountSlider" min="2" max="5" step="1" value="3">
+        </div>
+      </div>
+      <div class="toggle-row" style="margin-top:14px;">
+        <div class="label" style="margin:0;">Auto-play</div>
+        <div class="switch" id="autoplayToggle"></div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Play speed</span><span class="val" id="playSpeedVal">1.0x</span></div>
+          <input type="range" id="playSpeedSlider" min="0.3" max="3" step="0.1" value="1">
+        </div>
+      </div>
+      <button class="btn btn-accent" id="randomizeSeqBtn">Fire random sequence</button>
+      <button class="btn" id="resetSimBtn">Reset simulation</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Shape</div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Diagram size</span><span class="val" id="radiusVal">190</span></div>
+          <input type="range" id="radiusSlider" min="120" max="240" step="2" value="190">
+        </div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Rotation</span><span class="val" id="rotationVal">0°</span></div>
+          <input type="range" id="rotationSlider" min="0" max="360" step="1" value="0">
+        </div>
+      </div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Arrow curvature</span><span class="val" id="curveVal">0.30</span></div>
+          <input type="range" id="curveSlider" min="0" max="0.7" step="0.02" value="0.3">
+        </div>
+      </div>
+      <button class="btn" id="resetShapeBtn">Reset shape</button>
+      <button class="btn btn-accent" id="randomizeShapeBtn">Randomize shape</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Color</div>
+      <div class="swatches" id="paletteSwatches">
+        <div class="swatch active" data-p="0" style="background:linear-gradient(135deg,#F2545A,#C77AF2)"></div>
+        <div class="swatch" data-p="1" style="background:linear-gradient(135deg,#EF476F,#118AB2)"></div>
+        <div class="swatch" data-p="2" style="background:linear-gradient(135deg,#F25C54,#4CC9F0)"></div>
+        <div class="swatch" data-p="3" style="background:linear-gradient(135deg,#333,#EEE)"></div>
+      </div>
+      <button class="btn btn-accent" id="randomizePaletteBtn">Randomize palette</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Detail</div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Edge labels</div>
+        <div class="switch on" id="labelsToggle"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">State badges</div>
+        <div class="switch on" id="badgesToggle"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label">Explore</div>
+      <button class="btn btn-accent" id="randomizeAllBtn">Randomize everything</button>
+      <button class="btn" id="resetAllBtn">Reset view</button>
+    </div>
+  </div>
+
+  <div class="dock" id="dock">
+    <div class="dock-title">Caches — tap R to read, W to write</div>
+    <div class="status-line">
+      <span id="hDiagram">MESIF</span> · caches:<span id="hCaches">3</span> · F-holder:<span id="hForward">—</span> · last:<span id="hLast">—</span>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="log-line" id="logLine">No events yet — try reading or writing a cache above.</div>
+  </div>
+
+  <div class="hint" id="hint">Read / write each cache and watch the state diagram react<br>Tap the gear for caches, shape &amp; color · tap ∿ for the math</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------------------------------------------------------------
+   * Diagram registry — the "Diagram" dropdown is built from this list.
+   * Each entry owns its states, layout order, transition edges, a tiny
+   * per-cache read/write simulator, and its own math-panel HTML. Adding a
+   * second diagram later (MESI, MOESI, a TCP state machine, ...) means
+   * pushing another object here — nothing else in this file changes.
+   * ------------------------------------------------------------------- */
+  var DIAGRAMS = [
+    {
+      id: 'mesif',
+      name: 'MESIF · Cache Coherence',
+      order: ['M','E','S','I','F'],
+      stateNames: {M:'Modified', E:'Exclusive', S:'Shared', I:'Invalid', F:'Forward'},
+      edges: [
+        {id:'I-E', from:'I', to:'E', label:'PrRd (no sharers)', kind:'read'},
+        {id:'I-F', from:'I', to:'F', label:'PrRd / BusRd', kind:'read'},
+        {id:'I-M', from:'I', to:'M', label:'PrWr / BusRdX', kind:'write'},
+        {id:'E-M', from:'E', to:'M', label:'PrWr', kind:'write'},
+        {id:'E-S', from:'E', to:'S', label:'BusRd', kind:'read'},
+        {id:'E-I', from:'E', to:'I', label:'BusRdX', kind:'inval'},
+        {id:'S-M', from:'S', to:'M', label:'PrWr / BusRdX', kind:'write'},
+        {id:'S-I', from:'S', to:'I', label:'BusRdX', kind:'inval'},
+        {id:'F-S', from:'F', to:'S', label:'BusRd / Flush', kind:'read'},
+        {id:'F-M', from:'F', to:'M', label:'PrWr / BusRdX', kind:'write'},
+        {id:'F-I', from:'F', to:'I', label:'BusRdX', kind:'inval'},
+        {id:'M-S', from:'M', to:'S', label:'BusRd / Flush', kind:'read'},
+        {id:'M-I', from:'M', to:'I', label:'BusRdX', kind:'inval'}
+      ],
+      /* One cache reads. Returns {events:[{edgeId|node, kind}], busOp, text} */
+      doRead: function(states, i){
+        var cur = states[i];
+        if (cur !== 'I'){
+          return {events:[{node:cur, kind:'hit'}], busOp:null, text:'C'+i+': PrRd hit — stays '+cur};
+        }
+        var othersExist = false, j;
+        for (j=0;j<states.length;j++){ if (j!==i && states[j]!=='I') othersExist = true; }
+        if (!othersExist){
+          states[i] = 'E';
+          return {events:[{edgeId:'I-E', kind:'read'}], busOp:'BusRd', text:'C'+i+': PrRd miss, no sharers → E'};
+        }
+        var priority = ['M','E','F'], supplierIdx = -1, k;
+        for (k=0;k<priority.length && supplierIdx<0;k++){
+          for (j=0;j<states.length;j++){ if (j!==i && states[j]===priority[k]){ supplierIdx = j; break; } }
+        }
+        if (supplierIdx < 0){
+          for (j=0;j<states.length;j++){ if (j!==i && states[j]==='S'){ supplierIdx = j; break; } }
+        }
+        var supplierState = supplierIdx>=0 ? states[supplierIdx] : null;
+        var events = [];
+        if (supplierState && supplierState !== 'S'){
+          var demoteEdge = supplierState + '-S';
+          states[supplierIdx] = 'S';
+          events.push({edgeId:demoteEdge, kind:'read', cache:supplierIdx});
+        }
+        states[i] = 'F';
+        events.push({edgeId:'I-F', kind:'read', cache:i});
+        var supplierTxt = supplierState ? (' (from C'+supplierIdx+', was '+supplierState+')') : '';
+        return {events:events, busOp:'BusRd', text:'C'+i+': PrRd miss'+supplierTxt+' → F'};
+      },
+      /* One cache writes. */
+      doWrite: function(states, i){
+        var cur = states[i];
+        if (cur === 'M'){
+          return {events:[{node:'M', kind:'hit'}], busOp:null, text:'C'+i+': PrWr hit — stays M'};
+        }
+        var events = [], invalidated = [];
+        for (var j=0;j<states.length;j++){
+          if (j!==i && states[j] !== 'I'){
+            events.push({edgeId:states[j]+'-I', kind:'inval', cache:j});
+            invalidated.push('C'+j);
+            states[j] = 'I';
+          }
+        }
+        var promoteEdge = cur + '-M';
+        events.push({edgeId:promoteEdge, kind:'write', cache:i});
+        states[i] = 'M';
+        var busOp = (cur === 'E') ? null : 'BusRdX';
+        var invTxt = invalidated.length ? (', invalidates '+invalidated.join(',')) : '';
+        return {events:events, busOp:busOp, text:'C'+i+': PrWr (was '+cur+')'+invTxt+' → M'};
+      },
+      mathHTML:
+        '<h2>MESIF Cache Coherence</h2>' +
+        '<div class="sub">Five-state protocol for keeping per-core caches consistent</div>' +
+        '<div class="desc">On a multi-core chip, every core keeps its own cached copy of ' +
+        'main-memory lines. MESIF is the bookkeeping rule set — one state letter per cache ' +
+        'line, per cache — that lets cores read and write their local copies while ' +
+        'guaranteeing no core ever sees stale data. It extends the older MESI protocol ' +
+        '(Modified / Exclusive / Shared / Invalid) with a fifth state, Forward.</div>' +
+        '<div class="eq-block">' +
+        '<div class="row-label">States</div>' +
+        '<div class="values">' +
+        '<div><span class="k">M</span> Modified — dirty, this cache is the only valid copy</div>' +
+        '<div><span class="k">E</span> Exclusive — clean, this cache is the only copy</div>' +
+        '<div><span class="k">S</span> Shared — clean, other caches may also hold it</div>' +
+        '<div><span class="k">F</span> Forward — a designated Shared copy that answers reads</div>' +
+        '<div><span class="k">I</span> Invalid — this cache\'s copy cannot be used</div>' +
+        '</div>' +
+        '<div class="row-label">Bus &amp; processor events</div>' +
+        '<div class="values">' +
+        '<div><span class="k">PrRd</span> local processor read</div>' +
+        '<div><span class="k">PrWr</span> local processor write</div>' +
+        '<div><span class="k">BusRd</span> another cache is reading this line</div>' +
+        '<div><span class="k">BusRdX</span> another cache is writing (invalidate)</div>' +
+        '<div><span class="k">Flush</span> supply this line\'s data to the requester</div>' +
+        '</div>' +
+        '<div class="eq-note">The one rule that defines the protocol: at most one cache may ' +
+        'hold a given line in F at any time. Whichever cache most recently answered a read ' +
+        'request holds F; every earlier holder has already fallen back to S. That single ' +
+        'Forward copy — not main memory — answers the next read, at cache-to-cache speed.</div>' +
+        '</div>' +
+        '<div class="cite">Diagram layout modeled on the MESIF automaton at ' +
+        '<a href="https://texample.net/mesif/" target="_blank" rel="noopener">texample.net/mesif</a>. ' +
+        'State definitions and the Forward-uniqueness rule summarized from ' +
+        '<a href="https://en.wikipedia.org/wiki/MESIF_protocol" target="_blank" rel="noopener">Wikipedia — MESIF protocol</a>.</div>'
+    }
+  ];
+
+  var PALETTES = [
+    {M:'#F2545A', E:'#57D9C4', S:'#F2A65A', F:'#C77AF2', I:'#4A5568'},
+    {M:'#EF476F', E:'#118AB2', S:'#FFD166', F:'#8338EC', I:'#3A3F44'},
+    {M:'#F25C54', E:'#4CC9F0', S:'#FFC93C', F:'#B5179E', I:'#495057'},
+    {M:'#EEEEEE', E:'#9AD4CB', S:'#D9B26A', F:'#B79ED9', I:'#3A3A3A'}
+  ];
+
+  var svgNS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('diagram');
+  var wrap = document.getElementById('wrap');
+
+  var state = {
+    diagram: DIAGRAMS[0],
+    caches: ['I','I','I'],
+    radius: 190,
+    rotation: 0,
+    curvature: 0.3,
+    paletteIdx: 0,
+    showLabels: true,
+    showBadges: true,
+    playSpeed: 1,
+    autoplay: false,
+    autoplayTimer: null
+  };
+
+  var CX = 300, CY = 270, NODE_R = 42;
+
+  function angleFor(idx, count, rotationDeg){
+    return (-90 + idx * (360/count) + rotationDeg) * Math.PI/180;
+  }
+
+  function layoutPositions(){
+    var order = state.diagram.order;
+    var pos = {};
+    order.forEach(function(s, idx){
+      var a = angleFor(idx, order.length, state.rotation);
+      pos[s] = { x: CX + state.radius * Math.cos(a), y: CY + state.radius * Math.sin(a) };
+    });
+    return pos;
+  }
+
+  function el(tag, attrs){
+    var e = document.createElementNS(svgNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function edgePath(p1, p2, fromKey, toKey){
+    var mx = (p1.x+p2.x)/2, my = (p1.y+p2.y)/2;
+    var dx = p2.x-p1.x, dy = p2.y-p1.y;
+    var len = Math.sqrt(dx*dx+dy*dy) || 1;
+    var nx = -dy/len, ny = dx/len;
+    var outward = ((mx-CX)*nx + (my-CY)*ny) >= 0 ? 1 : -1;
+    /* Some state pairs have a transition in BOTH directions (e.g. I<->E).
+       Those share this exact chord, so without a per-direction flip their
+       arcs (and labels) would sit exactly on top of each other. Bowing the
+       "alphabetically later source" edge to the opposite side turns that
+       into two parallel arcs instead of one illegible stack. */
+    var flip = (fromKey && toKey && fromKey > toKey) ? -1 : 1;
+    var bend = len * state.curvature * outward * flip;
+    var cx = mx + nx*bend, cy = my + ny*bend;
+    var ux = p2.x-p1.x, uy = p2.y-p1.y; var ulen = Math.sqrt(ux*ux+uy*uy)||1;
+    ux/=ulen; uy/=ulen;
+    var sx = p1.x + ux*NODE_R, sy = p1.y + uy*NODE_R;
+    var ex = p2.x - ux*NODE_R, ey = p2.y - uy*NODE_R;
+    var d = 'M '+sx+' '+sy+' Q '+cx+' '+cy+' '+ex+' '+ey;
+    /* Anchor the label at the arc's own peak (the control point), nudged a
+       little further outward along the same normal — not the curve's t=0.5
+       point, which for diagonals crossing near the pentagon's center
+       clusters multiple labels on top of each other. */
+    var lx = cx + nx*outward*12;
+    var ly = cy + ny*outward*12;
+    return {d:d, label:{x:lx,y:ly}};
+  }
+
+  var edgeEls = {}, nodeEls = {}, badgeEls = {};
+
+  function palette(){ return PALETTES[state.paletteIdx]; }
+
+  function render(){
+    svg.innerHTML = '';
+    edgeEls = {}; nodeEls = {}; badgeEls = {};
+
+    var defs = el('defs', {});
+    var marker = el('marker', {id:'arrowhead', viewBox:'0 0 10 10', refX:'8', refY:'5', markerWidth:'7', markerHeight:'7', orient:'auto-start-reverse'});
+    marker.appendChild(el('path', {d:'M 0 0 L 10 5 L 0 10 z', fill:'var(--border)'}));
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    var pos = layoutPositions();
+    var diagram = state.diagram;
+
+    var edgeLayer = el('g', {});
+    var labelLayer = el('g', {});
+    var nodeLayer = el('g', {});
+    svg.appendChild(edgeLayer);
+    svg.appendChild(labelLayer);
+    svg.appendChild(nodeLayer);
+
+    diagram.edges.forEach(function(edge){
+      var geo = edgePath(pos[edge.from], pos[edge.to], edge.from, edge.to);
+      var path = el('path', {d:geo.d, class:'edge', 'marker-end':'url(#arrowhead)'});
+      edgeLayer.appendChild(path);
+      edgeEls[edge.id] = path;
+
+      if (state.showLabels){
+        var g = el('g', {opacity: '0.9'});
+        var textNode = el('text', {x:geo.label.x, y:geo.label.y, class:'edge-label', 'font-size':'9.5', 'text-anchor':'middle'});
+        textNode.textContent = edge.label;
+        var w = edge.label.length * 5.4 + 6;
+        var rect = el('rect', {x:geo.label.x - w/2, y:geo.label.y-9, width:w, height:12, class:'edge-label-bg', rx:'2'});
+        g.appendChild(rect);
+        g.appendChild(textNode);
+        labelLayer.appendChild(g);
+      }
+    });
+
+    diagram.order.forEach(function(s){
+      var p = pos[s];
+      var g = el('g', {});
+      var ring = el('circle', {cx:p.x, cy:p.y, r:NODE_R+5, fill:'none', stroke:palette()[s], 'stroke-width':'1.4', opacity:'0.35', class:'node-ring'});
+      var circle = el('circle', {cx:p.x, cy:p.y, r:NODE_R, fill:palette()[s]});
+      var label = el('text', {x:p.x, y:p.y+6, class:'node-label', 'font-size':'20', 'text-anchor':'middle'});
+      label.textContent = s;
+      g.appendChild(ring);
+      g.appendChild(circle);
+      g.appendChild(label);
+
+      if (state.showBadges){
+        var badge = el('circle', {cx:p.x + NODE_R*0.68, cy:p.y - NODE_R*0.68, r:11, fill:'var(--bg)', stroke:'var(--border)', 'stroke-width':'1'});
+        var badgeText = el('text', {x:p.x + NODE_R*0.68, y:p.y - NODE_R*0.68 + 4, class:'badge-text', 'font-size':'11', 'text-anchor':'middle'});
+        badgeText.setAttribute('fill', 'var(--text)');
+        badgeText.textContent = '0';
+        g.appendChild(badge);
+        g.appendChild(badgeText);
+        badgeEls[s] = badgeText;
+      }
+
+      nodeLayer.appendChild(g);
+      nodeEls[s] = ring;
+    });
+
+    updateBadges();
+  }
+
+  function updateBadges(){
+    var diagram = state.diagram;
+    var counts = {};
+    diagram.order.forEach(function(s){ counts[s] = 0; });
+    state.caches.forEach(function(s){ counts[s] = (counts[s]||0)+1; });
+    if (state.showBadges){
+      diagram.order.forEach(function(s){
+        if (badgeEls[s]) badgeEls[s].textContent = String(counts[s]);
+      });
+    }
+    var fHolder = -1;
+    state.caches.forEach(function(s, i){ if (s === 'F') fHolder = i; });
+    document.getElementById('hForward').textContent = fHolder>=0 ? ('C'+fHolder) : '—';
+    document.getElementById('hCaches').textContent = state.caches.length;
+    document.getElementById('hDiagram').textContent = diagram.name.split(' ')[0];
+  }
+
+  function pulseNode(s){
+    var ringEl = nodeEls[s];
+    if (!ringEl) return;
+    ringEl.classList.add('pulse');
+    setTimeout(function(){ ringEl.classList.remove('pulse'); }, 900/state.playSpeed);
+  }
+
+  function flashEdge(edgeId, kind){
+    var pathEl = edgeEls[edgeId];
+    if (!pathEl) return;
+    pathEl.classList.add('active', kind);
+    setTimeout(function(){ pathEl.classList.remove('active', kind); }, 900/state.playSpeed);
+  }
+
+  function applyEvents(result){
+    result.events.forEach(function(ev){
+      if (ev.node){ pulseNode(ev.node); }
+      if (ev.edgeId){ flashEdge(ev.edgeId, ev.kind); }
+    });
+  }
+
+  /* --- cache dock ---------------------------------------------------- */
+
+  function renderChips(){
+    var chips = document.getElementById('chips');
+    chips.innerHTML = '';
+    state.caches.forEach(function(s, i){
+      var chip = document.createElement('div');
+      chip.className = 'chip';
+      var dot = document.createElement('div');
+      dot.className = 'chip-dot';
+      dot.style.background = palette()[s];
+      var label = document.createElement('div');
+      label.className = 'chip-label';
+      label.innerHTML = 'C'+i+' <span class="chip-state">'+s+'</span>';
+      var rBtn = document.createElement('button');
+      rBtn.className = 'chip-btn';
+      rBtn.textContent = 'R';
+      rBtn.setAttribute('aria-label', 'Read on cache '+i);
+      rBtn.addEventListener('click', function(){ doAction(i, 'read'); });
+      var wBtn = document.createElement('button');
+      wBtn.className = 'chip-btn write';
+      wBtn.textContent = 'W';
+      wBtn.setAttribute('aria-label', 'Write on cache '+i);
+      wBtn.addEventListener('click', function(){ doAction(i, 'write'); });
+      chip.appendChild(dot);
+      chip.appendChild(label);
+      chip.appendChild(rBtn);
+      chip.appendChild(wBtn);
+      chips.appendChild(chip);
+    });
+  }
+
+  function refreshChipColors(){
+    var chips = document.querySelectorAll('#chips .chip');
+    chips.forEach(function(chip, i){
+      var s = state.caches[i];
+      chip.querySelector('.chip-dot').style.background = palette()[s];
+      chip.querySelector('.chip-state').textContent = s;
+    });
+  }
+
+  function doAction(i, type){
+    var diagram = state.diagram;
+    var result = type === 'read' ? diagram.doRead(state.caches, i) : diagram.doWrite(state.caches, i);
+    applyEvents(result);
+    updateBadges();
+    refreshChipColors();
+    var logLine = document.getElementById('logLine');
+    logLine.innerHTML = '<span>' + result.text + '</span>' + (result.busOp ? '  ·  bus: '+result.busOp : '  ·  no bus transaction');
+    document.getElementById('hLast').textContent = result.text.split(':')[0] + (result.busOp ? ' '+result.busOp : ' hit');
+  }
+
+  function resetSimulation(){
+    state.caches = state.caches.map(function(){ return 'I'; });
+    renderChips();
+    updateBadges();
+    document.getElementById('logLine').textContent = 'Simulation reset — every cache starts Invalid.';
+    document.getElementById('hLast').textContent = '—';
+  }
+
+  function setCacheCount(n){
+    var cur = state.caches.length;
+    if (n > cur){
+      for (var i=cur;i<n;i++) state.caches.push('I');
+    } else {
+      state.caches = state.caches.slice(0, n);
+    }
+    renderChips();
+    updateBadges();
+  }
+
+  function fireRandomSequence(count){
+    var i = 0;
+    function step(){
+      if (i >= count) return;
+      var cacheIdx = Math.floor(Math.random()*state.caches.length);
+      var type = Math.random() < 0.6 ? 'read' : 'write';
+      doAction(cacheIdx, type);
+      i++;
+      setTimeout(step, 850/state.playSpeed);
+    }
+    step();
+  }
+
+  /* --- settings panel wiring ------------------------------------------ */
+
+  function byId(id){ return document.getElementById(id); }
+
+  var diagramSelect = byId('diagramSelect');
+  DIAGRAMS.forEach(function(p){
+    var opt = document.createElement('option');
+    opt.value = p.id; opt.textContent = p.name;
+    diagramSelect.appendChild(opt);
+  });
+  diagramSelect.value = state.diagram.id;
+  diagramSelect.addEventListener('change', function(){
+    var found = DIAGRAMS.filter(function(p){ return p.id === diagramSelect.value; })[0];
+    if (!found) return;
+    state.diagram = found;
+    resetSimulation();
+    renderMath();
+    render();
+  });
+
+  byId('cacheCountSlider').addEventListener('input', function(e){
+    var n = parseInt(e.target.value, 10);
+    byId('cacheCountVal').textContent = n;
+    setCacheCount(n);
+  });
+
+  byId('radiusSlider').addEventListener('input', function(e){
+    state.radius = parseFloat(e.target.value);
+    byId('radiusVal').textContent = state.radius;
+    render();
+  });
+  byId('rotationSlider').addEventListener('input', function(e){
+    state.rotation = parseFloat(e.target.value);
+    byId('rotationVal').textContent = state.rotation + '°';
+    render();
+  });
+  byId('curveSlider').addEventListener('input', function(e){
+    state.curvature = parseFloat(e.target.value);
+    byId('curveVal').textContent = state.curvature.toFixed(2);
+    render();
+  });
+
+  byId('resetShapeBtn').addEventListener('click', function(){
+    state.radius = 190; state.rotation = 0; state.curvature = 0.3;
+    byId('radiusSlider').value = 190; byId('radiusVal').textContent = 190;
+    byId('rotationSlider').value = 0; byId('rotationVal').textContent = '0°';
+    byId('curveSlider').value = 0.3; byId('curveVal').textContent = '0.30';
+    render();
+  });
+  byId('randomizeShapeBtn').addEventListener('click', function(){
+    state.radius = 130 + Math.round(Math.random()*100);
+    state.rotation = Math.round(Math.random()*360);
+    state.curvature = Math.round((0.15 + Math.random()*0.45)*100)/100;
+    byId('radiusSlider').value = state.radius; byId('radiusVal').textContent = state.radius;
+    byId('rotationSlider').value = state.rotation; byId('rotationVal').textContent = state.rotation+'°';
+    byId('curveSlider').value = state.curvature; byId('curveVal').textContent = state.curvature.toFixed(2);
+    render();
+  });
+
+  var swatches = document.querySelectorAll('#paletteSwatches .swatch');
+  swatches.forEach(function(sw){
+    sw.addEventListener('click', function(){
+      swatches.forEach(function(s2){ s2.classList.remove('active'); });
+      sw.classList.add('active');
+      state.paletteIdx = parseInt(sw.getAttribute('data-p'), 10);
+      render();
+      refreshChipColors();
+    });
+  });
+  byId('randomizePaletteBtn').addEventListener('click', function(){
+    var idx = Math.floor(Math.random()*PALETTES.length);
+    swatches.forEach(function(s2){ s2.classList.remove('active'); });
+    swatches[idx].classList.add('active');
+    state.paletteIdx = idx;
+    render();
+    refreshChipColors();
+  });
+
+  function toggleSwitch(elm, on){
+    elm.classList.toggle('on', on);
+  }
+  byId('labelsToggle').addEventListener('click', function(){
+    state.showLabels = !state.showLabels;
+    toggleSwitch(byId('labelsToggle'), state.showLabels);
+    render();
+  });
+  byId('badgesToggle').addEventListener('click', function(){
+    state.showBadges = !state.showBadges;
+    toggleSwitch(byId('badgesToggle'), state.showBadges);
+    render();
+  });
+
+  byId('playSpeedSlider').addEventListener('input', function(e){
+    state.playSpeed = parseFloat(e.target.value);
+    byId('playSpeedVal').textContent = state.playSpeed.toFixed(1)+'x';
+  });
+
+  function setAutoplay(on){
+    state.autoplay = on;
+    toggleSwitch(byId('autoplayToggle'), on);
+    if (state.autoplayTimer){ clearInterval(state.autoplayTimer); state.autoplayTimer = null; }
+    if (on){
+      state.autoplayTimer = setInterval(function(){
+        var cacheIdx = Math.floor(Math.random()*state.caches.length);
+        var type = Math.random() < 0.6 ? 'read' : 'write';
+        doAction(cacheIdx, type);
+      }, 1400/state.playSpeed);
+    }
+  }
+  byId('autoplayToggle').addEventListener('click', function(){ setAutoplay(!state.autoplay); });
+
+  byId('randomizeSeqBtn').addEventListener('click', function(){ fireRandomSequence(6); });
+  byId('resetSimBtn').addEventListener('click', resetSimulation);
+
+  byId('randomizeAllBtn').addEventListener('click', function(){
+    byId('randomizeShapeBtn').click();
+    byId('randomizePaletteBtn').click();
+    fireRandomSequence(6);
+  });
+  byId('resetAllBtn').addEventListener('click', function(){
+    byId('resetShapeBtn').click();
+    resetSimulation();
+  });
+
+  /* --- gear / math panels --------------------------------------------- */
+
+  var gearBtn = byId('gearBtn'), panel = byId('panel');
+  gearBtn.addEventListener('click', function(){
+    var open = panel.classList.toggle('open');
+    gearBtn.classList.toggle('open', open);
+    gearBtn.setAttribute('aria-expanded', open);
+  });
+
+  var mathBtn = byId('mathBtn'), mathPanel = byId('mathPanel');
+  mathBtn.addEventListener('click', function(){
+    var open = mathPanel.classList.toggle('open');
+    mathBtn.classList.toggle('open', open);
+    mathBtn.setAttribute('aria-expanded', open);
+  });
+
+  function closePanel(){
+    panel.classList.remove('open');
+    gearBtn.classList.remove('open');
+    gearBtn.setAttribute('aria-expanded', 'false');
+  }
+  function closeMathPanel(){
+    mathPanel.classList.remove('open');
+    mathBtn.classList.remove('open');
+    mathBtn.setAttribute('aria-expanded', 'false');
+  }
+  /* Belt-and-suspenders: clicking anywhere outside an open panel (and
+     outside its own toggle button, which has its own handler above)
+     closes it too, so a panel can never feel "stuck open" regardless of
+     where exactly the toggle button's hit target ends up. */
+  document.addEventListener('click', function(e){
+    if (panel.classList.contains('open') && !panel.contains(e.target) && !gearBtn.contains(e.target)){
+      closePanel();
+    }
+    if (mathPanel.classList.contains('open') && !mathPanel.contains(e.target) && !mathBtn.contains(e.target)){
+      closeMathPanel();
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape'){ closePanel(); closeMathPanel(); }
+  });
+
+  function renderMath(){
+    mathPanel.innerHTML = state.diagram.mathHTML;
+  }
+
+  /* --- download --------------------------------------------------------*/
+
+  byId('downloadBtn').addEventListener('click', function(){
+    var serializer = new XMLSerializer();
+    var clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns', svgNS);
+    var bgRect = el('rect', {x:0,y:0,width:600,height:560,fill:'#0A0E16'});
+    clone.insertBefore(bgRect, clone.firstChild);
+    var svgStr = serializer.serializeToString(clone);
+    var svgBlob = new Blob([svgStr], {type:'image/svg+xml;charset=utf-8'});
+    var url = URL.createObjectURL(svgBlob);
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      canvas.width = 1200; canvas.height = 1120;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(function(blob){
+        var link = document.createElement('a');
+        link.download = 'mesif-diagram.png';
+        link.href = URL.createObjectURL(blob);
+        link.click();
+      });
+    };
+    img.src = url;
+  });
+
+  /* --- hint fade --------------------------------------------------------*/
+  setTimeout(function(){
+    var hint = byId('hint');
+    hint.style.opacity = '0';
+    setTimeout(function(){ hint.remove(); }, 700);
+  }, 4200);
+
+  /* --- init ---------------------------------------------------------- */
+  render();
+  renderChips();
+  renderMath();
+  updateBadges();
+})();
+</script>
+</body>
+</html>
