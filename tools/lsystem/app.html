@@ -367,6 +367,8 @@
       <p class="credit">
         Grammar &amp; turtle conventions from the
         <a href="https://en.wikipedia.org/wiki/L-system" target="_blank" rel="noopener">Wikipedia L-system article</a>.
+        The Hilbert Curve rules are the classic ones used in
+        <a href="https://texample.net/lindenmayer-systems/" target="_blank" rel="noopener">Stefan Kottwitz's TikZ lindenmayersystems examples</a>.
         "Randomize system" is adapted from
         <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>
         (guarantee-at-least-one-F, and blending curated "nice" angles with fully random ones).
@@ -505,9 +507,10 @@
     dragon: { label:'Dragon Curve', axiom:'F', rules:{F:'F+G', G:'F-G'}, angle:90, depth:11, heading:0 },
     plant: { label:'Fractal Plant', axiom:'X', rules:{X:'F+[[X]-X]-F[-FX]+X', F:'FF'}, angle:25, depth:5, heading:90 },
     tree: { label:'Binary Tree', axiom:'F', rules:{F:'F[+F]F[-F]F'}, angle:30, depth:5, heading:90 },
+    hilbert: { label:'Hilbert Curve', axiom:'L', rules:{L:'+RF-LFL-FR+', R:'-LF+RFR+FL-'}, angle:90, depth:5, heading:0, drawSymbols:['F'] },
     cantor: { label:'Cantor Set', axiom:'F', rules:{F:'FfF', f:'fff'}, angle:0, depth:5, heading:0, cantor:true }
   };
-  const PRESET_ORDER = ['koch','kochSnowflake','sierpinski','arrowhead','dragon','plant','tree','cantor'];
+  const PRESET_ORDER = ['koch','kochSnowflake','sierpinski','arrowhead','dragon','plant','tree','hilbert','cantor'];
 
   // ---------- color palettes (same cosine family as the fractal explorer / spirograph) ----------
   const PALETTES = [
