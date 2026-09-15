@@ -37,18 +37,22 @@
   .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
   #stage{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none;}
 
-  /* ---- floating icon buttons: gear alone top-right; everything else clustered top-left ---- */
+  /* ---- floating icon buttons: gear alone top-right; everything else clustered top-left ----
+     Square (not round) chip, per spirograph-studio's icon-btn family. */
   .icon-btn{
-    position:fixed;top:14px;width:38px;height:38px;border-radius:50%;
+    position:fixed;top:14px;width:36px;height:36px;border-radius:4px;
     background:color-mix(in srgb, var(--panel) 88%, transparent);
     border:1px solid var(--border);color:var(--ink);
     display:flex;align-items:center;justify-content:center;cursor:pointer;
     font-size:16px;z-index:40;backdrop-filter:blur(6px);
-    transition:transform .15s ease, border-color .15s ease;
+    transition:transform .15s ease, border-color .15s ease, background .15s ease;
   }
   .icon-btn:hover{transform:translateY(-1px);border-color:var(--accent);}
   .icon-btn:active{transform:translateY(0);}
+  .icon-btn.open{border-color:var(--accent);color:var(--accent);}
   .icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;display:block;transition:transform .4s ease;}
+  #gearBtn.open svg{transform:rotate(75deg);}
+  #mathBtn{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
   #gearBtn{right:14px;}
   #downloadBtn{left:14px;}
   #diceBtn{left:58px;}
@@ -148,8 +152,16 @@
     <path d="M5 21h14"></path>
   </svg>
 </button>
-<button class="icon-btn" id="diceBtn" title="Randomize (this recipe)">&#9861;</button>
-<button class="icon-btn" id="mathBtn" title="The math">&Sigma;</button>
+<button class="icon-btn" id="diceBtn" aria-label="Randomize this recipe" title="Randomize (this recipe)">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="16 3 21 3 21 8"></polyline>
+    <line x1="4" y1="20" x2="21" y2="3"></line>
+    <polyline points="21 16 21 21 16 21"></polyline>
+    <line x1="15" y1="15" x2="21" y2="21"></line>
+    <line x1="4" y1="4" x2="9" y2="9"></line>
+  </svg>
+</button>
+<button class="icon-btn" id="mathBtn" aria-label="The math" aria-expanded="false" title="The math">&Sigma;</button>
 <button class="icon-btn" id="themeBtn" aria-label="Switch to light mode" aria-pressed="false" title="Switch to light mode">
   <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -162,7 +174,12 @@
     <path d="M6.34 17.66l-1.41 1.41"></path><path d="M19.07 4.93l-1.41 1.41"></path>
   </svg>
 </button>
-<button class="icon-btn" id="gearBtn" title="Settings">&#9881;</button>
+<button class="icon-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false" title="Settings">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+</button>
 
 <div id="hud" class="mono"></div>
 
@@ -869,10 +886,20 @@ $('#trail').oninput = e=>{ state.appearance.trail=+e.target.value; $('#trailVal'
 $('#trailVal').textContent = state.appearance.trail;
 
 /* ---- panel open/close ---- */
-function openPanel(id){ $('#'+id).classList.add('open'); $('#overlay').classList.add('show'); }
-function closePanels(){ document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open')); $('#overlay').classList.remove('show'); }
-$('#gearBtn').onclick = ()=>openPanel('settingsPanel');
-$('#mathBtn').onclick = ()=>{ renderMath(); openPanel('mathPanel'); };
+function setBtnOpen(btn, open){ btn.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); }
+function openPanel(id, btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));
+  [gearBtn, mathBtn].forEach(b=>setBtnOpen(b, b===btn));
+  $('#'+id).classList.add('open'); $('#overlay').classList.add('show');
+}
+function closePanels(){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));
+  [gearBtn, mathBtn].forEach(b=>setBtnOpen(b, false));
+  $('#overlay').classList.remove('show');
+}
+const gearBtn = $('#gearBtn'), mathBtn = $('#mathBtn');
+gearBtn.onclick = ()=>openPanel('settingsPanel', gearBtn);
+mathBtn.onclick = ()=>{ renderMath(); openPanel('mathPanel', mathBtn); };
 $('#overlay').onclick = closePanels;
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closePanels());
 
