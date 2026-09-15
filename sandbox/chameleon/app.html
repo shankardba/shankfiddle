@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chameleon — Combinatorial Generative Studio</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2386efac'/%3E%3Cstop offset='.55' stop-color='%2322c55e'/%3E%3Cstop offset='1' stop-color='%2315803d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M30,70 C20,75 10,70 12,60 C14,50 24,48 28,55 C31,61 27,65 23,61' fill='none' stroke='url(%23g)' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M30,70 Q40,40 65,35 Q85,32 91,45 Q93,56 79,59 Q58,63 44,66 Q35,69 30,70 Z' fill='url(%23g)'/%3E%3Ccircle cx='24' cy='58' r='2.2' fill='%23a855f7'/%3E%3Ccircle cx='45' cy='50' r='3' fill='%23ef4444'/%3E%3Ccircle cx='55' cy='43' r='2.8' fill='%23f97316'/%3E%3Ccircle cx='66' cy='39' r='2.6' fill='%23eab308'/%3E%3Ccircle cx='76' cy='40' r='2.8' fill='%233b82f6'/%3E%3Ccircle cx='88' cy='42' r='6' fill='%230b0d12'/%3E%3Ccircle cx='90' cy='40' r='2' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d12;
+    --border:#2a2f3a;
+    --panel:#12151c;
+    --panel2:#171b24;
+    --ink:#e8eaf0;
+    --ink-dim:#8b93a5;
+    --accent:#38bdae;
+    --recipe-warp:#38bdae;
+    --recipe-branch:#7dd35f;
+    --recipe-bloom:#f59e42;
+    --recipe-mandala:#8b5cf6;
+    --danger:#e0526b;
+    --radius:10px;
+  }
+  [data-theme="light"]{
+    --bg:#f3f4f7;
+    --border:#d7dbe3;
+    --panel:#ffffff;
+    --panel2:#f7f8fb;
+    --ink:#161a22;
+    --ink-dim:#5b6270;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden;}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+  #stage{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none;}
+
+  /* ---- floating icon buttons: gear alone top-right; everything else clustered top-left ---- */
+  .icon-btn{
+    position:fixed;top:14px;width:38px;height:38px;border-radius:50%;
+    background:color-mix(in srgb, var(--panel) 88%, transparent);
+    border:1px solid var(--border);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    font-size:16px;z-index:40;backdrop-filter:blur(6px);
+    transition:transform .15s ease, border-color .15s ease;
+  }
+  .icon-btn:hover{transform:translateY(-1px);border-color:var(--accent);}
+  .icon-btn:active{transform:translateY(0);}
+  #gearBtn{right:14px;}
+  #downloadBtn{left:14px;}
+  #diceBtn{left:58px;}
+  #mathBtn{left:102px;}
+  #themeBtn{left:146px;}
+
+  .logo-mark{position:fixed;top:14px;left:190px;z-index:40;display:flex;align-items:center;gap:8px;
+    background:color-mix(in srgb, var(--panel) 78%, transparent);border:1px solid var(--border);
+    border-radius:20px;padding:5px 12px 5px 6px;backdrop-filter:blur(6px);}
+  .logo-mark svg{width:26px;height:26px;display:block;}
+  .logo-mark span{font-weight:600;font-size:14px;letter-spacing:.02em;}
+  @media (max-width:820px){ .logo-mark span{display:none;} .logo-mark{padding:5px;} }
+
+  /* ---- HUD: bottom-left, per convention ---- */
+  #hud{
+    position:fixed;left:14px;bottom:14px;z-index:40;
+    background:color-mix(in srgb, var(--panel) 88%, transparent);
+    border:1px solid var(--border);border-radius:var(--radius);
+    padding:9px 13px;font-size:12px;line-height:1.7;color:var(--ink-dim);
+    backdrop-filter:blur(6px);max-width:min(72vw,460px);
+  }
+  #hud b{color:var(--ink);font-weight:600;}
+  #hud .recipe-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+
+  /* ---- slide panels ---- */
+  .panel{
+    position:fixed;top:0;bottom:0;width:min(380px,92vw);
+    background:var(--panel);border-left:1px solid var(--border);
+    z-index:60;overflow-y:auto;transition:transform .25s ease;
+    padding:18px 18px 40px;
+  }
+  #settingsPanel{right:0;transform:translateX(100%);border-left:1px solid var(--border);border-right:none;}
+  #settingsPanel.open{transform:translateX(0);}
+  #mathPanel{left:0;width:min(520px,94vw);border-right:1px solid var(--border);border-left:none;transform:translateX(-100%);}
+  #mathPanel.open{transform:translateX(0);}
+  .panel h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;}
+  .panel-close{cursor:pointer;color:var(--ink-dim);font-size:20px;line-height:1;background:none;border:none;padding:2px 6px;}
+  .panel-close:hover{color:var(--ink);}
+  #overlay{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:50;}
+  #overlay.show{opacity:.45;pointer-events:auto;}
+
+  fieldset{border:1px solid var(--border);border-radius:var(--radius);margin:0 0 14px;padding:10px 12px 12px;}
+  legend{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim);padding:0 4px;}
+  label.ctrl{display:block;margin:8px 0;font-size:12.5px;color:var(--ink-dim);}
+  label.ctrl b{color:var(--ink);font-weight:500;}
+  label.ctrl .val{float:right;color:var(--accent);}
+  input[type=range]{width:100%;accent-color:var(--accent);margin-top:3px;}
+  select,input[type=color]{width:100%;background:var(--panel2);color:var(--ink);border:1px solid var(--border);
+    border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12.5px;margin-top:3px;}
+  .checkrow{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:12.5px;color:var(--ink-dim);}
+  .checkrow input{accent-color:var(--accent);}
+
+  .recipe-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
+  .recipe-card{border:1.5px solid var(--border);border-radius:9px;padding:9px 10px;cursor:pointer;font-size:12px;
+    background:var(--panel2);transition:border-color .15s ease, background .15s ease;}
+  .recipe-card b{display:block;font-size:12.5px;margin-bottom:2px;}
+  .recipe-card.active{border-color:var(--rc,var(--accent));background:color-mix(in srgb, var(--rc,var(--accent)) 14%, var(--panel2));}
+  .recipe-card:hover{border-color:var(--rc,var(--accent));}
+
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .chip{border:1px solid var(--border);background:var(--panel2);color:var(--ink-dim);border-radius:999px;
+    padding:5px 11px;font-size:11.5px;cursor:pointer;transition:all .15s ease;}
+  .chip:hover{border-color:var(--accent);color:var(--ink);}
+
+  .btn-row{display:flex;gap:8px;margin-top:4px;}
+  .btn{flex:1;border:1px solid var(--border);background:var(--panel2);color:var(--ink);border-radius:8px;
+    padding:9px 10px;font-size:12.5px;cursor:pointer;font-family:inherit;font-weight:500;}
+  .btn:hover{border-color:var(--accent);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#0b0d12;}
+
+  .math-body{font-size:13px;line-height:1.65;color:var(--ink-dim);}
+  .math-body h3{color:var(--ink);font-size:14.5px;margin:20px 0 6px;}
+  .math-body h3:first-child{margin-top:0;}
+  .math-body .eq{font-family:'IBM Plex Mono',monospace;background:var(--panel2);border:1px solid var(--border);
+    border-radius:7px;padding:9px 11px;margin:8px 0;font-size:12px;color:var(--ink);white-space:pre-wrap;overflow-x:auto;}
+  .math-body dl{margin:6px 0;}
+  .math-body dt{color:var(--ink);font-weight:600;display:inline;}
+  .math-body dd{margin:0 0 4px 0;display:inline;color:var(--ink-dim);}
+  .math-body dd::after{content:"";display:block;}
+  .math-body table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0;}
+  .math-body th,.math-body td{border:1px solid var(--border);padding:5px 7px;text-align:left;}
+  .math-body th{color:var(--ink);background:var(--panel2);}
+  .math-body .tie{border-left:3px solid var(--accent);padding:8px 10px;background:var(--panel2);border-radius:0 7px 7px 0;margin:12px 0;}
+  .math-body .cite{font-size:11px;color:var(--ink-dim);opacity:.8;margin-top:18px;}
+
+  .toast{position:fixed;left:50%;bottom:70px;transform:translate(-50%,10px);background:var(--panel);
+    border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:12.5px;z-index:70;
+    opacity:0;transition:all .25s ease;pointer-events:none;}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<canvas id="stage"></canvas>
+<div id="overlay"></div>
+
+<div class="logo-mark">
+  <svg viewBox="0 0 100 100"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#86efac"/><stop offset=".55" stop-color="#22c55e"/><stop offset="1" stop-color="#15803d"/>
+  </linearGradient></defs>
+  <path d="M30,70 C20,75 10,70 12,60 C14,50 24,48 28,55 C31,61 27,65 23,61" fill="none" stroke="url(#lg)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M30,70 Q40,40 65,35 Q85,32 91,45 Q93,56 79,59 Q58,63 44,66 Q35,69 30,70 Z" fill="url(#lg)"/>
+  <circle cx="24" cy="58" r="2.2" fill="#a855f7"/>
+  <circle cx="45" cy="50" r="3" fill="#ef4444"/>
+  <circle cx="55" cy="43" r="2.8" fill="#f97316"/>
+  <circle cx="66" cy="39" r="2.6" fill="#eab308"/>
+  <circle cx="76" cy="40" r="2.8" fill="#3b82f6"/>
+  <circle cx="88" cy="42" r="6" fill="#0b0d12"/><circle cx="90" cy="40" r="2" fill="#fff"/></svg>
+  <span>Chameleon</span>
+</div>
+
+<button class="icon-btn" id="downloadBtn" title="Download PNG">&#8681;</button>
+<button class="icon-btn" id="diceBtn" title="Randomize (this recipe)">&#9861;</button>
+<button class="icon-btn" id="mathBtn" title="The math">&Sigma;</button>
+<button class="icon-btn" id="themeBtn" title="Toggle theme">&#9788;</button>
+<button class="icon-btn" id="gearBtn" title="Settings">&#9881;</button>
+
+<div id="hud" class="mono"></div>
+
+<!-- ============ SETTINGS PANEL ============ -->
+<aside class="panel" id="settingsPanel">
+  <h2>Settings <button class="panel-close" data-close="settingsPanel">&times;</button></h2>
+
+  <fieldset>
+    <legend>Recipe — how the systems combine</legend>
+    <div class="recipe-grid" id="recipeGrid"></div>
+    <p class="mono" id="recipeBlurb" style="font-size:11.5px;color:var(--ink-dim);margin:8px 0 0;line-height:1.5;"></p>
+    <div class="preset-row" id="presetRow"></div>
+  </fieldset>
+
+  <div id="dynamicParams"></div>
+
+  <fieldset>
+    <legend>Appearance</legend>
+    <label class="ctrl"><b>Palette</b>
+      <select id="paletteSelect">
+        <option value="0">Ember</option>
+        <option value="1">Deep Sea</option>
+        <option value="2">Ultraviolet</option>
+        <option value="3">Mono Warm</option>
+        <option value="4">Mono Cool</option>
+        <option value="5">Rainbow (HSL)</option>
+        <option value="6">Zebra</option>
+        <option value="7">Solid</option>
+      </select>
+    </label>
+    <label class="ctrl" id="solidColorRow" style="display:none;"><b>Solid color</b><input type="color" id="solidColor" value="#38bdae"></label>
+    <label class="ctrl"><b>Line width</b> <span class="val mono" id="lineWidthVal"></span><input type="range" id="lineWidth" min="0.4" max="4" step="0.1" value="1.4"></label>
+    <div class="checkrow"><input type="checkbox" id="glowToggle" checked><label for="glowToggle">Glow</label></div>
+    <label class="ctrl"><b>Trail (fade instead of clear)</b> <span class="val mono" id="trailVal"></span><input type="range" id="trail" min="0" max="0.9" step="0.02" value="0"></label>
+  </fieldset>
+
+  <div class="btn-row">
+    <button class="btn primary" id="surpriseBtn">Surprise me (any recipe)</button>
+  </div>
+  <div class="btn-row" style="margin-top:8px;">
+    <button class="btn" id="resetBtn">Reset recipe</button>
+  </div>
+</aside>
+
+<!-- ============ MATH PANEL ============ -->
+<aside class="panel" id="mathPanel">
+  <h2>The math <button class="panel-close" data-close="mathPanel">&times;</button></h2>
+  <div class="math-body" id="mathBody"></div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   SHARED COLOR SYSTEM
+   Ported verbatim (same coefficients) from the cosine-gradient palette
+   shared by spirograph-studio / lsystem-widget / voronoi-widget, so this
+   applet's colors sit in the same visual family as its siblings.
+   cosinePalette(idx,t) = a + b*cos(2*PI*(c*t+d))   per RGB channel.
+   ========================================================================= */
+const PALETTES = [
+  {a:[.55,.35,.20], b:[.55,.35,.20], c:[1.0,.7,.4], d:[0,.15,.2]},
+  {a:[.15,.35,.45], b:[.25,.35,.45], c:[.6,.8,1.0], d:[.3,.5,.7]},
+  {a:[.45,.25,.55], b:[.45,.25,.55], c:[1.0,.6,1.0], d:[.1,.5,.9]},
+  {a:[.5,.5,.5],    b:[.5,.5,.5],    c:[1,1,1],      d:[0,0,0]},
+  {a:[.5,.5,.5],    b:[.5,.5,.5],    c:[1,1,1],      d:[0,.33,.67]}
+];
+function cosinePalette(idx,t){
+  const p = PALETTES[idx];
+  const ch = k => Math.max(0,Math.min(1, p.a[k]+p.b[k]*Math.cos(2*Math.PI*(p.c[k]*t+p.d[k]))));
+  return [Math.round(ch(0)*255),Math.round(ch(1)*255),Math.round(ch(2)*255)];
+}
+function colorFor(paletteIdx, t, idx, solidColor){
+  t = ((t%1)+1)%1;
+  if(paletteIdx===5){ const h=t*360; return `hsl(${h.toFixed(1)},85%,60%)`; }
+  if(paletteIdx===6){ return (idx%2===0) ? '#f2a65a' : '#57d9c4'; }
+  if(paletteIdx===7){ return solidColor; }
+  const [r,g,b]=cosinePalette(paletteIdx,t); return `rgb(${r},${g},${b})`;
+}
+
+/* =========================================================================
+   PRNG — mulberry32, same seeded-generator convention as voronoi-widget,
+   so randomize() is reproducible from a seed for debugging/sharing.
+   ========================================================================= */
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let rng = mulberry32(Date.now() & 0xffffffff);
+function rand(min,max){ return min + rng()*(max-min); }
+function randInt(min,max){ return Math.floor(rand(min,max+1)); }
+function pick(arr){ return arr[Math.floor(rng()*arr.length)]; }
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+// Canvas2D pays a steep per-call cost for shadowBlur strokes; recipes
+// whose item count can explode (L-system branch counts grow ~5^depth,
+// mandala motifs grow rings*symmetry) must budget their segment count
+// rather than draw every generated point, or a single frame can take
+// seconds instead of milliseconds.
+function subsampleArr(arr, maxN){
+  if(arr.length<=maxN) return arr;
+  const out = new Array(maxN);
+  for(let i=0;i<maxN;i++) out[i] = arr[Math.floor(i*arr.length/maxN)];
+  return out;
+}
+function lerp(a,b,t){ return a+(b-a)*t; }
+function gcd(a,b){ a=Math.abs(a);b=Math.abs(b); while(b){[a,b]=[b,a%b];} return a||1; }
+function lcm(a,b){ return Math.abs(a*b)/gcd(a,b); }
+
+/* =========================================================================
+   MODULE 1 — SECOND-ORDER ROULETTE
+   Ported formula from spirograph-studio/index.html (computeCurve, ~L820-945):
+   a gear-in-hoop-in-wheel epicyclic construction (credit: glagolj's
+   "second-order roulette", see math panel citation). Returns the BASE
+   (ring+wheel+hoop) point and the PEN VECTOR separately so recipes can
+   scale the pen vector independently (that's the hook recipe "warp" uses
+   to let a fractal field bend the curve).
+   ========================================================================= */
+function rouletteRaw(t, R){
+  const m0 = R.n0/R.n1, m1 = R.n2/R.n3;
+  const t1 = m0*t;
+  const t2 = t1 + Math.atan2(R.h*Math.sin(t1), 1-R.h*Math.cos(t1));
+  const a0 = t - t1;
+  const t3 = m1*t2;
+  const a1 = a0 + t2 - t3;
+  const baseX = (R.n0-R.n1)*Math.cos(t) + R.n1*R.h*Math.cos(a0) + (R.n2-R.n3)*Math.cos(a0+t2);
+  const baseY = (R.n0-R.n1)*Math.sin(t) + R.n1*R.h*Math.sin(a0) + (R.n2-R.n3)*Math.sin(a0+t2);
+  const phi = (R.phi||0)*Math.PI/180;
+  const penX = R.n3*R.p*Math.cos(a1+phi);
+  const penY = R.n3*R.p*Math.sin(a1+phi);
+  return {baseX,baseY,penX,penY,angle:a1+phi};
+}
+function roulettePeriod(R){
+  // classic epicyclic closure: reduce each internal gear ratio to lowest
+  // terms and take the lcm of the resulting denominators — the curve
+  // repeats once every denominator-th outer revolution, same principle
+  // as a plain hypotrochoid's period = 2*pi*r/gcd(R,r).
+  const q0 = R.n1/gcd(R.n0,R.n1);
+  const q1 = R.n3/gcd(R.n2,R.n3);
+  const L = lcm(q0,q1);
+  // hard safety cap: also keeps points-per-revolution reasonable at the
+  // fixed 6000-point ceiling (400 revs = 15pt/rev, muddy; 140 = ~43pt/rev,
+  // clean) so curated-random gear ratios don't collapse into a filled scribble
+  return 2*Math.PI*Math.min(L, 140);
+}
+// full curve, optionally with a per-point pen-scale callback for warping.
+// `density` means points-PER-REVOLUTION (so the main curve gets more
+// samples when its period spans more revolutions); pass `fixedN` instead
+// when the caller needs an exact, budgeted point count regardless of the
+// gear ratio's own period (decorative rosette/motif stamping).
+function rouletteCurve(R, density, penScaleFn, fixedN){
+  const T = roulettePeriod(R);
+  const n = fixedN ? clamp(Math.round(fixedN), 6, 400)
+                    : clamp(Math.round(density*(T/(2*Math.PI))), 32, 6000);
+  const pts = new Array(n);
+  let maxR = 1;
+  for(let i=0;i<n;i++){
+    const t = T*i/(n-1);
+    const raw = rouletteRaw(t,R);
+    const scale = penScaleFn ? penScaleFn(raw,t,i/n) : 1;
+    const x = raw.baseX + raw.penX*scale, y = raw.baseY + raw.penY*scale;
+    pts[i] = {x,y,t,frac:i/(n-1),raw};
+    maxR = Math.max(maxR, Math.hypot(x,y));
+  }
+  return {pts, T, maxR};
+}
+
+/* =========================================================================
+   MODULE 2 — COMPLEX-PLANE ESCAPE-TIME FRACTAL
+   fractal-widget renders this in a WebGL/GLSL shader (no CPU-side JS
+   point loop exists there). Ported to plain JS here — same z -> z^2+c
+   power family and smooth escape-time formula from fractal-widget's
+   shader (~L360-532), reimplemented on the CPU because this recipe
+   needs to *sample* the field at arbitrary (x,y) to bend other curves,
+   not just rasterize a full-screen image.
+   ========================================================================= */
+const FRACTAL_SPOTS = {
+  mandelbrot: [ {cx:-0.5,cy:0,zoom:1.15}, {cx:-0.745,cy:0.1127,zoom:0.02}, {cx:-0.75,cy:0.1,zoom:0.06}, {cx:0.275,cy:0.0,zoom:0.045} ],
+  burningship:[ {cx:-1.75,cy:-0.03,zoom:0.14}, {cx:-1.762,cy:-0.028,zoom:0.02}, {cx:-0.5,cy:-0.5,zoom:0.9} ],
+  tricorn:    [ {cx:-0.5,cy:0,zoom:1.2}, {cx:-1.1,cy:0.2,zoom:0.25} ],
+  julia:      [ {c:[-0.4,0.6]}, {c:[0.285,0.01]}, {c:[-0.8,0.156]}, {c:[-0.70176,-0.3842]}, {c:[0.355,0.355]} ]
+};
+function escapeSmooth(cx, cy, F){
+  let zx, zy, cxx, cyy;
+  if(F.mode==='julia'){ zx=cx; zy=cy; cxx=F.juliaC[0]; cyy=F.juliaC[1]; }
+  else { zx=0; zy=0; cxx=cx; cyy=cy; }
+  const bail2 = F.bailout*F.bailout;
+  let n=0;
+  for(; n<F.maxIter; n++){
+    let x=zx, y=zy;
+    if(F.mode==='burningship'){ x=Math.abs(x); y=Math.abs(y); }
+    if(F.mode==='tricorn'){ y=-y; }
+    const x2=x*x, y2=y*y;
+    zx = x2-y2+cxx; zy = 2*x*y+cyy;
+    if(x2+y2>bail2) break;
+  }
+  if(n>=F.maxIter) return null; // interior — never escaped
+  const logZn = 0.5*Math.log(zx*zx+zy*zy);
+  const nu = Math.log(logZn/Math.log(F.bailout))/Math.LN2;
+  const smoothN = n+1-nu;
+  return clamp(smoothN/F.maxIter, 0, 1);
+}
+
+/* =========================================================================
+   MODULE 3 — L-SYSTEM + TURTLE
+   Ported from lsystem-widget/index.html (generateString ~L580-594,
+   interpret ~L599-624). Extended here to record stack DEPTH per drawn
+   segment and to flag branch TIPS (the last drawn point at a given
+   depth immediately before a ']' pop) — that depth/tip data is the hook
+   recipes "branch" and "mandala" use to parameterize roulette rosettes.
+   ========================================================================= */
+const LSYSTEMS = {
+  plant:   {axiom:'X', rules:{X:'F+[[X]-X]-F[-FX]+X', F:'FF'}, angle:25, heading:90, maxDepth:6},
+  tree:    {axiom:'F', rules:{F:'F[+F]F[-F]F'},                angle:30, heading:90, maxDepth:5},
+  dragon:  {axiom:'F', rules:{F:'F+G', G:'F-G'},                angle:90, heading:0,  maxDepth:13},
+  arrowhead:{axiom:'A',rules:{A:'B-A-B', B:'A+B+A'},            angle:60, heading:0,  maxDepth:8, drawSymbols:['A','B']}
+};
+function lsystemGenerate(axiom, rules, depth){
+  let s = axiom;
+  const MAX_CHARS = 60000;
+  for(let i=0;i<depth;i++){
+    let next='';
+    for(const ch of s){ next += (rules[ch]!==undefined ? rules[ch] : ch); if(next.length>MAX_CHARS) break; }
+    s = next;
+    if(s.length>MAX_CHARS) break;
+  }
+  return s;
+}
+function lsystemInterpret(str, angleDeg, headingDeg, drawSymbols){
+  const drawSet = new Set(drawSymbols || ['F','G']);
+  const angle = angleDeg*Math.PI/180;
+  let x=0,y=0,heading=headingDeg*Math.PI/180;
+  const stack=[]; const segs=[]; const tips=[];
+  let lastDrawAtDepth = new Map(); // depth -> last segment index drawn while at that depth
+  for(let i=0;i<str.length;i++){
+    const ch = str[i];
+    if(drawSet.has(ch)){
+      const nx = x+Math.cos(heading), ny = y+Math.sin(heading);
+      const idx = segs.length;
+      segs.push({x1:x,y1:y,x2:nx,y2:ny,depth:stack.length});
+      lastDrawAtDepth.set(stack.length, idx);
+      x=nx; y=ny;
+    } else if(ch==='f'||ch==='g'){
+      x += Math.cos(heading); y += Math.sin(heading);
+    } else if(ch==='+'){ heading += angle; }
+    else if(ch==='-'){ heading -= angle; }
+    else if(ch==='['){ stack.push({x,y,heading,depth:stack.length}); }
+    else if(ch===']'){
+      const d = stack.length;
+      if(lastDrawAtDepth.has(d)){
+        const seg = segs[lastDrawAtDepth.get(d)];
+        tips.push({x:seg.x2,y:seg.y2,heading,depth:d});
+        lastDrawAtDepth.delete(d);
+      }
+      const st = stack.pop();
+      if(st){ x=st.x; y=st.y; heading=st.heading; }
+    }
+  }
+  // any still-open branch tip (no explicit pop, e.g. the trunk itself)
+  if(segs.length){ const last=segs[segs.length-1]; tips.push({x:last.x2,y:last.y2,heading,depth:last.depth}); }
+  return {segs, tips};
+}
+function safeDepth(sys, requested){
+  let d = requested;
+  while(d>1 && lsystemGenerate(sys.axiom,sys.rules,d).length>60000) d--;
+  return d;
+}
+
+/* =========================================================================
+   MODULE 4 — VORONOI CELLS (Euclidean, half-plane clipping)
+   Ported from voronoi-widget/index.html (computeEuclideanCells ~L690-722):
+   for each site, clip the canvas rectangle against every other site's
+   perpendicular-bisector half-plane (Sutherland-Hodgman). No external
+   library, matches the sibling's own from-scratch approach.
+   ========================================================================= */
+function clipHalfPlane(poly, nx, ny, c){
+  const out=[];
+  for(let i=0;i<poly.length;i++){
+    const cur=poly[i], prev=poly[(i-1+poly.length)%poly.length];
+    const curIn = nx*cur.x+ny*cur.y <= c, prevIn = nx*prev.x+ny*prev.y <= c;
+    if(curIn){
+      if(!prevIn){ out.push(intersect(prev,cur,nx,ny,c)); }
+      out.push(cur);
+    } else if(prevIn){ out.push(intersect(prev,cur,nx,ny,c)); }
+  }
+  return out;
+}
+function intersect(p1,p2,nx,ny,c){
+  const d1=nx*p1.x+ny*p1.y-c, d2=nx*p2.x+ny*p2.y-c;
+  const t = d1/(d1-d2);
+  return {x:p1.x+t*(p2.x-p1.x), y:p1.y+t*(p2.y-p1.y)};
+}
+function computeVoronoiCells(sites, W, H){
+  const bounds=[{x:0,y:0},{x:W,y:0},{x:W,y:H},{x:0,y:H}];
+  return sites.map((s,i)=>{
+    let poly = bounds.slice();
+    for(let j=0;j<sites.length;j++){
+      if(i===j) continue;
+      const o = sites[j];
+      const nx=o.x-s.x, ny=o.y-s.y;
+      const c=(o.x*o.x+o.y*o.y-s.x*s.x-s.y*s.y)/2;
+      poly = clipHalfPlane(poly, nx, ny, c);
+      if(!poly.length) break;
+    }
+    return poly;
+  });
+}
+function polyCentroid(poly){
+  if(!poly.length) return {x:0,y:0};
+  let x=0,y=0; for(const p of poly){x+=p.x;y+=p.y;} return {x:x/poly.length,y:y/poly.length};
+}
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const state = {
+  recipe:'warp',
+  roulette:{n0:140,n1:128,n2:54,n3:45,h:0.42,p:0.75,phi:0,ptDens:520},
+  fractal:{mode:'mandelbrot',juliaC:[-0.4,0.6],zoom:1.15,cx:-0.5,cy:0,bailout:16,maxIter:120},
+  lsys:{preset:'tree',depth:4,angle:30},
+  vor:{seedCount:60,seedSource:'roulette',colorBy:'index',fillAlpha:0.55,cellStroke:true},
+  warp:{strength:0.55},
+  branch:{rosetteScale:0.16,rosetteComplexity:4,skeletonVisible:true,skeletonAlpha:0.35},
+  mandala:{rings:5,symmetry:8,scaleDecay:0.72,ringTwist:12,nestVoronoi:false},
+  appearance:{palette:0,solidColor:'#38bdae',lineWidth:1.4,glow:true,trail:0}
+};
+
+/* =========================================================================
+   RECIPES — data-driven registry. Each entry owns: which shared param
+   groups it uses (for dynamic UI), its own small knob set, curated
+   preset values, a curated-random range per knob, and a draw(ctx,...)
+   function. Adding a 5th recipe later = one more entry in this array.
+   ========================================================================= */
+const RECIPES = [
+  {
+    id:'warp', name:'Fractal-Warped Roulette', color:'var(--recipe-warp)',
+    blurb:'A second-order roulette curve whose pen radius is bent, point by point, by a complex-plane escape-time field sampled at that point.',
+    groups:['roulette','fractal'],
+    knobs:[
+      {key:'strength', bank:'warp', label:'Warp strength', min:0, max:1.4, step:0.02, curated:[0.25,0.9]}
+    ],
+    presets:[
+      {name:'Seahorse Bloom', roulette:{n0:140,n1:128,n2:54,n3:45,h:0.42,p:0.75,phi:0}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:0.6}},
+      {name:'Julia Bloom', roulette:{n0:96,n1:77,n2:33,n3:20,h:0.55,p:0.9,phi:40}, fractal:{mode:'julia',juliaC:[-0.8,0.156]}, warp:{strength:0.75}},
+      {name:'Ship Ripple', roulette:{n0:180,n1:161,n2:70,n3:29,h:0.3,p:0.6,phi:0}, fractal:{mode:'burningship',zoom:0.14,cx:-1.75,cy:-0.03}, warp:{strength:0.45}},
+      {name:'Tricorn Lattice', roulette:{n0:60,n1:47,n2:19,n3:12,h:0.6,p:0.85,phi:90}, fractal:{mode:'tricorn',zoom:1.2,cx:-0.5,cy:0}, warp:{strength:0.9}}
+    ],
+    draw(ctx,W,H,cx,cy,scale){
+      const F = fractalParamsFor(state.fractal);
+      // pre-pass to find curve extent so the fractal window maps sensibly
+      // and stays stable regardless of how strongly warp bends the pen
+      const probe = rouletteCurve(state.roulette, 96, null);
+      const evals = [];
+      const pts = rouletteCurve(state.roulette, state.roulette.ptDens, (raw,t,frac)=>{
+        const wx = raw.baseX/probe.maxR, wy = raw.baseY/probe.maxR;
+        const fx = F.cx + wx*F.zoom, fy = F.cy + wy*F.zoom;
+        const e = escapeSmooth(fx, fy, F);
+        const ev = e===null ? 0 : e;
+        evals.push(ev);
+        return 1 + state.warp.strength*(ev-0.35)*2;
+      });
+      ctx.lineWidth = state.appearance.lineWidth;
+      const n = pts.pts.length;
+      for(let i=1;i<n;i++){
+        const p0=pts.pts[i-1], p1=pts.pts[i];
+        const x0 = cx+(p0.x/probe.maxR)*scale, y0 = cy+(p0.y/probe.maxR)*scale;
+        const x1 = cx+(p1.x/probe.maxR)*scale, y1 = cy+(p1.y/probe.maxR)*scale;
+        strokeSeg(ctx, x0, y0, x1, y1, evals[i], i);
+      }
+      hudExtra = `mode:${state.fractal.mode} · pts:${n} · period:${(pts.T/(2*Math.PI)).toFixed(1)}τ`;
+    }
+  },
+  {
+    id:'branch', name:'Branching Rosettes', color:'var(--recipe-branch)',
+    blurb:'An L-system skeleton grows by rewrite rules; a small roulette rosette is stamped at every branch tip, sized and geared by that tip’s recursion depth.',
+    groups:['lsys'],
+    knobs:[
+      {key:'rosetteScale', bank:'branch', label:'Rosette scale', min:0.05, max:0.35, step:0.01, curated:[0.1,0.24]},
+      {key:'rosetteComplexity', bank:'branch', label:'Rosette complexity', min:2, max:9, step:1, curated:[3,7]},
+    ],
+    presets:[
+      {name:'Fern Rosettes', lsys:{preset:'plant',depth:5,angle:25}, branch:{rosetteScale:0.13,rosetteComplexity:4}},
+      {name:'Tree Blossoms', lsys:{preset:'tree',depth:4,angle:30}, branch:{rosetteScale:0.2,rosetteComplexity:5}},
+      {name:'Dragon Gears', lsys:{preset:'dragon',depth:10,angle:90}, branch:{rosetteScale:0.09,rosetteComplexity:6}},
+      {name:'Arrowhead Bloom', lsys:{preset:'arrowhead',depth:6,angle:60}, branch:{rosetteScale:0.15,rosetteComplexity:3}}
+    ],
+    draw(ctx,W,H,cx,cy,scale){
+      const sys = LSYSTEMS[state.lsys.preset];
+      const depth = safeDepth(sys, state.lsys.depth);
+      const str = lsystemGenerate(sys.axiom, sys.rules, depth);
+      const {segs,tips:allTips} = lsystemInterpret(str, state.lsys.angle, sys.heading, sys.drawSymbols);
+      let ext=1;
+      for(const s of segs){ ext=Math.max(ext,Math.hypot(s.x2,s.y2),Math.hypot(s.x1,s.y1)); }
+      const k = scale/ext*0.85;
+      const skelDrawn = subsampleArr(segs, 2200);
+      if(state.branch.skeletonVisible){
+        ctx.globalAlpha = state.branch.skeletonAlpha;
+        ctx.lineWidth = Math.max(0.6, state.appearance.lineWidth*0.6);
+        skelDrawn.forEach((s,i)=>strokeSeg(ctx, cx+s.x1*k, cy+s.y1*k, cx+s.x2*k, cy+s.y2*k, s.depth/6, i));
+        ctx.globalAlpha = 1;
+      }
+      // Stamp points: bracket-branch tips are the natural hook for
+      // branching presets (plant/tree), but dragon/arrowhead have no
+      // brackets at all — allTips would degenerate to a single point.
+      // Sample evenly along the WHOLE drawn path instead, so every
+      // preset gets even rosette coverage; bracket depth still modulates
+      // gearing where it's meaningful (>0), and path position fills in
+      // as the variation signal where it isn't (depth stays 0).
+      const pathSamples = subsampleArr(segs, 200).map((s,i)=>({
+        x:s.x2, y:s.y2, heading:Math.atan2(s.y2-s.y1,s.x2-s.x1), depth:s.depth, idx:i
+      }));
+      const tips = pathSamples.length ? pathSamples : allTips;
+      const rosettePts = clamp(Math.floor(2600/Math.max(1,tips.length)), 14, 90);
+      const maxDepth = tips.reduce((m,t)=>Math.max(m,t.depth),1);
+      const branching = maxDepth>0;
+      tips.forEach((tip,i)=>{
+        const signal = branching ? tip.depth : (tip.idx % 6);
+        const signalFrac = branching ? tip.depth/Math.max(1,maxDepth) : (tip.idx/tips.length);
+        const complexity = Math.round(state.branch.rosetteComplexity);
+        const R = {
+          n0: 6+complexity*2+signal, n1: 5+complexity+signal,
+          n2: 3+Math.round(complexity/2), n3: 2+Math.round(complexity/3)||1,
+          h: 0.3+0.35*Math.abs(Math.sin(tip.heading+signal)), p:0.7, phi:(tip.heading*180/Math.PI)
+        };
+        const rc = rouletteCurve(R, null, null, rosettePts);
+        const rscale = scale*state.branch.rosetteScale*(0.4+0.9*(1-signalFrac));
+        ctx.lineWidth = Math.max(0.5, state.appearance.lineWidth*(0.5+0.5*(1-signalFrac)));
+        const ox = cx+tip.x*k, oy = cy+tip.y*k;
+        for(let j=1;j<rc.pts.length;j++){
+          const a=rc.pts[j-1], b=rc.pts[j];
+          strokeSeg(ctx, ox+(a.x/rc.maxR)*rscale, oy+(a.y/rc.maxR)*rscale, ox+(b.x/rc.maxR)*rscale, oy+(b.y/rc.maxR)*rscale, signalFrac, i);
+        }
+      });
+      hudExtra = `preset:${state.lsys.preset} · depth:${depth} · branch tips:${allTips.length} · rosettes:${tips.length}`;
+    }
+  },
+  {
+    id:'bloom', name:'Voronoi Bloom', color:'var(--recipe-bloom)',
+    blurb:'Points sampled from another system’s own geometry become Voronoi seeds; each cell’s color is a direct function of that source point’s local value.',
+    groups:['vor','roulette','fractal','lsys'],
+    knobs:[
+      {key:'seedCount', bank:'vor', label:'Seed count', min:16, max:150, step:2, curated:[30,100]},
+      {key:'fillAlpha', bank:'vor', label:'Fill opacity', min:0.15, max:1, step:0.02, curated:[0.4,0.8]}
+    ],
+    presets:[
+      {name:'Curve Cells', vor:{seedSource:'roulette',seedCount:70,colorBy:'index'}, roulette:{n0:140,n1:128,n2:54,n3:45,h:0.42,p:0.75,phi:0}},
+      {name:'Orbit Cells', vor:{seedSource:'fractal',seedCount:90,colorBy:'escape'}, fractal:{mode:'julia',juliaC:[0.285,0.01]}},
+      {name:'Branch Cells', vor:{seedSource:'lsystem',seedCount:80,colorBy:'index'}, lsys:{preset:'plant',depth:5,angle:22.5}}
+    ],
+    draw(ctx,W,H,cx,cy,scale){
+      const src = state.vor.seedSource;
+      let raw=[], vals=[];
+      if(src==='roulette'){
+        const rc = rouletteCurve(state.roulette, 400, null);
+        const step = Math.max(1, Math.floor(rc.pts.length/state.vor.seedCount));
+        for(let i=0;i<rc.pts.length;i+=step){ const p=rc.pts[i]; raw.push({x:p.x/rc.maxR,y:p.y/rc.maxR}); vals.push(p.frac); }
+      } else if(src==='fractal'){
+        const F = fractalParamsFor(state.fractal);
+        for(let i=0;i<state.vor.seedCount;i++){
+          const wx=rand(-1,1), wy=rand(-1,1);
+          const e = escapeSmooth(F.cx+wx*F.zoom, F.cy+wy*F.zoom, F);
+          raw.push({x:wx,y:wy}); vals.push(e===null?0:e);
+        }
+      } else {
+        // sample along the whole drawn path, not just bracket-branch tips —
+        // dragon/arrowhead have no brackets at all, so a tips-only source
+        // degenerates to a single point for those rule sets (same issue
+        // fixed in the "branch" recipe's stamp points)
+        const sys = LSYSTEMS[state.lsys.preset];
+        const depth = safeDepth(sys, state.lsys.depth);
+        const str = lsystemGenerate(sys.axiom, sys.rules, depth);
+        const {segs} = lsystemInterpret(str, state.lsys.angle, sys.heading, sys.drawSymbols);
+        let ext=1; for(const s of segs) ext=Math.max(ext,Math.hypot(s.x2,s.y2));
+        const step = Math.max(1, Math.floor(segs.length/state.vor.seedCount));
+        let i2=0;
+        for(let i=0;i<segs.length;i+=step){ raw.push({x:segs[i].x2/ext,y:segs[i].y2/ext}); vals.push((i2++)/segs.length); }
+      }
+      if(raw.length<3){ hudExtra='not enough seed points'; return; }
+      const sites = raw.map((p,i)=>({x:cx+p.x*scale*0.85+ (rng()-0.5)*0.01, y:cy+p.y*scale*0.85+(rng()-0.5)*0.01, v:vals[i], i}));
+      const cells = computeVoronoiCells(sites, W, H);
+      cells.forEach((poly,i)=>{
+        if(poly.length<3) return;
+        const t = state.vor.colorBy==='escape' ? sites[i].v : (state.vor.colorBy==='angle' ? (Math.atan2(sites[i].y-cy,sites[i].x-cx)/(2*Math.PI)+0.5) : i/sites.length);
+        const col = colorFor(state.appearance.palette, t, i, state.appearance.solidColor);
+        ctx.beginPath(); poly.forEach((p,j)=>j?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.closePath();
+        ctx.globalAlpha = state.vor.fillAlpha; ctx.fillStyle = col; ctx.fill();
+        if(state.vor.cellStroke){ ctx.globalAlpha=1; ctx.lineWidth=state.appearance.lineWidth*0.5; ctx.strokeStyle=col; ctx.stroke(); }
+        ctx.globalAlpha=1;
+      });
+      hudExtra = `source:${src} · seeds:${sites.length} · cells:${cells.filter(c=>c.length>=3).length}`;
+    }
+  },
+  {
+    id:'mandala', name:'Recursive Mandala', color:'var(--recipe-mandala)',
+    blurb:'A roulette rosette is IFS-stamped in rotated, shrinking rings; ring count and rotation step come from the same recursion-depth idea that drives the L-system.',
+    groups:['roulette'],
+    knobs:[
+      {key:'rings', bank:'mandala', label:'Rings (depth)', min:2, max:9, step:1, curated:[3,7]},
+      {key:'symmetry', bank:'mandala', label:'Symmetry', min:3, max:16, step:1, curated:[5,12]},
+      {key:'scaleDecay', bank:'mandala', label:'Scale decay', min:0.4, max:0.92, step:0.01, curated:[0.6,0.85]},
+      {key:'ringTwist', bank:'mandala', label:'Ring twist °', min:0, max:60, step:1, curated:[0,30]}
+    ],
+    presets:[
+      {name:'Nine Ring', roulette:{n0:60,n1:47,n2:19,n3:12,h:0.55,p:0.85,phi:0}, mandala:{rings:5,symmetry:9,scaleDecay:0.75,ringTwist:8}},
+      {name:'Twelvefold', roulette:{n0:84,n1:65,n2:26,n3:17,h:0.4,p:0.7,phi:20}, mandala:{rings:4,symmetry:12,scaleDecay:0.68,ringTwist:15}},
+      {name:'Pentaspiral', roulette:{n0:45,n1:34,n2:13,n3:8,h:0.65,p:0.9,phi:0}, mandala:{rings:7,symmetry:5,scaleDecay:0.82,ringTwist:22}}
+    ],
+    draw(ctx,W,H,cx,cy,scale){
+      const rings = Math.round(state.mandala.rings), sym = Math.round(state.mandala.symmetry);
+      const motifPts = clamp(Math.floor(4500/Math.max(1,rings*sym)), 16, 260);
+      const rc = rouletteCurve(state.roulette, null, null, motifPts);
+      for(let r=0;r<rings;r++){
+        const ringScale = scale*0.42*Math.pow(state.mandala.scaleDecay, r);
+        const ringRadius = scale*0.36*(r/Math.max(1,rings-1));
+        for(let k=0;k<sym;k++){
+          const baseAng = (2*Math.PI*k/sym) + r*state.mandala.ringTwist*Math.PI/180;
+          const ox = cx + Math.cos(baseAng)*ringRadius, oy = cy + Math.sin(baseAng)*ringRadius;
+          const tFrac = (r*sym+k)/(rings*sym);
+          ctx.lineWidth = Math.max(0.4, state.appearance.lineWidth*(1-r/rings*0.6));
+          for(let j=1;j<rc.pts.length;j++){
+            const a=rc.pts[j-1], b=rc.pts[j];
+            const ax = a.x/rc.maxR, ay=a.y/rc.maxR, bx=b.x/rc.maxR, by=b.y/rc.maxR;
+            const cosA=Math.cos(baseAng), sinA=Math.sin(baseAng);
+            const p0x = ox + (ax*cosA-ay*sinA)*ringScale, p0y = oy + (ax*sinA+ay*cosA)*ringScale;
+            const p1x = ox + (bx*cosA-by*sinA)*ringScale, p1y = oy + (bx*sinA+by*cosA)*ringScale;
+            strokeSeg(ctx, p0x,p0y,p1x,p1y, tFrac, j);
+          }
+        }
+      }
+      hudExtra = `rings:${rings} × symmetry:${sym} = ${rings*sym} motifs`;
+    }
+  }
+];
+function fractalParamsFor(f){
+  const base = {mode:f.mode, bailout:f.bailout, maxIter:f.maxIter, zoom:f.zoom, cx:f.cx, cy:f.cy, juliaC:f.juliaC};
+  return base;
+}
+
+/* =========================================================================
+   RENDERER
+   ========================================================================= */
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+let hudExtra = '';
+let dpr = Math.min(2, window.devicePixelRatio||1);
+
+function resize(){
+  dpr = Math.min(2, window.devicePixelRatio||1);
+  canvas.width = innerWidth*dpr; canvas.height = innerHeight*dpr;
+  canvas.style.width = innerWidth+'px'; canvas.style.height = innerHeight+'px';
+}
+window.addEventListener('resize', ()=>{ resize(); render(); });
+
+function strokeSeg(ctx,x0,y0,x1,y1,t,idx){
+  const col = colorFor(state.appearance.palette, t, idx, state.appearance.solidColor);
+  ctx.strokeStyle = col;
+  if(state.appearance.glow){ ctx.shadowColor = col; ctx.shadowBlur = 6; } else { ctx.shadowBlur = 0; }
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+}
+
+let lastRenderMs = 0;
+function render(){
+  const t0 = performance.now();
+  const W = canvas.width, H = canvas.height;
+  ctx.setTransform(1,0,0,1,0,0);
+  if(state.appearance.trail>0){
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0b0d12';
+    ctx.globalAlpha = 1-state.appearance.trail; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+  } else {
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0b0d12';
+    ctx.fillRect(0,0,W,H);
+  }
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const cx = innerWidth/2, cy = innerHeight/2, scale = Math.min(innerWidth,innerHeight)*0.42;
+  const rec = RECIPES.find(r=>r.id===state.recipe);
+  hudExtra='';
+  try{ rec.draw(ctx, innerWidth, innerHeight, cx, cy, scale); }
+  catch(e){ console.error('render error', e); hudExtra='render error — see console'; }
+  ctx.shadowBlur=0;
+  lastRenderMs = performance.now()-t0;
+  updateHud(rec);
+}
+
+function updateHud(rec){
+  const dot = `<span class="recipe-dot" style="background:${rec.color}"></span>`;
+  document.getElementById('hud').innerHTML =
+    `${dot}<b>${rec.name}</b><br>${hudExtra}<br>render: ${lastRenderMs.toFixed(1)}ms`;
+}
+
+/* =========================================================================
+   UI — built dynamically from RECIPES so a future 5th recipe needs no
+   new UI wiring, only a new registry entry.
+   ========================================================================= */
+const $ = sel => document.querySelector(sel);
+const toast = (msg)=>{ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),1600); };
+
+function buildRecipeGrid(){
+  const grid = $('#recipeGrid'); grid.innerHTML='';
+  RECIPES.forEach(r=>{
+    const card = document.createElement('div');
+    card.className = 'recipe-card'+(r.id===state.recipe?' active':'');
+    card.style.setProperty('--rc', r.color);
+    card.innerHTML = `<b>${r.name}</b>`;
+    card.onclick = ()=>{ state.recipe = r.id; buildRecipeGrid(); buildDynamicParams(); render(); };
+    grid.appendChild(card);
+  });
+  const rec = RECIPES.find(r=>r.id===state.recipe);
+  $('#recipeBlurb').textContent = rec.blurb;
+  const pr = $('#presetRow'); pr.innerHTML='';
+  rec.presets.forEach(p=>{
+    const chip = document.createElement('div'); chip.className='chip'; chip.textContent=p.name;
+    chip.onclick = ()=>{ applyPreset(rec,p); toast('Loaded "'+p.name+'"'); };
+    pr.appendChild(chip);
+  });
+}
+function applyPreset(rec, p){
+  Object.keys(p).forEach(bank=>{
+    if(bank==='name') return;
+    Object.assign(state[bank], p[bank]);
+  });
+  buildDynamicParams(); render();
+}
+
+const GROUP_FIELDS = {
+  roulette:[
+    {key:'n0',label:'Ring teeth',min:8,max:300,step:1,curated:[24,150]},
+    {key:'n1',label:'Wheel teeth',min:6,max:260,step:1,curated:[18,120]},
+    {key:'n2',label:'Hoop teeth',min:4,max:140,step:1,curated:[8,55]},
+    {key:'n3',label:'Pen-wheel teeth',min:2,max:90,step:1,curated:[4,32]},
+    {key:'h',label:'Hoop offset',min:0.05,max:0.97,step:0.01,curated:[0.2,0.75]},
+    {key:'p',label:'Pen radius',min:0.1,max:1,step:0.01,curated:[0.45,0.95]},
+    {key:'phi',label:'Pen phase °',min:0,max:360,step:1}
+  ],
+  fractal:[
+    {key:'mode',label:'Fractal mode',select:['mandelbrot','julia','burningship','tricorn']},
+    {key:'zoom',label:'Zoom',min:0.01,max:2,step:0.01},
+  ],
+  lsys:[
+    {key:'preset',label:'Rule set',select:Object.keys(LSYSTEMS)},
+    {key:'depth',label:'Depth',min:2,max:12,step:1},
+    {key:'angle',label:'Turn angle °',min:5,max:150,step:0.5}
+  ],
+  vor:[
+    {key:'seedSource',label:'Seed source',select:['roulette','fractal','lsystem']},
+    {key:'colorBy',label:'Color by',select:['index','escape','angle']},
+    {key:'cellStroke',label:'Cell edges',toggle:true}
+  ]
+};
+function buildDynamicParams(){
+  const rec = RECIPES.find(r=>r.id===state.recipe);
+  const host = $('#dynamicParams'); host.innerHTML='';
+  rec.groups.forEach(g=>{
+    if(!GROUP_FIELDS[g]){ console.warn('unknown param group', g); return; }
+    const fs = document.createElement('fieldset');
+    const lg = document.createElement('legend'); lg.textContent = groupLabel(g); fs.appendChild(lg);
+    GROUP_FIELDS[g].forEach(f=>fs.appendChild(fieldControl(g,f)));
+    host.appendChild(fs);
+  });
+  const fs2 = document.createElement('fieldset');
+  const lg2 = document.createElement('legend'); lg2.textContent='Recipe knobs'; fs2.appendChild(lg2);
+  rec.knobs.forEach(k=>fs2.appendChild(fieldControl(k.bank,{key:k.key,label:k.label,min:k.min,max:k.max,step:k.step})));
+  host.appendChild(fs2);
+}
+function groupLabel(g){ return {roulette:'Roulette shape',fractal:'Fractal field',lsys:'L-system',vor:'Voronoi'}[g]||g; }
+function fieldControl(bank, f){
+  const wrap = document.createElement('label'); wrap.className='ctrl';
+  if(f.toggle){
+    wrap.innerHTML = `<div class="checkrow"><input type="checkbox" ${state[bank][f.key]?'checked':''}><span>${f.label}</span></div>`;
+    wrap.querySelector('input').onchange = e=>{ state[bank][f.key]=e.target.checked; render(); };
+    return wrap;
+  }
+  if(f.select){
+    wrap.innerHTML = `<b>${f.label}</b><select></select>`;
+    const sel = wrap.querySelector('select');
+    f.select.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; if(state[bank][f.key]===v) o.selected=true; sel.appendChild(o); });
+    sel.onchange = e=>{ state[bank][f.key]=e.target.value; render(); };
+    return wrap;
+  }
+  const val = state[bank][f.key];
+  wrap.innerHTML = `<b>${f.label}</b><span class="val mono">${fmtVal(val)}</span><input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}">`;
+  const input = wrap.querySelector('input');
+  input.oninput = e=>{ state[bank][f.key]=parseFloat(e.target.value); wrap.querySelector('.val').textContent=fmtVal(state[bank][f.key]); render(); };
+  return wrap;
+}
+function fmtVal(v){ return (Math.round(v*100)/100).toString(); }
+
+/* ---- appearance controls ---- */
+$('#paletteSelect').value = state.appearance.palette;
+$('#paletteSelect').onchange = e=>{ state.appearance.palette=+e.target.value; $('#solidColorRow').style.display = state.appearance.palette===7?'block':'none'; render(); };
+$('#solidColor').oninput = e=>{ state.appearance.solidColor=e.target.value; render(); };
+$('#lineWidth').oninput = e=>{ state.appearance.lineWidth=+e.target.value; $('#lineWidthVal').textContent=e.target.value; render(); };
+$('#lineWidthVal').textContent = state.appearance.lineWidth;
+$('#glowToggle').checked = state.appearance.glow;
+$('#glowToggle').onchange = e=>{ state.appearance.glow=e.target.checked; render(); };
+$('#trail').oninput = e=>{ state.appearance.trail=+e.target.value; $('#trailVal').textContent=e.target.value; render(); };
+$('#trailVal').textContent = state.appearance.trail;
+
+/* ---- panel open/close ---- */
+function openPanel(id){ $('#'+id).classList.add('open'); $('#overlay').classList.add('show'); }
+function closePanels(){ document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open')); $('#overlay').classList.remove('show'); }
+$('#gearBtn').onclick = ()=>openPanel('settingsPanel');
+$('#mathBtn').onclick = ()=>{ renderMath(); openPanel('mathPanel'); };
+$('#overlay').onclick = closePanels;
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closePanels());
+
+/* ---- theme ---- */
+$('#themeBtn').onclick = ()=>{
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', cur==='light'?'dark':'light');
+  render();
+};
+
+/* ---- download ---- */
+$('#downloadBtn').onclick = ()=>{
+  const a = document.createElement('a');
+  a.download = `chameleon-${state.recipe}-${Date.now()}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  toast('PNG saved');
+};
+
+/* ---- randomize ---- */
+function curatedRandomize(recOnly){
+  const rec = RECIPES.find(r=>r.id===state.recipe);
+  const target = recOnly ? rec : pick(RECIPES);
+  if(!recOnly){ state.recipe = target.id; }
+  target.groups.forEach(g=>{
+    GROUP_FIELDS[g].forEach(f=>{
+      if(f.select){ state[groupBankFor(g)][f.key] = pick(f.select); }
+      else if(f.toggle){ /* leave toggles as-is for cleanliness */ }
+      else { const [lo,hi] = f.curated || [f.min,f.max]; state[groupBankFor(g)][f.key] = round2(rand(lo, hi)); }
+    });
+  });
+  target.knobs.forEach(k=>{
+    const [lo,hi] = k.curated || [k.min,k.max];
+    state[k.bank][k.key] = round2(rand(lo,hi));
+  });
+  // keep roulette gear counts as integers and coprime-ish for interesting periods
+  if(state.roulette){
+    ['n0','n1','n2','n3'].forEach(k=>{ if(GROUP_FIELDS.roulette.some(f=>f.key===k)) state.roulette[k]=Math.round(state.roulette[k]); });
+  }
+  if(state.lsys) state.lsys.depth = Math.round(state.lsys.depth);
+  if(state.mandala){ state.mandala.rings=Math.round(state.mandala.rings); state.mandala.symmetry=Math.round(state.mandala.symmetry); }
+  if(state.vor) state.vor.seedCount = Math.round(state.vor.seedCount);
+  buildRecipeGrid(); buildDynamicParams(); render();
+}
+function groupBankFor(g){ return g; }
+function round2(v){ return Math.round(v*100)/100; }
+$('#diceBtn').onclick = ()=>curatedRandomize(true);
+$('#surpriseBtn').onclick = ()=>{ curatedRandomize(false); toast('Surprised you'); };
+$('#resetBtn').onclick = ()=>{ const rec=RECIPES.find(r=>r.id===state.recipe); applyPreset(rec, rec.presets[0]); };
+
+/* =========================================================================
+   MATH PANEL — teaching-tool shape: framing, glossary, live equations,
+   why + comparison, real-world grounding, tie-back, citation.
+   ========================================================================= */
+function renderMath(){
+  const rec = RECIPES.find(r=>r.id===state.recipe);
+  const R = state.roulette, F = state.fractal;
+  let body = `
+  <h3>What problem is Chameleon solving?</h3>
+  <p>Four sibling widgets (spirograph-studio, fractal-widget, lsystem-widget, voronoi-widget) each render one generative system well. Chameleon asks a different question: what happens if one system's <em>output</em> is fed into another system's <em>formula</em> as a live parameter, instead of drawing them as separate transparent layers? The four recipes below are four different answers.</p>
+
+  <h3>Glossary</h3>
+  <dl>
+    <dt>Roulette curve</dt><dd> — a point traced by a "pen" fixed to a wheel that rolls inside a hoop, itself rolling inside a fixed ring (a second-order epicyclic/roulette construction, not a plain hypotrochoid).</dd><br>
+    <dt>Escape time</dt><dd> — for a point c in the complex plane, how many iterations of z&#8594;z&sup2;+c (or a sign-folded variant) it takes before |z| shoots past a bailout radius; points that never escape are "inside" the set.</dd><br>
+    <dt>Production rule</dt><dd> — a find/replace rule (e.g. F&#8594;F+F-F-F+F) applied to a string over several generations; a turtle then walks the resulting string to draw it.</dd><br>
+    <dt>Voronoi cell</dt><dd> — the region of the plane closer to one seed point than to any other seed.</dd>
+  </dl>
+
+  <h3>This recipe: ${rec.name}</h3>
+  <p>${rec.blurb}</p>
+  `;
+
+  if(rec.id==='warp'){
+    body += `
+    <div class="eq">roulette base:  x=(n0-n1)cos(t)+n1&middot;h&middot;cos(a0)+(n2-n3)cos(a0+t2)
+pen vector:     penX = n3&middot;p&middot;cos(a1+&phi;),  penY = n3&middot;p&middot;sin(a1+&phi;)
+escape field:   z&#8594;z&sup2;+c, smoothN = n+1-log(log|z|/log(B))/ln2, e = smoothN/maxIter
+coupling:       scale(t) = 1 + strength&middot;(e(x(t),y(t)) - 0.35)&middot;2
+final point:    (x,y) = base + penVector &middot; scale(t)</div>
+    <p><b>Why a scale on the pen vector, not the whole curve?</b> Scaling the whole curve just zooms it uniformly — boring. Scaling only the pen vector keeps the underlying gear ratio (and therefore the roulette's symmetry count) intact while letting the escape-time field visibly pinch and bulge the loops, so you can still see "it's a roulette" even as the fractal bends it.</p>
+    <p>Current numbers: n0=${R.n0}, n1=${R.n1}, n2=${R.n2}, n3=${R.n3}, h=${R.h}, p=${R.p}, mode=${F.mode}, strength=${state.warp.strength}.</p>
+    <div class="tie">Try it: open Settings &#8594; Fractal field &#8594; switch mode from Mandelbrot to Julia. The loop shapes reorganize immediately, because escape(x,y) is now sampling a completely different iteration (z fixed at the sample point, c fixed at the Julia constant) at the exact same (x,y) locations.</div>`;
+  } else if(rec.id==='branch'){
+    body += `
+    <div class="eq">rewrite:   s(0)=axiom;  s(i+1)=map(s(i), ch => rules[ch] or ch)
+turtle:    F draws forward &amp; records (depth=stack.length)
+           [ pushes (x,y,heading);  ] pops AND marks a branch tip
+rosette gearing at a tip of depth d:
+  n0 = 6+2c+d,  n1 = 5+c+d,  n2 = 3+&lceil;c/2&rceil;,  n3 = 2+&lceil;c/3&rceil;   (c = complexity knob)</div>
+    <p><b>Why gear the rosette off depth?</b> Depth is exactly the L-system's own recursion counter — reusing it (rather than inventing a separate random size) means the rosettes visibly get denser/tighter toward the branch tips exactly where the skeleton itself is recursing more, so the two systems read as one structure, not a skeleton with ornaments glued on.</p>
+    <p>Current rule set "${state.lsys.preset}": axiom=${LSYSTEMS[state.lsys.preset].axiom}, angle=${state.lsys.angle}&deg;, requested depth=${state.lsys.depth}.</p>
+    <div class="tie">Try it: raise Depth in the L-system group. On a branching rule set (plant/tree) more generations means more branch tips (check the HUD's "branch tips:" count) with visibly deeper gearing; on a non-branching curve (dragon/arrowhead — no brackets at all, so bracket depth stays 0) rosette variety instead comes from each stamp's position along the path, which is why those two still look lively rather than degenerating to one rosette.</div>`;
+  } else if(rec.id==='bloom'){
+    body += `
+    <div class="eq">seed set:      P = sampled points from source system (curve / fractal orbit / turtle tips)
+cell(i):       { p in canvas : dist(p,P_i) &le; dist(p,P_j) &forall; j }   via half-plane clip per neighbor
+half-plane:    n&middot;p &le; c,  n=(P_j-P_i),  c=(|P_j|&sup2;-|P_i|&sup2;)/2
+fill(cell i):  color = palette( value(P_i) )   where value = curve-fraction, escape-time, or angle</div>
+    <p><b>Why seed from another system instead of random points?</b> Random seeds make a generic Voronoi mosaic. Seeding from the roulette curve's own arc-length samples (or the fractal's escape values, or the L-system's branch tips) means the <em>cell layout itself</em> — not just the fill color — is shaped by that system's geometry: dense curve regions get denser cells, sparse regions get bigger ones.</p>
+    <p>Current source: ${state.vor.seedSource}, seeds: ${state.vor.seedCount}, colored by: ${state.vor.colorBy}.</p>
+    <div class="tie">Try it: switch Seed source from "roulette" to "fractal" — the cell mosaic reorganizes from following a smooth curve's arc length to following escape-time hot/cold regions, using the exact same half-plane-clip cell math either way.</div>`;
+  } else if(rec.id==='mandala'){
+    body += `
+    <div class="eq">ring r &isin; [0,rings), copy k &isin; [0,symmetry):
+  angle(r,k) = 2&pi;k/symmetry + r&middot;ringTwist&middot;(&pi;/180)
+  ringScale(r) = 0.42&middot;scale&middot;decay^r
+  motif point  = origin(r,k) + Rot(angle(r,k)) &middot; roulettePoint &middot; ringScale(r)</div>
+    <p><b>Why drive rings off a "depth" idea instead of a fixed loop?</b> Treating ring count as a recursion depth (same conceptual role as an L-system's generation count) is what makes this recipe extensible — a future recipe could literally replace the flat ring loop with a real L-system traversal and reuse this same rotate/scale/stamp step unchanged.</p>
+    <p>Current: rings=${state.mandala.rings}, symmetry=${state.mandala.symmetry}, decay=${state.mandala.scaleDecay}, twist=${state.mandala.ringTwist}&deg; &#8594; ${state.mandala.rings*state.mandala.symmetry} total motif stamps.</p>
+    <div class="tie">Try it: set Ring twist to 0 vs. ~20&deg; — at 0 every ring's copies line up radially (spokes); a nonzero twist staggers each ring, which is what produces the "kaleidoscope" braided look.</div>`;
+  }
+
+  body += `
+  <h3>How the four recipes compare</h3>
+  <table><tr><th>Recipe</th><th>What couples what</th><th>Shared with siblings</th></tr>
+  <tr><td>Fractal-Warped Roulette</td><td>escape-time &#8594; pen-vector scale</td><td>roulette formula, escape formula</td></tr>
+  <tr><td>Branching Rosettes</td><td>L-system depth &#8594; roulette gear ratio</td><td>turtle interpreter, roulette formula</td></tr>
+  <tr><td>Voronoi Bloom</td><td>curve/orbit/turtle points &#8594; Voronoi seeds</td><td>half-plane clip, all 3 point sources</td></tr>
+  <tr><td>Recursive Mandala</td><td>recursion depth &#8594; ring count/rotation</td><td>roulette formula, cosine palette</td></tr>
+  </table>
+
+  <h3>Real-world grounding</h3>
+  <p>Escape-time fractals underlie real-time GPU shader art and antenna/signal-processing self-similarity studies; roulette/epicyclic curves are literally how spirograph toys and some mechanical gear-cutting machines work; L-systems were invented (Lindenmayer, 1968) to model real plant growth; Voronoi diagrams show up in everything from cell biology to mobile-network coverage planning.</p>
+
+  <p class="cite">Roulette construction: glagolj's "second-order roulette" write-up. Workflow ideas (presets, randomizers): Abel Vincze's HTML Spirograph. Escape-time formula ported from this family's own fractal-widget shader. Half-plane Voronoi clip ported from this family's own voronoi-widget. A possible future 3D sibling of Chameleon is noted but not built yet — see the project README.</p>
+  `;
+  $('#mathBody').innerHTML = body;
+}
+
+/* ---- init ---- */
+resize();
+buildRecipeGrid();
+buildDynamicParams();
+render();
+
+})();
+</script>
+</body>
+</html>
