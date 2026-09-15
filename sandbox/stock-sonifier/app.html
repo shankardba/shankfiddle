@@ -135,7 +135,21 @@
           <label for="volumeSlider">Volume <span id="volumeVal" class="mono">50%</span></label>
           <input id="volumeSlider" type="range" min="0" max="100" value="50" />
         </div>
+        <div class="control">
+          <label for="glideSlider">Glide <span id="glideVal" class="mono">50ms</span></label>
+          <input id="glideSlider" type="range" min="0" max="100" value="10" />
+        </div>
       </div>
+    </section>
+
+    <!-- Scrub-only: a keyboard transposes the fundamental (the Speed slider's
+         rate). Sustain (the Play button, relabeled here) holds a drone at the
+         fundamental with no key held; releasing Sustain doesn't silence a held
+         key, and releasing every key doesn't silence Sustain. Styled after the
+         Modular Synth applet's keyboard module (GATE+PITCH, last-note-priority). -->
+    <section class="keyboard-panel" id="keyboardPanel" hidden>
+      <div class="piano-wrap" id="pianoWrap"></div>
+      <p class="keyboard-hint">A–K transposes the fundamental · tap/hold on touch</p>
     </section>
 
     <p id="status" class="status" hidden></p>
@@ -350,6 +364,7 @@
     const instrumentToggle = $('#instrumentToggle');
     const scrubControls = $('#scrubControls');
     const candlestickControls = $('#candlestickControls');
+    const keyboardPanel = $('#keyboardPanel');
     const playBtn = $('#playBtn');
     const playIcon = $('#playIcon');
 
@@ -416,6 +431,104 @@
       const v = Number(volumeSlider.value) / 100;
       scrubber.setVolume(v);
       volumeVal.textContent = Math.round(v * 100) + '%';
+    });
+
+    const glideSlider = $('#glideSlider');
+    const glideVal = $('#glideVal');
+    function glideSecondsFromSlider(v) {
+      return (v / 100) * 0.5; // 0..100 -> 0..500ms
+    }
+    glideSlider.addEventListener('input', () => {
+      const seconds = glideSecondsFromSlider(Number(glideSlider.value));
+      scrubber.setGlideTime(seconds);
+      glideVal.textContent = Math.round(seconds * 1000) + 'ms';
+    });
+
+    // --- Scrub keyboard: transposes the fundamental, Sustain-independent.
+    // Styled after the Modular Synth applet's keyboard module (same key
+    // layout/mapping and mouse+touch handling approach), adapted to this
+    // engine's single gated/transposed voice instead of a GATE+PITCH patch cable.
+    const NOTE_SEMITONES = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11, C2: 12 };
+    const KEY_MAP = { a: 'C', w: 'C#', s: 'D', e: 'D#', d: 'E', f: 'F', t: 'F#', g: 'G', y: 'G#', h: 'A', u: 'A#', j: 'B', k: 'C2' };
+    const WHITE_NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C2'];
+    const BLACK_MAP = { C: 'C#', D: 'D#', F: 'F#', G: 'G#', A: 'A#' };
+
+    const pianoWrap = $('#pianoWrap');
+    const keyEls = {};
+
+    const whiteKeysEl = document.createElement('div');
+    whiteKeysEl.className = 'white-keys';
+    WHITE_NOTES.forEach((note) => {
+      const k = document.createElement('div');
+      k.className = 'white-key';
+      k.dataset.note = note;
+      keyEls[note] = k;
+      whiteKeysEl.appendChild(k);
+    });
+    pianoWrap.appendChild(whiteKeysEl);
+
+    const whiteKeyPct = 100 / WHITE_NOTES.length;
+    Object.keys(BLACK_MAP).forEach((whiteNote) => {
+      const note = BLACK_MAP[whiteNote];
+      const wIdx = WHITE_NOTES.indexOf(whiteNote);
+      const bk = document.createElement('div');
+      bk.className = 'black-key';
+      bk.dataset.note = note;
+      bk.style.left = `calc(${(wIdx + 1) * whiteKeyPct}% - 11px)`;
+      keyEls[note] = bk;
+      pianoWrap.appendChild(bk);
+    });
+
+    function pressKeyboardNote(note) {
+      scrubber.pressNote(NOTE_SEMITONES[note]);
+      keyEls[note].classList.add('is-pressed');
+    }
+    function releaseKeyboardNote(note) {
+      scrubber.releaseNote(NOTE_SEMITONES[note]);
+      keyEls[note].classList.remove('is-pressed');
+    }
+    function releaseAllKeyboardKeys() {
+      Object.keys(keyEls).forEach((note) => keyEls[note].classList.remove('is-pressed'));
+      scrubber.releaseAllNotes();
+    }
+
+    // Mouse + touch (not Pointer Events — matches the Modular Synth applet's
+    // bindDrag: real cross-browser reliability gaps in Safari otherwise).
+    Object.keys(keyEls).forEach((note) => {
+      const el = keyEls[note];
+      function down(e) {
+        e.preventDefault();
+        pressKeyboardNote(note);
+        window.addEventListener('mouseup', up);
+        window.addEventListener('touchend', up);
+        window.addEventListener('touchcancel', up);
+      }
+      function up() {
+        releaseKeyboardNote(note);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('touchend', up);
+        window.removeEventListener('touchcancel', up);
+      }
+      el.addEventListener('mousedown', down);
+      el.addEventListener('touchstart', down, { passive: false });
+    });
+
+    // Panic release: if the pointer/finger leaves the window entirely (over
+    // another app, a different monitor) no mouseup/touchend ever reaches this
+    // page, so a held note would otherwise stay stuck on forever.
+    window.addEventListener('blur', releaseAllKeyboardKeys);
+
+    document.addEventListener('keydown', (e) => {
+      if (state.instrument !== 'scrub' || e.repeat) return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const note = KEY_MAP[e.key.toLowerCase()];
+      if (note) pressKeyboardNote(note);
+    });
+    document.addEventListener('keyup', (e) => {
+      if (state.instrument !== 'scrub') return;
+      const note = KEY_MAP[e.key.toLowerCase()];
+      if (note) releaseKeyboardNote(note);
     });
 
     tempoSlider.addEventListener('input', () => {
@@ -499,13 +612,18 @@
       if (instrument === 'candlestick') {
         scrubControls.hidden = true;
         candlestickControls.hidden = false;
+        keyboardPanel.hidden = true;
+        releaseAllKeyboardKeys();
         chart.setLoopWindow(null);
         modeToggle.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === 'candles'));
         chart.setMode('candles');
+        playBtn.title = 'Play';
       } else {
         candlestickControls.hidden = true;
         scrubControls.hidden = false;
+        keyboardPanel.hidden = false;
         applyLoopWindow();
+        playBtn.title = 'Sustain';
       }
     });
 
@@ -517,6 +635,8 @@
     applyLoopWindow();
     scrubber.setSpeed(speedFromSlider(0));
     scrubber.setVolume(0.5);
+    scrubber.setGlideTime(glideSecondsFromSlider(Number(glideSlider.value)));
+    playBtn.title = 'Play';
     candlestick.setNotesPerSecond(8);
     candlestick.setVolume(0.5);
     candlestick.setPercussion(false);

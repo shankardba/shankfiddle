@@ -4,10 +4,13 @@
 // many bars are loaded, so the start/stop window behaves the same at 1M or Max
 // range) and normalized to [-1, 1] as raw PCM. An AudioBufferSourceNode loops a
 // user-selected window of that buffer — loopStart/loopEnd is literally "start/stop
-// point in the wavetable", and playbackRate is "speed". Because loop length in
-// samples determines pitch (freq = sampleRate / loopLengthInSamples), a short
-// window sounds like a pitched tone and a long window sounds like a slow drone —
-// the shape of the price curve becomes the waveform's timbre.
+// point in the wavetable", and playbackRate is "speed" (the fundamental pitch).
+// Because loop length in samples determines pitch (freq = sampleRate /
+// loopLengthInSamples), a short window sounds like a pitched tone and a long
+// window sounds like a slow drone — the shape of the price curve becomes the
+// waveform's timbre. Playable via an on-screen/physical keyboard (see
+// WavetableScrubber below) that transposes that fundamental and gates it audible,
+// styled after the Modular Synth applet's keyboard module.
 (function () {
   const RESAMPLE_LENGTH = 4096;
 
@@ -39,25 +42,47 @@
     return out;
   }
 
+  // A single continuously-running voice, gated and transposed like the Modular
+  // Synth applet's keyboard module (GATE + PITCH, last-note-priority) rather
+  // than a plain start/stop loop:
+  //   - Sustain (the transport's Play button, relabeled) is a manual gate-open
+  //     override — a drone at the fundamental (the Speed slider's rate) even
+  //     with no key held.
+  //   - Pressing a keyboard key opens the gate too and transposes the pitch by
+  //     that key's semitone offset from the fundamental, independent of
+  //     Sustain — releasing Sustain does not silence a held key, and releasing
+  //     the last held key does not silence Sustain.
+  //   - Glide is a portamento time-constant applied to pitch changes only (the
+  //     gate/gain itself always snaps quickly, just enough to avoid a click).
+  // The underlying AudioBufferSourceNode is created once on first sound and
+  // left running for the rest of the session — audibility and pitch are pure
+  // AudioParam automation on top, which is what makes glide (a smooth slide
+  // between two pitches on one continuous tone) possible in the first place.
+  // A source can't have its buffer swapped after creation, so a new symbol/
+  // range load hot-swaps in a fresh source under the same persistent gain node
+  // instead — inaudible if the gate happens to be closed, a fast declick if not.
   class WavetableScrubber {
     constructor() {
       this.ctx = null;
-      this.gain = null;
-      this.source = null;
+      this.gain = null; // persistent; controls audibility (the gate)
+      this.source = null; // current AudioBufferSourceNode; recreated when the buffer changes
       this.buffer = null;
       this.resampled = null;
       this.startFrac = 0;
       this.stopFrac = 0.08;
-      this.speed = 1;
+      this.speed = 1; // the fundamental: base playback rate before transpose
       this.volume = 0.5;
-      this.playing = false;
+      this.glideTime = 0.05; // seconds, portamento time-constant; ~0 = instant
+      this.sustain = false;
+      this.held = []; // stack of held semitone transpose offsets, last-note-priority
+      this.playing = false; // convenience mirror of "gate is open"
     }
 
     _ensureContext() {
       if (!this.ctx) {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.gain = this.ctx.createGain();
-        this.gain.gain.value = this.volume;
+        this.gain.gain.value = 0; // starts closed; opened via the gate, not on creation
         this.gain.connect(this.ctx.destination);
       }
       return this.ctx;
@@ -78,7 +103,37 @@
       const buffer = ctx.createBuffer(1, this.resampled.length, ctx.sampleRate);
       buffer.copyToChannel(this.resampled, 0);
       this.buffer = buffer;
+      if (this.source) this._restartSource(); // already engaged — hot-swap under the running gate
+    }
+
+    _createSource() {
+      const ctx = this._ensureContext();
+      if (!this.buffer) return null;
+      const source = ctx.createBufferSource();
+      source.buffer = this.buffer;
+      source.loop = true;
+      source.playbackRate.value = this._currentRate();
+      source.connect(this.gain);
+      source.start();
+      return source;
+    }
+
+    _restartSource() {
+      if (this.source) {
+        try { this.source.stop(); } catch {}
+        this.source.disconnect();
+      }
+      this.source = this._createSource();
       this._applyLoopPoints();
+    }
+
+    _ensureSourceStarted() {
+      const ctx = this._ensureContext();
+      if (ctx.state === 'suspended') ctx.resume();
+      if (!this.source && this.buffer) {
+        this.source = this._createSource();
+        this._applyLoopPoints();
+      }
     }
 
     _applyLoopPoints() {
@@ -98,46 +153,104 @@
 
     setSpeed(speed) {
       this.speed = speed;
-      if (this.source) this.source.playbackRate.value = speed;
+      this._applyPitch();
+    }
+
+    setGlideTime(seconds) {
+      this.glideTime = Math.max(0, seconds);
     }
 
     setVolume(v) {
       this.volume = v;
-      if (this.gain) this.gain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.02);
+      this._applyGate(); // re-target the open level immediately if currently sounding
     }
 
-    play() {
-      if (!this.buffer) return false;
-      const ctx = this._ensureContext();
-      if (ctx.state === 'suspended') ctx.resume();
-      this.stop();
-      const source = ctx.createBufferSource();
-      source.buffer = this.buffer;
-      source.loop = true;
-      source.playbackRate.value = this.speed;
-      source.connect(this.gain);
-      this.source = source;
-      this._applyLoopPoints();
-      source.start();
-      this.playing = true;
-      return true;
+    _currentTranspose() {
+      return this.held.length ? this.held[this.held.length - 1] : 0;
     }
 
-    stop() {
-      if (this.source) {
-        try { this.source.stop(); } catch {}
-        this.source.disconnect();
-        this.source = null;
+    _currentRate() {
+      return this.speed * Math.pow(2, this._currentTranspose() / 12);
+    }
+
+    _applyPitch() {
+      if (!this.source || !this.ctx) return;
+      const target = this._currentRate();
+      const now = this.ctx.currentTime;
+      const param = this.source.playbackRate;
+      param.cancelScheduledValues(now);
+      if (this.glideTime > 0.001) {
+        // setTargetAtTime never quite reaches the target; setValueAtTime first
+        // (at the param's current value) avoids a discontinuity from whatever
+        // scheduled value cancellation left behind.
+        param.setValueAtTime(param.value, now);
+        param.setTargetAtTime(target, now, this.glideTime);
+      } else {
+        param.setValueAtTime(target, now);
       }
-      this.playing = false;
     }
 
+    _isGateOpen() {
+      return this.sustain || this.held.length > 0;
+    }
+
+    _applyGate() {
+      if (!this.gain || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const target = this._isGateOpen() ? this.volume : 0;
+      this.gain.gain.cancelScheduledValues(now);
+      this.gain.gain.setTargetAtTime(target, now, 0.015); // declick, not a musical envelope
+      this.playing = this._isGateOpen();
+    }
+
+    // --- Sustain: the transport's Play button, relabeled for this instrument ---
+    setSustain(on) {
+      this.sustain = on;
+      if (on) this._ensureSourceStarted();
+      this._applyPitch();
+      this._applyGate();
+    }
+
+    toggleSustain() {
+      this.setSustain(!this.sustain);
+      return this.sustain;
+    }
+
+    // toggle() alias: the shared transport wiring calls activeEngine().toggle()
+    // for both instruments without special-casing which one is active.
     toggle() {
-      if (this.playing) {
-        this.stop();
-        return false;
-      }
-      return this.play();
+      return this.toggleSustain();
+    }
+
+    // --- Keyboard: press/release a semitone offset from the fundamental ---
+    pressNote(semitone) {
+      if (this.held.indexOf(semitone) === -1) this.held.push(semitone);
+      this._ensureSourceStarted();
+      this._applyPitch();
+      this._applyGate();
+    }
+
+    releaseNote(semitone) {
+      const i = this.held.indexOf(semitone);
+      if (i !== -1) this.held.splice(i, 1);
+      this._applyPitch(); // glides back toward the fundamental or the next held note
+      this._applyGate(); // closes the gate only if nothing is left held and Sustain is off
+    }
+
+    releaseAllNotes() {
+      this.held = [];
+      this._applyPitch();
+      this._applyGate();
+    }
+
+    // Full stop: called when switching away from Scrub or loading new data.
+    // Leaves the underlying source running (just silent) so a buffer hot-swap
+    // from setBars() has something to swap under, rather than tearing down and
+    // immediately recreating.
+    stop() {
+      this.sustain = false;
+      this.held = [];
+      this._applyGate();
     }
   }
 
