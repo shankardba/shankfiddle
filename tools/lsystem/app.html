@@ -369,6 +369,8 @@
         <a href="https://en.wikipedia.org/wiki/L-system" target="_blank" rel="noopener">Wikipedia L-system article</a>.
         The Hilbert Curve rules are the classic ones used in
         <a href="https://texample.net/lindenmayer-systems/" target="_blank" rel="noopener">Stefan Kottwitz's TikZ lindenmayersystems examples</a>.
+        The Gosper Curve and Pentaplexity rules are from Prusinkiewicz &amp; Lindenmayer's
+        <a href="http://algorithmicbotany.org/papers/abop/abop.pdf" target="_blank" rel="noopener">The Algorithmic Beauty of Plants</a>.
         "Randomize system" is adapted from
         <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>
         (guarantee-at-least-one-F, and blending curated "nice" angles with fully random ones).
@@ -508,9 +510,11 @@
     plant: { label:'Fractal Plant', axiom:'X', rules:{X:'F+[[X]-X]-F[-FX]+X', F:'FF'}, angle:25, depth:5, heading:90 },
     tree: { label:'Binary Tree', axiom:'F', rules:{F:'F[+F]F[-F]F'}, angle:30, depth:5, heading:90 },
     hilbert: { label:'Hilbert Curve', axiom:'L', rules:{L:'+RF-LFL-FR+', R:'-LF+RFR+FL-'}, angle:90, depth:5, heading:0, drawSymbols:['F'] },
+    gosper: { label:'Gosper Curve', axiom:'A', rules:{A:'A-B--B+A++AA+B-', B:'+A-BB--B-A++A+B'}, angle:60, depth:4, heading:0, drawSymbols:['A','B'] },
+    pentaplexity: { label:'Pentaplexity', axiom:'F++F++F++F++F', rules:{F:'F++F++F+++++F-F++F'}, angle:36, depth:4, heading:0 },
     cantor: { label:'Cantor Set', axiom:'F', rules:{F:'FfF', f:'fff'}, angle:0, depth:5, heading:0, cantor:true }
   };
-  const PRESET_ORDER = ['koch','kochSnowflake','sierpinski','arrowhead','dragon','plant','tree','hilbert','cantor'];
+  const PRESET_ORDER = ['koch','kochSnowflake','pentaplexity','sierpinski','arrowhead','dragon','gosper','plant','tree','hilbert','cantor'];
 
   // ---------- color palettes (same cosine family as the fractal explorer / spirograph) ----------
   const PALETTES = [
