@@ -319,6 +319,30 @@ function rouletteRaw(t, R){
   const penY = R.n3*R.p*Math.sin(a1+phi);
   return {baseX,baseY,penX,penY,angle:a1+phi};
 }
+// Curated shape families — n0/n1 (the outer ring:wheel ratio, which mostly
+// determines overall symmetry) are FIXED per family to known-clean values;
+// only h/p/detail stay user-tunable. This replaces raw n0..n3 sliders
+// entirely: full gear customization risked ugly/degenerate ratios (see the
+// period-closure gotcha below) and wasn't needed for an app about
+// combining concepts, not fine-tuning one spirograph from scratch.
+const ROULETTE_FAMILIES = [
+  {name:'Sevenfold',   n0:140, n1:128, n2:54, n3:45},
+  {name:'Nonagon',     n0:96,  n1:77,  n2:33, n3:20},
+  {name:'Rippleship',  n0:180, n1:161, n2:70, n3:29},
+  {name:'Hexrose',     n0:60,  n1:47,  n2:19, n3:12},
+  {name:'Twelvefold',  n0:84,  n1:65,  n2:26, n3:17},
+  {name:'Pentaspiral', n0:45,  n1:34,  n2:13, n3:8}
+];
+function resolveRoulette(R){
+  const fam = ROULETTE_FAMILIES.find(f=>f.name===R.family) || ROULETTE_FAMILIES[0];
+  const detail = R.detail==null ? 1 : R.detail;
+  return {
+    n0:fam.n0, n1:fam.n1,
+    n2:Math.max(3, Math.round(fam.n2*detail)),
+    n3:Math.max(2, Math.round(fam.n3*detail)),
+    h:R.h, p:R.p, phi:0
+  };
+}
 function roulettePeriod(R){
   // classic epicyclic closure: reduce each internal gear ratio to lowest
   // terms and take the lcm of the resulting denominators — the curve
@@ -504,7 +528,7 @@ function polyCentroid(poly){
    ========================================================================= */
 const state = {
   recipe:'warp',
-  roulette:{n0:140,n1:128,n2:54,n3:45,h:0.42,p:0.75,phi:0,ptDens:520},
+  roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1,ptDens:520},
   fractal:{mode:'mandelbrot',juliaC:[-0.4,0.6],zoom:1.15,cx:-0.5,cy:0,bailout:16,maxIter:120},
   lsys:{preset:'tree',depth:4,angle:30},
   vor:{seedCount:60,seedSource:'roulette',colorBy:'index',fillAlpha:0.55,cellStroke:true},
@@ -529,18 +553,19 @@ const RECIPES = [
       {key:'strength', bank:'warp', label:'Warp strength', min:0, max:1.4, step:0.02, curated:[0.25,0.9]}
     ],
     presets:[
-      {name:'Seahorse Bloom', roulette:{n0:140,n1:128,n2:54,n3:45,h:0.42,p:0.75,phi:0}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:0.6}},
-      {name:'Julia Bloom', roulette:{n0:96,n1:77,n2:33,n3:20,h:0.55,p:0.9,phi:40}, fractal:{mode:'julia',juliaC:[-0.8,0.156]}, warp:{strength:0.75}},
-      {name:'Ship Ripple', roulette:{n0:180,n1:161,n2:70,n3:29,h:0.3,p:0.6,phi:0}, fractal:{mode:'burningship',zoom:0.14,cx:-1.75,cy:-0.03}, warp:{strength:0.45}},
-      {name:'Tricorn Lattice', roulette:{n0:60,n1:47,n2:19,n3:12,h:0.6,p:0.85,phi:90}, fractal:{mode:'tricorn',zoom:1.2,cx:-0.5,cy:0}, warp:{strength:0.9}}
+      {name:'Seahorse Bloom', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:0.6}},
+      {name:'Julia Bloom', roulette:{family:'Nonagon',h:0.55,p:0.9,detail:1}, fractal:{mode:'julia',juliaC:[-0.8,0.156]}, warp:{strength:0.75}},
+      {name:'Ship Ripple', roulette:{family:'Rippleship',h:0.3,p:0.6,detail:1}, fractal:{mode:'burningship',zoom:0.14,cx:-1.75,cy:-0.03}, warp:{strength:0.45}},
+      {name:'Tricorn Lattice', roulette:{family:'Hexrose',h:0.6,p:0.85,detail:1}, fractal:{mode:'tricorn',zoom:1.2,cx:-0.5,cy:0}, warp:{strength:0.9}}
     ],
     draw(ctx,W,H,cx,cy,scale){
       const F = fractalParamsFor(state.fractal);
+      const Rres = resolveRoulette(state.roulette);
       // pre-pass to find curve extent so the fractal window maps sensibly
       // and stays stable regardless of how strongly warp bends the pen
-      const probe = rouletteCurve(state.roulette, 96, null);
+      const probe = rouletteCurve(Rres, 96, null);
       const evals = [];
-      const pts = rouletteCurve(state.roulette, state.roulette.ptDens, (raw,t,frac)=>{
+      const pts = rouletteCurve(Rres, state.roulette.ptDens, (raw,t,frac)=>{
         const wx = raw.baseX/probe.maxR, wy = raw.baseY/probe.maxR;
         const fx = F.cx + wx*F.zoom, fy = F.cy + wy*F.zoom;
         const e = escapeSmooth(fx, fy, F);
@@ -548,14 +573,17 @@ const RECIPES = [
         evals.push(ev);
         return 1 + state.warp.strength*(ev-0.35)*2;
       });
-      ctx.lineWidth = state.appearance.lineWidth;
       const n = pts.pts.length;
+      const segs = new Array(Math.max(0,n-1));
       for(let i=1;i<n;i++){
         const p0=pts.pts[i-1], p1=pts.pts[i];
-        const x0 = cx+(p0.x/probe.maxR)*scale, y0 = cy+(p0.y/probe.maxR)*scale;
-        const x1 = cx+(p1.x/probe.maxR)*scale, y1 = cy+(p1.y/probe.maxR)*scale;
-        strokeSeg(ctx, x0, y0, x1, y1, evals[i], i);
+        segs[i-1] = {
+          x0: cx+(p0.x/probe.maxR)*scale, y0: cy+(p0.y/probe.maxR)*scale,
+          x1: cx+(p1.x/probe.maxR)*scale, y1: cy+(p1.y/probe.maxR)*scale,
+          e: evals[i]
+        };
       }
+      strokeSegBatch(ctx, segs, i=>colorFor(state.appearance.palette, segs[i].e, i, state.appearance.solidColor), ()=>state.appearance.lineWidth);
       hudExtra = `mode:${state.fractal.mode} · pts:${n} · period:${(pts.T/(2*Math.PI)).toFixed(1)}τ`;
     }
   },
@@ -584,8 +612,8 @@ const RECIPES = [
       const skelDrawn = subsampleArr(segs, 2200);
       if(state.branch.skeletonVisible){
         ctx.globalAlpha = state.branch.skeletonAlpha;
-        ctx.lineWidth = Math.max(0.6, state.appearance.lineWidth*0.6);
-        skelDrawn.forEach((s,i)=>strokeSeg(ctx, cx+s.x1*k, cy+s.y1*k, cx+s.x2*k, cy+s.y2*k, s.depth/6, i));
+        const skelSegs = skelDrawn.map(s=>({x0:cx+s.x1*k, y0:cy+s.y1*k, x1:cx+s.x2*k, y1:cy+s.y2*k, t:s.depth/6}));
+        strokeSegBatch(ctx, skelSegs, i=>colorFor(state.appearance.palette, skelSegs[i].t, i, state.appearance.solidColor), ()=>Math.max(0.6, state.appearance.lineWidth*0.6));
         ctx.globalAlpha = 1;
       }
       // Stamp points: bracket-branch tips are the natural hook for
@@ -602,6 +630,9 @@ const RECIPES = [
       const rosettePts = clamp(Math.floor(2600/Math.max(1,tips.length)), 14, 90);
       const maxDepth = tips.reduce((m,t)=>Math.max(m,t.depth),1);
       const branching = maxDepth>0;
+      // accumulate every rosette's segments into one flat list so the whole
+      // set gets ONE ~240-chunk batched stroke pass, not one per rosette
+      const rosetteSegs = [];
       tips.forEach((tip,i)=>{
         const signal = branching ? tip.depth : (tip.idx % 6);
         const signalFrac = branching ? tip.depth/Math.max(1,maxDepth) : (tip.idx/tips.length);
@@ -613,13 +644,18 @@ const RECIPES = [
         };
         const rc = rouletteCurve(R, null, null, rosettePts);
         const rscale = scale*state.branch.rosetteScale*(0.4+0.9*(1-signalFrac));
-        ctx.lineWidth = Math.max(0.5, state.appearance.lineWidth*(0.5+0.5*(1-signalFrac)));
+        const lw = Math.max(0.5, state.appearance.lineWidth*(0.5+0.5*(1-signalFrac)));
         const ox = cx+tip.x*k, oy = cy+tip.y*k;
         for(let j=1;j<rc.pts.length;j++){
           const a=rc.pts[j-1], b=rc.pts[j];
-          strokeSeg(ctx, ox+(a.x/rc.maxR)*rscale, oy+(a.y/rc.maxR)*rscale, ox+(b.x/rc.maxR)*rscale, oy+(b.y/rc.maxR)*rscale, signalFrac, i);
+          rosetteSegs.push({
+            x0:ox+(a.x/rc.maxR)*rscale, y0:oy+(a.y/rc.maxR)*rscale,
+            x1:ox+(b.x/rc.maxR)*rscale, y1:oy+(b.y/rc.maxR)*rscale,
+            t:signalFrac, lw
+          });
         }
       });
+      strokeSegBatch(ctx, rosetteSegs, i=>colorFor(state.appearance.palette, rosetteSegs[i].t, i, state.appearance.solidColor), i=>rosetteSegs[i].lw);
       hudExtra = `preset:${state.lsys.preset} · depth:${depth} · branch tips:${allTips.length} · rosettes:${tips.length}`;
     }
   },
@@ -632,7 +668,7 @@ const RECIPES = [
       {key:'fillAlpha', bank:'vor', label:'Fill opacity', min:0.15, max:1, step:0.02, curated:[0.4,0.8]}
     ],
     presets:[
-      {name:'Curve Cells', vor:{seedSource:'roulette',seedCount:70,colorBy:'index'}, roulette:{n0:140,n1:128,n2:54,n3:45,h:0.42,p:0.75,phi:0}},
+      {name:'Curve Cells', vor:{seedSource:'roulette',seedCount:70,colorBy:'index'}, roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}},
       {name:'Orbit Cells', vor:{seedSource:'fractal',seedCount:90,colorBy:'escape'}, fractal:{mode:'julia',juliaC:[0.285,0.01]}},
       {name:'Branch Cells', vor:{seedSource:'lsystem',seedCount:80,colorBy:'index'}, lsys:{preset:'plant',depth:5,angle:22.5}}
     ],
@@ -640,7 +676,7 @@ const RECIPES = [
       const src = state.vor.seedSource;
       let raw=[], vals=[];
       if(src==='roulette'){
-        const rc = rouletteCurve(state.roulette, 400, null);
+        const rc = rouletteCurve(resolveRoulette(state.roulette), 400, null);
         const step = Math.max(1, Math.floor(rc.pts.length/state.vor.seedCount));
         for(let i=0;i<rc.pts.length;i+=step){ const p=rc.pts[i]; raw.push({x:p.x/rc.maxR,y:p.y/rc.maxR}); vals.push(p.frac); }
       } else if(src==='fractal'){
@@ -690,32 +726,38 @@ const RECIPES = [
       {key:'ringTwist', bank:'mandala', label:'Ring twist °', min:0, max:60, step:1, curated:[0,30]}
     ],
     presets:[
-      {name:'Nine Ring', roulette:{n0:60,n1:47,n2:19,n3:12,h:0.55,p:0.85,phi:0}, mandala:{rings:5,symmetry:9,scaleDecay:0.75,ringTwist:8}},
-      {name:'Twelvefold', roulette:{n0:84,n1:65,n2:26,n3:17,h:0.4,p:0.7,phi:20}, mandala:{rings:4,symmetry:12,scaleDecay:0.68,ringTwist:15}},
-      {name:'Pentaspiral', roulette:{n0:45,n1:34,n2:13,n3:8,h:0.65,p:0.9,phi:0}, mandala:{rings:7,symmetry:5,scaleDecay:0.82,ringTwist:22}}
+      {name:'Nine Ring', roulette:{family:'Hexrose',h:0.55,p:0.85,detail:1}, mandala:{rings:5,symmetry:9,scaleDecay:0.75,ringTwist:8}},
+      {name:'Twelvefold', roulette:{family:'Twelvefold',h:0.4,p:0.7,detail:1}, mandala:{rings:4,symmetry:12,scaleDecay:0.68,ringTwist:15}},
+      {name:'Pentaspiral', roulette:{family:'Pentaspiral',h:0.65,p:0.9,detail:1}, mandala:{rings:7,symmetry:5,scaleDecay:0.82,ringTwist:22}}
     ],
     draw(ctx,W,H,cx,cy,scale){
       const rings = Math.round(state.mandala.rings), sym = Math.round(state.mandala.symmetry);
       const motifPts = clamp(Math.floor(4500/Math.max(1,rings*sym)), 16, 260);
-      const rc = rouletteCurve(state.roulette, null, null, motifPts);
+      const rc = rouletteCurve(resolveRoulette(state.roulette), null, null, motifPts);
+      // accumulate every ring-copy's segments into one flat list for a
+      // single ~240-chunk batched stroke pass, same as the branch recipe
+      const motifSegs = [];
       for(let r=0;r<rings;r++){
         const ringScale = scale*0.42*Math.pow(state.mandala.scaleDecay, r);
         const ringRadius = scale*0.36*(r/Math.max(1,rings-1));
+        const lw = Math.max(0.4, state.appearance.lineWidth*(1-r/rings*0.6));
         for(let k=0;k<sym;k++){
           const baseAng = (2*Math.PI*k/sym) + r*state.mandala.ringTwist*Math.PI/180;
           const ox = cx + Math.cos(baseAng)*ringRadius, oy = cy + Math.sin(baseAng)*ringRadius;
           const tFrac = (r*sym+k)/(rings*sym);
-          ctx.lineWidth = Math.max(0.4, state.appearance.lineWidth*(1-r/rings*0.6));
+          const cosA=Math.cos(baseAng), sinA=Math.sin(baseAng);
           for(let j=1;j<rc.pts.length;j++){
             const a=rc.pts[j-1], b=rc.pts[j];
             const ax = a.x/rc.maxR, ay=a.y/rc.maxR, bx=b.x/rc.maxR, by=b.y/rc.maxR;
-            const cosA=Math.cos(baseAng), sinA=Math.sin(baseAng);
-            const p0x = ox + (ax*cosA-ay*sinA)*ringScale, p0y = oy + (ax*sinA+ay*cosA)*ringScale;
-            const p1x = ox + (bx*cosA-by*sinA)*ringScale, p1y = oy + (bx*sinA+by*cosA)*ringScale;
-            strokeSeg(ctx, p0x,p0y,p1x,p1y, tFrac, j);
+            motifSegs.push({
+              x0: ox + (ax*cosA-ay*sinA)*ringScale, y0: oy + (ax*sinA+ay*cosA)*ringScale,
+              x1: ox + (bx*cosA-by*sinA)*ringScale, y1: oy + (bx*sinA+by*cosA)*ringScale,
+              t:tFrac, lw
+            });
           }
         }
       }
+      strokeSegBatch(ctx, motifSegs, i=>colorFor(state.appearance.palette, motifSegs[i].t, i, state.appearance.solidColor), i=>motifSegs[i].lw);
       hudExtra = `rings:${rings} × symmetry:${sym} = ${rings*sym} motifs`;
     }
   }
@@ -740,11 +782,32 @@ function resize(){
 }
 window.addEventListener('resize', ()=>{ resize(); render(); });
 
-function strokeSeg(ctx,x0,y0,x1,y1,t,idx){
-  const col = colorFor(state.appearance.palette, t, idx, state.appearance.solidColor);
-  ctx.strokeStyle = col;
-  if(state.appearance.glow){ ctx.shadowColor = col; ctx.shadowBlur = 6; } else { ctx.shadowBlur = 0; }
-  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+// Batch any number of segments into a fixed ~240 stroke() calls, regardless
+// of total count. One stroke() per segment (with shadowBlur re-set each
+// time) is the exact bug already found and fixed in this family's
+// lsystem-widget ("Fix severe rendering slowdown on large systems") and
+// voronoi-widget ("Fix drag/slider responsiveness with a coalesced
+// recompute") — a recipe with thousands of segments meant thousands of
+// individual shadowBlur'd draw calls per frame. Ported here verbatim
+// (same constant, same approach) rather than re-deriving it.
+const RENDER_CHUNKS = 240;
+function strokeSegBatch(ctx, segs, colorAt, widthAt){
+  const n = segs.length;
+  if(!n) return;
+  const chunkCount = Math.min(RENDER_CHUNKS, n);
+  const perChunk = Math.max(1, Math.ceil(n/chunkCount));
+  const glow = state.appearance.glow;
+  for(let c=0; c*perChunk<n; c++){
+    const start = c*perChunk, end = Math.min(n, start+perChunk);
+    const mid = start + ((end-start)>>1);
+    const col = colorAt(mid);
+    ctx.strokeStyle = col;
+    if(glow){ ctx.shadowColor = col; ctx.shadowBlur = 6; } else { ctx.shadowBlur = 0; }
+    if(widthAt) ctx.lineWidth = widthAt(mid);
+    ctx.beginPath();
+    for(let i=start;i<end;i++){ const s=segs[i]; ctx.moveTo(s.x0,s.y0); ctx.lineTo(s.x1,s.y1); }
+    ctx.stroke();
+  }
 }
 
 let lastRenderMs = 0;
@@ -769,6 +832,22 @@ function render(){
   ctx.shadowBlur=0;
   lastRenderMs = performance.now()-t0;
   updateHud(rec);
+}
+
+// Coalesces rapid-fire slider 'input' events into at most one render() per
+// animation frame — same fix as lsystem-widget's "Fix severe rendering
+// slowdown on large systems" and voronoi-widget's "Fix drag/slider
+// responsiveness with a coalesced recompute": without this, dragging a
+// slider fires a full synchronous render() on every raw input tick (each
+// one potentially doing real work — L-system regeneration, Voronoi
+// half-plane clipping, escape-time sampling), which is what makes
+// dragging feel frozen. The slider's own label text still updates
+// synchronously in fieldControl() so the number feels immediate.
+let renderRafPending = false;
+function scheduleRender(){
+  if(renderRafPending) return;
+  renderRafPending = true;
+  requestAnimationFrame(()=>{ renderRafPending=false; render(); });
 }
 
 function updateHud(rec){
@@ -813,13 +892,10 @@ function applyPreset(rec, p){
 
 const GROUP_FIELDS = {
   roulette:[
-    {key:'n0',label:'Ring teeth',min:8,max:300,step:1,curated:[24,150]},
-    {key:'n1',label:'Wheel teeth',min:6,max:260,step:1,curated:[18,120]},
-    {key:'n2',label:'Hoop teeth',min:4,max:140,step:1,curated:[8,55]},
-    {key:'n3',label:'Pen-wheel teeth',min:2,max:90,step:1,curated:[4,32]},
-    {key:'h',label:'Hoop offset',min:0.05,max:0.97,step:0.01,curated:[0.2,0.75]},
-    {key:'p',label:'Pen radius',min:0.1,max:1,step:0.01,curated:[0.45,0.95]},
-    {key:'phi',label:'Pen phase °',min:0,max:360,step:1}
+    {key:'family',label:'Shape family',select:ROULETTE_FAMILIES.map(f=>f.name)},
+    {key:'h',label:'Hoop depth',min:0.15,max:0.8,step:0.01,curated:[0.2,0.75]},
+    {key:'p',label:'Pen reach',min:0.4,max:1,step:0.01,curated:[0.45,0.95]},
+    {key:'detail',label:'Detail',min:0.6,max:1.3,step:0.02,curated:[0.7,1.2]}
   ],
   fractal:[
     {key:'mode',label:'Fractal mode',select:['mandelbrot','julia','burningship','tricorn']},
@@ -869,7 +945,7 @@ function fieldControl(bank, f){
   const val = state[bank][f.key];
   wrap.innerHTML = `<b>${f.label}</b><span class="val mono">${fmtVal(val)}</span><input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}">`;
   const input = wrap.querySelector('input');
-  input.oninput = e=>{ state[bank][f.key]=parseFloat(e.target.value); wrap.querySelector('.val').textContent=fmtVal(state[bank][f.key]); render(); };
+  input.oninput = e=>{ state[bank][f.key]=parseFloat(e.target.value); wrap.querySelector('.val').textContent=fmtVal(state[bank][f.key]); scheduleRender(); };
   return wrap;
 }
 function fmtVal(v){ return (Math.round(v*100)/100).toString(); }
@@ -877,12 +953,12 @@ function fmtVal(v){ return (Math.round(v*100)/100).toString(); }
 /* ---- appearance controls ---- */
 $('#paletteSelect').value = state.appearance.palette;
 $('#paletteSelect').onchange = e=>{ state.appearance.palette=+e.target.value; $('#solidColorRow').style.display = state.appearance.palette===7?'block':'none'; render(); };
-$('#solidColor').oninput = e=>{ state.appearance.solidColor=e.target.value; render(); };
-$('#lineWidth').oninput = e=>{ state.appearance.lineWidth=+e.target.value; $('#lineWidthVal').textContent=e.target.value; render(); };
+$('#solidColor').oninput = e=>{ state.appearance.solidColor=e.target.value; scheduleRender(); };
+$('#lineWidth').oninput = e=>{ state.appearance.lineWidth=+e.target.value; $('#lineWidthVal').textContent=e.target.value; scheduleRender(); };
 $('#lineWidthVal').textContent = state.appearance.lineWidth;
 $('#glowToggle').checked = state.appearance.glow;
 $('#glowToggle').onchange = e=>{ state.appearance.glow=e.target.checked; render(); };
-$('#trail').oninput = e=>{ state.appearance.trail=+e.target.value; $('#trailVal').textContent=e.target.value; render(); };
+$('#trail').oninput = e=>{ state.appearance.trail=+e.target.value; $('#trailVal').textContent=e.target.value; scheduleRender(); };
 $('#trailVal').textContent = state.appearance.trail;
 
 /* ---- panel open/close ---- */
@@ -946,10 +1022,6 @@ function curatedRandomize(recOnly){
     const [lo,hi] = k.curated || [k.min,k.max];
     state[k.bank][k.key] = round2(rand(lo,hi));
   });
-  // keep roulette gear counts as integers and coprime-ish for interesting periods
-  if(state.roulette){
-    ['n0','n1','n2','n3'].forEach(k=>{ if(GROUP_FIELDS.roulette.some(f=>f.key===k)) state.roulette[k]=Math.round(state.roulette[k]); });
-  }
   if(state.lsys) state.lsys.depth = Math.round(state.lsys.depth);
   if(state.mandala){ state.mandala.rings=Math.round(state.mandala.rings); state.mandala.symmetry=Math.round(state.mandala.symmetry); }
   if(state.vor) state.vor.seedCount = Math.round(state.vor.seedCount);
@@ -967,14 +1039,14 @@ $('#resetBtn').onclick = ()=>{ const rec=RECIPES.find(r=>r.id===state.recipe); a
    ========================================================================= */
 function renderMath(){
   const rec = RECIPES.find(r=>r.id===state.recipe);
-  const R = state.roulette, F = state.fractal;
+  const R = resolveRoulette(state.roulette), F = state.fractal;
   let body = `
   <h3>What problem is Chameleon solving?</h3>
   <p>Four sibling widgets (spirograph-studio, fractal-widget, lsystem-widget, voronoi-widget) each render one generative system well. Chameleon asks a different question: what happens if one system's <em>output</em> is fed into another system's <em>formula</em> as a live parameter, instead of drawing them as separate transparent layers? The four recipes below are four different answers.</p>
 
   <h3>Glossary</h3>
   <dl>
-    <dt>Roulette curve</dt><dd> — a point traced by a "pen" fixed to a wheel that rolls inside a hoop, itself rolling inside a fixed ring (a second-order epicyclic/roulette construction, not a plain hypotrochoid).</dd><br>
+    <dt>Roulette curve</dt><dd> — a point traced by a "pen" fixed to a wheel that rolls inside a hoop, itself rolling inside a fixed ring (a second-order epicyclic/roulette construction, not a plain hypotrochoid). The outer ring:wheel gear ratio (n0:n1) mostly sets the overall symmetry count; Chameleon exposes that as a curated "Shape family" picker instead of raw tooth-count sliders, since most tooth-count combinations render as an undersampled scribble rather than a clean loop (see the period-closure gotcha in the KB) — the "Detail" slider still scales the inner hoop/pen-wheel gears continuously for real variety.</dd><br>
     <dt>Escape time</dt><dd> — for a point c in the complex plane, how many iterations of z&#8594;z&sup2;+c (or a sign-folded variant) it takes before |z| shoots past a bailout radius; points that never escape are "inside" the set.</dd><br>
     <dt>Production rule</dt><dd> — a find/replace rule (e.g. F&#8594;F+F-F-F+F) applied to a string over several generations; a turtle then walks the resulting string to draw it.</dd><br>
     <dt>Voronoi cell</dt><dd> — the region of the plane closer to one seed point than to any other seed.</dd>
@@ -992,7 +1064,7 @@ escape field:   z&#8594;z&sup2;+c, smoothN = n+1-log(log|z|/log(B))/ln2, e = smo
 coupling:       scale(t) = 1 + strength&middot;(e(x(t),y(t)) - 0.35)&middot;2
 final point:    (x,y) = base + penVector &middot; scale(t)</div>
     <p><b>Why a scale on the pen vector, not the whole curve?</b> Scaling the whole curve just zooms it uniformly — boring. Scaling only the pen vector keeps the underlying gear ratio (and therefore the roulette's symmetry count) intact while letting the escape-time field visibly pinch and bulge the loops, so you can still see "it's a roulette" even as the fractal bends it.</p>
-    <p>Current numbers: n0=${R.n0}, n1=${R.n1}, n2=${R.n2}, n3=${R.n3}, h=${R.h}, p=${R.p}, mode=${F.mode}, strength=${state.warp.strength}.</p>
+    <p>Current numbers: family="${state.roulette.family}" (n0=${R.n0}, n1=${R.n1}, n2=${R.n2}, n3=${R.n3}), h=${R.h}, p=${R.p}, mode=${F.mode}, strength=${state.warp.strength}.</p>
     <div class="tie">Try it: open Settings &#8594; Fractal field &#8594; switch mode from Mandelbrot to Julia. The loop shapes reorganize immediately, because escape(x,y) is now sampling a completely different iteration (z fixed at the sample point, c fixed at the Julia constant) at the exact same (x,y) locations.</div>`;
   } else if(rec.id==='branch'){
     body += `
