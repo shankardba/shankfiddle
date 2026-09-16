@@ -14,12 +14,13 @@
 
   Diagrams here are reworkings of classic TikZ/LaTeX examples (texample.net
   and similar) into interactive, tweakable widgets. Architecture: a DIAGRAMS
-  registry (see the "MESIF" entry below) drives the "Diagram" dropdown in
-  the settings panel, mirroring the fractal-widget's Algorithm select. Each
-  diagram supplies its own states, transition edges, a small read/write
-  simulation, and math-panel HTML — so a second, third, fourth diagram
-  (MESI, MOESI, a TCP state machine, whatever's next) slots in by pushing
-  another entry, no other code changes needed.
+  registry drives the "Diagram" dropdown, mirroring the fractal-widget's
+  Algorithm select. Each entry has a kind: 'automaton' (MESIF — states,
+  transition edges, a read/write cache simulation) or 'generative' (the
+  rest — a params/toggles spec that builds its own Parameters/Style UI, plus
+  a draw(g, params, toggles, colors, progress) function). Every entry
+  supplies its own math-panel HTML. A new diagram slots in by pushing
+  another entry into DIAGRAMS — no other code changes needed. See README.md.
 -->
 <html lang="en">
 <head>
@@ -276,15 +277,9 @@
     </div>
 
     <div class="section">
-      <div class="label">Simulation</div>
-      <div class="slider-row">
-        <div style="flex:1;">
-          <div class="slider-label"><span>Caches</span><span class="val" id="cacheCountVal">3</span></div>
-          <input type="range" id="cacheCountSlider" min="2" max="5" step="1" value="3">
-        </div>
-      </div>
-      <div class="toggle-row" style="margin-top:14px;">
-        <div class="label" style="margin:0;">Auto-play</div>
+      <div class="label">Animate</div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;" id="autoplayLabel">Auto-play</div>
         <div class="switch" id="autoplayToggle"></div>
       </div>
       <div class="slider-row">
@@ -293,8 +288,29 @@
           <input type="range" id="playSpeedSlider" min="0.3" max="3" step="0.1" value="1">
         </div>
       </div>
+    </div>
+
+    <div class="section" id="simulationSection">
+      <div class="label">Simulation</div>
+      <div class="slider-row">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Caches</span><span class="val" id="cacheCountVal">3</span></div>
+          <input type="range" id="cacheCountSlider" min="2" max="5" step="1" value="3">
+        </div>
+      </div>
       <button class="btn btn-accent" id="randomizeSeqBtn">Fire random sequence</button>
       <button class="btn" id="resetSimBtn">Reset simulation</button>
+    </div>
+
+    <div class="section" id="paramsSection">
+      <div id="presetRow" style="margin-bottom:16px;">
+        <div class="label">Preset</div>
+        <select id="presetSelect"></select>
+      </div>
+      <div class="label">Parameters</div>
+      <div id="paramsList"></div>
+      <button class="btn btn-accent" id="randomizeParamsBtn">Randomize parameters</button>
+      <button class="btn" id="resetParamsBtn">Reset parameters</button>
     </div>
 
     <div class="section">
@@ -311,7 +327,7 @@
           <input type="range" id="rotationSlider" min="0" max="360" step="1" value="0">
         </div>
       </div>
-      <div class="slider-row">
+      <div class="slider-row" id="curvatureRow">
         <div style="flex:1;">
           <div class="slider-label"><span>Arrow curvature</span><span class="val" id="curveVal">0.30</span></div>
           <input type="range" id="curveSlider" min="0" max="0.7" step="0.02" value="0.3">
@@ -332,7 +348,7 @@
       <button class="btn btn-accent" id="randomizePaletteBtn">Randomize palette</button>
     </div>
 
-    <div class="section">
+    <div class="section" id="detailAutomatonSection">
       <div class="label">Detail</div>
       <div class="toggle-row">
         <div class="label" style="margin:0;">Edge labels</div>
@@ -342,6 +358,11 @@
         <div class="label" style="margin:0;">State badges</div>
         <div class="switch on" id="badgesToggle"></div>
       </div>
+    </div>
+
+    <div class="section" id="toggleSection">
+      <div class="label">Style</div>
+      <div id="toggleList"></div>
     </div>
 
     <div class="section">
@@ -377,7 +398,9 @@
   var DIAGRAMS = [
     {
       id: 'mesif',
+      kind: 'automaton',
       name: 'MESIF · Cache Coherence',
+      hint: 'Read / write each cache and watch the state diagram react<br>Tap the gear for caches, shape &amp; color · tap ∿ for the math',
       order: ['M','E','S','I','F'],
       stateNames: {M:'Modified', E:'Exclusive', S:'Shared', I:'Invalid', F:'Forward'},
       edges: [
@@ -540,6 +563,1060 @@
         'States, transitions, the Forward-uniqueness rule, the MOESI comparison, and the ' +
         'Nehalem/CSI/QPI history are summarized from ' +
         '<a href="https://en.wikipedia.org/wiki/MESIF_protocol" target="_blank" rel="noopener">Wikipedia — MESIF protocol</a>.</div>'
+    },
+    {
+      id: 'polygon-spiral',
+      kind: 'generative',
+      name: 'Rotating Polygon Spiral',
+      hint: 'Drag Sides, Iterations or Chase fraction and watch the spiral rebuild live<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'sides', label:'Sides', min:3, max:10, step:1, default:4},
+        {key:'iterations', label:'Iterations', min:4, max:70, step:1, default:26},
+        {key:'chase', label:'Chase fraction', min:0.03, max:0.4, step:0.01, default:0.12}
+      ],
+      toggles: [
+        {key:'fill', label:'Filled', default:true},
+        {key:'alternate', label:'Alternate 2 colors', default:false}
+      ],
+      presets: [
+        {name:'Hexagon Whirl', values:{sides:6, iterations:32, chase:0.10}, toggles:{fill:true, alternate:false}},
+        {name:'Square Snap', values:{sides:4, iterations:16, chase:0.28}, toggles:{fill:true, alternate:true}},
+        {name:'Triangle Vortex', values:{sides:3, iterations:44, chase:0.15}, toggles:{fill:false, alternate:false}},
+        {name:'Nonagon Bloom', values:{sides:9, iterations:55, chase:0.06}, toggles:{fill:true, alternate:false}},
+        {name:'Chaos Chase', values:{sides:5, iterations:60, chase:0.36}, toggles:{fill:true, alternate:true}}
+      ],
+      liveFact: function(P){
+        var n = Math.round(P.sides), t = P.chase;
+        var omega = 2*Math.PI/n;
+        var lr = (1-t) + t*Math.cos(omega), li = t*Math.sin(omega);
+        var r = Math.sqrt(lr*lr+li*li), theta = Math.atan2(li,lr)*180/Math.PI;
+        return 'Each step scales by ×'+r.toFixed(3)+' and turns '+theta.toFixed(2)+'° — a fixed spiral step, repeated.';
+      },
+      draw: function(g, P, T, C, progress){
+        var n = Math.max(3, Math.round(P.sides));
+        var iterations = Math.max(1, Math.round(P.iterations));
+        var chase = P.chase;
+        var R = 185;
+        var visible = Math.max(1, Math.round(iterations*progress));
+        var verts = [];
+        for (var k=0;k<n;k++){
+          var a = (-90 + k*360/n) * Math.PI/180;
+          verts.push([R*Math.cos(a), R*Math.sin(a)]);
+        }
+        var filled = T.fill !== false;
+        for (var i=0;i<visible;i++){
+          var d = '';
+          for (var k2=0;k2<n;k2++){ d += (k2===0?'M ':'L ') + verts[k2][0].toFixed(2)+' '+verts[k2][1].toFixed(2)+' '; }
+          d += 'Z';
+          var color = T.alternate ? C[i%2 % C.length] : lerpPalette(C, i/(iterations-1||1));
+          g.appendChild(el('path', {d:d, fill: filled?color:'none', stroke:color, 'stroke-width':'1.2', 'fill-opacity': filled?'0.82':'0'}));
+          var nv = [];
+          for (var k3=0;k3<n;k3++){
+            var v1 = verts[k3], v2 = verts[(k3+1)%n];
+            nv.push([ v1[0] + (v2[0]-v1[0])*chase, v1[1] + (v2[1]-v1[1])*chase ]);
+          }
+          verts = nv;
+        }
+      },
+      mathHTML:
+        '<h2>Rotating Polygon Spiral</h2>' +
+        '<div class="sub">Nested, shrinking, rotating polygons from one repeated step</div>' +
+        '<div class="desc">Take any regular polygon. Move every vertex a fixed fraction of the way ' +
+        'toward the next vertex, all at once. Draw the new, smaller polygon that results. Now do it ' +
+        'again, and again. A handful of classic TikZ gallery pieces — rotated squares, a rotated ' +
+        'triangle, and rotated pentagons/hexagons — are all this exact same construction with two ' +
+        'numbers changed: how many sides, and how big a bite each step takes.</div>' +
+
+        '<div class="section-head">1. The two knobs</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">Sides (n)</span> how many vertices the polygon has</div>' +
+        '<div><span class="k">Chase fraction (t)</span> how far each vertex jumps toward the next one, per step — 0 = no movement, 0.5 = jumps exactly to the midpoint</div>' +
+        '</div></div>' +
+
+        '<div class="section-head">2. Why it spirals</div>' +
+        '<div class="desc">This is the classic "pursuit polygon" problem — imagine n bugs at the ' +
+        'corners of a polygon, each one always crawling straight toward the bug ahead of it. Every ' +
+        'bug\'s path curves inward and the whole formation rotates as it shrinks, because the rule ' +
+        'applied to each vertex is identical: a small step toward the next corner. Applying the ' +
+        'exact same shrink-and-turn operation over and over, to every point at once, is precisely ' +
+        'how a logarithmic (equiangular) spiral is built — one polygon at a time here, instead of a ' +
+        'smooth curve.</div>' +
+
+        '<div class="section-head">3. The full math</div>' +
+        '<div class="desc">Place the polygon\'s vertices as complex numbers on a circle: vertex k is ' +
+        'V<sub>k</sub> = R·e<sup>i(2πk/n)</sup>, so the next vertex is V<sub>k</sub> rotated by ' +
+        'ω = 2π/n. The chase step replaces every V<sub>k</sub> with (1−t)V<sub>k</sub> + t·V<sub>k+1</sub> ' +
+        '= V<sub>k</sub> · λ, where <b>λ = (1−t) + t·e<sup>iω</sup></b> is the same complex number for ' +
+        'every vertex. Multiplying by one fixed complex number is a scale by |λ| and a turn by ' +
+        'arg(λ) — so after k steps the polygon has shrunk by |λ|<sup>k</sup> and rotated by k·arg(λ). ' +
+        'That is the entire mechanism, in one multiplication.</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">Shrink factor</span> r = |λ| = √((1−t+t·cos ω)² + (t·sin ω)²)</div>' +
+        '<div><span class="k">Turn per step</span> θ = arg(λ) = atan2(t·sin ω, 1−t+t·cos ω)</div>' +
+        '</div></div>' +
+
+        '<div class="section-head">4. The gallery family</div>' +
+        '<div class="table-note">Same formula, three classic examples — only n and t differ.</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th>Source</th><th>n</th><th>t</th><th>r / step</th><th>θ / step</th></tr>' +
+        '<tr><td>Rotated triangle</td><td>3</td><td>0.15</td><td>0.786</td><td>9.5°</td></tr>' +
+        '<tr><td>Rotated squares</td><td>4</td><td>0.75</td><td>0.791</td><td>71.6°</td></tr>' +
+        '<tr><td>Rotated hexagon</td><td>6</td><td>0.10</td><td>0.954</td><td>5.2°</td></tr>' +
+        '</table>' +
+        '<div class="eq-note">A small t creeps inward with a gentle twist (hexagon); a large t — ' +
+        'TikZ\'s built-in "near end" ≈ 0.75 — leaps most of the way to the next corner each time, so ' +
+        'the square spiral snaps through a near-right-angle turn every step instead of gliding.</div>' +
+
+        '<div class="section-head">5. Where it shows up</div>' +
+        '<div class="desc">The continuous version of this same rule (n bugs, each always heading ' +
+        'straight at the next) is a staple recreational-math puzzle usually called the "mice problem" ' +
+        'or "pursuit curve," discussed by Martin Gardner among others. The same shrink-and-turn ' +
+        'recipe — apply one fixed transformation, repeatedly — is also how logarithmic spirals form ' +
+        'in nautilus shells, spiral galaxies, and hurricane bands, just with a continuous rotation ' +
+        'instead of polygon-sized jumps.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Slide Sides from 3 up to 8 to change how many spiral arms appear. Then ' +
+        'push Chase fraction up toward 0.4 with Iterations high — the polygon collapses toward the ' +
+        'center in only a handful of visible steps, exactly as the shrink factor r above predicts.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/rotated-squares/" target="_blank" rel="noopener">texample.net/rotated-squares</a>, ' +
+        '<a href="https://texample.net/rotated-triangle/" target="_blank" rel="noopener">rotated-triangle</a>, and ' +
+        '<a href="https://texample.net/rotated-polygons/" target="_blank" rel="noopener">rotated-polygons</a>.</div>'
+    },
+    {
+      id: 'snowflake',
+      kind: 'generative',
+      name: 'L-System Snowflake',
+      hint: 'Change the branch rule, angle or symmetry to grow a new crystal<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'order', label:'Iterations', min:1, max:5, step:1, default:3},
+        {key:'angle', label:'Branch angle', min:10, max:45, step:1, default:25, suffix:'°'},
+        {key:'arms', label:'Symmetry (arms)', min:3, max:12, step:1, default:6},
+        {key:'style', label:'Branch rule', type:'select', default:1, options:[
+          {value:1, label:'Classic — FF[+F][-F]'},
+          {value:2, label:'Bushy — F[+F]F[-F]F'},
+          {value:3, label:'Dense fractal plant'}
+        ]}
+      ],
+      toggles: [
+        {key:'gradient', label:'Rainbow arms', default:true},
+        {key:'mirror', label:'Mirror alt. arms', default:false}
+      ],
+      presets: [
+        {name:'Classic Crystal', values:{order:3, angle:25, arms:6, style:1}, toggles:{gradient:true, mirror:false}},
+        {name:'Frost Fern', values:{order:4, angle:20, arms:6, style:2}, toggles:{gradient:true, mirror:true}},
+        {name:'Deep Crystal', values:{order:4, angle:25, arms:6, style:3}, toggles:{gradient:false, mirror:false}},
+        {name:'Pinwheel Bloom', values:{order:3, angle:35, arms:9, style:1}, toggles:{gradient:true, mirror:true}},
+        {name:'Aurora Lace', values:{order:2, angle:15, arms:12, style:2}, toggles:{gradient:true, mirror:false}}
+      ],
+      liveFact: function(P){
+        var n = Math.round(P.arms);
+        return n === 6 ? 'Six-fold — the only symmetry real ice crystals actually form.' :
+          n+'-fold symmetry — a valid fractal, but not how water ice actually crystallizes (always 6).';
+      },
+      draw: function(g, P, T, C, progress){
+        var order = Math.max(1, Math.min(5, Math.round(P.order)));
+        var angle = P.angle;
+        var arms = Math.max(2, Math.round(P.arms));
+        var rules = {1:'FF[+F][-F]', 2:'F[+F]F[-F]F', 3:'FF+[+F-F-F]-[-F+F+F]'};
+        var rule = rules[Math.round(P.style)] || rules[1];
+        var str = generateLSystemString('F', rule, order);
+        var len = 165 * Math.pow(0.54, order-1);
+        var armPathD = drawLSystemArm(str, len, angle);
+        var visibleArms = Math.max(1, Math.round(arms*progress));
+        for (var k=0;k<visibleArms;k++){
+          var rot = k*360/arms;
+          var color = T.gradient !== false ? lerpPalette(C, k/(arms-1||1)) : C[0];
+          var mirror = (T.mirror && k%2===1) ? ' scale(1,-1)' : '';
+          g.appendChild(el('path', {d:armPathD, fill:'none', stroke:color, 'stroke-width':'2.2', 'stroke-linecap':'round', 'stroke-linejoin':'round', transform:'rotate('+rot+')'+mirror}));
+        }
+      },
+      mathHTML:
+        '<h2>L-System Snowflake</h2>' +
+        '<div class="sub">A fractal arm, copied around a center — string-rewriting made visible</div>' +
+        '<div class="desc">A Lindenmayer system (L-system) grows a shape by repeatedly rewriting a ' +
+        'string of symbols, then handing that string to a "turtle" that draws it: move forward, turn ' +
+        'left, turn right, remember a branch point, return to it. One short branching arm, drawn ' +
+        'once and then copied at even rotations around a center, is all it takes to look like a ' +
+        'snowflake.</div>' +
+
+        '<div class="section-head">1. Symbols the turtle understands</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">F</span> move forward, drawing a line</div>' +
+        '<div><span class="k">+</span> turn left by the branch angle</div>' +
+        '<div><span class="k">-</span> turn right by the branch angle</div>' +
+        '<div><span class="k">[ ]</span> remember this spot and heading, draw a side branch, then jump back</div>' +
+        '</div></div>' +
+
+        '<div class="section-head">2. Why repeating a rule looks organic</div>' +
+        '<div class="desc">The rule F → FF[+F][-F] means: everywhere the string currently says ' +
+        '"move forward," replace that with "move forward twice, sprouting a left branch and a right ' +
+        'branch along the way." Applied once to the single-symbol start "F", it makes ' +
+        '"FF[+F][-F]". Applied again, every F in <i>that</i> string — including the ones inside the ' +
+        'new branches — gets rewritten the same way. Each pass roughly quadruples the amount of ' +
+        'detail, which is exactly why raising Iterations from 2 to 4 turns a simple twig into ' +
+        'something that reads as intricate frost.</div>' +
+
+        '<div class="section-head">3. Where the 6-fold symmetry actually comes from</div>' +
+        '<div class="desc">The L-system itself has no idea it is part of a snowflake — it only knows ' +
+        'how to grow one arm. The symmetry is bolted on afterward, by a separate, much simpler rule: ' +
+        'draw the arm, rotate the whole drawing by 360°/n, draw it again, and repeat n times. That is ' +
+        'the Symmetry slider above — it has nothing to do with the branching rule, which is why you ' +
+        'can freely mix any branch style with any arm count.</div>' +
+
+        '<div class="section-head">4. Two different reasons for the same number 6</div>' +
+        '<div class="table-note">The math here can draw any fold count. Real ice cannot.</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th></th><th>Reason for its symmetry</th></tr>' +
+        '<tr><td>This diagram</td><td>Whatever Symmetry you set — a drawing choice, freely tunable</td></tr>' +
+        '<tr><td>A real snow crystal</td><td>Fixed at 6, forced by the hexagonal geometry of how water molecules hydrogen-bond into ice</td></tr>' +
+        '</table>' +
+
+        '<div class="section-head">5. Where it\'s used</div>' +
+        '<div class="desc">Aristid Lindenmayer introduced L-systems in 1968 to model the cell-division ' +
+        'growth of algae, not graphics — the string-rewriting idea came from biology first. Today the ' +
+        'same technique is a standard tool for procedurally generating trees, ferns, and other plants ' +
+        'in computer graphics and games. The 6-fold symmetry of real snow crystals was described as ' +
+        'early as 1611 by Johannes Kepler in a short essay, <i>De Nive Sexangula</i> ("On the ' +
+        'Six-Cornered Snowflake") — centuries before anyone knew why, in molecular terms, ice picks 6.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Set Symmetry to 6 for an authentic-looking crystal, then to 5 or 8 to see a ' +
+        'perfectly valid fractal that no real snowflake could ever be. Switch Branch rule between the ' +
+        'three options at the same Iterations count to compare how differently the same rewriting ' +
+        'idea can grow.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/snowflakes/" target="_blank" rel="noopener">texample.net/snowflakes</a>, ' +
+        'which builds each arm from a <code>pgfdeclarelindenmayersystem</code> rule and rotates it ' +
+        'six ways.</div>'
+    },
+    {
+      id: 'phyllotaxis',
+      kind: 'generative',
+      name: 'Phyllotaxis · Sunflower Spiral',
+      hint: 'Nudge Divergence angle a few tenths of a degree off 137.5°<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'count', label:'Seed count', min:50, max:800, step:10, default:300},
+        {key:'divergence', label:'Divergence angle', min:120, max:145, step:0.1, default:137.5, suffix:'°'},
+        {key:'dotScale', label:'Seed size', min:0.3, max:1.4, step:0.05, default:0.9},
+        {key:'highlight', label:'Spiral highlight', type:'select', default:0, options:[
+          {value:0, label:'Off — rainbow growth order'},
+          {value:8, label:'8 spirals'},
+          {value:13, label:'13 spirals'},
+          {value:21, label:'21 spirals'},
+          {value:34, label:'34 spirals'}
+        ]}
+      ],
+      toggles: [],
+      presets: [
+        {name:'Golden Sunflower', values:{count:300, divergence:137.5, dotScale:0.9, highlight:0}},
+        {name:'13 & 21 Spirals', values:{count:500, divergence:137.5, dotScale:0.8, highlight:21}},
+        {name:'Rational Trap', values:{count:300, divergence:120, dotScale:0.9, highlight:0}},
+        {name:'Dense Field', values:{count:800, divergence:137.5, dotScale:0.55, highlight:0}},
+        {name:'Near Miss', values:{count:400, divergence:137.3, dotScale:0.85, highlight:0}}
+      ],
+      liveFact: function(P){
+        var off = Math.abs(P.divergence - 137.50776405);
+        if (off < 0.02) return 'Within 0.02° of the golden angle — the tightest, gap-free packing.';
+        return off.toFixed(2) + '° off the golden angle (137.508°) — watch the radiating gaps appear.';
+      },
+      draw: function(g, P, T, C, progress){
+        var count = Math.max(10, Math.round(P.count));
+        var divergence = P.divergence;
+        var dotScale = P.dotScale;
+        var highlightMod = Math.round(P.highlight);
+        var visible = Math.max(1, Math.round(count*progress));
+        var spacingUnit = 185/Math.sqrt(count);
+        var rad = Math.max(0.8, dotScale*spacingUnit*0.55);
+        for (var nIdx=0; nIdx<visible; nIdx++){
+          var ang = nIdx*divergence*Math.PI/180;
+          var r = 185*Math.sqrt(nIdx/count);
+          var x = r*Math.cos(ang), y = r*Math.sin(ang);
+          var color = highlightMod>0 ? C[nIdx%highlightMod % C.length] : lerpPalette(C, nIdx/(count-1||1));
+          g.appendChild(el('circle', {cx:x.toFixed(2), cy:y.toFixed(2), r:rad.toFixed(2), fill:color, opacity:'0.92'}));
+        }
+      },
+      mathHTML:
+        '<h2>Phyllotaxis · Sunflower Spiral</h2>' +
+        '<div class="sub">Why plants pack seeds using an irrational angle</div>' +
+        '<div class="desc">Sunflower heads, pinecone scales, and pineapple eyes all arrange ' +
+        'themselves the same mathematical way: each new seed appears at a fixed angle of rotation ' +
+        'from the last one, pushed slightly further from the center. One angle — and only that ' +
+        'angle — packs them with no wasted gaps and no seed ever sitting directly behind another.</div>' +
+
+        '<div class="section-head">1. Vogel\'s model</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">θ<sub>n</sub></span> = n × divergence angle — the direction of seed n</div>' +
+        '<div><span class="k">r<sub>n</sub></span> = c·√n — the distance of seed n from the center</div>' +
+        '</div></div>' +
+        '<div class="desc">The √n radius rule is not arbitrary: it is exactly what keeps every seed ' +
+        'occupying the same amount of area, since the area out to radius r grows as r² — so area ' +
+        'per seed stays constant only if r itself grows as √n.</div>' +
+
+        '<div class="section-head">2. Why 137.5° and not some other angle</div>' +
+        '<div class="desc">The divergence angle used by real plants is the <b>golden angle</b>, ' +
+        '360°/φ² ≈ 137.5078°, where φ = (1+√5)/2 is the golden ratio. Its defining property is being ' +
+        'the angle that is hardest to approximate with a simple fraction of a full turn — φ\'s ' +
+        'continued-fraction expansion is the slowest-converging one that exists ([1;1,1,1,…]). A ' +
+        'rational angle like 120° (exactly 1/3 of a turn) repeats after 3 seeds and draws 3 dead-' +
+        'straight radiating lines with a gap between each. An angle that is almost-but-not-quite ' +
+        'golden drifts slowly out of alignment, opening a visible seam of empty space as it grows. ' +
+        'Only the golden angle keeps every new seed landing in the largest remaining gap, forever.</div>' +
+
+        '<div class="section-head">3. The parastichy numbers</div>' +
+        '<div class="desc">Look at the packed spiral and your eye groups the seeds into two families ' +
+        'of interleaving spiral arms, called parastichies. Counting them always turns up a pair of ' +
+        'consecutive Fibonacci numbers — 8 and 13, or 13 and 21, or 21 and 34 depending on how large ' +
+        'the head is. That is not a coincidence: it falls directly out of how well small Fibonacci-' +
+        'ratio fractions approximate the golden angle. The Spiral highlight control above recolors ' +
+        'every k-th seed the same shade, making exactly k visible spiral arms pop out.</div>' +
+
+        '<div class="section-head">4. What happens off the golden angle</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th>Divergence</th><th>Result</th></tr>' +
+        '<tr><td>120° (= 1/3 turn)</td><td>Exactly 3 straight radiating arms, large empty wedges</td></tr>' +
+        '<tr><td>137° or 138°</td><td>Tight spiral at first, then a visible seam spirals slowly outward</td></tr>' +
+        '<tr><td>137.5078° (golden)</td><td>No systematic gap, ever — the densest possible packing</td></tr>' +
+        '</table>' +
+
+        '<div class="section-head">5. Where it\'s used</div>' +
+        '<div class="desc">Beyond sunflowers, pinecones, and Romanesco cauliflower, phyllotactic ' +
+        'spacing has inspired engineering designs — solar-panel arrays and antenna layouts that use ' +
+        'the golden angle to spread receivers or panels with minimal self-shadowing or interference, ' +
+        'for the identical packing reason it works in a seed head.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Drag Divergence angle just 1–2° away from 137.5° and watch the tight ' +
+        'spiral unravel into a visible pinwheel gap. Then switch Spiral highlight through 13 → 21 → ' +
+        '34 at a high Seed count to make each family of arms pop out in turn.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/phyllotaxy/" target="_blank" rel="noopener">texample.net/phyllotaxy</a> ' +
+        '(David Convent), implementing the model described by H. Vogel (1979) and summarized at ' +
+        '<a href="https://en.wikipedia.org/wiki/Phyllotaxis" target="_blank" rel="noopener">Wikipedia — Phyllotaxis</a>.</div>'
+    },
+    {
+      id: 'mandala',
+      kind: 'generative',
+      name: 'Mandala',
+      hint: 'Toggle Mirror to flip between a pinwheel and a symmetric flower<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'symmetry', label:'Symmetry (petals)', min:3, max:24, step:1, default:8},
+        {key:'layers', label:'Layers', min:1, max:8, step:1, default:5},
+        {key:'twist', label:'Twist per layer', min:0, max:45, step:1, default:0, suffix:'°'},
+        {key:'petalLen', label:'Petal length', min:0.4, max:1.4, step:0.05, default:0.9}
+      ],
+      toggles: [
+        {key:'mirror', label:'Mirror (adds reflections)', default:true},
+        {key:'centerMotif', label:'Center motif', default:true},
+        {key:'gradientLayers', label:'Gradient layers', default:true}
+      ],
+      presets: [
+        {name:'Classic Flower', values:{symmetry:8, layers:5, twist:0, petalLen:0.9}, toggles:{mirror:true, centerMotif:true, gradientLayers:true}},
+        {name:'Pinwheel Spin', values:{symmetry:10, layers:4, twist:0, petalLen:1.0}, toggles:{mirror:false, centerMotif:true, gradientLayers:true}},
+        {name:'Woven Lotus', values:{symmetry:12, layers:7, twist:15, petalLen:0.7}, toggles:{mirror:true, centerMotif:true, gradientLayers:true}},
+        {name:'Star Burst', values:{symmetry:16, layers:3, twist:0, petalLen:1.3}, toggles:{mirror:true, centerMotif:false, gradientLayers:false}},
+        {name:'Deep Bloom', values:{symmetry:6, layers:8, twist:8, petalLen:0.85}, toggles:{mirror:true, centerMotif:true, gradientLayers:true}}
+      ],
+      liveFact: function(P, T){
+        var n = Math.round(P.symmetry);
+        return T && T.mirror===false ?
+          ('Cyclic C'+n+' — '+n+' rotations only, no mirror lines (a pinwheel)') :
+          ('Dihedral D'+n+' — '+n+' rotations + '+n+' mirror lines ('+(2*n)+' symmetries total)');
+      },
+      draw: function(g, P, T, C, progress){
+        var symmetry = Math.max(2, Math.round(P.symmetry));
+        var layers = Math.max(1, Math.round(P.layers));
+        var twist = P.twist;
+        var petalLenRatio = P.petalLen;
+        var innerR = 22, outerR = 185;
+        var visibleLayers = Math.max(1, Math.round(layers*progress));
+        var spacing = (outerR-innerR)/layers;
+        for (var L=0; L<visibleLayers; L++){
+          var rBase = innerR + spacing*L;
+          var len = spacing*petalLenRatio;
+          var width = len*0.34;
+          var color = T.gradientLayers !== false ? lerpPalette(C, L/(layers-1||1)) : C[L%C.length];
+          var x0=rBase, x1=rBase+len*0.5, x2=rBase+len;
+          var d = 'M '+x0.toFixed(2)+' 0 C '+x1.toFixed(2)+' '+(-width*0.2).toFixed(2)+' '+x2.toFixed(2)+' '+(-width*0.1).toFixed(2)+' '+x2.toFixed(2)+' 0 ' +
+                  'C '+x2.toFixed(2)+' '+(width*0.9).toFixed(2)+' '+x1.toFixed(2)+' '+(width*1.1).toFixed(2)+' '+x0.toFixed(2)+' 0 Z';
+          for (var k=0;k<symmetry;k++){
+            var ang = k*360/symmetry + L*twist;
+            g.appendChild(el('path', {d:d, fill:color, 'fill-opacity':'0.85', stroke:color, 'stroke-width':'0.6', transform:'rotate('+ang+')'}));
+            if (T.mirror !== false){
+              g.appendChild(el('path', {d:d, fill:color, 'fill-opacity':'0.85', stroke:color, 'stroke-width':'0.6', transform:'rotate('+ang+') scale(1,-1)'}));
+            }
+          }
+        }
+        if (T.centerMotif !== false){
+          g.appendChild(el('circle', {cx:'0', cy:'0', r:(innerR*0.5).toFixed(2), fill:'none', stroke:C[0], 'stroke-width':'1.6', opacity:'0.8'}));
+          for (var s=0;s<6;s++){
+            var a2 = s*60*Math.PI/180;
+            g.appendChild(el('line', {x1:'0', y1:'0', x2:(innerR*0.9*Math.cos(a2)).toFixed(2), y2:(innerR*0.9*Math.sin(a2)).toFixed(2), stroke:C[0], 'stroke-width':'1.2', opacity:'0.7'}));
+          }
+        }
+      },
+      mathHTML:
+        '<h2>Mandala</h2>' +
+        '<div class="sub">Symmetry as an arrangement, not a property of the motif</div>' +
+        '<div class="desc">A mandala looks intricate, but the trick behind it is almost embarrassingly ' +
+        'simple: take one small shape — a petal, a leaf, anything — and repeat it at equal angles all ' +
+        'the way around a center. The shape itself can be crude. The symmetry comes entirely from the ' +
+        'repetition, not from the shape.</div>' +
+
+        '<div class="section-head">1. Two kinds of symmetry</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">Rotational</span> the design looks identical after turning it by 360°/n</div>' +
+        '<div><span class="k">Reflective</span> the design also looks identical in a mirror, across n lines through the center</div>' +
+        '</div></div>' +
+
+        '<div class="section-head">2. Why mirroring changes the symmetry group</div>' +
+        '<div class="desc">Repeating an asymmetric petal n times around a center gives you rotational ' +
+        'symmetry only — turn it and it matches, but flip it in a mirror and the "lean" of every petal ' +
+        'reverses, so it does not match. Mathematicians call that n-fold symmetry a <b>cyclic group, ' +
+        'C<sub>n</sub></b>, with exactly n symmetries (the n rotations). Add a mirrored copy of the ' +
+        'petal at every position and the design gains n more symmetries — the reflections — becoming ' +
+        'a <b>dihedral group, D<sub>n</sub></b>, with 2n symmetries total. This is exactly what the ' +
+        'Mirror toggle above switches between.</div>' +
+
+        '<div class="section-head">3. What Twist does</div>' +
+        '<div class="desc">Rotating every layer by an extra fixed amount does not break the ' +
+        'symmetry — it is applied identically to every copy in that layer, so the layer still has ' +
+        'full n-fold symmetry, just interleaved with the layer below it instead of stacked directly ' +
+        'on top of it. That interleaving is what makes a mandala with Twist look "woven" rather than ' +
+        'like plain concentric spokes.</div>' +
+
+        '<div class="section-head">4. C<sub>n</sub> vs. D<sub>n</sub></div>' +
+        '<table class="mesif-table">' +
+        '<tr><th>Group</th><th>Symmetries</th><th>Count</th><th>Looks like</th></tr>' +
+        '<tr><td>Cyclic C<sub>n</sub></td><td>n rotations only</td><td>n</td><td>a pinwheel</td></tr>' +
+        '<tr><td>Dihedral D<sub>n</sub></td><td>n rotations + n reflections</td><td>2n</td><td>a symmetric flower</td></tr>' +
+        '</table>' +
+
+        '<div class="section-head">5. Where it\'s used</div>' +
+        '<div class="desc">Radially symmetric sacred art — mandalas in Buddhist and Hindu traditions, ' +
+        'the rose windows of Gothic cathedrals — has used exactly this repeat-around-a-center ' +
+        'principle for centuries, long before it had a group-theory name. The same C<sub>n</sub>/' +
+        'D<sub>n</sub> classification is now standard vocabulary in crystallography and the formal ' +
+        'study of decorative "rosette" patterns.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Set Symmetry to 6 and flip Mirror off, then on — same six petals, but one ' +
+        'reads as a spinning pinwheel (C₆) and the other as a still, balanced flower (D₆). Then push ' +
+        'Twist toward 45° to watch the layers weave against each other.</div>' +
+
+        '<div class="cite">Construction inspired by the layered, rotationally-repeated petal ' +
+        'construction at <a href="https://texample.net/mandala/" target="_blank" rel="noopener">texample.net/mandala</a>.</div>'
+    },
+    {
+      id: 'mosaic',
+      kind: 'generative',
+      name: 'Pompeii Mosaic · Guilloché',
+      hint: 'Try a Segments value the constructibility fact below calls out<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'segments', label:'Segments', min:8, max:72, step:1, default:36},
+        {key:'weave', label:'Weave depth', min:0.15, max:0.85, step:0.01, default:0.4},
+        {key:'strandWidth', label:'Strand width', min:2, max:14, step:1, default:6},
+        {key:'innerHoleRatio', label:'Inner hole', min:0.1, max:0.7, step:0.05, default:0.35}
+      ],
+      toggles: [
+        {key:'sawtoothBorder', label:'Sawtooth border', default:true},
+        {key:'colorGradient', label:'Angular color gradient', default:true},
+        {key:'innerRing', label:'Inner ring motif', default:true}
+      ],
+      presets: [
+        {name:'Roman Ring', values:{segments:36, weave:0.4, strandWidth:6, innerHoleRatio:0.35}, toggles:{sawtoothBorder:true, colorGradient:true, innerRing:true}},
+        {name:'Fine Lace', values:{segments:64, weave:0.25, strandWidth:3, innerHoleRatio:0.5}, toggles:{sawtoothBorder:true, colorGradient:true, innerRing:false}},
+        {name:'Bold Braid', values:{segments:18, weave:0.7, strandWidth:10, innerHoleRatio:0.25}, toggles:{sawtoothBorder:false, colorGradient:true, innerRing:true}},
+        {name:'Gauss’s 17-gon', values:{segments:17, weave:0.5, strandWidth:5, innerHoleRatio:0.4}, toggles:{sawtoothBorder:true, colorGradient:true, innerRing:true}},
+        {name:'Wide Halo', values:{segments:48, weave:0.35, strandWidth:4, innerHoleRatio:0.65}, toggles:{sawtoothBorder:true, colorGradient:false, innerRing:false}}
+      ],
+      liveFact: function(P){
+        var n = Math.round(P.segments);
+        var ok = isConstructiblePolygon(n);
+        return 'Regular '+n+'-gon: ' + (ok ?
+          'exactly compass-and-straightedge constructible (Gauss–Wantzel)' :
+          'NOT exactly constructible — ancient mosaicists approximated this one too');
+      },
+      draw: function(g, P, T, C, progress){
+        var segments = Math.max(6, Math.round(P.segments));
+        var weave = P.weave;
+        var sw = P.strandWidth;
+        var innerHoleRatio = P.innerHoleRatio;
+        var outerR = 185;
+        var innerR = outerR*innerHoleRatio;
+        var midR = (outerR+innerR)/2;
+        var ringWidth = (outerR-innerR)/2;
+        var visible = Math.max(1, Math.round(segments*progress));
+        var arcSpan = (360/segments) * (1 + weave*0.9);
+        for (var k=0;k<visible;k++){
+          var centerAngle = k*360/segments;
+          var ripple = (k%2===0 ? 1 : -1) * weave * ringWidth * 0.5;
+          var rr = midR + ripple;
+          var startA = (centerAngle - arcSpan/2)*Math.PI/180;
+          var endA = (centerAngle + arcSpan/2)*Math.PI/180;
+          var x1 = rr*Math.cos(startA), y1 = rr*Math.sin(startA);
+          var x2 = rr*Math.cos(endA), y2 = rr*Math.sin(endA);
+          var color = T.colorGradient !== false ? lerpPalette(C, k/(segments-1||1)) : C[0];
+          var largeArc = arcSpan>180 ? 1 : 0;
+          var pathD = 'M '+x1.toFixed(2)+' '+y1.toFixed(2)+' A '+rr.toFixed(2)+' '+rr.toFixed(2)+' 0 '+largeArc+' 1 '+x2.toFixed(2)+' '+y2.toFixed(2);
+          g.appendChild(el('path', {d:pathD, fill:'none', stroke:color, 'stroke-width':String(sw), 'stroke-linecap':'round', opacity:'0.92'}));
+        }
+        if (T.sawtoothBorder !== false){
+          for (var k2=0;k2<segments;k2++){
+            var a3 = k2*360/segments*Math.PI/180;
+            var a3b = (k2+0.5)*360/segments*Math.PI/180;
+            var a3c = (k2+1)*360/segments*Math.PI/180;
+            var baseX1=outerR*Math.cos(a3), baseY1=outerR*Math.sin(a3);
+            var tipX=(outerR+14)*Math.cos(a3b), tipY=(outerR+14)*Math.sin(a3b);
+            var baseX2=outerR*Math.cos(a3c), baseY2=outerR*Math.sin(a3c);
+            var color2 = T.colorGradient !== false ? lerpPalette(C, k2/(segments-1||1)) : C[0];
+            g.appendChild(el('path', {d:'M '+baseX1.toFixed(2)+' '+baseY1.toFixed(2)+' L '+tipX.toFixed(2)+' '+tipY.toFixed(2)+' L '+baseX2.toFixed(2)+' '+baseY2.toFixed(2), fill:'none', stroke:color2, 'stroke-width':'1.6', opacity:'0.85'}));
+          }
+        }
+        if (T.innerRing !== false){
+          g.appendChild(el('circle', {cx:'0', cy:'0', r:(innerR*0.7).toFixed(2), fill:'none', stroke:C[0], 'stroke-width':'1.4', opacity:'0.7'}));
+          for (var s2=0;s2<6;s2++){
+            var a4 = s2*60*Math.PI/180;
+            g.appendChild(el('line', {x1:(innerR*0.3*Math.cos(a4)).toFixed(2), y1:(innerR*0.3*Math.sin(a4)).toFixed(2), x2:(innerR*0.65*Math.cos(a4)).toFixed(2), y2:(innerR*0.65*Math.sin(a4)).toFixed(2), stroke:C[0], 'stroke-width':'1.2', opacity:'0.7'}));
+          }
+        }
+      },
+      mathHTML:
+        '<h2>Pompeii Mosaic · Guilloché</h2>' +
+        '<div class="sub">A woven ring built from nothing but a compass</div>' +
+        '<div class="desc">Roman and Greek mosaicists had no protractors and no algebra — just a ' +
+        'compass and a straightedge — yet produced precise, perfectly repeating woven-ring patterns ' +
+        'like this one. The construction is intersecting circles stepped around a center at equal ' +
+        'angles, with alternating over/under strands faking a 3D braid using only flat, overlapping ' +
+        'shapes.</div>' +
+
+        '<div class="section-head">1. The construction</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">Segments</span> how many strands make up the woven ring</div>' +
+        '<div><span class="k">Weave depth</span> how far consecutive strands ripple in and out — the "braid" illusion</div>' +
+        '</div></div>' +
+
+        '<div class="section-head">2. Dividing a circle with only a compass</div>' +
+        '<div class="desc">Stepping a compass around a circle to mark off n equal arcs is easy for ' +
+        'some values of n and mathematically impossible to do exactly for others. Gauss proved in ' +
+        '1796 (at age 18, famously motivated by the regular 17-gon) exactly which regular polygons a ' +
+        'compass and straightedge can build perfectly: n must be a power of 2 multiplied by any number ' +
+        'of <i>distinct</i> Fermat primes (3, 5, 17, 257, 65537). A regular 34-gon or 40-gon is exact. ' +
+        'A regular 36-gon or 45-gon is not — no compass construction ever lands it perfectly, only ' +
+        'approximately.</div>' +
+
+        '<div class="section-head">3. Live check</div>' +
+        '<div class="desc">The fact line in the dock below recomputes this for whatever Segments ' +
+        'value you have the slider on right now, using the exact Gauss–Wantzel rule above — not a ' +
+        'lookup table.</div>' +
+
+        '<div class="section-head">4. The 3D illusion, without any 3D</div>' +
+        '<div class="desc">Ancient mosaicists (and this diagram) fake depth purely with 2D overlap: ' +
+        'alternating which strand is drawn "in front" every other segment, plus a small radial ripple ' +
+        'from the Weave depth control, is enough for the eye to read a flat ring of tiles as a braided ' +
+        'rope. No shading gradient or perspective trick is required — overlap order alone does the ' +
+        'work.</div>' +
+
+        '<div class="section-head">5. Where it\'s used</div>' +
+        '<div class="desc">This interlocking-ring motif is a guilloché pattern — the same family of ' +
+        'engine-turned engraving used for centuries on banknotes, official documents, and Fabergé ' +
+        'eggs, precisely because a fine repeating woven pattern is tedious to forge by hand but easy ' +
+        'to verify by eye.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Set Segments to 34 (constructible) and then to 36 (not) — visually near-' +
+        'identical, mathematically worlds apart. Push Weave depth toward its maximum to make the flat ' +
+        'ring read as a tight braided rope.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/mosaic-from-pompeii/" target="_blank" rel="noopener">texample.net/mosaic-from-pompeii</a>, ' +
+        'which builds its ring from intersecting compass circles.</div>'
+    },
+    {
+      id: 'triangle-chain',
+      kind: 'generative',
+      name: 'Replicating Triangles',
+      hint: 'Push Rotation angle away from 60° to break the equilateral tiling<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'branches', label:'Branches', min:2, max:8, step:1, default:3},
+        {key:'chainLength', label:'Chain length', min:3, max:18, step:1, default:10},
+        {key:'rotationAngle', label:'Rotation angle', min:20, max:170, step:1, default:60, suffix:'°'},
+        {key:'shrink', label:'Shrink fraction', min:0.3, max:0.7, step:0.02, default:0.5}
+      ],
+      toggles: [
+        {key:'fill', label:'Filled', default:true},
+        {key:'rainbow', label:'Rainbow by step', default:true}
+      ],
+      presets: [
+        {name:'Classic Triple', values:{branches:3, chainLength:8, rotationAngle:60, shrink:0.5}, toggles:{fill:true, rainbow:true}},
+        {name:'Pinwheel Five', values:{branches:5, chainLength:10, rotationAngle:60, shrink:0.45}, toggles:{fill:true, rainbow:true}},
+        {name:'Tight Vortex', values:{branches:3, chainLength:16, rotationAngle:80, shrink:0.35}, toggles:{fill:false, rainbow:true}},
+        {name:'Wide Weave', values:{branches:4, chainLength:9, rotationAngle:45, shrink:0.55}, toggles:{fill:true, rainbow:false}},
+        {name:'Star Chains', values:{branches:7, chainLength:7, rotationAngle:60, shrink:0.5}, toggles:{fill:true, rainbow:true}}
+      ],
+      liveFact: function(P){
+        var a = P.rotationAngle;
+        if (Math.abs(a-60) < 0.6) return 'At 60°, every triangle in the chain is a perfect equilateral triangle — the classic construction.';
+        return 'At '+a.toFixed(0)+'°, the triangles skew away from equilateral — same rule, a sheared family of shapes.';
+      },
+      draw: function(g, P, T, C, progress){
+        var branches = Math.max(1, Math.round(P.branches));
+        var chainLen = Math.max(1, Math.round(P.chainLength));
+        var angle = P.rotationAngle;
+        var shrink = P.shrink;
+        var R = 175;
+        var verts = [];
+        for (var k=0;k<branches;k++){
+          var a = (-90 + k*360/branches)*Math.PI/180;
+          verts.push([R*Math.cos(a), R*Math.sin(a)]);
+        }
+        var visibleSteps = Math.max(1, Math.round(chainLen*progress));
+        for (var b=0;b<branches;b++){
+          var curP = verts[b], curQ = verts[(b+1)%branches];
+          for (var i=0;i<visibleSteps;i++){
+            var newQ = [ curP[0]+(curQ[0]-curP[0])*shrink, curP[1]+(curQ[1]-curP[1])*shrink ];
+            var newP = rotatePoint(curP, newQ, -angle);
+            var d = 'M '+curP[0].toFixed(2)+' '+curP[1].toFixed(2)+' L '+newP[0].toFixed(2)+' '+newP[1].toFixed(2)+' L '+newQ[0].toFixed(2)+' '+newQ[1].toFixed(2)+' Z';
+            var color = T.rainbow !== false ? lerpPalette(C, i/(chainLen-1||1)) : C[b % C.length];
+            g.appendChild(el('path', {d:d, fill: T.fill!==false?color:'none', stroke:color, 'stroke-width':'1', 'fill-opacity': T.fill!==false?'0.4':'0'}));
+            curP = newP; curQ = newQ;
+          }
+        }
+      },
+      mathHTML:
+        '<h2>Replicating Triangles</h2>' +
+        '<div class="sub">The same shrink-and-rotate rule, chained edge-to-edge instead of nested</div>' +
+        '<div class="desc">The Rotating Polygon Spiral (see that diagram) nests one shrinking, ' +
+        'rotating polygon inside the last. This construction takes the identical idea — shrink a ' +
+        'fraction of the way, then rotate by a fixed angle — and instead chains it: each new ' +
+        'triangle shares an edge with the one before it, so the shapes march outward (or inward) in ' +
+        'a line instead of nesting concentrically. Do this from several starting edges of one base ' +
+        'shape at once and the chains interleave into a pinwheel.</div>' +
+
+        '<div class="section-head">1. The two knobs</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">Shrink fraction</span> where along the current edge the next triangle\'s far corner lands</div>' +
+        '<div><span class="k">Rotation angle</span> how far the chain twists at each step</div>' +
+        '</div></div>' +
+
+        '<div class="section-head">2. Why 60° is the special case</div>' +
+        '<div class="desc">At a shrink fraction of exactly 0.5 and a rotation of exactly 60°, every ' +
+        'triangle the construction draws is a perfect equilateral triangle — because 60° is the ' +
+        'interior angle of an equilateral triangle, the rotation exactly re-aligns each new triangle ' +
+        'into the same shape as the last, just smaller and turned. Change the angle away from 60° ' +
+        '(try the slider) and the triangles start to skew: the construction still runs, but it now ' +
+        'produces a family of similar, non-equilateral triangles instead.</div>' +
+
+        '<div class="section-head">3. The full math</div>' +
+        '<div class="desc">This is the same "multiply by one fixed complex number" idea from the ' +
+        'Rotating Polygon Spiral, applied to a moving pair of points instead of a whole polygon at ' +
+        'once. Each step shrinks the "reach" of the chain by the shrink fraction and rotates it by ' +
+        'the rotation angle — a genuine discrete logarithmic spiral, just drawn as a strip of ' +
+        'triangles laid end to end rather than as nested rings.</div>' +
+
+        '<div class="section-head">4. Nested vs. chained</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th>Diagram</th><th>Same shrink+rotate step, applied how</th><th>Looks like</th></tr>' +
+        '<tr><td>Rotating Polygon Spiral</td><td>To every vertex of one polygon, at once</td><td>Rings nested toward a center</td></tr>' +
+        '<tr><td>Replicating Triangles</td><td>To one edge, repeatedly, moving outward along a chain</td><td>Strips spiraling from a shared base shape</td></tr>' +
+        '</table>' +
+
+        '<div class="section-head">5. Where it\'s used</div>' +
+        '<div class="desc">Shapes that can be built by repeatedly attaching a smaller (or larger) ' +
+        'similar copy of themselves are called <b>rep-tiles</b> in recreational mathematics — the ' +
+        'equilateral triangle is one of the simplest examples. The same shrink-and-rotate family ' +
+        'also underlies "gnomon" constructions, where adding one shape to a smaller similar one ' +
+        'reproduces the original shape at a larger scale — the same core idea behind the golden ' +
+        'gnomon used in the Fibonacci and Logarithmic Spiral diagrams.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Set Rotation angle to exactly 60° and Shrink fraction to 0.5 to see the ' +
+        'authentic all-equilateral version. Then push Branches up to 7 or 8 to turn the same rule ' +
+        'into a dense woven starburst.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/triangles/" target="_blank" rel="noopener">texample.net/triangles</a> ' +
+        '(Hugues Vermeiren).</div>'
+    },
+    {
+      id: 'circumscribed',
+      kind: 'generative',
+      name: 'Circumscribed Polygons & Circles',
+      hint: 'Watch the live convergence toward Kepler’s constant, ≈8.7<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'startSides', label:'Starting sides', min:3, max:8, step:1, default:3},
+        {key:'maxSides', label:'Ending sides', min:10, max:60, step:1, default:25},
+        {key:'lineWidth', label:'Line width', min:1, max:4, step:0.5, default:1.6}
+      ],
+      toggles: [
+        {key:'alternate', label:'Classic red/blue', default:false},
+        {key:'fillShapes', label:'Filled', default:false}
+      ],
+      presets: [
+        {name:'Kepler’s Constant', values:{startSides:3, maxSides:40, lineWidth:1.6}, toggles:{alternate:false, fillShapes:false}},
+        {name:'Square Start', values:{startSides:4, maxSides:30, lineWidth:1.6}, toggles:{alternate:false, fillShapes:false}},
+        {name:'Filled Rings', values:{startSides:3, maxSides:20, lineWidth:1.6}, toggles:{alternate:false, fillShapes:true}},
+        {name:'Red & Blue Classic', values:{startSides:3, maxSides:24, lineWidth:2}, toggles:{alternate:true, fillShapes:false}},
+        {name:'Slow Converge', values:{startSides:7, maxSides:50, lineWidth:1.6}, toggles:{alternate:false, fillShapes:false}}
+      ],
+      liveFact: function(P){
+        var start = Math.max(3, Math.round(P.startSides));
+        var end = Math.max(start+2, Math.round(P.maxSides));
+        var r = 1;
+        for (var n=start;n<=end;n++){ r /= Math.cos(Math.PI/n); }
+        return 'Grown ×'+r.toFixed(4)+' so far. From n=3, the full infinite product converges to the reciprocal of the Kepler–Bouwkamp constant, ≈8.7000.';
+      },
+      draw: function(g, P, T, C, progress){
+        var start = Math.max(3, Math.round(P.startSides));
+        var end = Math.max(start+2, Math.round(P.maxSides));
+        var baseR = 16;
+        var totalSteps = end-start+1;
+        var visibleSteps = Math.max(1, Math.round(totalSteps*progress));
+        var r = baseR;
+        for (var i=0;i<visibleSteps;i++){
+          var n = start+i;
+          var colorCircle = T.alternate ? C[0] : lerpPalette(C, i/(totalSteps-1||1));
+          var colorPoly = T.alternate ? C[1%C.length] : lerpPalette(C, i/(totalSteps-1||1));
+          g.appendChild(el('circle', {cx:'0', cy:'0', r:r.toFixed(2), fill: T.fillShapes?colorCircle:'none', 'fill-opacity': T.fillShapes?'0.12':'0', stroke:colorCircle, 'stroke-width':String(P.lineWidth)}));
+          var R = r/Math.cos(Math.PI/n);
+          var d = '';
+          for (var k=0;k<n;k++){
+            var a = (-90+k*360/n)*Math.PI/180;
+            var x = R*Math.cos(a), y = R*Math.sin(a);
+            d += (k===0?'M ':'L ')+x.toFixed(2)+' '+y.toFixed(2)+' ';
+          }
+          d += 'Z';
+          g.appendChild(el('path', {d:d, fill: T.fillShapes?colorPoly:'none', 'fill-opacity': T.fillShapes?'0.1':'0', stroke:colorPoly, 'stroke-width':String(P.lineWidth)}));
+          r = R;
+        }
+      },
+      mathHTML:
+        '<h2>Circumscribed Polygons &amp; Circles</h2>' +
+        '<div class="sub">Circle, triangle, circle, square, circle... does it ever stop growing?</div>' +
+        '<div class="desc">Start with a circle. Draw the smallest regular polygon that fits snugly ' +
+        'around it (touching every side). Draw the smallest circle around <i>that</i>. Draw the next ' +
+        'polygon (one more side) around the new circle. Keep going forever. The question this ' +
+        'diagram answers visually: does the outer boundary grow without limit, or does it level off?</div>' +
+
+        '<div class="section-head">1. The rule connecting each pair</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">Apothem</span> the distance from a regular polygon\'s center to the middle of a side</div>' +
+        '<div><span class="k">Circumradius</span> the distance from the center to a vertex</div>' +
+        '</div></div>' +
+        '<div class="desc">A circle inscribed in (touching every side of) an n-sided polygon sits at ' +
+        'exactly the polygon\'s apothem. For a regular n-gon, apothem = circumradius × cos(π/n). So if ' +
+        'the inner circle has radius r, the polygon snugly containing it has circumradius ' +
+        'R = r / cos(π/n) = r · sec(π/n) — and the next circle, drawn through that polygon\'s ' +
+        'vertices, has that same radius R. Every step, the radius multiplies by sec(π/n).</div>' +
+
+        '<div class="section-head">2. The surprise: it doesn\'t blow up</div>' +
+        '<div class="table-note">sec(π/n) for the first several polygon sizes — each factor gets ' +
+        'closer to 1 as n grows:</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th>n</th><th>3</th><th>4</th><th>5</th><th>6</th></tr>' +
+        '<tr><td>sec(π/n)</td><td>2.000</td><td>1.414</td><td>1.236</td><td>1.155</td></tr>' +
+        '</table>' +
+        '<div class="desc">Multiplying infinitely many numbers that are each bigger than 1 sounds ' +
+        'like it should diverge to infinity — but these factors shrink toward 1 fast enough that the ' +
+        'infinite product from n=3 onward actually converges, to a specific, named number.</div>' +
+
+        '<div class="section-head">3. Kepler–Bouwkamp, both ways</div>' +
+        '<div class="desc">Run the same idea backward — inscribe a shrinking polygon inside each ' +
+        'circle instead of circumscribing a growing one — and the radius shrinks toward the ' +
+        '<b>Kepler–Bouwkamp constant</b>, ≈0.1149420448. This growing, circumscribing version ' +
+        'converges to that constant\'s reciprocal, ≈8.7000366252 — the number in the live readout ' +
+        'below the diagram, which recomputes live for whichever Starting/Ending sides you have set.</div>' +
+
+        '<div class="section-head">4. Where it\'s used</div>' +
+        '<div class="desc">Beyond being a genuinely famous named constant in recreational and ' +
+        'analytic geometry, this construction is a clean, concrete example of a convergent infinite ' +
+        'product — the same category of tool (alongside infinite series) used throughout analysis to ' +
+        'define constants precisely, like Wallis\'s product for π.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Set Starting sides to 3 and Ending sides high to watch the visible size ' +
+        'approach the ≈8.7 limit within just the first dozen or so rings. Then set Starting sides to ' +
+        '7 or 8 — skipping the biggest early multipliers shrinks the final size dramatically, since ' +
+        'most of the growth happens right at the start.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/circumscribed-polygons-and-circles/" target="_blank" rel="noopener">texample.net/circumscribed-polygons-and-circles</a>. ' +
+        'Constant summarized from ' +
+        '<a href="https://en.wikipedia.org/wiki/Kepler%E2%80%93Bouwkamp_constant" target="_blank" rel="noopener">Wikipedia — Kepler–Bouwkamp constant</a>.</div>'
+    },
+    {
+      id: 'fibonacci-spiral',
+      kind: 'generative',
+      name: 'Fibonacci Spiral',
+      hint: 'Turn on Golden overlay to compare the blocky squares to the true smooth spiral<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'terms', label:'Squares', min:5, max:16, step:1, default:11}
+      ],
+      toggles: [
+        {key:'showSquares', label:'Show squares', default:true},
+        {key:'goldenOverlay', label:'Golden overlay', default:true},
+        {key:'mirror', label:'Mirror direction', default:false},
+        {key:'rainbow', label:'Rainbow by term', default:true}
+      ],
+      presets: [
+        {name:'Classic Spiral', values:{terms:11}, toggles:{showSquares:true, goldenOverlay:false, mirror:false, rainbow:true}},
+        {name:'Squares Only', values:{terms:10}, toggles:{showSquares:true, goldenOverlay:false, mirror:false, rainbow:false}},
+        {name:'Overlay Compare', values:{terms:9}, toggles:{showSquares:true, goldenOverlay:true, mirror:false, rainbow:true}},
+        {name:'Deep Sequence', values:{terms:16}, toggles:{showSquares:true, goldenOverlay:false, mirror:false, rainbow:true}},
+        {name:'Mirror Whirl', values:{terms:11}, toggles:{showSquares:true, goldenOverlay:false, mirror:true, rainbow:true}}
+      ],
+      liveFact: function(P){
+        var terms = Math.max(3, Math.round(P.terms));
+        var a=1, b=1;
+        for (var i=2;i<terms;i++){ var t=a+b; a=b; b=t; }
+        var ratio = b/a;
+        var phi = 1.6180339887;
+        return 'F('+terms+')/F('+(terms-1)+') ≈ '+ratio.toFixed(6)+' — already within '+Math.abs(ratio-phi).toFixed(6)+' of φ.';
+      },
+      draw: function(g, P, T, C, progress){
+        var terms = Math.max(4, Math.round(P.terms));
+        var mirrorSign = T.mirror ? -1 : 1;
+        var seq = [1,1];
+        for (var i=2;i<terms;i++){ seq.push(seq[i-1]+seq[i-2]); }
+        /* Chain each arc directly off the previous endpoint — same recipe as
+           the source's TikZ `arc` call: given the last point, a start angle
+           (cycling 0/90/180/270°) and a radius (the next Fibonacci number),
+           the circle's center sits `radius` away from the last point in the
+           opposite direction, and the new endpoint is 90° further around
+           that same circle. This also pins down every square's 4 corners
+           (pivot, the two arc endpoints, and their vector-sum "far" corner)
+           without needing to track a separate bounding rectangle. */
+        var points = [[0,0]];
+        var centers = [];
+        for (var st=1; st<=terms; st++){
+          var startAngle = ((st-1)%4)*90;
+          var radius = seq[st-1];
+          var rad = startAngle*Math.PI/180;
+          var last = points[st-1];
+          var center = [ last[0]-radius*Math.cos(rad), last[1]-radius*Math.sin(rad) ];
+          var endRad = (startAngle+90)*Math.PI/180;
+          var next = [ center[0]+radius*Math.cos(endRad), center[1]+radius*Math.sin(endRad) ];
+          centers.push(center);
+          points.push(next);
+        }
+        var allX = points.map(function(p){ return p[0]; });
+        var allY = points.map(function(p){ return p[1]; });
+        var minX = Math.min.apply(null, allX), maxX = Math.max.apply(null, allX);
+        var minY = Math.min.apply(null, allY), maxY = Math.max.apply(null, allY);
+        var extent = Math.max(maxX-minX, maxY-minY) || 1;
+        var scale = 340/extent;
+        var cx = (minX+maxX)/2, cy = (minY+maxY)/2;
+        function tx(px){ return (px-cx)*scale*mirrorSign; }
+        function ty(py){ return (py-cy)*scale; }
+
+        var visibleCount = Math.max(1, Math.round(terms*progress));
+
+        if (T.showSquares !== false){
+          for (var k=1;k<=visibleCount;k++){
+            var piv = centers[k-1], a = points[k-1], b = points[k];
+            var far = [ a[0]+b[0]-piv[0], a[1]+b[1]-piv[1] ];
+            var d = 'M '+tx(piv[0]).toFixed(2)+' '+ty(piv[1]).toFixed(2)+
+                    ' L '+tx(a[0]).toFixed(2)+' '+ty(a[1]).toFixed(2)+
+                    ' L '+tx(far[0]).toFixed(2)+' '+ty(far[1]).toFixed(2)+
+                    ' L '+tx(b[0]).toFixed(2)+' '+ty(b[1]).toFixed(2)+' Z';
+            var color = T.rainbow !== false ? lerpPalette(C, (k-1)/(terms-1||1)) : C[0];
+            g.appendChild(el('path', {d:d, fill:'none', stroke:color, 'stroke-width':'1', opacity:'0.8'}));
+          }
+        }
+
+        for (var m=1;m<=visibleCount;m++){
+          var pivM = centers[m-1];
+          var radiusM = seq[m-1];
+          var startAngleM = ((m-1)%4)*90;
+          var arcSteps = 14;
+          var color2 = T.rainbow !== false ? lerpPalette(C, (m-1)/(terms-1||1)) : C[0];
+          var dPath = '';
+          for (var as=0; as<=arcSteps; as++){
+            var ang = (startAngleM + 90*as/arcSteps) * Math.PI/180;
+            var px = pivM[0] + radiusM*Math.cos(ang), py = pivM[1] + radiusM*Math.sin(ang);
+            dPath += (as===0?'M ':'L ') + tx(px).toFixed(2)+' '+ty(py).toFixed(2)+' ';
+          }
+          g.appendChild(el('path', {d:dPath, fill:'none', stroke:color2, 'stroke-width':'2.6', 'stroke-linecap':'round'}));
+        }
+
+        if (T.goldenOverlay){
+          var phi = 1.6180339887;
+          var pole = centers[Math.min(3, centers.length-1)];
+          var thetaMax = Math.min(visibleCount, terms) * Math.PI/2;
+          var oSteps = 220;
+          var opath = '';
+          for (var ot=0; ot<=oSteps; ot++){
+            var th = thetaMax*ot/oSteps;
+            var rr = 0.5*Math.pow(phi, 2*th/Math.PI);
+            var ox = pole[0] + rr*Math.cos(th), oy = pole[1] + rr*Math.sin(th);
+            opath += (ot===0?'M ':'L ') + tx(ox).toFixed(2)+' '+ty(oy).toFixed(2)+' ';
+          }
+          g.appendChild(el('path', {d:opath, fill:'none', stroke:'var(--text)', 'stroke-width':'1', 'stroke-dasharray':'3,3', opacity:'0.6'}));
+        }
+      },
+      mathHTML:
+        '<h2>Fibonacci Spiral</h2>' +
+        '<div class="sub">A spiral built from nothing but the addition rule 1, 1, 2, 3, 5, 8…</div>' +
+        '<div class="desc">Draw a 1×1 square. Attach another 1×1 square. Attach a 2×2 square to the ' +
+        'long side of what you have. Attach a 3×3, then a 5×5, then an 8×8 — always the sum of the ' +
+        'previous two — rotating which side you attach to each time. A quarter-circle drawn inside ' +
+        'each new square, corner to corner, traces a spiral. That is the entire construction.</div>' +
+
+        '<div class="section-head">1. Why it tiles with no gaps</div>' +
+        '<div class="desc">This is not a coincidence that needs careful measuring — it is guaranteed ' +
+        'by the recurrence itself. At every step, the rectangle built so far has one side equal to ' +
+        'F(n) and the other to F(n−1) (the two most recent terms). The next square, of side ' +
+        'F(n+1) = F(n) + F(n−1), fits the long side of that rectangle exactly, because that long side ' +
+        '<i>is</i> F(n) + F(n−1) by definition of the rectangle\'s own construction one step earlier.</div>' +
+
+        '<div class="section-head">2. The ratio converges to φ</div>' +
+        '<div class="table-note">Each ratio of consecutive terms bounces above and below φ, getting ' +
+        'closer every step:</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th>Ratio</th><th>Value</th></tr>' +
+        '<tr><td>2/1</td><td>2.000</td></tr>' +
+        '<tr><td>3/2</td><td>1.500</td></tr>' +
+        '<tr><td>5/3</td><td>1.667</td></tr>' +
+        '<tr><td>8/5</td><td>1.600</td></tr>' +
+        '<tr><td>13/8</td><td>1.625</td></tr>' +
+        '<tr><td>21/13</td><td>1.615</td></tr>' +
+        '</table>' +
+        '<div class="eq-note">φ = (1+√5)/2 ≈ 1.6180339887 — the live readout below the diagram shows ' +
+        'exactly how close the current Squares setting already is.</div>' +
+
+        '<div class="section-head">3. The blocky approximation vs. the real thing</div>' +
+        '<div class="desc">The quarter-circle arcs here are <i>not</i> the true golden spiral — each ' +
+        'arc has a constant radius within its own square, then jumps to a new radius for the next ' +
+        'square, while a real logarithmic spiral\'s radius changes smoothly at every point. Switch on ' +
+        'Golden overlay to draw the exact smooth curve (see the sibling Logarithmic Spiral diagram) ' +
+        'through the same region — the blocky approximation and the true curve are already hard to ' +
+        'tell apart after just a handful of squares.</div>' +
+
+        '<div class="section-head">4. Where it\'s used</div>' +
+        '<div class="desc">The Fibonacci sequence itself governs the seed-packing spirals in the ' +
+        'Phyllotaxis diagram (a different phenomenon, the same φ), and the golden-ratio proportions ' +
+        'this square spiral approximates have been used in art and architecture composition guides ' +
+        'for centuries, from classical temple façades to modern design "rule of thirds" variants.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Turn on Golden overlay and compare: the dashed true spiral and the solid ' +
+        'blocky one already nearly coincide by the 4th or 5th square. Flip Mirror direction to spiral ' +
+        'the other way using the exact same sequence.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/fibonacci-spiral/" target="_blank" rel="noopener">texample.net/fibonacci-spiral</a> ' +
+        '(Andrew Mertz).</div>'
+    },
+    {
+      id: 'log-spiral',
+      kind: 'generative',
+      name: 'Logarithmic Spiral',
+      hint: 'Set Growth to exactly 1.0 and watch the spiral degenerate into a circle<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'growth', label:'Growth per quarter-turn', min:1.02, max:3.0, step:0.01, default:1.618},
+        {key:'turns', label:'Turns', min:1, max:8, step:0.5, default:3.5}
+      ],
+      toggles: [
+        {key:'showGuideLines', label:'Radial guide lines', default:true},
+        {key:'rainbow', label:'Rainbow by angle', default:true}
+      ],
+      presets: [
+        {name:'Golden Spiral', values:{growth:1.618, turns:3.5}, toggles:{showGuideLines:true, rainbow:true}},
+        {name:'Nautilus Shell', values:{growth:1.3, turns:5}, toggles:{showGuideLines:false, rainbow:true}},
+        {name:'Silver Spiral', values:{growth:2.414, turns:2.5}, toggles:{showGuideLines:true, rainbow:true}},
+        {name:'Tight Whirl', values:{growth:1.08, turns:8}, toggles:{showGuideLines:false, rainbow:true}},
+        {name:'Explosive Flare', values:{growth:2.8, turns:1.5}, toggles:{showGuideLines:true, rainbow:false}}
+      ],
+      liveFact: function(P){
+        var g = P.growth;
+        var phi = 1.6180339887;
+        if (Math.abs(g-phi) < 0.01) return 'g ≈ φ — this is the golden spiral, the smooth curve the Fibonacci square spiral approximates.';
+        if (Math.abs(g-1) < 0.03) return 'g ≈ 1 — essentially no growth, so the "spiral" is just a circle.';
+        return 'Growing ×'+g.toFixed(3)+' every quarter turn — ×'+Math.pow(g,4).toFixed(2)+' every full rotation.';
+      },
+      draw: function(g, P, T, C, progress){
+        var growth = Math.max(1.001, P.growth);
+        var turns = P.turns;
+        var thetaMax = turns*2*Math.PI;
+        var finalR = Math.pow(growth, 2*thetaMax/Math.PI);
+        var s = 175/finalR;
+        var steps = 140;
+        var visibleSteps = Math.max(2, Math.round(steps*progress));
+        var prevX=null, prevY=null;
+        for (var i=0;i<=visibleSteps;i++){
+          var theta = thetaMax*i/steps;
+          var r = s*Math.pow(growth, 2*theta/Math.PI);
+          var x = r*Math.cos(theta), y = r*Math.sin(theta);
+          if (i>0){
+            var color = T.rainbow !== false ? lerpPalette(C, i/steps) : C[0];
+            g.appendChild(el('line', {x1:prevX.toFixed(2), y1:prevY.toFixed(2), x2:x.toFixed(2), y2:y.toFixed(2), stroke:color, 'stroke-width':'2.4', 'stroke-linecap':'round'}));
+          }
+          prevX=x; prevY=y;
+        }
+        if (T.showGuideLines !== false){
+          var visibleTheta = thetaMax*visibleSteps/steps;
+          var visibleQuarters = Math.floor(visibleTheta/(Math.PI/2));
+          for (var q=0;q<visibleQuarters;q++){
+            var th1=q*Math.PI/2, th2=(q+1)*Math.PI/2;
+            var r1=s*Math.pow(growth,2*th1/Math.PI), r2=s*Math.pow(growth,2*th2/Math.PI);
+            var x1=r1*Math.cos(th1), y1=r1*Math.sin(th1);
+            var x2=r2*Math.cos(th2), y2=r2*Math.sin(th2);
+            g.appendChild(el('line', {x1:x1.toFixed(2), y1:y1.toFixed(2), x2:x2.toFixed(2), y2:y2.toFixed(2), stroke:'var(--text-muted)', 'stroke-width':'0.8', 'stroke-dasharray':'2,2', opacity:'0.5'}));
+          }
+        }
+      },
+      mathHTML:
+        '<h2>Logarithmic Spiral</h2>' +
+        '<div class="sub">The one curve shape nautilus shells, hurricanes, and galaxies all share</div>' +
+        '<div class="desc">A logarithmic (or "equiangular") spiral grows by the <i>same ratio</i> for ' +
+        'every equal step of rotation — grow ×1.618 every quarter turn, forever, and you get exactly ' +
+        'this curve. That one property — constant growth ratio per constant angle — is the whole ' +
+        'definition, and it is enough to produce a shape that looks identical whether you zoom in on ' +
+        'its center or view the whole thing.</div>' +
+
+        '<div class="section-head">1. The defining property</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">Equiangular</span> the curve crosses every line from the center at the same fixed angle</div>' +
+        '<div><span class="k">Self-similar</span> zooming in or out just rotates and rescales the same shape</div>' +
+        '</div></div>' +
+        '<div class="desc">Compare this to an Archimedean spiral (think: a rolled-up carpet or a ' +
+        'vinyl record\'s groove), which grows by a constant <i>amount</i> per turn instead of a ' +
+        'constant <i>ratio</i> — its coils stay evenly spaced instead of flaring outward.</div>' +
+
+        '<div class="section-head">2. The full math</div>' +
+        '<div class="desc">In polar form, r(θ) = a·g<sup>2θ/π</sup>, where g is how much the radius ' +
+        'multiplies every quarter turn (θ increasing by π/2). This matches the standard exponential ' +
+        'form r = a·e<sup>bθ</sup> with growth-rate constant b = (2·ln g)/π. Setting g = φ (the golden ' +
+        'ratio) gives the golden spiral — the exact curve the Fibonacci square spiral approximates.</div>' +
+
+        '<div class="section-head">3. The metallic-ratio family</div>' +
+        '<div class="table-note">φ is the first of a whole family of "metallic ratios," each the ' +
+        'limit of a different two-term addition rule:</div>' +
+        '<table class="mesif-table">' +
+        '<tr><th>Name</th><th>Value</th><th>Recurrence</th></tr>' +
+        '<tr><td>Golden ratio φ</td><td>≈1.618</td><td>a(n) = a(n−1) + a(n−2)</td></tr>' +
+        '<tr><td>Silver ratio</td><td>≈2.414</td><td>a(n) = 2a(n−1) + a(n−2)</td></tr>' +
+        '<tr><td>Bronze ratio</td><td>≈3.303</td><td>a(n) = 3a(n−1) + a(n−2)</td></tr>' +
+        '</table>' +
+
+        '<div class="section-head">4. Where it\'s used</div>' +
+        '<div class="desc">Nautilus shells, spiral galaxy arms, hurricane cloud bands, the shape of ' +
+        'a hawk\'s approach to prey, and the cochlea of the inner ear all trace some version of this ' +
+        'curve — anywhere growth is proportional to current size, at a constant turning rate, this ' +
+        'shape is the mathematical result.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Drag Growth down to 1.0 and the "spiral" degenerates into a plain circle ' +
+        '— no growth per turn means no flare at all. Push it up past 2.5 to see how fast true ' +
+        'exponential growth actually looks once you can watch it happen.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/logarithmic-spiral/" target="_blank" rel="noopener">texample.net/logarithmic-spiral</a> ' +
+        '(Andrew Mertz).</div>'
     }
   ];
 
@@ -549,6 +1626,123 @@
     {M:'#F25C54', E:'#4CC9F0', S:'#FFC93C', F:'#B5179E', I:'#495057'},
     {M:'#EEEEEE', E:'#9AD4CB', S:'#D9B26A', F:'#B79ED9', I:'#3A3A3A'}
   ];
+
+  /* Generative diagrams don't have named states, just an ordered ramp of
+     colors to cycle/interpolate through. Indexed by the same paletteIdx as
+     PALETTES so the shared swatch UI works for both diagram kinds. */
+  var GEN_PALETTES = [
+    ['#F2545A', '#F2A65A', '#57D9C4', '#C77AF2'],
+    ['#EF476F', '#FFD166', '#118AB2', '#8338EC'],
+    ['#F25C54', '#FFC93C', '#4CC9F0', '#B5179E'],
+    ['#EEEEEE', '#D9B26A', '#9AD4CB', '#B79ED9']
+  ];
+
+  function hexToRgb(hex){
+    hex = hex.replace('#','');
+    if (hex.length===3){ hex = hex.split('').map(function(c){ return c+c; }).join(''); }
+    var num = parseInt(hex,16);
+    return [(num>>16)&255, (num>>8)&255, num&255];
+  }
+  function rgbToHex(r,g,b){
+    return '#'+[r,g,b].map(function(v){
+      v = Math.max(0, Math.min(255, Math.round(v)));
+      var s = v.toString(16);
+      return s.length<2 ? '0'+s : s;
+    }).join('');
+  }
+  function lerpPalette(colors, tt){
+    tt = Math.max(0, Math.min(1, tt));
+    var n = colors.length;
+    if (n===1) return colors[0];
+    var scaled = tt*(n-1);
+    var i0 = Math.floor(scaled), i1 = Math.min(n-1, i0+1);
+    var f = scaled - i0;
+    var c0 = hexToRgb(colors[i0]), c1 = hexToRgb(colors[i1]);
+    return rgbToHex(c0[0]+(c1[0]-c0[0])*f, c0[1]+(c1[1]-c0[1])*f, c0[2]+(c1[2]-c0[2])*f);
+  }
+
+  /* Rotate point `pt` by `angleDeg` around `center`. Used by the triangle
+     chain's shrink-and-rotate construction. */
+  function rotatePoint(pt, center, angleDeg){
+    var rad = angleDeg*Math.PI/180;
+    var dx = pt[0]-center[0], dy = pt[1]-center[1];
+    var cosA = Math.cos(rad), sinA = Math.sin(rad);
+    return [ center[0] + dx*cosA - dy*sinA, center[1] + dx*sinA + dy*cosA ];
+  }
+
+  /* Gauss–Wantzel: a regular n-gon is compass-constructible iff n is a
+     power of 2 times a product of *distinct* Fermat primes. Used by the
+     mosaic diagram's live fact line. */
+  function isConstructiblePolygon(n){
+    var fermat = [3,5,17,257,65537];
+    while (n % 2 === 0) n /= 2;
+    for (var i=0;i<fermat.length;i++){
+      if (n % fermat[i] === 0) n /= fermat[i];
+    }
+    return n === 1;
+  }
+
+  /* Minimal L-system: rewrite the axiom `order` times, replacing every F
+     with `rule` (other symbols pass through untouched). */
+  function generateLSystemString(axiom, rule, order){
+    var s = axiom;
+    for (var i=0;i<order;i++){
+      var next = '';
+      for (var c=0;c<s.length;c++){
+        next += (s[c] === 'F') ? rule : s[c];
+      }
+      s = next;
+      if (s.length > 20000) break;
+    }
+    return s;
+  }
+
+  /* Turtle-interpret an L-system string into one SVG path `d`, starting at
+     the origin heading "up" (screen -y). [ ] push/pop position+heading so
+     branches return to their fork point instead of drawing a stray line. */
+  function drawLSystemArm(str, len, angleDeg){
+    var x=0, y=0, heading=-90;
+    var stack = [];
+    var d = '';
+    for (var i=0;i<str.length;i++){
+      var ch = str[i];
+      if (ch === 'F'){
+        var rad = heading*Math.PI/180;
+        var nx = x+len*Math.cos(rad), ny = y+len*Math.sin(rad);
+        d += 'M '+x.toFixed(2)+' '+y.toFixed(2)+' L '+nx.toFixed(2)+' '+ny.toFixed(2)+' ';
+        x = nx; y = ny;
+      } else if (ch === '+'){ heading += angleDeg; }
+      else if (ch === '-'){ heading -= angleDeg; }
+      else if (ch === '['){ stack.push([x,y,heading]); }
+      else if (ch === ']'){ var s2 = stack.pop(); if (s2){ x=s2[0]; y=s2[1]; heading=s2[2]; } }
+    }
+    return d;
+  }
+
+  function defaultParamValues(diagram){
+    var v = {};
+    (diagram.params||[]).forEach(function(p){ v[p.key] = p.default; });
+    return v;
+  }
+  function defaultToggleValues(diagram){
+    var v = {};
+    (diagram.toggles||[]).forEach(function(t){ v[t.key] = t.default; });
+    return v;
+  }
+  function mergeValues(base, overrides){
+    var out = {};
+    for (var k in base){ out[k] = base[k]; }
+    if (overrides){ for (var k2 in overrides){ out[k2] = overrides[k2]; } }
+    return out;
+  }
+  function formatParamVal(p, v){
+    if (p.type === 'select'){
+      var match = p.options.filter(function(o){ return o.value === v; })[0];
+      return match ? match.label : String(v);
+    }
+    var decimals = (String(p.step).split('.')[1]||'').length;
+    return Number(v).toFixed(decimals) + (p.suffix||'');
+  }
 
   var svgNS = 'http://www.w3.org/2000/svg';
   var svg = document.getElementById('diagram');
@@ -565,7 +1759,11 @@
     showBadges: true,
     playSpeed: 1,
     autoplay: false,
-    autoplayTimer: null
+    autoplayTimer: null,
+    paramValues: {},
+    toggleValues: {},
+    progress: 1,
+    randomSeqToken: 0
   };
 
   var CX = 300, CY = 270, NODE_R = 42;
@@ -621,8 +1819,23 @@
   var edgeEls = {}, nodeEls = {}, badgeEls = {};
 
   function palette(){ return PALETTES[state.paletteIdx]; }
+  function genPalette(){ return GEN_PALETTES[state.paletteIdx] || GEN_PALETTES[0]; }
 
   function render(){
+    if (state.diagram.kind === 'generative'){ renderGenerative(); }
+    else { renderAutomaton(); }
+  }
+
+  function renderGenerative(){
+    svg.innerHTML = '';
+    var scale = state.radius/190;
+    var g = el('g', {transform:'translate('+CX+','+CY+') rotate('+state.rotation+') scale('+scale+')'});
+    svg.appendChild(g);
+    var progress = state.autoplay ? state.progress : 1;
+    state.diagram.draw(g, state.paramValues, state.toggleValues, genPalette(), progress);
+  }
+
+  function renderAutomaton(){
     svg.innerHTML = '';
     edgeEls = {}; nodeEls = {}; badgeEls = {};
 
@@ -779,6 +1992,7 @@
   }
 
   function resetSimulation(){
+    state.randomSeqToken++;
     state.caches = state.caches.map(function(){ return 'I'; });
     renderChips();
     updateBadges();
@@ -799,8 +2013,9 @@
 
   function fireRandomSequence(count){
     var i = 0;
+    var token = state.randomSeqToken;
     function step(){
-      if (i >= count) return;
+      if (i >= count || token !== state.randomSeqToken) return;
       var cacheIdx = Math.floor(Math.random()*state.caches.length);
       var type = Math.random() < 0.6 ? 'read' : 'write';
       doAction(cacheIdx, type);
@@ -814,6 +2029,216 @@
 
   function byId(id){ return document.getElementById(id); }
 
+  /* --- generative-diagram engine: dynamic Parameters/Style UI, dock ---- */
+
+  function updateSectionVisibility(){
+    var isGen = state.diagram.kind === 'generative';
+    byId('simulationSection').style.display = isGen ? 'none' : '';
+    byId('curvatureRow').style.display = isGen ? 'none' : '';
+    byId('detailAutomatonSection').style.display = isGen ? 'none' : '';
+    byId('paramsSection').style.display = (isGen && (state.diagram.params||[]).length) ? '' : 'none';
+    byId('toggleSection').style.display = (isGen && (state.diagram.toggles||[]).length) ? '' : 'none';
+    byId('autoplayLabel').textContent = isGen ? 'Animate growth' : 'Auto-play';
+  }
+
+  function rebuildDockShell(){
+    var dock = byId('dock');
+    if (state.diagram.kind === 'generative'){
+      dock.innerHTML =
+        '<div class="dock-title" id="dockTitle"></div>' +
+        '<div class="status-line" id="statusLine"></div>' +
+        '<div class="log-line" id="logLine"></div>';
+    } else {
+      dock.innerHTML =
+        '<div class="dock-title" id="dockTitle">Caches — tap R to read, W to write</div>' +
+        '<div class="status-line" id="statusLine"><span id="hDiagram">MESIF</span> · caches:<span id="hCaches">3</span> · F-holder:<span id="hForward">—</span> · last:<span id="hLast">—</span></div>' +
+        '<div class="chips" id="chips"></div>' +
+        '<div class="log-line" id="logLine">No events yet — try reading or writing a cache above.</div>';
+    }
+  }
+
+  function updateGenerativeDock(){
+    if (state.diagram.kind !== 'generative') return;
+    byId('dockTitle').textContent = state.diagram.name + ' — tweak the sliders live';
+    var parts = (state.diagram.params||[]).map(function(p){
+      return p.label + ' ' + formatParamVal(p, state.paramValues[p.key]);
+    });
+    byId('statusLine').textContent = parts.join('  ·  ');
+    var fact = state.diagram.liveFact ? state.diagram.liveFact(state.paramValues, state.toggleValues) : '';
+    byId('logLine').textContent = fact || 'Drag any slider in the gear panel to reshape this live.';
+  }
+
+  function buildParamsUI(){
+    var list = byId('paramsList');
+    list.innerHTML = '';
+    (state.diagram.params||[]).forEach(function(p){
+      var row = document.createElement('div');
+      row.className = 'slider-row';
+      var wrap = document.createElement('div');
+      wrap.style.flex = '1';
+      var lab = document.createElement('div');
+      lab.className = 'slider-label';
+      var nameSpan = document.createElement('span');
+      nameSpan.textContent = p.label;
+      lab.appendChild(nameSpan);
+      wrap.appendChild(lab);
+      if (p.type === 'select'){
+        var sel = document.createElement('select');
+        p.options.forEach(function(o){
+          var opt = document.createElement('option');
+          opt.value = o.value; opt.textContent = o.label;
+          if (state.paramValues[p.key] === o.value) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', function(){
+          var num = Number(sel.value);
+          state.paramValues[p.key] = isNaN(num) ? sel.value : num;
+          state.progress = 1;
+          clearPresetSelection();
+          updateGenerativeDock();
+          render();
+        });
+        wrap.appendChild(sel);
+      } else {
+        var valSpan = document.createElement('span');
+        valSpan.className = 'val';
+        valSpan.textContent = formatParamVal(p, state.paramValues[p.key]);
+        lab.appendChild(valSpan);
+        var input = document.createElement('input');
+        input.type = 'range';
+        input.min = p.min; input.max = p.max; input.step = p.step;
+        input.value = state.paramValues[p.key];
+        input.addEventListener('input', function(){
+          var val = parseFloat(input.value);
+          state.paramValues[p.key] = val;
+          valSpan.textContent = formatParamVal(p, val);
+          state.progress = 1;
+          clearPresetSelection();
+          updateGenerativeDock();
+          render();
+        });
+        wrap.appendChild(input);
+      }
+      row.appendChild(wrap);
+      list.appendChild(row);
+    });
+  }
+
+  function buildToggleUI(){
+    var list = byId('toggleList');
+    list.innerHTML = '';
+    (state.diagram.toggles||[]).forEach(function(t){
+      var row = document.createElement('div');
+      row.className = 'toggle-row';
+      var lab = document.createElement('div');
+      lab.className = 'label'; lab.style.margin = '0';
+      lab.textContent = t.label;
+      var sw = document.createElement('div');
+      sw.className = 'switch' + (state.toggleValues[t.key] ? ' on' : '');
+      sw.addEventListener('click', function(){
+        state.toggleValues[t.key] = !state.toggleValues[t.key];
+        sw.classList.toggle('on', state.toggleValues[t.key]);
+        state.progress = 1;
+        clearPresetSelection();
+        updateGenerativeDock();
+        render();
+      });
+      row.appendChild(lab);
+      row.appendChild(sw);
+      list.appendChild(row);
+    });
+  }
+
+  function clearPresetSelection(){
+    var sel = byId('presetSelect');
+    if (sel) sel.value = '';
+  }
+
+  function buildPresetUI(){
+    var row = byId('presetRow');
+    var presets = state.diagram.presets || [];
+    if (!presets.length){ row.style.display = 'none'; return; }
+    row.style.display = '';
+    var sel = byId('presetSelect');
+    sel.innerHTML = '';
+    var placeholder = document.createElement('option');
+    placeholder.textContent = 'Choose a preset…';
+    placeholder.value = '';
+    sel.appendChild(placeholder);
+    presets.forEach(function(p, i){
+      var opt = document.createElement('option');
+      opt.value = String(i); opt.textContent = p.name;
+      sel.appendChild(opt);
+    });
+    sel.value = '';
+  }
+  byId('presetSelect').addEventListener('change', function(){
+    var sel = byId('presetSelect');
+    if (sel.value === '') return;
+    var preset = (state.diagram.presets||[])[parseInt(sel.value, 10)];
+    if (!preset) return;
+    state.paramValues = mergeValues(defaultParamValues(state.diagram), preset.values);
+    state.toggleValues = mergeValues(defaultToggleValues(state.diagram), preset.toggles);
+    state.progress = 1;
+    buildParamsUI();
+    buildToggleUI();
+    updateGenerativeDock();
+    render();
+  });
+
+  byId('randomizeParamsBtn').addEventListener('click', function(){
+    (state.diagram.params||[]).forEach(function(p){
+      if (p.type === 'select'){
+        state.paramValues[p.key] = p.options[Math.floor(Math.random()*p.options.length)].value;
+      } else {
+        var steps = Math.max(1, Math.round((p.max-p.min)/p.step));
+        state.paramValues[p.key] = p.min + Math.round(Math.random()*steps)*p.step;
+      }
+    });
+    clearPresetSelection();
+    buildParamsUI();
+    updateGenerativeDock();
+    render();
+  });
+  byId('resetParamsBtn').addEventListener('click', function(){
+    state.paramValues = defaultParamValues(state.diagram);
+    state.toggleValues = defaultToggleValues(state.diagram);
+    clearPresetSelection();
+    buildParamsUI();
+    buildToggleUI();
+    updateGenerativeDock();
+    render();
+  });
+
+  function applyHint(html){
+    var hint = byId('hint');
+    if (!hint || !html) return;
+    hint.innerHTML = html;
+    hint.style.opacity = '1';
+    if (state.hintTimer) clearTimeout(state.hintTimer);
+    state.hintTimer = setTimeout(function(){ hint.style.opacity = '0'; }, 4200);
+  }
+
+  function switchDiagram(found){
+    state.diagram = found;
+    state.paramValues = defaultParamValues(found);
+    state.toggleValues = defaultToggleValues(found);
+    state.progress = 1;
+    state.randomSeqToken++;
+    setAutoplay(false);
+    buildPresetUI();
+    buildParamsUI();
+    buildToggleUI();
+    updateSectionVisibility();
+    rebuildDockShell();
+    if (found.kind === 'generative'){ updateGenerativeDock(); }
+    else { renderChips(); resetSimulation(); }
+    renderMath();
+    applyHint(found.hint);
+    document.title = 'TikZ Explorer — ' + found.name;
+    render();
+  }
+
   var diagramSelect = byId('diagramSelect');
   DIAGRAMS.forEach(function(p){
     var opt = document.createElement('option');
@@ -824,10 +2249,7 @@
   diagramSelect.addEventListener('change', function(){
     var found = DIAGRAMS.filter(function(p){ return p.id === diagramSelect.value; })[0];
     if (!found) return;
-    state.diagram = found;
-    resetSimulation();
-    renderMath();
-    render();
+    switchDiagram(found);
   });
 
   byId('cacheCountSlider').addEventListener('input', function(e){
@@ -907,11 +2329,35 @@
     byId('playSpeedVal').textContent = state.playSpeed.toFixed(1)+'x';
   });
 
+  function startGrowthLoop(){
+    state.progress = 0;
+    render();
+    state.autoplayTimer = setInterval(function(){
+      state.progress += 0.02 * state.playSpeed;
+      if (state.progress >= 1){
+        state.progress = 1;
+        render();
+        clearInterval(state.autoplayTimer);
+        state.autoplayTimer = setTimeout(function(){
+          if (state.autoplay) startGrowthLoop();
+        }, 900);
+        return;
+      }
+      render();
+    }, 45);
+  }
+
   function setAutoplay(on){
     state.autoplay = on;
     toggleSwitch(byId('autoplayToggle'), on);
     if (state.autoplayTimer){ clearInterval(state.autoplayTimer); state.autoplayTimer = null; }
-    if (on){
+    if (!on){
+      if (state.diagram.kind === 'generative'){ state.progress = 1; render(); }
+      return;
+    }
+    if (state.diagram.kind === 'generative'){
+      startGrowthLoop();
+    } else {
       state.autoplayTimer = setInterval(function(){
         var cacheIdx = Math.floor(Math.random()*state.caches.length);
         var type = Math.random() < 0.6 ? 'read' : 'write';
@@ -927,11 +2373,13 @@
   byId('randomizeAllBtn').addEventListener('click', function(){
     byId('randomizeShapeBtn').click();
     byId('randomizePaletteBtn').click();
-    fireRandomSequence(6);
+    if (state.diagram.kind === 'generative'){ byId('randomizeParamsBtn').click(); }
+    else { fireRandomSequence(6); }
   });
   byId('resetAllBtn').addEventListener('click', function(){
     byId('resetShapeBtn').click();
-    resetSimulation();
+    if (state.diagram.kind === 'generative'){ byId('resetParamsBtn').click(); }
+    else { resetSimulation(); }
   });
 
   /* --- gear / math panels --------------------------------------------- */
@@ -1000,7 +2448,7 @@
       URL.revokeObjectURL(url);
       canvas.toBlob(function(blob){
         var link = document.createElement('a');
-        link.download = 'mesif-diagram.png';
+        link.download = state.diagram.id + '-diagram.png';
         link.href = URL.createObjectURL(blob);
         link.click();
       });
@@ -1008,18 +2456,20 @@
     img.src = url;
   });
 
-  /* --- hint fade --------------------------------------------------------*/
-  setTimeout(function(){
-    var hint = byId('hint');
-    hint.style.opacity = '0';
-    setTimeout(function(){ hint.remove(); }, 700);
-  }, 4200);
-
   /* --- init ---------------------------------------------------------- */
-  render();
-  renderChips();
+  state.paramValues = defaultParamValues(state.diagram);
+  state.toggleValues = defaultToggleValues(state.diagram);
+  buildPresetUI();
+  buildParamsUI();
+  buildToggleUI();
+  updateSectionVisibility();
+  rebuildDockShell();
+  if (state.diagram.kind === 'generative'){ updateGenerativeDock(); }
+  else { renderChips(); updateBadges(); }
   renderMath();
-  updateBadges();
+  document.title = 'TikZ Explorer — ' + state.diagram.name;
+  applyHint(state.diagram.hint);
+  render();
 })();
 </script>
 </body>
