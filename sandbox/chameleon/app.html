@@ -465,6 +465,56 @@ function rouletteCurve(R, density, penScaleFn, fixedN){
 }
 
 /* =========================================================================
+   MODULE 1b — LOGARITHMIC (EQUIANGULAR) SPIRAL
+   r(theta) = a * g^(2*theta/pi) — crosses every ray from center at the
+   same fixed angle, growing by a constant RATIO g every quarter turn.
+   g = metallic-ratio family member (golden/silver/bronze), curated the
+   same way ROULETTE_FAMILIES curates gear ratios: a small hand-picked
+   list instead of a raw "growth rate" slider, so every choice stays a
+   recognizable, clean spiral. Mined from tikz-widget's
+   logarithmic-spiral-metallic-ratio-family KB entry. A second base curve
+   family, usable anywhere a roulette curve is (see `curveType` on warp,
+   trap, crossfade, mandala) via the shared sampleGenericCurve() below.
+   ========================================================================= */
+const SPIRAL_FAMILIES = [
+  {name:'Golden', g:1.6180339887},
+  {name:'Silver', g:2.4142135624},
+  {name:'Bronze', g:3.3027756377}
+];
+function resolveSpiral(S){
+  const fam = SPIRAL_FAMILIES.find(f=>f.name===S.family) || SPIRAL_FAMILIES[0];
+  const turns = S.turns==null ? 2.6 : S.turns;
+  return {g:fam.g, turns};
+}
+// Shared sampler for both curve types — used wherever a recipe lets the
+// user pick roulette vs. spiral. Returns the exact {pts,T,maxR} shape
+// rouletteCurve does, so callers that only need combined (x,y) points
+// (trap, crossfade, mandala) don't need to know which type produced them.
+// warp keeps its own local base/pen-vector split (see its draw()) since
+// its coupling technique specifically needs that decomposition.
+function sampleGenericCurve(curveType, R, S, density, fixedN){
+  const T = curveType==='spiral' ? S.turns*2*Math.PI : roulettePeriod(R);
+  const n = fixedN ? clamp(Math.round(fixedN), 6, 400)
+                    : clamp(Math.round(density*(T/(2*Math.PI))), 32, 6000);
+  const pts = new Array(n);
+  let maxR = 1;
+  for(let i=0;i<n;i++){
+    const t = T*i/(n-1);
+    let x,y;
+    if(curveType==='spiral'){
+      const r = Math.pow(S.g, (2*t)/Math.PI);
+      x = r*Math.cos(t); y = r*Math.sin(t);
+    } else {
+      const raw = rouletteRaw(t, R);
+      x = raw.baseX+raw.penX; y = raw.baseY+raw.penY;
+    }
+    pts[i] = {x,y,t,frac:i/(n-1)};
+    maxR = Math.max(maxR, Math.hypot(x,y));
+  }
+  return {pts, T, maxR};
+}
+
+/* =========================================================================
    MODULE 2 — COMPLEX-PLANE ESCAPE-TIME FRACTAL
    fractal-widget renders this in a WebGL/GLSL shader (no CPU-side JS
    point loop exists there). Ported to plain JS here — same z -> z^2+c
@@ -615,14 +665,15 @@ function polyCentroid(poly){
 const state = {
   recipe:'warp',
   roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1,ptDens:520},
+  spiral:{family:'Golden',turns:2.6},
   fractal:{mode:'mandelbrot',juliaC:[-0.4,0.6],zoom:1.15,cx:-0.5,cy:0,bailout:16,maxIter:120},
   lsys:{preset:'tree',depth:4,angle:30},
   vor:{seedCount:60,seedSource:'roulette',colorBy:'index',fillAlpha:0.55,cellStroke:true},
-  warp:{strength:0.55,mode:'radial'},
+  warp:{strength:0.55,mode:'radial',curveType:'roulette',echoes:0},
   branch:{rosetteScale:0.16,rosetteComplexity:4,skeletonVisible:true,skeletonAlpha:0.35},
-  mandala:{rings:5,symmetry:8,scaleDecay:0.72,ringTwist:12,nestVoronoi:false},
-  trap:{bandFreq:1.4},
-  crossfade:{mix:0.5},
+  mandala:{rings:5,symmetry:8,scaleDecay:0.72,ringTwist:12,curveType:'roulette',mirror:false,placement:'rings'},
+  trap:{bandFreq:1.4,curveType:'roulette'},
+  crossfade:{mix:0.5,curveType:'roulette'},
   appearance:{palette:0,solidColor:'#38bdae',lineWidth:1.4,glow:true,trail:0}
 };
 
@@ -635,78 +686,126 @@ const state = {
 const RECIPES = [
   {
     id:'warp', name:'Fractal-Warped Roulette', color:'var(--recipe-warp)',
-    blurb:'A second-order roulette curve whose pen radius is bent, point by point, by a complex-plane escape-time field sampled at that point.',
+    blurb:'A curve whose pen radius is bent, point by point, by a complex-plane escape-time field sampled at that point.',
     groups:['roulette','fractal'],
     knobs:[
+      {key:'curveType', bank:'warp', label:'Curve type', select:['roulette','spiral'], rebuildOnChange:true},
       {key:'mode', bank:'warp', label:'Warp mode', select:['radial','temporal']},
-      {key:'strength', bank:'warp', label:'Warp strength', min:0, max:2.2, step:0.02, curated:[0.4,1.7]}
+      {key:'strength', bank:'warp', label:'Warp strength', min:0, max:2.2, step:0.02, curated:[0.4,1.7]},
+      {key:'echoes', bank:'warp', label:'Echoes (phase-stepped overlay)', min:0, max:5, step:1, curated:[0,3]}
     ],
     presets:[
-      {name:'Seahorse Bloom', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:0.9,mode:'radial'}},
-      {name:'Julia Bloom', roulette:{family:'Nonagon',h:0.55,p:0.9,detail:1}, fractal:{mode:'julia',juliaC:[-0.8,0.156]}, warp:{strength:1.1,mode:'radial'}},
-      {name:'Ship Ripple', roulette:{family:'Rippleship',h:0.3,p:0.6,detail:1}, fractal:{mode:'burningship',zoom:0.14,cx:-1.75,cy:-0.03}, warp:{strength:0.7,mode:'radial'}},
-      {name:'Tricorn Lattice', roulette:{family:'Hexrose',h:0.6,p:0.85,detail:1}, fractal:{mode:'tricorn',zoom:1.2,cx:-0.5,cy:0}, warp:{strength:1.3,mode:'radial'}},
-      {name:'Accordion Bloom', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:1.4,mode:'temporal'}},
-      {name:'Julia Pulse', roulette:{family:'Twelvefold',h:0.4,p:0.7,detail:1}, fractal:{mode:'julia',juliaC:[0.285,0.01]}, warp:{strength:1.6,mode:'temporal'}}
+      {name:'Seahorse Bloom', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:0.9,mode:'radial',curveType:'roulette',echoes:0}},
+      {name:'Julia Bloom', roulette:{family:'Nonagon',h:0.55,p:0.9,detail:1}, fractal:{mode:'julia',juliaC:[-0.8,0.156]}, warp:{strength:1.1,mode:'radial',curveType:'roulette',echoes:0}},
+      {name:'Ship Ripple', roulette:{family:'Rippleship',h:0.3,p:0.6,detail:1}, fractal:{mode:'burningship',zoom:0.14,cx:-1.75,cy:-0.03}, warp:{strength:0.7,mode:'radial',curveType:'roulette',echoes:0}},
+      {name:'Tricorn Lattice', roulette:{family:'Hexrose',h:0.6,p:0.85,detail:1}, fractal:{mode:'tricorn',zoom:1.2,cx:-0.5,cy:0}, warp:{strength:1.3,mode:'radial',curveType:'roulette',echoes:0}},
+      {name:'Accordion Bloom', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:1.4,mode:'temporal',curveType:'roulette',echoes:0}},
+      {name:'Julia Pulse', roulette:{family:'Twelvefold',h:0.4,p:0.7,detail:1}, fractal:{mode:'julia',juliaC:[0.285,0.01]}, warp:{strength:1.6,mode:'temporal',curveType:'roulette',echoes:0}},
+      {name:'Golden Bloom', spiral:{family:'Golden',turns:2.6}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:0.8,mode:'temporal',curveType:'spiral',echoes:0}},
+      {name:'Silver Pulse', spiral:{family:'Silver',turns:2.2}, fractal:{mode:'julia',juliaC:[-0.4,0.6]}, warp:{strength:1.0,mode:'temporal',curveType:'spiral',echoes:0}},
+      {name:'Braided Sevenfold', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, fractal:{mode:'mandelbrot',zoom:0.06,cx:-0.745,cy:0.1127}, warp:{strength:0.7,mode:'radial',curveType:'roulette',echoes:3}}
     ],
     draw(ctx,W,H,cx,cy,scale){
       const F = fractalParamsFor(state.fractal);
-      const Rres = resolveRoulette(state.roulette);
-      // pre-pass to find curve extent so the fractal window maps sensibly
-      // and stays stable regardless of how strongly warp bends the pen
-      const probe = rouletteCurve(Rres, 96, null);
-      const N = clamp(Math.round(state.roulette.ptDens*(probe.T/(2*Math.PI))), 32, 6000);
-      // sample the raw coupling signal once along uniform t, THEN smooth it —
-      // smoothing the signal (not clamping its amplitude) is what keeps high
-      // warp strength bold instead of jagged, see smoothSignalPeriodic above.
-      const raws = new Array(N), rawPts = new Array(N);
-      for(let i=0;i<N;i++){
-        const t = probe.T*i/(N-1);
-        const raw = rouletteRaw(t, Rres);
-        rawPts[i] = raw;
-        const wx = raw.baseX/probe.maxR, wy = raw.baseY/probe.maxR;
-        const e = escapeSmooth(F.cx+wx*F.zoom, F.cy+wy*F.zoom, F);
-        raws[i] = e===null ? 0 : e;
-      }
-      // Window must scale with point count, not stay fixed: at a fixed
-      // sample count a fixed window smooths a fixed FRACTION of the curve's
-      // arc length, but ptDens (and therefore N) varies with roulette
-      // family/detail — the same nominal window covers proportionally less
-      // arc at high N, under-smoothing and letting the chaotic-tangle bug
-      // back in at high strength. Scale it to ~N/280 (validated against
-      // N=2500 needing window=9), clamped to a sane range.
-      const win = clamp(Math.round(N/280), 7, 51);
-      const smooth = smoothSignalPeriodic(raws, win);
-      let finalPts;
-      if(state.warp.mode==='temporal'){
-        const speeds = smooth.map(v=>clamp(1 + state.warp.strength*(v-0.35)*3, 0.12, 8));
-        const warpedT = integrateSpeedWarp(speeds, probe.T, N);
-        finalPts = new Array(N);
-        for(let i=0;i<N;i++){
-          const raw = rouletteRaw(warpedT[i], Rres);
-          const wx = raw.baseX/probe.maxR, wy = raw.baseY/probe.maxR;
-          const e = escapeSmooth(F.cx+wx*F.zoom, F.cy+wy*F.zoom, F);
-          finalPts[i] = {x:raw.baseX+raw.penX, y:raw.baseY+raw.penY, e:e===null?0:e};
+      const curveType = state.warp.curveType || 'roulette';
+      const Rres = curveType==='spiral' ? null : resolveRoulette(state.roulette);
+      const Sres = curveType==='spiral' ? resolveSpiral(state.spiral) : null;
+      // roulette echoes step by one gear TOOTH (validated in the
+      // roulette-constant-phase-offset-only-rotates KB gotcha: a constant
+      // pen-angle offset alone just rotates a closed curve, but OVERLAYING
+      // several tooth-stepped copies produces a genuinely denser, braided
+      // multi-lobe shape). A spiral has no discrete tooth count, so its
+      // echoes just use a fixed rotation step instead.
+      const toothStepDeg = curveType==='roulette' ? 360/Rres.n3 : 25;
+      const echoes = Math.round(state.warp.echoes||0);
+      function rawAt(t, phiDeg){
+        if(curveType==='spiral'){
+          const r = Math.pow(Sres.g, (2*t)/Math.PI);
+          const x = r*Math.cos(t), y = r*Math.sin(t);
+          const rad = phiDeg*Math.PI/180, c=Math.cos(rad), s=Math.sin(rad);
+          return {baseX:0, baseY:0, penX:x*c-y*s, penY:x*s+y*c};
         }
-      } else {
-        finalPts = new Array(N);
+        return rouletteRaw(t, {...Rres, phi:phiDeg});
+      }
+      const T = curveType==='spiral' ? Sres.turns*2*Math.PI : roulettePeriod(Rres);
+      // pre-pass to find curve extent so the fractal window maps sensibly
+      // and stays stable regardless of how strongly warp bends the pen —
+      // probed on the UNSHIFTED (phi=0) curve; echoes are phase-shifted/
+      // rotated copies of the same shape, so they share this normalization.
+      let maxR = 1;
+      for(let i=0;i<400;i++){ const t=T*i/399; const raw=rawAt(t,0); maxR=Math.max(maxR, Math.hypot(raw.baseX+raw.penX, raw.baseY+raw.penY)); }
+      const density = curveType==='spiral' ? 480 : state.roulette.ptDens;
+      const N = clamp(Math.round(density*(T/(2*Math.PI))), 32, 6000);
+      // A log spiral's radius grows EXPONENTIALLY with t, so equal steps in
+      // sample INDEX cover wildly unequal steps in visual scale/arc-length —
+      // unlike a roulette curve's roughly-uniform arc-length-per-sample, the
+      // N/280 window (tuned for roulette) badly under-smooths a spiral,
+      // letting the chaotic-tangle bug straight back in. A much wider
+      // window compensates.
+      const win = curveType==='spiral' ? clamp(Math.round(N/40), 15, 160) : clamp(Math.round(N/280), 7, 51);
+
+      // Escape field is sampled at the curve's UNWARPED position, independent
+      // of the pen-vector scale being computed FROM that sample (no feedback
+      // loop). For roulette that's the base point (the pen vector is a
+      // smaller wobble riding on top of it); a spiral has no separate base —
+      // the whole point lives in penX/penY — so sampling base-only there
+      // would sample a constant (0,0) for every t, collapsing the field to
+      // one value along the entire curve. Use base+pen for spiral instead.
+      function fieldSampleXY(raw){
+        return curveType==='spiral' ? [raw.penX, raw.penY] : [raw.baseX, raw.baseY];
+      }
+      function buildFinalPts(phiDeg){
+        // sample the raw coupling signal once along uniform t, THEN smooth
+        // it — smoothing the signal (not clamping its amplitude) is what
+        // keeps high warp strength bold instead of jagged, see
+        // smoothSignalPeriodic above.
+        const raws = new Array(N), rawPts = new Array(N);
+        for(let i=0;i<N;i++){
+          const t = T*i/(N-1);
+          const raw = rawAt(t, phiDeg);
+          rawPts[i] = raw;
+          const [sx,sy] = fieldSampleXY(raw);
+          const e = escapeSmooth(F.cx+(sx/maxR)*F.zoom, F.cy+(sy/maxR)*F.zoom, F);
+          raws[i] = e===null ? 0 : e;
+        }
+        const smooth = smoothSignalPeriodic(raws, win);
+        if(state.warp.mode==='temporal'){
+          const speeds = smooth.map(v=>clamp(1 + state.warp.strength*(v-0.35)*3, 0.12, 8));
+          const warpedT = integrateSpeedWarp(speeds, T, N);
+          const out = new Array(N);
+          for(let i=0;i<N;i++){
+            const raw = rawAt(warpedT[i], phiDeg);
+            const [sx,sy] = fieldSampleXY(raw);
+            const e = escapeSmooth(F.cx+(sx/maxR)*F.zoom, F.cy+(sy/maxR)*F.zoom, F);
+            out[i] = {x:raw.baseX+raw.penX, y:raw.baseY+raw.penY, e:e===null?0:e};
+          }
+          return out;
+        }
+        const out = new Array(N);
         for(let i=0;i<N;i++){
           const raw = rawPts[i];
           const s = 1 + state.warp.strength*(smooth[i]-0.35)*2;
-          finalPts[i] = {x:raw.baseX+raw.penX*s, y:raw.baseY+raw.penY*s, e:smooth[i]};
+          out[i] = {x:raw.baseX+raw.penX*s, y:raw.baseY+raw.penY*s, e:smooth[i]};
         }
+        return out;
       }
-      const segs = new Array(Math.max(0,N-1));
-      for(let i=1;i<N;i++){
-        const p0=finalPts[i-1], p1=finalPts[i];
-        segs[i-1] = {
-          x0: cx+(p0.x/probe.maxR)*scale, y0: cy+(p0.y/probe.maxR)*scale,
-          x1: cx+(p1.x/probe.maxR)*scale, y1: cy+(p1.y/probe.maxR)*scale,
-          e: p1.e
-        };
+
+      for(let ei=0; ei<=echoes; ei++){
+        const finalPts = buildFinalPts(ei*toothStepDeg);
+        const segs = new Array(Math.max(0,N-1));
+        for(let i=1;i<N;i++){
+          const p0=finalPts[i-1], p1=finalPts[i];
+          segs[i-1] = {
+            x0: cx+(p0.x/maxR)*scale, y0: cy+(p0.y/maxR)*scale,
+            x1: cx+(p1.x/maxR)*scale, y1: cy+(p1.y/maxR)*scale,
+            e: p1.e
+          };
+        }
+        ctx.globalAlpha = ei===0 ? 1 : 0.5;
+        strokeSegBatch(ctx, segs, i=>colorFor(state.appearance.palette, segs[i].e, i, state.appearance.solidColor), ()=>state.appearance.lineWidth*(ei===0?1:0.8));
       }
-      strokeSegBatch(ctx, segs, i=>colorFor(state.appearance.palette, segs[i].e, i, state.appearance.solidColor), ()=>state.appearance.lineWidth);
-      hudExtra = `mode:${state.fractal.mode} · warp:${state.warp.mode} · pts:${N} · period:${(probe.T/(2*Math.PI)).toFixed(1)}τ`;
+      ctx.globalAlpha = 1;
+      hudExtra = `${curveType} · mode:${F.mode} · warp:${state.warp.mode} · echoes:${echoes} · pts:${N}`;
     }
   },
   {
@@ -792,7 +891,8 @@ const RECIPES = [
     presets:[
       {name:'Curve Cells', vor:{seedSource:'roulette',seedCount:70,colorBy:'index'}, roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}},
       {name:'Orbit Cells', vor:{seedSource:'fractal',seedCount:90,colorBy:'escape'}, fractal:{mode:'julia',juliaC:[0.285,0.01]}},
-      {name:'Branch Cells', vor:{seedSource:'lsystem',seedCount:80,colorBy:'index'}, lsys:{preset:'plant',depth:5,angle:22.5}}
+      {name:'Branch Cells', vor:{seedSource:'lsystem',seedCount:80,colorBy:'index'}, lsys:{preset:'plant',depth:5,angle:22.5}},
+      {name:'Sunflower Cells', vor:{seedSource:'phyllotaxis',seedCount:90,colorBy:'index'}}
     ],
     draw(ctx,W,H,cx,cy,scale){
       const src = state.vor.seedSource;
@@ -807,6 +907,19 @@ const RECIPES = [
           const wx=rand(-1,1), wy=rand(-1,1);
           const e = escapeSmooth(F.cx+wx*F.zoom, F.cy+wy*F.zoom, F);
           raw.push({x:wx,y:wy}); vals.push(e===null?0:e);
+        }
+      } else if(src==='phyllotaxis'){
+        // Vogel's sunflower model, same construction as mandala's
+        // phyllotaxis placement mode (see that recipe's comment) — here
+        // feeding Voronoi's seed/point-source-sharing technique instead of
+        // stamping motifs, a dense organic mosaic quite different from the
+        // clustered look the other three sources tend toward.
+        const GOLDEN_ANGLE = Math.PI*(3-Math.sqrt(5));
+        const total = state.vor.seedCount;
+        for(let i=0;i<total;i++){
+          const ang = i*GOLDEN_ANGLE;
+          const r = Math.sqrt((i+0.5)/total);
+          raw.push({x:r*Math.cos(ang), y:r*Math.sin(ang)}); vals.push(i/total);
         }
       } else {
         // sample along the whole drawn path, not just bracket-branch tips —
@@ -852,73 +965,129 @@ const RECIPES = [
   },
   {
     id:'mandala', name:'Recursive Mandala', color:'var(--recipe-mandala)',
-    blurb:'A roulette rosette is IFS-stamped in rotated, shrinking rings; ring count and rotation step come from the same recursion-depth idea that drives the L-system.',
+    blurb:'A curve is IFS-stamped in rotated, shrinking copies; ring count and rotation step come from the same recursion-depth idea that drives the L-system.',
     groups:['roulette'],
     knobs:[
+      {key:'curveType', bank:'mandala', label:'Motif shape', select:['roulette','spiral'], rebuildOnChange:true},
+      {key:'placement', bank:'mandala', label:'Placement', select:['rings','phyllotaxis']},
       {key:'rings', bank:'mandala', label:'Rings (depth)', min:2, max:9, step:1, curated:[3,7]},
       {key:'symmetry', bank:'mandala', label:'Symmetry', min:3, max:16, step:1, curated:[5,12]},
       {key:'scaleDecay', bank:'mandala', label:'Scale decay', min:0.4, max:0.92, step:0.01, curated:[0.6,0.85]},
-      {key:'ringTwist', bank:'mandala', label:'Ring twist °', min:0, max:60, step:1, curated:[0,30]}
+      {key:'ringTwist', bank:'mandala', label:'Ring twist / divergence wobble °', min:0, max:60, step:1, curated:[0,30]},
+      {key:'mirror', bank:'mandala', label:'Mirror (dihedral symmetry)', toggle:true, randomizable:true}
     ],
     presets:[
-      {name:'Nine Ring', roulette:{family:'Hexrose',h:0.55,p:0.85,detail:1}, mandala:{rings:5,symmetry:9,scaleDecay:0.75,ringTwist:8}},
-      {name:'Twelvefold', roulette:{family:'Twelvefold',h:0.4,p:0.7,detail:1}, mandala:{rings:4,symmetry:12,scaleDecay:0.68,ringTwist:15}},
-      {name:'Pentaspiral', roulette:{family:'Pentaspiral',h:0.65,p:0.9,detail:1}, mandala:{rings:7,symmetry:5,scaleDecay:0.82,ringTwist:22}}
+      {name:'Nine Ring', roulette:{family:'Hexrose',h:0.55,p:0.85,detail:1}, mandala:{rings:5,symmetry:9,scaleDecay:0.75,ringTwist:8,curveType:'roulette',placement:'rings',mirror:false}},
+      {name:'Twelvefold', roulette:{family:'Twelvefold',h:0.4,p:0.7,detail:1}, mandala:{rings:4,symmetry:12,scaleDecay:0.68,ringTwist:15,curveType:'roulette',placement:'rings',mirror:false}},
+      {name:'Pentaspiral', roulette:{family:'Pentaspiral',h:0.65,p:0.9,detail:1}, mandala:{rings:7,symmetry:5,scaleDecay:0.82,ringTwist:22,curveType:'roulette',placement:'rings',mirror:false}},
+      {name:'Sunflower Mandala', roulette:{family:'Hexrose',h:0.5,p:0.8,detail:1}, mandala:{rings:6,symmetry:9,scaleDecay:0.78,ringTwist:0,curveType:'roulette',placement:'phyllotaxis',mirror:false}},
+      {name:'Kaleidoscope Bloom', roulette:{family:'Twelvefold',h:0.45,p:0.75,detail:1}, mandala:{rings:4,symmetry:7,scaleDecay:0.7,ringTwist:10,curveType:'roulette',placement:'rings',mirror:true}},
+      {name:'Silver Spiral Ring', spiral:{family:'Silver',turns:1.6}, mandala:{rings:5,symmetry:8,scaleDecay:0.72,ringTwist:12,curveType:'spiral',placement:'rings',mirror:false}}
     ],
     draw(ctx,W,H,cx,cy,scale){
       const rings = Math.round(state.mandala.rings), sym = Math.round(state.mandala.symmetry);
-      const motifPts = clamp(Math.floor(4500/Math.max(1,rings*sym)), 16, 260);
-      const rc = rouletteCurve(resolveRoulette(state.roulette), null, null, motifPts);
-      // accumulate every ring-copy's segments into one flat list for a
-      // single ~240-chunk batched stroke pass, same as the branch recipe
+      const total = rings*sym;
+      const motifPts = clamp(Math.floor(4500/Math.max(1,total)), 16, 260);
+      const curveType = state.mandala.curveType || 'roulette';
+      const R = curveType==='spiral' ? null : resolveRoulette(state.roulette);
+      const S = curveType==='spiral' ? resolveSpiral(state.spiral) : null;
+      const rc = sampleGenericCurve(curveType, R, S, null, motifPts);
+      const placement = state.mandala.placement || 'rings';
+      const mirror = !!state.mandala.mirror;
+      // repeating ANY motif at k=360°/n intervals guarantees exact n-fold
+      // rotational (cyclic) symmetry regardless of the motif's own shape;
+      // ALSO drawing a mirrored copy at each same position upgrades the
+      // whole arrangement to full dihedral symmetry — a no-op on a
+      // bilaterally-symmetric motif, but this roulette/spiral motif isn't
+      // one, so the toggle visibly turns a spinning pinwheel into a
+      // static kaleidoscope flower. Mined from tikz-widget's
+      // mandala-cyclic-vs-dihedral-symmetry-toggle KB entry.
+      const GOLDEN_ANGLE = Math.PI*(3-Math.sqrt(5)); // ≈137.5077°, Vogel's optimal-packing divergence angle
+
+      // accumulate every stamp's segments into one flat list for a single
+      // ~240-chunk batched stroke pass, same as the branch recipe
       const motifSegs = [];
-      for(let r=0;r<rings;r++){
-        const ringScale = scale*0.42*Math.pow(state.mandala.scaleDecay, r);
-        const ringRadius = scale*0.36*(r/Math.max(1,rings-1));
-        const lw = Math.max(0.4, state.appearance.lineWidth*(1-r/rings*0.6));
-        for(let k=0;k<sym;k++){
-          const baseAng = (2*Math.PI*k/sym) + r*state.mandala.ringTwist*Math.PI/180;
-          const ox = cx + Math.cos(baseAng)*ringRadius, oy = cy + Math.sin(baseAng)*ringRadius;
-          const tFrac = (r*sym+k)/(rings*sym);
-          const cosA=Math.cos(baseAng), sinA=Math.sin(baseAng);
-          for(let j=1;j<rc.pts.length;j++){
-            const a=rc.pts[j-1], b=rc.pts[j];
-            const ax = a.x/rc.maxR, ay=a.y/rc.maxR, bx=b.x/rc.maxR, by=b.y/rc.maxR;
+      function stampMotif(ox,oy,ringScale,cosA,sinA,tFrac,lw){
+        for(let j=1;j<rc.pts.length;j++){
+          const a=rc.pts[j-1], b=rc.pts[j];
+          const ax = a.x/rc.maxR, ay=a.y/rc.maxR, bx=b.x/rc.maxR, by=b.y/rc.maxR;
+          motifSegs.push({
+            x0: ox + (ax*cosA-ay*sinA)*ringScale, y0: oy + (ax*sinA+ay*cosA)*ringScale,
+            x1: ox + (bx*cosA-by*sinA)*ringScale, y1: oy + (bx*sinA+by*cosA)*ringScale,
+            t:tFrac, lw
+          });
+          if(mirror){
+            const may=-ay, mby=-by; // reflect the motif's local Y, then apply the SAME rotation — the dihedral copy
             motifSegs.push({
-              x0: ox + (ax*cosA-ay*sinA)*ringScale, y0: oy + (ax*sinA+ay*cosA)*ringScale,
-              x1: ox + (bx*cosA-by*sinA)*ringScale, y1: oy + (bx*sinA+by*cosA)*ringScale,
+              x0: ox + (ax*cosA-may*sinA)*ringScale, y0: oy + (ax*sinA+may*cosA)*ringScale,
+              x1: ox + (bx*cosA-mby*sinA)*ringScale, y1: oy + (bx*sinA+mby*cosA)*ringScale,
               t:tFrac, lw
             });
           }
         }
       }
+
+      if(placement==='phyllotaxis'){
+        // Vogel's sunflower model: rN = c*sqrt(N) gives every stamp equal
+        // area (area~r^2, so density stays constant only if r~sqrt(N)); the
+        // divergence angle defaults to the golden angle for gap-free
+        // packing, with Ring twist repurposed as a live deviation from it —
+        // 0° stays perfectly packed, a rational deviation (e.g. ~17-20°)
+        // breaks into straight dead arms, small deviations slowly drift.
+        // Mined from tikz-widget's phyllotaxis-golden-angle-optimal-packing.
+        const stepAngle = GOLDEN_ANGLE + state.mandala.ringTwist*Math.PI/180;
+        for(let i=0;i<total;i++){
+          const ang = i*stepAngle;
+          const radius = scale*0.4*Math.sqrt((i+0.5)/total);
+          const ox = cx+Math.cos(ang)*radius, oy = cy+Math.sin(ang)*radius;
+          const virtualRing = total>1 ? (i/(total-1))*(rings-1) : 0;
+          const ringScale = scale*0.42*Math.pow(state.mandala.scaleDecay, virtualRing);
+          const lw = Math.max(0.4, state.appearance.lineWidth*(1-(i/total)*0.6));
+          stampMotif(ox,oy,ringScale,Math.cos(ang),Math.sin(ang), i/total, lw);
+        }
+      } else {
+        for(let r=0;r<rings;r++){
+          const ringScale = scale*0.42*Math.pow(state.mandala.scaleDecay, r);
+          const ringRadius = scale*0.36*(r/Math.max(1,rings-1));
+          const lw = Math.max(0.4, state.appearance.lineWidth*(1-r/rings*0.6));
+          for(let k=0;k<sym;k++){
+            const baseAng = (2*Math.PI*k/sym) + r*state.mandala.ringTwist*Math.PI/180;
+            const ox = cx + Math.cos(baseAng)*ringRadius, oy = cy + Math.sin(baseAng)*ringRadius;
+            stampMotif(ox,oy,ringScale,Math.cos(baseAng),Math.sin(baseAng), (r*sym+k)/total, lw);
+          }
+        }
+      }
       strokeSegBatch(ctx, motifSegs, i=>colorFor(state.appearance.palette, motifSegs[i].t, i, state.appearance.solidColor), i=>motifSegs[i].lw);
-      hudExtra = `rings:${rings} × symmetry:${sym} = ${rings*sym} motifs`;
+      hudExtra = `${placement} · ${rings}×${sym}=${total} motifs${mirror?' · mirrored':''}`;
     }
   },
   {
     id:'trap', name:'Trapped Bloom', color:'var(--recipe-trap)',
-    blurb:'An escape-time fractal, but colored by an orbit trap: at every iteration the orbit’s distance to the roulette curve’s own silhouette is measured, so the fractal’s texture visibly carries that curve’s shape.',
+    blurb:'An escape-time fractal, but colored by an orbit trap: at every iteration the orbit’s distance to a curve’s own silhouette is measured, so the fractal’s texture visibly carries that curve’s shape.',
     groups:['roulette','fractal'],
     knobs:[
+      {key:'curveType', bank:'trap', label:'Trap shape', select:['roulette','spiral'], rebuildOnChange:true},
       {key:'bandFreq', bank:'trap', label:'Contour density', min:0.5, max:3, step:0.05, curated:[0.9,2.2]}
     ],
     presets:[
-      {name:'Frosted Filigree', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, fractal:{mode:'mandelbrot',zoom:0.9,cx:0,cy:0}, trap:{bandFreq:1.4}},
-      {name:'Coral Trap', roulette:{family:'Hexrose',h:0.6,p:0.85,detail:1}, fractal:{mode:'julia',juliaC:[-0.4,0.6]}, trap:{bandFreq:1.9}},
-      {name:'Ship Lattice', roulette:{family:'Rippleship',h:0.35,p:0.6,detail:1}, fractal:{mode:'burningship',zoom:1.1,cx:0,cy:0}, trap:{bandFreq:1.1}},
-      {name:'Nonagon Ripple', roulette:{family:'Nonagon',h:0.5,p:0.85,detail:1}, fractal:{mode:'mandelbrot',zoom:0.6,cx:0,cy:0}, trap:{bandFreq:2.4}}
+      {name:'Frosted Filigree', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, fractal:{mode:'mandelbrot',zoom:0.9,cx:0,cy:0}, trap:{bandFreq:1.4,curveType:'roulette'}},
+      {name:'Coral Trap', roulette:{family:'Hexrose',h:0.6,p:0.85,detail:1}, fractal:{mode:'julia',juliaC:[-0.4,0.6]}, trap:{bandFreq:1.9,curveType:'roulette'}},
+      {name:'Ship Lattice', roulette:{family:'Rippleship',h:0.35,p:0.6,detail:1}, fractal:{mode:'burningship',zoom:1.1,cx:0,cy:0}, trap:{bandFreq:1.1,curveType:'roulette'}},
+      {name:'Nonagon Ripple', roulette:{family:'Nonagon',h:0.5,p:0.85,detail:1}, fractal:{mode:'mandelbrot',zoom:0.6,cx:0,cy:0}, trap:{bandFreq:2.4,curveType:'roulette'}},
+      {name:'Golden Trap', spiral:{family:'Golden',turns:2.4}, fractal:{mode:'mandelbrot',zoom:0.8,cx:0,cy:0}, trap:{bandFreq:1.6,curveType:'spiral'}},
+      {name:'Bronze Trap', spiral:{family:'Bronze',turns:2}, fractal:{mode:'julia',juliaC:[0.285,0.01]}, trap:{bandFreq:2.0,curveType:'spiral'}}
     ],
     draw(ctx,W,H,cx,cy,scale){
-      const R = resolveRoulette(state.roulette);
-      const probe = rouletteCurve(R, 96, null);
+      const curveType = state.trap.curveType || 'roulette';
+      const R = curveType==='spiral' ? null : resolveRoulette(state.roulette);
+      const S = curveType==='spiral' ? resolveSpiral(state.spiral) : null;
+      const probe = sampleGenericCurve(curveType, R, S, 96, null);
       const TRAP_N = 56;
       const trapPts = new Float64Array(TRAP_N*2);
+      const trapSamples = sampleGenericCurve(curveType, R, S, null, TRAP_N);
       for(let i=0;i<TRAP_N;i++){
-        const t = probe.T*i/(TRAP_N-1);
-        const raw = rouletteRaw(t, R);
-        trapPts[i*2] = (raw.baseX+raw.penX)/probe.maxR*0.62;
-        trapPts[i*2+1] = (raw.baseY+raw.penY)/probe.maxR*0.62;
+        trapPts[i*2] = trapSamples.pts[i].x/probe.maxR*0.62;
+        trapPts[i*2+1] = trapSamples.pts[i].y/probe.maxR*0.62;
       }
       const F = fractalParamsFor(state.fractal);
       if(!trapCanvas){ trapCanvas=document.createElement('canvas'); trapCanvas.width=TRAP_RES; trapCanvas.height=TRAP_RES; trapCtx=trapCanvas.getContext('2d'); }
@@ -965,26 +1134,32 @@ const RECIPES = [
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(trapCanvas, cx-dSize/2, cy-dSize/2, dSize, dSize);
       ctx.imageSmoothingEnabled = prevSmooth;
-      hudExtra = `mode:${F.mode} · trap:${state.roulette.family} · res:${TRAP_RES}² × ${maxIter}iter`;
+      hudExtra = `mode:${F.mode} · trap:${curveType==='spiral'?state.spiral.family:state.roulette.family} · res:${TRAP_RES}² × ${maxIter}iter`;
     }
   },
   {
     id:'crossfade', name:'Shapeshift Crossfade', color:'var(--recipe-crossfade)',
-    blurb:'A roulette curve and an L-system skeleton, alpha cross-dissolved — the mix slider fades one system’s own geometry out as the other fades in, a clean shape-shift with no vertex tangling.',
+    blurb:'A curve and an L-system skeleton, alpha cross-dissolved — the mix slider fades one system’s own geometry out as the other fades in, a clean shape-shift with no vertex tangling.',
     groups:['roulette','lsys'],
     knobs:[
-      {key:'mix', bank:'crossfade', label:'Shift (roulette ⇄ L-system)', min:0, max:1, step:0.01, curated:[0.15,0.85]}
+      {key:'curveType', bank:'crossfade', label:'Curve side (A)', select:['roulette','spiral'], rebuildOnChange:true},
+      {key:'mix', bank:'crossfade', label:'Shift (curve ⇄ L-system)', min:0, max:1, step:0.01, curated:[0.15,0.85]}
     ],
     presets:[
-      {name:'Fern Into Sevenfold', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, lsys:{preset:'plant',depth:5,angle:25}, crossfade:{mix:0.5}},
-      {name:'Dragon Rising', roulette:{family:'Hexrose',h:0.55,p:0.85,detail:1}, lsys:{preset:'dragon',depth:10,angle:90}, crossfade:{mix:0.3}},
-      {name:'Treeline Fade', roulette:{family:'Nonagon',h:0.5,p:0.8,detail:1}, lsys:{preset:'tree',depth:4,angle:30}, crossfade:{mix:0.7}},
-      {name:'Arrowhead Bloom', roulette:{family:'Twelvefold',h:0.4,p:0.7,detail:1}, lsys:{preset:'arrowhead',depth:7,angle:60}, crossfade:{mix:0.45}}
+      {name:'Fern Into Sevenfold', roulette:{family:'Sevenfold',h:0.42,p:0.75,detail:1}, lsys:{preset:'plant',depth:5,angle:25}, crossfade:{mix:0.5,curveType:'roulette'}},
+      {name:'Dragon Rising', roulette:{family:'Hexrose',h:0.55,p:0.85,detail:1}, lsys:{preset:'dragon',depth:10,angle:90}, crossfade:{mix:0.3,curveType:'roulette'}},
+      {name:'Treeline Fade', roulette:{family:'Nonagon',h:0.5,p:0.8,detail:1}, lsys:{preset:'tree',depth:4,angle:30}, crossfade:{mix:0.7,curveType:'roulette'}},
+      {name:'Arrowhead Bloom', roulette:{family:'Twelvefold',h:0.4,p:0.7,detail:1}, lsys:{preset:'arrowhead',depth:7,angle:60}, crossfade:{mix:0.45,curveType:'roulette'}},
+      {name:'Golden Fern', spiral:{family:'Golden',turns:2.8}, lsys:{preset:'plant',depth:5,angle:25}, crossfade:{mix:0.5,curveType:'spiral'}},
+      {name:'Silver Dragon', spiral:{family:'Silver',turns:2.2}, lsys:{preset:'dragon',depth:10,angle:90}, crossfade:{mix:0.35,curveType:'spiral'}}
     ],
     draw(ctx,W,H,cx,cy,scale){
       const mix = state.crossfade.mix;
-      const Rres = resolveRoulette(state.roulette);
-      const rc = rouletteCurve(Rres, state.roulette.ptDens, null);
+      const curveType = state.crossfade.curveType || 'roulette';
+      const Rres = curveType==='spiral' ? null : resolveRoulette(state.roulette);
+      const Sres = curveType==='spiral' ? resolveSpiral(state.spiral) : null;
+      const density = curveType==='spiral' ? 480 : state.roulette.ptDens;
+      const rc = sampleGenericCurve(curveType, Rres, Sres, density, null);
       const aSegs = new Array(Math.max(0,rc.pts.length-1));
       for(let i=1;i<rc.pts.length;i++){
         const a=rc.pts[i-1], b=rc.pts[i];
@@ -1007,7 +1182,7 @@ const RECIPES = [
         strokeSegBatch(ctx, bSegs, i=>colorFor(state.appearance.palette, bSegs[i].t, i, state.appearance.solidColor), ()=>state.appearance.lineWidth);
       }
       ctx.globalAlpha = 1;
-      hudExtra = `A:${state.roulette.family} ⇄ B:${state.lsys.preset} · mix:${mix.toFixed(2)}`;
+      hudExtra = `A:${curveType==='spiral'?state.spiral.family:state.roulette.family} ⇄ B:${state.lsys.preset} · mix:${mix.toFixed(2)}`;
     }
   }
 ];
@@ -1224,6 +1399,10 @@ const GROUP_FIELDS = {
     {key:'p',label:'Pen reach',min:0.4,max:1,step:0.01,curated:[0.45,0.95]},
     {key:'detail',label:'Detail',min:0.6,max:1.3,step:0.02,curated:[0.7,1.2]}
   ],
+  spiral:[
+    {key:'family',label:'Spiral family',select:SPIRAL_FAMILIES.map(f=>f.name)},
+    {key:'turns',label:'Turns',min:1.2,max:4.5,step:0.1,curated:[1.8,3.2]}
+  ],
   fractal:[
     {key:'mode',label:'Fractal mode',select:['mandelbrot','julia','burningship','tricorn']},
     {key:'zoom',label:'Zoom',min:0.01,max:2,step:0.01},
@@ -1234,27 +1413,37 @@ const GROUP_FIELDS = {
     {key:'angle',label:'Turn angle °',min:5,max:150,step:0.5}
   ],
   vor:[
-    {key:'seedSource',label:'Seed source',select:['roulette','fractal','lsystem']},
+    {key:'seedSource',label:'Seed source',select:['roulette','fractal','lsystem','phyllotaxis']},
     {key:'colorBy',label:'Color by',select:['index','escape','angle']},
     {key:'cellStroke',label:'Cell edges',toggle:true}
   ]
 };
+// A recipe with a `curveType` knob shows EITHER the roulette OR the spiral
+// field set under the same "Curve shape" fieldset slot (never both) — one
+// fieldset, two possible contents, rather than adding a whole second
+// fieldset that would sit there unused half the time.
+function curveTypeKnobOf(rec){ return rec.knobs.find(k=>k.key==='curveType'); }
 function buildDynamicParams(){
   const rec = RECIPES.find(r=>r.id===state.recipe);
   const host = $('#dynamicParams'); host.innerHTML='';
+  const ctKnob = curveTypeKnobOf(rec);
   rec.groups.forEach(g=>{
-    if(!GROUP_FIELDS[g]){ console.warn('unknown param group', g); return; }
+    let fieldKey = g;
+    if(g==='roulette' && ctKnob && state[ctKnob.bank].curveType==='spiral') fieldKey = 'spiral';
+    if(!GROUP_FIELDS[fieldKey]){ console.warn('unknown param group', fieldKey); return; }
     const fs = document.createElement('fieldset');
-    const lg = document.createElement('legend'); lg.textContent = groupLabel(g); fs.appendChild(lg);
-    GROUP_FIELDS[g].forEach(f=>fs.appendChild(fieldControl(g,f)));
+    const lg = document.createElement('legend');
+    lg.textContent = (g==='roulette' && ctKnob) ? 'Curve shape' : groupLabel(g);
+    fs.appendChild(lg);
+    GROUP_FIELDS[fieldKey].forEach(f=>fs.appendChild(fieldControl(fieldKey,f)));
     host.appendChild(fs);
   });
   const fs2 = document.createElement('fieldset');
   const lg2 = document.createElement('legend'); lg2.textContent='Recipe knobs'; fs2.appendChild(lg2);
-  rec.knobs.forEach(k=>fs2.appendChild(fieldControl(k.bank,{key:k.key,label:k.label,min:k.min,max:k.max,step:k.step,select:k.select,toggle:k.toggle})));
+  rec.knobs.forEach(k=>fs2.appendChild(fieldControl(k.bank,{key:k.key,label:k.label,min:k.min,max:k.max,step:k.step,select:k.select,toggle:k.toggle,rebuildOnChange:k.rebuildOnChange})));
   host.appendChild(fs2);
 }
-function groupLabel(g){ return {roulette:'Roulette shape',fractal:'Fractal field',lsys:'L-system',vor:'Voronoi'}[g]||g; }
+function groupLabel(g){ return {roulette:'Roulette shape',spiral:'Spiral shape',fractal:'Fractal field',lsys:'L-system',vor:'Voronoi'}[g]||g; }
 function fieldControl(bank, f){
   const wrap = document.createElement('label'); wrap.className='ctrl';
   if(f.toggle){
@@ -1266,7 +1455,11 @@ function fieldControl(bank, f){
     wrap.innerHTML = `<b>${f.label}</b><select></select>`;
     const sel = wrap.querySelector('select');
     f.select.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; if(state[bank][f.key]===v) o.selected=true; sel.appendChild(o); });
-    sel.onchange = e=>{ state[bank][f.key]=e.target.value; render(); };
+    sel.onchange = e=>{
+      state[bank][f.key]=e.target.value;
+      if(f.rebuildOnChange){ buildDynamicParams(); }
+      render();
+    };
     return wrap;
   }
   const val = state[bank][f.key];
@@ -1372,13 +1565,24 @@ function randomizeLsys(){
   const [lo,hi] = (key==='dragon'||key==='arrowhead') ? [8,11] : [3,6];
   state.lsys.depth = randInt(lo,hi);
 }
+function randomizeSpiral(){
+  state.spiral.family = pick(SPIRAL_FAMILIES.map(f=>f.name));
+  state.spiral.turns = round2(rand(1.8,3.2));
+}
 function curatedRandomize(recOnly){
   const rec = RECIPES.find(r=>r.id===state.recipe);
   const target = recOnly ? rec : pick(RECIPES);
   if(!recOnly){ state.recipe = target.id; }
+  // curveType has to be decided BEFORE the groups loop below, since it
+  // determines whether the 'roulette' group slot should randomize the
+  // roulette bank or the spiral bank — deciding it inside the generic
+  // knobs loop (which runs after groups) would be too late.
+  const ctKnob = curveTypeKnobOf(target);
+  if(ctKnob) state[ctKnob.bank].curveType = pick(ctKnob.select);
   target.groups.forEach(g=>{
     if(g==='fractal'){ randomizeFractalSpot(); return; }
     if(g==='lsys'){ randomizeLsys(); return; }
+    if(g==='roulette' && ctKnob && state[ctKnob.bank].curveType==='spiral'){ randomizeSpiral(); return; }
     GROUP_FIELDS[g].forEach(f=>{
       if(f.select){ state[groupBankFor(g)][f.key] = pick(f.select); }
       else if(f.toggle){ /* leave toggles as-is for cleanliness */ }
@@ -1386,11 +1590,20 @@ function curatedRandomize(recOnly){
     });
   });
   target.knobs.forEach(k=>{
+    if(k.key==='curveType') return; // already decided above
     if(k.select){ state[k.bank][k.key] = pick(k.select); return; }
-    if(k.toggle){ return; /* leave toggles as-is for cleanliness */ }
+    if(k.toggle){ if(k.randomizable) state[k.bank][k.key] = rng()<0.5; return; }
     const [lo,hi] = k.curated || [k.min,k.max];
     state[k.bank][k.key] = round2(rand(lo,hi));
   });
+  // Radial warp mode fights a spiral's monotonically-growing radius —
+  // tested it directly: it reads as a broken/jagged shape rather than an
+  // organic bulge, unlike on a closed roulette loop. Temporal mode (which
+  // re-times the sweep instead of touching the radius law) stays clean on
+  // a spiral. Force it whenever the randomizer lands on warp+spiral, since
+  // "any random warp+spiral roll looks good" only held once mode was
+  // pinned to temporal.
+  if(target.id==='warp' && state.warp.curveType==='spiral') state.warp.mode = 'temporal';
   if(state.mandala){ state.mandala.rings=Math.round(state.mandala.rings); state.mandala.symmetry=Math.round(state.mandala.symmetry); }
   if(state.vor) state.vor.seedCount = Math.round(state.vor.seedCount);
   buildRecipeGrid(); buildDynamicParams(); render();
@@ -1407,100 +1620,47 @@ $('#resetBtn').onclick = ()=>{ const rec=RECIPES.find(r=>r.id===state.recipe); a
    ========================================================================= */
 function renderMath(){
   const rec = RECIPES.find(r=>r.id===state.recipe);
-  const R = resolveRoulette(state.roulette), F = state.fractal;
-  let body = `
-  <h3>What problem is Chameleon solving?</h3>
-  <p>Four sibling widgets (spirograph-studio, fractal-widget, lsystem-widget, voronoi-widget) each render one generative system well. Chameleon asks a different question: what happens if one system's <em>output</em> is fed into another system's <em>formula</em> as a live parameter, instead of drawing them as separate transparent layers? The six recipes below are six different answers.</p>
-
-  <h3>Glossary</h3>
-  <dl>
-    <dt>Roulette curve</dt><dd> — a point traced by a "pen" fixed to a wheel that rolls inside a hoop, itself rolling inside a fixed ring (a second-order epicyclic/roulette construction, not a plain hypotrochoid). The outer ring:wheel gear ratio (n0:n1) mostly sets the overall symmetry count; Chameleon exposes that as a curated "Shape family" picker instead of raw tooth-count sliders, since most tooth-count combinations render as an undersampled scribble rather than a clean loop (see the period-closure gotcha in the KB) — the "Detail" slider still scales the inner hoop/pen-wheel gears continuously for real variety.</dd><br>
-    <dt>Escape time</dt><dd> — for a point c in the complex plane, how many iterations of z&#8594;z&sup2;+c (or a sign-folded variant) it takes before |z| shoots past a bailout radius; points that never escape are "inside" the set.</dd><br>
-    <dt>Production rule</dt><dd> — a find/replace rule (e.g. F&#8594;F+F-F-F+F) applied to a string over several generations; a turtle then walks the resulting string to draw it.</dd><br>
-    <dt>Voronoi cell</dt><dd> — the region of the plane closer to one seed point than to any other seed.</dd>
-  </dl>
-
-  <h3>This recipe: ${rec.name}</h3>
-  <p>${rec.blurb}</p>
-  `;
+  let body = `<h3>${rec.name}</h3><p>${rec.blurb}</p>`;
 
   if(rec.id==='warp'){
     body += `
-    <div class="eq">roulette base:  x=(n0-n1)cos(t)+n1&middot;h&middot;cos(a0)+(n2-n3)cos(a0+t2)
-pen vector:     penX = n3&middot;p&middot;cos(a1+&phi;),  penY = n3&middot;p&middot;sin(a1+&phi;)
-escape field:   z&#8594;z&sup2;+c, smoothN = n+1-log(log|z|/log(B))/ln2, e = smoothN/maxIter
-smoothing:      e&#772;(t) = movingAverage(e(t), window&#8776;N/280)   — see below
-radial mode:    scale(t) = 1 + strength&middot;(e&#772;(t) - 0.35)&middot;2;  point = base + penVector&middot;scale(t)
-temporal mode:  speed(t) = clamp(1 + strength&middot;(e&#772;(t)-0.35)&middot;3, 0.12, 8);  t&#8242; = &int;speed dt  (t re-timed, magnitude untouched)</div>
-    <p><b>Why a scale on the pen vector, not the whole curve?</b> Scaling the whole curve just zooms it uniformly — boring. Scaling only the pen vector keeps the underlying gear ratio (and therefore the roulette's symmetry count) intact while letting the escape-time field visibly pinch and bulge the loops, so you can still see "it's a roulette" even as the fractal bends it.</p>
-    <p><b>Why smooth the field first?</b> Escape-time has sharp point-to-point gradients near fractal filaments, so applying it RAW makes even a bounded scale swing hard between adjacent curve samples — past moderate strength this reads as a spiky tangle, not a bold shape. A moving average along the (closed, so wrap-around) curve fixes it — but the window has to scale with point count (roughly N/280), or it under-smooths whenever a denser curve setting raises N: smoothing the <em>signal</em>, not clamping its amplitude, is what keeps high strength clean.</p>
-    <p><b>Radial vs. temporal:</b> radial bends WHERE the pen reaches (bulge/pinch of the loop's radius); temporal bends WHEN the pen gets there (the curve lingers in high-escape regions, rushes through low ones) — same field, same strength knob, a structurally different distortion.</p>
-    <p>Current numbers: family="${state.roulette.family}" (n0=${R.n0}, n1=${R.n1}, n2=${R.n2}, n3=${R.n3}), h=${R.h}, p=${R.p}, mode=${F.mode}, warp mode=${state.warp.mode}, strength=${state.warp.strength}.</p>
-    <div class="tie">Try it: open Settings &#8594; Fractal field &#8594; switch mode from Mandelbrot to Julia. The loop shapes reorganize immediately, because escape(x,y) is now sampling a completely different iteration (z fixed at the sample point, c fixed at the Julia constant) at the exact same (x,y) locations. Then flip Warp mode between radial and temporal at a high strength to feel the difference.</div>`;
+    <div class="eq">base curve:  roulette pen-vector, or spiral r=g^(2t/&pi;) (your Curve type choice)
+escape field: z&#8594;z&sup2;+c, e = smooth escape fraction, then smoothed along the curve
+radial:  scale(t)=1+strength&middot;(e&#772;-0.35)&middot;2 — bends WHERE the pen reaches
+temporal: speed(t)=1+strength&middot;(e&#772;-0.35)&middot;3 — bends WHEN it gets there
+echoes: N extra copies, each phase-stepped one gear tooth (or rotated, for a spiral)</div>
+    <p>Smoothing the escape signal before applying it (not just clamping the scale) is what keeps high strength bold instead of jagged — an unsmoothed field has sharp gradients near fractal filaments that swing adjacent curve points hard.</p>`;
   } else if(rec.id==='trap'){
     body += `
-    <div class="eq">orbit:      z&#8320;=0 (or sample point, Julia mode);  z&#8345;&#8330;&#8321; = z&#8345;&sup2;+c
-trap set:   S = 56 points sampled around the roulette curve, normalized &amp; scaled by 0.62
-trap value: v(c) = min over all n&lt;maxIter, all s&isin;S of |z&#8345; - s|
-coloring:   band(c) = (log(1+v&middot;40)&middot;bandFreq&middot;3.2) mod 1;  t = (1-v&#772;)^1.6&middot;0.7 + band&middot;0.3</div>
-    <p><b>What's an orbit trap?</b> Ordinary escape-time coloring asks "how many iterations until |z| blows up?" Orbit-trap coloring instead asks "how close did the orbit ever get to THIS shape?" — normally a point, a line, or a circle. Chameleon's trap shape is this app's own roulette curve, so the fractal's contour bands visibly trace the spirograph's silhouette instead of generic rings.</p>
-    <p><b>Why an offscreen low-res buffer?</b> Every pixel now costs up to maxIter&times;|S| distance checks (46&times;56 here) instead of one escape test — at full canvas resolution that's too slow for interactive dragging, so this recipe renders to a fixed ${TRAP_RES}&times;${TRAP_RES} buffer and scales it up, the same detail-for-interactivity tradeoff fractal-widget avoids entirely by using a GPU shader.</p>
-    <p>Current: trap shape from family="${state.roulette.family}", fractal mode=${F.mode}, contour density=${state.trap.bandFreq}.</p>
-    <div class="tie">Try it: switch Shape family in Settings — the trap curve's own loop count changes, and the fractal's contour bands reorganize around the new silhouette even though the fractal mode/zoom didn't change at all.</div>`;
+    <div class="eq">orbit:  z&#8320;=0 (or sample point, Julia); z&#8345;&#8330;&#8321;=z&#8345;&sup2;+c
+trap set S: 56 points around your curve (roulette or spiral), normalized
+trap value: v(c) = min distance from any orbit point z&#8345; to S</div>
+    <p>Ordinary escape-time coloring asks "how fast did it blow up?" — orbit-trap coloring asks "how close did it get to THIS shape?", so the fractal's texture visibly carries your curve's silhouette. Renders to a small offscreen buffer, since every pixel now costs maxIter&times;|S| distance checks instead of one escape test.</p>`;
   } else if(rec.id==='crossfade'){
     body += `
-    <div class="eq">A(t) = roulette curve's own points, t &isin; [0,1] by arc position
-B(t) = L-system skeleton's own segments
-draw:  alpha(A) = 1-mix;  alpha(B) = mix   (both drawn with their OWN geometry, unmoved)</div>
-    <p><b>Why alpha cross-dissolve instead of morphing point positions?</b> The first approach tried was resampling both curves to a shared arc-length parameter and lerping matched-index POSITIONS — it produced a chaotic tangled scribble at every mid-range mix, even between two curves of the same family, because arc-length position doesn't correspond to matching visual features between differently-shaped curves. Cross-dissolving opacity instead never moves a vertex, so it stays clean at every mix value and works for any pair of systems regardless of topology.</p>
-    <p>Current: roulette family="${state.roulette.family}", L-system preset="${state.lsys.preset}", mix=${state.crossfade.mix}.</p>
-    <div class="tie">Try it: drag Shift from 0 to 1 slowly — the roulette rosette doesn't distort or dissolve into noise, it just fades while the branching skeleton fades in underneath it, a genuine "shape-shift" rather than a blend.</div>`;
+    <div class="eq">A = your curve's own points; B = the L-system skeleton's own segments
+draw: alpha(A)=1-mix, alpha(B)=mix — both drawn with their OWN geometry, unmoved</div>
+    <p>The obvious approach — resampling both to a shared parameter and lerping matched positions — produced a chaotic tangle at every mid-range mix, even within one curve family. Cross-dissolving opacity instead never moves a vertex, so it stays clean at any mix, for any pair of shapes.</p>`;
   } else if(rec.id==='branch'){
     body += `
-    <div class="eq">rewrite:   s(0)=axiom;  s(i+1)=map(s(i), ch => rules[ch] or ch)
-turtle:    F draws forward &amp; records (depth=stack.length)
-           [ pushes (x,y,heading);  ] pops AND marks a branch tip
-rosette gearing at a tip of depth d:
-  n0 = 6+2c+d,  n1 = 5+c+d,  n2 = 3+&lceil;c/2&rceil;,  n3 = 2+&lceil;c/3&rceil;   (c = complexity knob)</div>
-    <p><b>Why gear the rosette off depth?</b> Depth is exactly the L-system's own recursion counter — reusing it (rather than inventing a separate random size) means the rosettes visibly get denser/tighter toward the branch tips exactly where the skeleton itself is recursing more, so the two systems read as one structure, not a skeleton with ornaments glued on.</p>
-    <p>Current rule set "${state.lsys.preset}": axiom=${LSYSTEMS[state.lsys.preset].axiom}, angle=${state.lsys.angle}&deg;, requested depth=${state.lsys.depth}.</p>
-    <div class="tie">Try it: raise Depth in the L-system group. On a branching rule set (plant/tree) more generations means more branch tips (check the HUD's "branch tips:" count) with visibly deeper gearing; on a non-branching curve (dragon/arrowhead — no brackets at all, so bracket depth stays 0) rosette variety instead comes from each stamp's position along the path, which is why those two still look lively rather than degenerating to one rosette.</div>`;
+    <div class="eq">rewrite: s(i+1) = map(s(i), ch &#8594; rules[ch] or ch)
+turtle: F draws &amp; records depth=stack.length; [ ] push/pop marks a branch tip
+rosette gearing at depth d: n0=6+2c+d, n1=5+c+d  (c = complexity knob)</div>
+    <p>Branch depth is the L-system's own recursion counter, reused directly to gear each stamped rosette — rosettes get denser/tighter exactly where the skeleton itself recurses more.</p>`;
   } else if(rec.id==='bloom'){
     body += `
-    <div class="eq">seed set:      P = sampled points from source system (curve / fractal orbit / turtle tips)
-cell(i):       { p in canvas : dist(p,P_i) &le; dist(p,P_j) &forall; j }   via half-plane clip per neighbor
-half-plane:    n&middot;p &le; c,  n=(P_j-P_i),  c=(|P_j|&sup2;-|P_i|&sup2;)/2
-fill(cell i):  color = palette( value(P_i) )   where value = curve-fraction, escape-time, or angle</div>
-    <p><b>Why seed from another system instead of random points?</b> Random seeds make a generic Voronoi mosaic. Seeding from the roulette curve's own arc-length samples (or the fractal's escape values, or the L-system's branch tips) means the <em>cell layout itself</em> — not just the fill color — is shaped by that system's geometry: dense curve regions get denser cells, sparse regions get bigger ones.</p>
-    <p>Current source: ${state.vor.seedSource}, seeds: ${state.vor.seedCount}, colored by: ${state.vor.colorBy}.</p>
-    <div class="tie">Try it: switch Seed source from "roulette" to "fractal" — the cell mosaic reorganizes from following a smooth curve's arc length to following escape-time hot/cold regions, using the exact same half-plane-clip cell math either way.</div>`;
+    <div class="eq">seeds: sampled from curve / fractal orbit / L-system path / phyllotaxis spiral
+cell(i) = { p : dist(p,seed_i) &le; dist(p,seed_j) &forall;j }, via half-plane clip per neighbor</div>
+    <p>Seeding from another system's own points (instead of random ones) means the cell LAYOUT, not just the fill color, is shaped by that system's geometry — including Vogel's sunflower spiral (golden-angle placement) as a fourth, denser, more organic source.</p>`;
   } else if(rec.id==='mandala'){
     body += `
-    <div class="eq">ring r &isin; [0,rings), copy k &isin; [0,symmetry):
-  angle(r,k) = 2&pi;k/symmetry + r&middot;ringTwist&middot;(&pi;/180)
-  ringScale(r) = 0.42&middot;scale&middot;decay^r
-  motif point  = origin(r,k) + Rot(angle(r,k)) &middot; roulettePoint &middot; ringScale(r)</div>
-    <p><b>Why drive rings off a "depth" idea instead of a fixed loop?</b> Treating ring count as a recursion depth (same conceptual role as an L-system's generation count) is what makes this recipe extensible — a future recipe could literally replace the flat ring loop with a real L-system traversal and reuse this same rotate/scale/stamp step unchanged.</p>
-    <p>Current: rings=${state.mandala.rings}, symmetry=${state.mandala.symmetry}, decay=${state.mandala.scaleDecay}, twist=${state.mandala.ringTwist}&deg; &#8594; ${state.mandala.rings*state.mandala.symmetry} total motif stamps.</p>
-    <div class="tie">Try it: set Ring twist to 0 vs. ~20&deg; — at 0 every ring's copies line up radially (spokes); a nonzero twist staggers each ring, which is what produces the "kaleidoscope" braided look.</div>`;
+    <div class="eq">rings mode:  angle(r,k)=2&pi;k/symmetry + r&middot;twist;  scale(r)=0.42&middot;decay^r
+phyllotaxis: angle(i)=i&middot;(goldenAngle+wobble);  radius(i)&prop;&radic;i  (Vogel's sunflower model)
+mirror: draw each stamp AND its y-flipped twin at the same position &#8594; dihedral symmetry</div>
+    <p>Repeating any motif at fixed rotation steps guarantees exact n-fold symmetry regardless of the motif's own shape — mirroring upgrades that to full kaleidoscope (dihedral) symmetry. Phyllotaxis swaps the rigid ring grid for organic golden-angle placement; "wobble" is a live deviation from the golden angle (0&deg;=tightest packing, ~17-20&deg;=straight dead arms).</p>`;
   }
 
-  body += `
-  <h3>How the six recipes compare</h3>
-  <table><tr><th>Recipe</th><th>What couples what</th><th>Shared with siblings</th></tr>
-  <tr><td>Fractal-Warped Roulette</td><td>escape-time (smoothed) &#8594; pen-vector scale or sweep speed</td><td>roulette formula, escape formula</td></tr>
-  <tr><td>Branching Rosettes</td><td>L-system depth &#8594; roulette gear ratio</td><td>turtle interpreter, roulette formula</td></tr>
-  <tr><td>Voronoi Bloom</td><td>curve/orbit/turtle points &#8594; Voronoi seeds</td><td>half-plane clip, all 3 point sources</td></tr>
-  <tr><td>Recursive Mandala</td><td>recursion depth &#8594; ring count/rotation</td><td>roulette formula, cosine palette</td></tr>
-  <tr><td>Trapped Bloom</td><td>roulette curve &#8594; fractal orbit-trap shape</td><td>roulette formula, escape iteration</td></tr>
-  <tr><td>Shapeshift Crossfade</td><td>mix &#8594; alpha cross-dissolve of two systems' own geometry</td><td>roulette formula, turtle interpreter</td></tr>
-  </table>
-
-  <h3>Real-world grounding</h3>
-  <p>Escape-time fractals underlie real-time GPU shader art and antenna/signal-processing self-similarity studies; roulette/epicyclic curves are literally how spirograph toys and some mechanical gear-cutting machines work; L-systems were invented (Lindenmayer, 1968) to model real plant growth; Voronoi diagrams show up in everything from cell biology to mobile-network coverage planning.</p>
-
-  <p class="cite">Roulette construction: glagolj's "second-order roulette" write-up. Workflow ideas (presets, randomizers): Abel Vincze's HTML Spirograph. Escape-time formula ported from this family's own fractal-widget shader. Half-plane Voronoi clip ported from this family's own voronoi-widget. A possible future 3D sibling of Chameleon is noted but not built yet — see the project README.</p>
-  `;
+  body += `<p class="cite">Roulette: glagolj's "second-order roulette." Spiral, phyllotaxis, dihedral symmetry: mined from this family's tikz-widget project. Escape-time: ported from fractal-widget's shader. Voronoi: ported from voronoi-widget.</p>`;
   $('#mathBody').innerHTML = body;
 }
 
