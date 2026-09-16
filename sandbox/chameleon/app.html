@@ -152,6 +152,7 @@
   .math-body th{color:var(--ink);background:var(--panel2);}
   .math-body .tie{border-left:3px solid var(--accent);padding:8px 10px;background:var(--panel2);border-radius:0 7px 7px 0;margin:12px 0;}
   .math-body .cite{font-size:11px;color:var(--ink-dim);opacity:.8;margin-top:18px;}
+  .math-eq-toggle{border-top:1px solid var(--border);margin-top:16px;padding-top:14px;}
 
   .toast{position:fixed;left:50%;bottom:70px;transform:translate(-50%,10px);background:var(--panel);
     border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:12.5px;z-index:70;
@@ -256,6 +257,10 @@
 <aside class="panel" id="mathPanel">
   <h2>The math <button class="panel-close" data-close="mathPanel">&times;</button></h2>
   <div class="math-body" id="mathBody"></div>
+  <div class="math-eq-toggle">
+    <div class="checkrow"><input type="checkbox" id="showEqToggle"><label for="showEqToggle">Show equations on canvas</label></div>
+    <p style="font-size:11px;color:var(--ink-dim);margin:4px 0 0;line-height:1.5;">Prints a short, simplified version of this recipe's formula under the drawing — <span style="color:#38bdae">teal</span> is the base curve, <span style="color:#f0a83c">amber</span> is whatever's coupled into it. Included in downloaded PNGs. Not every recipe reduces to a clean formula this way, so this stays off if one doesn't.</p>
+  </div>
 </aside>
 
 <div class="toast" id="toast"></div>
@@ -674,7 +679,7 @@ const state = {
   mandala:{rings:5,symmetry:8,scaleDecay:0.72,ringTwist:12,curveType:'roulette',mirror:false,placement:'rings'},
   trap:{bandFreq:1.4,curveType:'roulette'},
   crossfade:{mix:0.5,curveType:'roulette'},
-  appearance:{palette:0,solidColor:'#38bdae',lineWidth:1.4,glow:true,trail:0}
+  appearance:{palette:0,solidColor:'#38bdae',lineWidth:1.4,glow:true,trail:0,showEquations:false}
 };
 
 /* =========================================================================
@@ -806,6 +811,13 @@ const RECIPES = [
       }
       ctx.globalAlpha = 1;
       hudExtra = `${curveType} · mode:${F.mode} · warp:${state.warp.mode} · echoes:${echoes} · pts:${N}`;
+      eqCaption = state.warp.mode==='temporal' ? [
+        [{text:'(x,y) = '},{text:'curve(t′)',color:EQ_COLOR_A}],
+        [{text:`t′ speed = 1 + ${state.warp.strength.toFixed(2)}·`},{text:'field(curve(t))',color:EQ_COLOR_B}]
+      ] : [
+        [{text:'(x,y) = '},{text:'curve(t)',color:EQ_COLOR_A},{text:' × scale(t)'}],
+        [{text:`scale(t) = 1 + ${state.warp.strength.toFixed(2)}·`},{text:'field(curve(t))',color:EQ_COLOR_B}]
+      ];
     }
   },
   {
@@ -878,6 +890,11 @@ const RECIPES = [
       });
       strokeSegBatch(ctx, rosetteSegs, i=>colorFor(state.appearance.palette, rosetteSegs[i].t, i, state.appearance.solidColor), i=>rosetteSegs[i].lw);
       hudExtra = `preset:${state.lsys.preset} · depth:${depth} · branch tips:${allTips.length} · rosettes:${tips.length}`;
+      eqCaption = [[
+        {text:'gear(tip) = '},
+        {text:`6+2·${Math.round(state.branch.rosetteComplexity)}`, color:EQ_COLOR_A},
+        {text:' + '}, {text:'depth', color:EQ_COLOR_B}
+      ]];
     }
   },
   {
@@ -961,6 +978,9 @@ const RECIPES = [
         ctx.globalAlpha=1;
       });
       hudExtra = `source:${src} · seeds:${sites.length} · cells:${cells.filter(c=>c.length>=3).length}`;
+      eqCaption = [[
+        {text:'cell(p) = nearest '}, {text:'seed', color:EQ_COLOR_B}
+      ]];
     }
   },
   {
@@ -1059,6 +1079,10 @@ const RECIPES = [
       }
       strokeSegBatch(ctx, motifSegs, i=>colorFor(state.appearance.palette, motifSegs[i].t, i, state.appearance.solidColor), i=>motifSegs[i].lw);
       hudExtra = `${placement} · ${rings}×${sym}=${total} motifs${mirror?' · mirrored':''}`;
+      eqCaption = [[
+        {text:'point = Rot('}, {text:'angle', color:EQ_COLOR_B}, {text:') × '},
+        {text:'curve(t)', color:EQ_COLOR_A}, {text:' × scale'}
+      ]];
     }
   },
   {
@@ -1135,6 +1159,10 @@ const RECIPES = [
       ctx.drawImage(trapCanvas, cx-dSize/2, cy-dSize/2, dSize, dSize);
       ctx.imageSmoothingEnabled = prevSmooth;
       hudExtra = `mode:${F.mode} · trap:${curveType==='spiral'?state.spiral.family:state.roulette.family} · res:${TRAP_RES}² × ${maxIter}iter`;
+      eqCaption = [[
+        {text:'v(c) = min dist( '}, {text:'orbit(c)', color:EQ_COLOR_B}, {text:', '},
+        {text:'curve shape', color:EQ_COLOR_A}, {text:' )'}
+      ]];
     }
   },
   {
@@ -1183,6 +1211,9 @@ const RECIPES = [
       }
       ctx.globalAlpha = 1;
       hudExtra = `A:${curveType==='spiral'?state.spiral.family:state.roulette.family} ⇄ B:${state.lsys.preset} · mix:${mix.toFixed(2)}`;
+      eqCaption = [[
+        {text:'point = (1−mix)·'}, {text:'A', color:EQ_COLOR_A}, {text:' + mix·'}, {text:'B', color:EQ_COLOR_B}
+      ]];
     }
   }
 ];
@@ -1205,6 +1236,62 @@ const ctx = canvas.getContext('2d');
 const TRAP_RES = 260;
 let trapCanvas = null, trapCtx = null;
 let hudExtra = '';
+
+/* =========================================================================
+   ON-CANVAS EQUATION OVERLAY — same convention as spirograph-studio's
+   "Show equations on canvas" toggle (a Σ-panel checkbox, printed under the
+   drawing, included in downloaded PNGs). Chameleon adds one thing
+   spirograph didn't need: every recipe here fuses TWO systems, so the
+   overlay color-codes which terms come from which side of the fusion
+   (teal = the base curve; amber = whatever's coupled into it) instead of
+   printing one long single-color formula — simplified on purpose, not the
+   full derivation (that's what the panel text above it is for).
+   Each recipe's draw() sets `eqCaption` to an array of lines, each line an
+   array of {text,color} segments, or leaves it null if a recipe's math
+   doesn't reduce to a clean short formula (e.g. no x(t)/y(t) to print).
+   ========================================================================= */
+const EQ_COLOR_A = '#38bdae';   // teal — the base/carrier curve (roulette or spiral)
+const EQ_COLOR_B = '#f0a83c';   // amber — whatever's coupled into it (field, depth, second curve, seed, mix target)
+let eqCaption = null;
+function eqNeutral(){ return getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#e8eaf0'; }
+function measureSegs(ctx, segs){ return segs.reduce((w,s)=>w+ctx.measureText(s.text).width, 0); }
+function drawEquationCaption(){
+  // Coordinates here are CSS pixels, not device pixels — render() already
+  // applied a dpr scale via setTransform before calling this, unlike
+  // spirograph-studio (which has no such transform and multiplies every
+  // dimension by dpr by hand); matching chameleon's OWN convention, the one
+  // every recipe's draw() already uses via its cx/cy/scale arguments.
+  if(!eqCaption || !eqCaption.length) return;
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  const maxWidth = innerWidth - 24;
+  const minFontPx = 8;
+  let fontPx = 12;
+  ctx.font = `${fontPx}px 'IBM Plex Mono', monospace`;
+  const neutral = eqNeutral();
+  const colored = eqCaption.map(line => line.map(s=>({text:s.text, color:s.color||neutral})));
+  let widest = Math.max(...colored.map(line=>measureSegs(ctx,line)));
+  if(widest > maxWidth){
+    fontPx = Math.max(minFontPx, fontPx*maxWidth/widest);
+    ctx.font = `${fontPx}px 'IBM Plex Mono', monospace`;
+  }
+  const cx = innerWidth/2;
+  const lineGap = fontPx*1.45;
+  // Measured, not guessed: the HUD chip's height varies with recipe (some
+  // hudExtra strings run to 2 lines, some 1), so a fixed clearance either
+  // wastes space or gets covered depending which recipe is active.
+  const hudEl = document.getElementById('hud');
+  const hudTop = hudEl ? hudEl.getBoundingClientRect().top : innerHeight-130;
+  const yBottom = hudTop - 24;
+  const yStart = yBottom - lineGap*(colored.length-1);
+  colored.forEach((line,i)=>{
+    const w = measureSegs(ctx, line);
+    let x = cx - w/2;
+    const y = yStart + lineGap*i;
+    line.forEach(seg=>{ ctx.fillStyle = seg.color; ctx.fillText(seg.text, x, y); x += ctx.measureText(seg.text).width; });
+  });
+  ctx.restore();
+}
 let dpr = Math.min(2, window.devicePixelRatio||1);
 // pan/zoom view state — same shape as spirograph-studio's `view` object,
 // but offsets stay in CSS-pixel space (matching chameleon's existing
@@ -1328,10 +1415,11 @@ function render(){
   ctx.lineCap='round'; ctx.lineJoin='round';
   const cx = innerWidth/2 + view.offX, cy = innerHeight/2 + view.offY, scale = baseScale()*view.zoom;
   const rec = RECIPES.find(r=>r.id===state.recipe);
-  hudExtra='';
+  hudExtra=''; eqCaption=null;
   try{ rec.draw(ctx, innerWidth, innerHeight, cx, cy, scale); }
   catch(e){ console.error('render error', e); hudExtra='render error — see console'; }
   ctx.shadowBlur=0;
+  if(state.appearance.showEquations) drawEquationCaption();
   lastRenderMs = performance.now()-t0;
   updateHud(rec);
 }
@@ -1480,6 +1568,8 @@ $('#glowToggle').checked = state.appearance.glow;
 $('#glowToggle').onchange = e=>{ state.appearance.glow=e.target.checked; render(); };
 $('#trail').oninput = e=>{ state.appearance.trail=+e.target.value; $('#trailVal').textContent=e.target.value; scheduleRender(); };
 $('#trailVal').textContent = state.appearance.trail;
+$('#showEqToggle').checked = state.appearance.showEquations;
+$('#showEqToggle').onchange = e=>{ state.appearance.showEquations=e.target.checked; render(); };
 
 /* ---- panel open/close ---- */
 function setBtnOpen(btn, open){ btn.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); }
