@@ -1617,6 +1617,229 @@
         '<div class="cite">Construction modeled on ' +
         '<a href="https://texample.net/logarithmic-spiral/" target="_blank" rel="noopener">texample.net/logarithmic-spiral</a> ' +
         '(Andrew Mertz).</div>'
+    },
+    {
+      id: 'circle-graph',
+      kind: 'generative',
+      name: 'Circle Graph Intersections',
+      hint: 'Compare Random vs. equidistant at the same node count — watch the count change<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'nodes', label:'Nodes', min:4, max:16, step:1, default:8}
+      ],
+      toggles: [
+        {key:'randomPlacement', label:'Random placement', default:false},
+        {key:'showIntersections', label:'Show intersections', default:true}
+      ],
+      presets: [
+        {name:'Complete Graph K8', values:{nodes:8}, toggles:{randomPlacement:false, showIntersections:true}},
+        {name:'Arbitrary Points', values:{nodes:8}, toggles:{randomPlacement:true, showIntersections:true}},
+        {name:'Dense Web K16', values:{nodes:16}, toggles:{randomPlacement:false, showIntersections:true}},
+        {name:'Minimal K5', values:{nodes:5}, toggles:{randomPlacement:false, showIntersections:false}},
+        {name:'Chaos K16', values:{nodes:16}, toggles:{randomPlacement:true, showIntersections:true}}
+      ],
+      liveFact: function(P, T){
+        var n = Math.max(3, Math.round(P.nodes));
+        var totalEdges = n*(n-1)/2;
+        if (n < 4) return n+' points, '+totalEdges+' edges — need at least 4 points before any crossings can exist.';
+        var candidate = combinations(n,4);
+        if (!T.showIntersections) return n+' points, '+totalEdges+' edges (complete graph K'+n+'). Toggle Intersections on to count crossings.';
+        var angles = getCircleGraphAngles(n, !!T.randomPlacement);
+        var pts = angles.map(function(a){ var rad=a*Math.PI/180; return [175*Math.cos(rad), 175*Math.sin(rad)]; });
+        var result = countCircleIntersections(pts);
+        if (result.points.length === candidate){
+          return 'C('+n+',4) = '+candidate+' crossings — general position, every one distinct.';
+        }
+        return 'C('+n+',4) predicts '+candidate+' crossings, but only '+result.points.length+' distinct points — '+(candidate-result.points.length)+' hidden where several diagonals meet at the same spot.';
+      },
+      draw: function(g, P, T, C, progress){
+        var n = Math.max(3, Math.round(P.nodes));
+        var angles = getCircleGraphAngles(n, !!T.randomPlacement);
+        var R = 175;
+        var pts = angles.map(function(a){ var rad=a*Math.PI/180; return [R*Math.cos(rad), R*Math.sin(rad)]; });
+        var edges = [];
+        for (var i=0;i<n;i++){ for (var j=i+1;j<n;j++){ edges.push([i,j]); } }
+        var maxLen = 2*R;
+        var visibleEdges = Math.max(1, Math.round(edges.length*progress));
+        for (var e=0;e<visibleEdges;e++){
+          var pair = edges[e];
+          var a1 = pts[pair[0]], a2 = pts[pair[1]];
+          var len = Math.sqrt((a2[0]-a1[0])*(a2[0]-a1[0]) + (a2[1]-a1[1])*(a2[1]-a1[1]));
+          var color = lerpPalette(C, len/maxLen);
+          g.appendChild(el('line', {x1:a1[0].toFixed(2), y1:a1[1].toFixed(2), x2:a2[0].toFixed(2), y2:a2[1].toFixed(2), stroke:color, 'stroke-width':'1', opacity:'0.55'}));
+        }
+        for (var k=0;k<n;k++){
+          g.appendChild(el('circle', {cx:pts[k][0].toFixed(2), cy:pts[k][1].toFixed(2), r:'5', fill:C[0], stroke:'var(--bg)', 'stroke-width':'1.5'}));
+        }
+        if (T.showIntersections !== false && progress >= 0.999 && n >= 4){
+          var result = countCircleIntersections(pts);
+          result.points.forEach(function(pt){
+            var rad2 = 2.2 + Math.min(4, pt[2]-1)*1.3;
+            g.appendChild(el('circle', {cx:pt[0].toFixed(2), cy:pt[1].toFixed(2), r:rad2.toFixed(2), fill:'var(--warm)', opacity:'0.9'}));
+          });
+        }
+      },
+      mathHTML:
+        '<h2>Circle Graph Intersections</h2>' +
+        '<div class="sub">How many times do all the diagonals of a shape cross — and can you count it without drawing a single line?</div>' +
+        '<div class="desc">Place n points on a circle and connect every pair with a straight chord — the complete graph K<sub>n</sub>. ' +
+        'Some pairs of chords cross inside the circle, some don\'t. This diagram counts and highlights every crossing, ' +
+        'live, for whatever node count and placement you choose.</div>' +
+
+        '<div class="section-head">1. The building blocks</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">Complete graph K<sub>n</sub></span> every one of the n points connected to every other — C(n,2) edges</div>' +
+        '<div><span class="k">General position</span> no 3 chords ever cross at exactly the same point</div>' +
+        '</div></div>' +
+
+        '<div class="section-head">2. Why the answer is exactly C(n,4)</div>' +
+        '<div class="desc">Pick ANY 4 of the n points. There are exactly 3 ways to pair 4 points into two chords — ' +
+        'but only ONE of those 3 pairings actually crosses inside the circle (the other two are nested or sit side by ' +
+        'side, never crossing). So every group of 4 points contributes exactly one candidate crossing, and counting ' +
+        'crossings becomes counting 4-point groups: C(n,4) = n!/(4!(n−4)!). For n=8 that\'s C(8,4) = 70 candidate ' +
+        'intersection points — computed live below the diagram for whatever Nodes value is currently set.</div>' +
+
+        '<div class="section-head">3. The live algorithm</div>' +
+        '<div class="desc">Sort the points by angle around the circle. For every ordered quadruple i&lt;j&lt;k&lt;l, ' +
+        'the two DIAGONALS of the quadrilateral they form — chord (i,k) and chord (j,l) — are the pair that crosses. ' +
+        'Compute that single intersection point directly (ordinary line-segment intersection), for every quadruple. ' +
+        'That\'s the entire algorithm — no simulation, no guessing.</div>' +
+
+        '<div class="section-head">4. The twist: equidistant points can cheat the formula</div>' +
+        '<div class="desc">C(n,4) assumes general position — no coincidental triple-or-more crossings. Scatter the ' +
+        'points irregularly (Random placement on) and that assumption holds essentially always. But a perfectly ' +
+        'regular n-gon (equidistant points) is anything but generic: for EVEN n, the long diagonals are diameters, ' +
+        'and several of them pass through the exact center simultaneously. A regular hexagon\'s three main diagonals ' +
+        'all meet at one point, not three separate ones — so the actual number of distinct visible crossings is ' +
+        'LESS than C(n,4) predicts. The live counter below reports both numbers and calls out the gap when it finds ' +
+        'one. The bigger highlight dots you see are exactly these higher-multiplicity coincidence points.</div>' +
+
+        '<div class="section-head">5. Where it\'s used</div>' +
+        '<div class="desc">This is a genuine open-ended research question, not just a puzzle — counting the exact ' +
+        'number of regions and intersection points formed by the diagonals of a regular n-gon (accounting for every ' +
+        'coincidence) was only fully resolved in 1998, by Bjorn Poonen and Michael Rubinstein. Complete graphs ' +
+        'themselves are a foundational object in graph theory and network topology far beyond this specific puzzle.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Set Nodes to 6, 8, 10, or 12 with Random placement OFF and note the reported gap — then ' +
+        'flip Random placement ON at the same count and watch the count jump up to match C(n,4) exactly, since ' +
+        'random points almost never land in perfect alignment.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/cn4-points-of-intersection/" target="_blank" rel="noopener">texample.net/cn4-points-of-intersection</a> ' +
+        'and <a href="https://texample.net/complete-graph/" target="_blank" rel="noopener">texample.net/complete-graph</a>. ' +
+        'Regular-polygon diagonal-intersection counting summarized from Poonen &amp; Rubinstein, ' +
+        '<i>The Number of Intersection Points Made by the Diagonals of a Regular Polygon</i> (1998).</div>'
+    },
+    {
+      id: 'rose-curve',
+      kind: 'generative',
+      name: 'Rose · Rhodonea Curve',
+      hint: 'Set n = d for a plain circle — the simplest possible "rose"<br>Tap the gear for parameters &amp; color · tap ∿ for the math',
+      params: [
+        {key:'n', label:'n (numerator)', min:1, max:9, step:1, default:3},
+        {key:'d', label:'d (denominator)', min:1, max:6, step:1, default:1}
+      ],
+      toggles: [
+        {key:'showIntersections', label:'Show intersections', default:true},
+        {key:'rainbow', label:'Rainbow by angle', default:true}
+      ],
+      presets: [
+        {name:'Classic Trefoil', values:{n:3,d:1}, toggles:{showIntersections:true, rainbow:true}},
+        {name:'Four-Petal Bloom', values:{n:2,d:1}, toggles:{showIntersections:true, rainbow:true}},
+        {name:'Delicate Lace', values:{n:7,d:2}, toggles:{showIntersections:true, rainbow:true}},
+        {name:'Nine-Petal Star', values:{n:9,d:1}, toggles:{showIntersections:true, rainbow:false}},
+        {name:'Fractional Web', values:{n:5,d:3}, toggles:{showIntersections:true, rainbow:true}}
+      ],
+      liveFact: function(P, T){
+        var n = Math.max(1, Math.round(P.n)), d = Math.max(1, Math.round(P.d));
+        var gg = gcd(n,d);
+        var nn = n/gg, dd = d/gg;
+        var isEven = (nn*dd) % 2 === 0;
+        var petals = isEven ? 2*nn : nn;
+        var base = 'k = '+nn+'/'+dd+' → '+petals+' petal'+(petals===1?'':'s')+(nn===dd?' (a circle)':'');
+        if (!T.showIntersections) return base+' — toggle Intersections on to count self-crossings.';
+        var thetaMax = isEven ? 2*Math.PI*dd : Math.PI*dd;
+        var samples = 500;
+        var pts = [];
+        for (var i=0;i<=samples;i++){
+          var th = thetaMax*i/samples;
+          var r = 175*Math.cos(th*nn/dd);
+          pts.push([r*Math.cos(th), r*Math.sin(th)]);
+        }
+        var res = findCurveSelfIntersections(pts);
+        return base+' — '+res.points.length+' self-crossing point'+(res.points.length===1?'':'s')+' found.';
+      },
+      draw: function(g, P, T, C, progress){
+        var n = Math.max(1, Math.round(P.n)), d = Math.max(1, Math.round(P.d));
+        var gg = gcd(n,d);
+        var nn = n/gg, dd = d/gg;
+        var isEven = (nn*dd) % 2 === 0;
+        var thetaMax = isEven ? 2*Math.PI*dd : Math.PI*dd;
+        var R = 175;
+        var samples = 500;
+        var visibleSamples = Math.max(2, Math.round(samples*progress));
+        var pts = [];
+        for (var i=0;i<=visibleSamples;i++){
+          var th = thetaMax*i/samples;
+          var r = R*Math.cos(th*nn/dd);
+          pts.push([r*Math.cos(th), r*Math.sin(th)]);
+        }
+        for (var s=1;s<pts.length;s++){
+          var color = T.rainbow !== false ? lerpPalette(C, s/samples) : C[0];
+          g.appendChild(el('line', {x1:pts[s-1][0].toFixed(2), y1:pts[s-1][1].toFixed(2), x2:pts[s][0].toFixed(2), y2:pts[s][1].toFixed(2), stroke:color, 'stroke-width':'2', 'stroke-linecap':'round'}));
+        }
+        if (T.showIntersections !== false && progress >= 0.999 && pts.length > 10){
+          var result = findCurveSelfIntersections(pts);
+          result.points.forEach(function(pt){
+            g.appendChild(el('circle', {cx:pt[0].toFixed(2), cy:pt[1].toFixed(2), r:'3', fill:'var(--warm)', opacity:'0.9'}));
+          });
+        }
+      },
+      mathHTML:
+        '<h2>Rose · Rhodonea Curve</h2>' +
+        '<div class="sub">One polar equation, an entire garden of flowers — and the same crossing-count question as before, for a curve instead of straight lines</div>' +
+        '<div class="desc">r = cos(k·θ) draws a flower with a petal count set entirely by k. Change k just slightly ' +
+        '— from an integer to a nearby fraction — and the petal count, symmetry, and self-overlap can change ' +
+        'completely.</div>' +
+
+        '<div class="section-head">1. The equation</div>' +
+        '<div class="eq-block"><div class="values">' +
+        '<div><span class="k">r = cos(k·θ)</span> polar radius as a function of angle</div>' +
+        '<div><span class="k">k = n/d</span> reduced to lowest terms (gcd(n,d) divided out)</div>' +
+        '</div></div>' +
+
+        '<div class="section-head">2. The odd/even petal rule</div>' +
+        '<div class="desc">Reduce k = n/d to lowest terms. If n·d is ODD, the rose has exactly n petals, fully ' +
+        'traced over θ ∈ [0, πd). If n·d is EVEN, it has 2n petals and needs the full θ ∈ [0, 2πd) to close. ' +
+        'Worked examples: k=1 (n=1,d=1, odd) draws 1 "petal" — which is just a circle, since r=cos(θ) is the classic ' +
+        'polar equation of a circle. k=2 (even) gives 4 petals. k=3 (odd) gives 3 petals.</div>' +
+
+        '<div class="section-head">3. Where the petals actually cross</div>' +
+        '<div class="desc">Every petal of a rose with d=1 passes back through the origin (r=0) before starting the ' +
+        'next one — so for an odd-n, d=1 rose, ALL n petals meet at exactly one point, the origin, the same kind of ' +
+        '"several things meeting at once" concurrency the sibling Circle Graph Intersections diagram finds at a ' +
+        'regular hexagon\'s center. Fractional k values (d&gt;1) make the petals overlap each other at points away ' +
+        'from the origin too, which is where the more interesting, scattered self-crossings come from.</div>' +
+
+        '<div class="section-head">4. A curve has no C(n,4)</div>' +
+        '<div class="desc">Circle Graph Intersections counts crossings among a FINITE set of straight chords, and ' +
+        'has an exact closed-form answer, C(n,4). A smooth curve made of overlapping petals has no such tidy ' +
+        'formula — the count here is found the honest way: sample the curve into hundreds of tiny straight ' +
+        'segments and test every non-adjacent pair for a crossing, exactly the same segment-intersection test the ' +
+        'chord diagram uses, just applied to a curve\'s own pieces instead of to a graph\'s edges.</div>' +
+
+        '<div class="section-head">5. Where it\'s used</div>' +
+        '<div class="desc">Rose curves are a staple of decorative geometric art and spirograph-style design — the ' +
+        'same overlapping-loop aesthetic as this project\'s Pompeii Mosaic guilloché pattern, produced here by a ' +
+        'single clean equation instead of a compass-and-straightedge weave.</div>' +
+
+        '<div class="section-head">Try it above</div>' +
+        '<div class="desc">Set n=d for a plain circle (zero self-crossings — a good sanity check). Then try any odd ' +
+        'n with d=1 and watch every petal pass through one shared point at the origin. Push d up to 2 or 3 with an ' +
+        'odd n for the richest overlapping-petal crossing patterns.</div>' +
+
+        '<div class="cite">Construction modeled on ' +
+        '<a href="https://texample.net/rose-rhodonea-curve/" target="_blank" rel="noopener">texample.net/rose-rhodonea-curve</a>.</div>'
     }
   ];
 
@@ -1680,6 +1903,108 @@
       if (n % fermat[i] === 0) n /= fermat[i];
     }
     return n === 1;
+  }
+
+  function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ var t=b; b=a%b; a=t; } return a || 1; }
+
+  function combinations(n,k){
+    if (k<0 || k>n) return 0;
+    var num=1; for (var i=0;i<k;i++){ num *= (n-i); }
+    var den=1; for (var j=1;j<=k;j++){ den *= j; }
+    return num/den;
+  }
+
+  /* Bounded segment-segment intersection — returns [x,y] only if the
+     crossing point lies within BOTH segments (not their infinite-line
+     extensions), or null. Shared by both the circle-graph diagram (chords
+     already known to cross, by the circular-order argument) and the rose
+     curve (polyline pieces, genuinely need the bound check). */
+  function segmentIntersect(p1,p2,p3,p4){
+    var x1=p1[0],y1=p1[1],x2=p2[0],y2=p2[1],x3=p3[0],y3=p3[1],x4=p4[0],y4=p4[1];
+    var d = (x2-x1)*(y4-y3) - (y2-y1)*(x4-x3);
+    if (Math.abs(d) < 1e-9) return null;
+    var t = ((x3-x1)*(y4-y3) - (y3-y1)*(x4-x3)) / d;
+    var u = ((x3-x1)*(y2-y1) - (y3-y1)*(x2-x1)) / d;
+    if (t<0 || t>1 || u<0 || u>1) return null;
+    return [x1+t*(x2-x1), y1+t*(y2-y1)];
+  }
+
+  /* Merge near-duplicate points (within sqrt(epsSq) of an existing cluster)
+     into one, tracking how many raw hits landed on each — the multiplicity
+     is what reveals "3+ diagonals meeting at exactly one point" style
+     concurrency, both for the circle graph and for a rose curve's petals
+     all crossing at the origin. */
+  function clusterPoints(rawPoints, epsSq){
+    var clusters = [];
+    rawPoints.forEach(function(p){
+      for (var c=0;c<clusters.length;c++){
+        var cc = clusters[c];
+        var dx = cc[0]-p[0], dy = cc[1]-p[1];
+        if (dx*dx+dy*dy < epsSq){ cc[2]++; return; }
+      }
+      clusters.push([p[0], p[1], 1]);
+    });
+    return clusters;
+  }
+
+  /* Every 4-point subset of n points on a circle has exactly one crossing
+     pairing among its 3 possible chord pairings (the "X" one) — so the
+     number of CANDIDATE crossings is always exactly C(n,4). Points must
+     already be sorted into circular order. Returns {points, candidateCount}
+     where points.length may be LESS than candidateCount if multiple
+     4-subsets share the same physical intersection (e.g. a regular
+     hexagon's long diagonals all meeting at the center). */
+  function countCircleIntersections(pts){
+    var n = pts.length;
+    var raw = [];
+    for (var i=0;i<n;i++){
+      for (var j=i+1;j<n;j++){
+        for (var k=j+1;k<n;k++){
+          for (var l=k+1;l<n;l++){
+            var ip = segmentIntersect(pts[i],pts[k],pts[j],pts[l]);
+            if (ip) raw.push(ip);
+          }
+        }
+      }
+    }
+    return { points: clusterPoints(raw, 1.0), candidateCount: raw.length };
+  }
+
+  /* Self-intersections of a sampled polyline — the honest, no-closed-form
+     way to count where a smooth curve (a rose/rhodonea curve here) crosses
+     itself: check every pair of non-adjacent segments. minGap skips
+     trivially-touching neighbors. */
+  function findCurveSelfIntersections(points){
+    var m = points.length;
+    var minGap = 4;
+    var raw = [];
+    for (var i=0;i<m-1;i++){
+      for (var j=i+minGap;j<m-1;j++){
+        var ip = segmentIntersect(points[i], points[i+1], points[j], points[j+1]);
+        if (ip) raw.push(ip);
+      }
+    }
+    return { points: clusterPoints(raw, 9.0) };
+  }
+
+  /* Cached point layout for the circle-graph diagram: equidistant is
+     always recomputed (cheap, deterministic); random is regenerated only
+     when node count changes or the mode just switched into "random" — so
+     dragging unrelated sliders (color, rotation) doesn't reshuffle it. */
+  var circleGraphCache = { n:-1, random:false, angles:null };
+  function getCircleGraphAngles(n, randomMode){
+    if (circleGraphCache.angles && circleGraphCache.n === n && circleGraphCache.random === randomMode){
+      return circleGraphCache.angles;
+    }
+    var angles = [];
+    if (randomMode){
+      for (var i=0;i<n;i++){ angles.push(Math.random()*360); }
+      angles.sort(function(a,b){ return a-b; });
+    } else {
+      for (var i2=0;i2<n;i2++){ angles.push(-90 + i2*360/n); }
+    }
+    circleGraphCache = { n:n, random:randomMode, angles:angles };
+    return angles;
   }
 
   /* Minimal L-system: rewrite the axiom `order` times, replacing every F
