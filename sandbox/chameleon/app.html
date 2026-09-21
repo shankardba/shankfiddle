@@ -103,40 +103,19 @@
   #mascot .m-legs{animation:mascotHue 11s linear infinite reverse;animation-delay:-4s;}
   @keyframes mascotHue{ from{ filter:hue-rotate(0deg); } to{ filter:hue-rotate(360deg); } }
 
-  /* ---- front foot: periodically releases the branch, arcs up, and re-grips ----
-     transform-origin sits at the shoulder joint so the whole leg swings from
-     the hip, like a step, rather than sliding as a block. Mostly at rest
-     (grasped) for the bulk of each cycle — a chameleon's gait is slow and
-     deliberate, not fidgety. */
+  /* ---- front foot: held in its farthest-forward reaching pose (formerly the
+     42% frame of a lift/step loop) — a still silhouette now, no motion of
+     its own, just the same hue drift as the rest of the legs. */
   #mascot .m-foot-lift{
     transform-origin:152px 72px;
-    animation:mascotHue 11s linear infinite reverse, footLift 7s ease-in-out infinite;
-    animation-delay:-4s, 0s;
+    transform:translate(8px,-13px) rotate(-7deg);
+    animation:mascotHue 11s linear infinite reverse;
+    animation-delay:-4s;
   }
-  @keyframes footLift{
-    0%,8%{ transform:translate(0,0) rotate(0deg); }
-    26%{ transform:translate(4px,-11px) rotate(-15deg); }
-    42%{ transform:translate(8px,-13px) rotate(-7deg); }
-    56%{ transform:translate(3px,-3px) rotate(4deg); }
-    64%,100%{ transform:translate(0,0) rotate(0deg); }
-  }
-  /* the hand's two fingers pivot from the wrist, opposite directions, so the
-     Y-hand visibly opens while airborne and closes again as it re-grips —
-     phase-matched to footLift's own airborne window (roughly 8%-60%). */
-  #mascot .m-finger1{ transform-origin:122px 119px; animation:fingerSpread1 7s ease-in-out infinite; }
-  #mascot .m-finger2{ transform-origin:122px 119px; animation:fingerSpread2 7s ease-in-out infinite; }
-  @keyframes fingerSpread1{
-    0%,8%{ transform:rotate(0deg); }
-    24%,46%{ transform:rotate(-16deg); }
-    60%,100%{ transform:rotate(0deg); }
-  }
-  @keyframes fingerSpread2{
-    0%,8%{ transform:rotate(0deg); }
-    24%,46%{ transform:rotate(16deg); }
-    60%,100%{ transform:rotate(0deg); }
-  }
+  #mascot .m-finger1{ transform-origin:122px 119px; transform:rotate(-16deg); }
+  #mascot .m-finger2{ transform-origin:122px 119px; transform:rotate(16deg); }
   @media (prefers-reduced-motion: reduce){
-    #mascot .m-tail,#mascot .m-body,#mascot .m-spots,#mascot .m-head,#mascot .m-legs,#mascot .m-foot-lift,#mascot .m-finger1,#mascot .m-finger2{ animation:none; }
+    #mascot .m-tail,#mascot .m-body,#mascot .m-spots,#mascot .m-head,#mascot .m-legs,#mascot .m-foot-lift{ animation:none; }
   }
 
   /* ---- slide panels ---- */
