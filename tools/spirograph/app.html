@@ -2199,7 +2199,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   function randomizeHoopPenOnly(){
     const n1=state.n1, n2=state.n2, n3=state.n3;
     const hMax = 0.975*(1-n2/n1);
-    state.h = randFloat(-0.9,0.9)*hMax;
+    state.h = randFloat(0.15,0.9)*hMax; // biased positive so hoops land "on top" by default
     state.holeMm = [0,1.5,3,4.5][randInt(0,3)];
     const holeWorld = Math.abs(state.holeMm/2/MM_SCALE);
     const lastRadius = state.extraWheel ? state.n5 : n3;
@@ -2212,7 +2212,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     holeSlider.value=state.holeMm; holeVal.textContent=state.holeMm.toFixed(1)+'mm';
     if(state.extraWheel){
       const h2Max = 0.975*(1-state.n5/state.n4);
-      state.h2 = randFloat(-0.9,0.9)*h2Max;
+      state.h2 = randFloat(0.15,0.9)*h2Max; // biased positive, same as h
       refreshH2Range();
     }
     doRecompute(true);
@@ -2260,7 +2260,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     const {n0,n1,n2,n3, extraOn,n4,n5} = best;
 
     const hMax = 0.975 * (1 - n2/n1);
-    const h = randFloat(-0.95, 0.95) * hMax;
+    const h = randFloat(0.15, 0.95) * hMax; // biased positive so hoops land "on top" by default
     const holeOptions = wild ? [0, 0, 1.5, 3, 4.5] : [0, 1.5, 3, 4.5];
     const holeMm = holeOptions[randInt(0, holeOptions.length-1)];
 
@@ -2272,7 +2272,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
       document.getElementById('n4').value = n4;
       document.getElementById('n5').value = n5;
       const h2Max = 0.975*(1-n5/n4);
-      state.h2 = randFloat(-0.9,0.9)*h2Max;
+      state.h2 = randFloat(0.15,0.9)*h2Max; // biased positive, same as h
       h2Slider.min=-h2Max; h2Slider.max=h2Max; h2Slider.value=state.h2; h2Val.textContent=state.h2.toFixed(3);
     }
 
