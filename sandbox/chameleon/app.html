@@ -79,8 +79,11 @@
   #themeBtn{left:146px;}
 
   /* ---- HUD: bottom-left, per convention ---- */
-  #hud{
+  #bottomLeftDock{
     position:fixed;left:14px;bottom:14px;z-index:40;
+    display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+  }
+  #hud{
     background:color-mix(in srgb, var(--panel) 88%, transparent);
     border:1px solid var(--border);border-radius:var(--radius);
     padding:9px 13px;font-size:12px;line-height:1.7;color:var(--ink-dim);
@@ -88,6 +91,20 @@
   }
   #hud b{color:var(--ink);font-weight:600;}
   #hud .recipe-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+
+  /* ---- mascot: small standing chameleon badge, colors drift per body region ----
+     Each region is its own CSS hue-rotate loop at a different period/phase so
+     the whole animal never reads as a single uniform color sweep. */
+  #mascot{width:104px;height:auto;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.25));}
+  #mascot .m-tail{animation:mascotHue 10s linear infinite;}
+  #mascot .m-body{animation:mascotHue 16s linear infinite;animation-delay:-6s;}
+  #mascot .m-spots{animation:mascotHue 7s linear infinite reverse;animation-delay:-2s;}
+  #mascot .m-head{animation:mascotHue 13s linear infinite;animation-delay:-9s;}
+  #mascot .m-legs{animation:mascotHue 11s linear infinite reverse;animation-delay:-4s;}
+  @keyframes mascotHue{ from{ filter:hue-rotate(0deg); } to{ filter:hue-rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){
+    #mascot .m-tail,#mascot .m-body,#mascot .m-spots,#mascot .m-head,#mascot .m-legs{ animation:none; }
+  }
 
   /* ---- slide panels ---- */
   .panel{
@@ -210,7 +227,79 @@
   </svg>
 </button>
 
-<div id="hud" class="mono"></div>
+<div id="bottomLeftDock">
+  <svg id="mascot" viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="mg-tail" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#0d9488"/>
+        <stop offset="1" stop-color="#5eead4"/>
+      </linearGradient>
+      <linearGradient id="mg-body" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#15803d"/>
+        <stop offset=".5" stop-color="#4ade80"/>
+        <stop offset="1" stop-color="#86efac"/>
+      </linearGradient>
+      <linearGradient id="mg-head" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#a855f7"/>
+        <stop offset="1" stop-color="#f0abfc"/>
+      </linearGradient>
+      <linearGradient id="mg-legs" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#0369a1"/>
+        <stop offset="1" stop-color="#38bdae"/>
+      </linearGradient>
+      <linearGradient id="mg-branch" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8a6a45"/>
+        <stop offset="1" stop-color="#5b4128"/>
+      </linearGradient>
+      <filter id="mg-soft" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="1.6"/>
+      </filter>
+    </defs>
+
+    <rect x="8" y="120" width="204" height="11" rx="5.5" fill="url(#mg-branch)"/>
+    <path d="M40,120 l-6,-9 M100,120 l5,-8 M170,120 l-5,-8" stroke="#4a3520" stroke-width="2" stroke-linecap="round" fill="none" opacity=".6"/>
+
+    <g class="m-legs">
+      <path d="M100,96 Q92,108 90,120" stroke="url(#mg-legs)" stroke-width="7" stroke-linecap="round" fill="none" opacity=".85"/>
+    </g>
+
+    <g class="m-tail">
+      <path d="M72,99 C56,110 38,109 31,98 C24,87 31,76 41,79 C49,81 50,90 43,93 C38,95 35,92 37,88"
+            fill="none" stroke="url(#mg-tail)" stroke-width="9" stroke-linecap="round"/>
+    </g>
+
+    <g class="m-body">
+      <path d="M70,100 Q88,60 128,51 Q158,46 175,54 L164,73 Q142,79 121,91 Q96,103 70,100 Z" fill="url(#mg-body)"/>
+      <path d="M96,58 l5,-7 l4,7 M112,53 l5,-7 l4,7 M128,50 l5,-7 l4,7 M144,49 l5,-7 l4,7 M160,50 l5,-7 l4,7"
+            fill="url(#mg-body)"/>
+    </g>
+
+    <g class="m-spots" filter="url(#mg-soft)">
+      <ellipse cx="100" cy="72" rx="7" ry="5" fill="#ef4444" opacity=".55"/>
+      <ellipse cx="122" cy="62" rx="6" ry="4.5" fill="#f97316" opacity=".55"/>
+      <ellipse cx="141" cy="67" rx="6.5" ry="5" fill="#3b82f6" opacity=".5"/>
+      <ellipse cx="155" cy="60" rx="5" ry="4" fill="#a855f7" opacity=".55"/>
+    </g>
+
+    <g class="m-legs">
+      <path d="M152,72 Q140,90 128,104 Q120,113 118,120" stroke="url(#mg-legs)" stroke-width="9" stroke-linecap="round" fill="none"/>
+      <path d="M108,118 Q113,126 122,127" stroke="url(#mg-legs)" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <path d="M118,116 Q125,124 132,120" stroke="url(#mg-legs)" stroke-width="6" stroke-linecap="round" fill="none"/>
+    </g>
+
+    <g class="m-head">
+      <path d="M164,73 Q174,55 193,48 Q207,44 212,51 Q214,58 204,62 Q193,67 183,65 Q173,69 164,73 Z" fill="url(#mg-head)"/>
+      <path d="M187,45 Q191,35 199,36 Q203,44 195,47 Z" fill="url(#mg-head)"/>
+      <circle cx="190" cy="52" r="7" fill="url(#mg-head)" stroke="var(--bg)" stroke-width="1.4"/>
+    </g>
+    <path d="M201,58 Q207,60.5 212,57.5" stroke="rgba(0,0,0,.35)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+
+    <circle cx="190" cy="52" r="4.4" fill="#fef3c7"/>
+    <circle cx="190" cy="52" r="2.4" fill="#78350f"/>
+    <circle cx="188.6" cy="50.6" r="0.9" fill="#fff"/>
+  </svg>
+  <div id="hud" class="mono"></div>
+</div>
 
 <!-- ============ SETTINGS PANEL ============ -->
 <aside class="panel" id="settingsPanel">
@@ -1277,12 +1366,12 @@ function drawEquationCaption(){
   }
   const cx = innerWidth/2;
   const lineGap = fontPx*1.45;
-  // Measured, not guessed: the HUD chip's height varies with recipe (some
-  // hudExtra strings run to 2 lines, some 1), so a fixed clearance either
-  // wastes space or gets covered depending which recipe is active.
-  const hudEl = document.getElementById('hud');
-  const hudTop = hudEl ? hudEl.getBoundingClientRect().top : innerHeight-130;
-  const yBottom = hudTop - 24;
+  // Measured, not guessed: the bottom-left dock's height varies with recipe
+  // (hudExtra runs 1-2 lines) and now also includes the mascot sitting above
+  // the HUD chip, so a fixed clearance either wastes space or gets covered.
+  const dockEl = document.getElementById('bottomLeftDock') || document.getElementById('hud');
+  const dockTop = dockEl ? dockEl.getBoundingClientRect().top : innerHeight-130;
+  const yBottom = dockTop - 24;
   const yStart = yBottom - lineGap*(colored.length-1);
   colored.forEach((line,i)=>{
     const w = measureSegs(ctx, line);
