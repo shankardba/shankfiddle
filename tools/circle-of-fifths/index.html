@@ -19,7 +19,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     row-gap: 8px;
     column-gap: 14px;
     padding: 10px 18px;
@@ -61,15 +61,6 @@
     color: #ffd27a;
   }
 
-  .tool-bar a.fullscreen {
-    color: #c7abb8;
-    text-decoration: none;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-
-  .tool-bar a.fullscreen:hover { color: #ff2ea6; }
-
   iframe {
     flex: 1 1 auto;
     width: 100%;
@@ -83,7 +74,6 @@
 <div class="tool-bar">
   <a href="../music/" class="back"><img src="../../assets/images/logo.png" alt="" class="back-logo">&larr; Music</a>
   <span class="tool-name">🎼 Circle of Fifths</span>
-  <a href="app.html" target="_blank" rel="noopener" class="fullscreen">Full screen &#8599;</a>
 </div>
 <iframe src="app.html" title="Circle of Fifths Chord Wheel" allow="autoplay; fullscreen"></iframe>
 

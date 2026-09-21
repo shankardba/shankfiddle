@@ -20,7 +20,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     row-gap: 8px;
     column-gap: 14px;
     padding: 10px 18px;
@@ -67,15 +67,6 @@
 
   .tool-bar .tool-name svg { width: 1.15em; height: 1.15em; flex-shrink: 0; }
 
-  .tool-bar a.fullscreen {
-    color: #c7abb8;
-    text-decoration: none;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-
-  .tool-bar a.fullscreen:hover { color: #ff2ea6; }
-
   iframe {
     flex: 1 1 auto;
     width: 100%;
@@ -89,7 +80,6 @@
 <div class="tool-bar">
   <a href="../index.html" class="back"><img src="../../assets/images/logo.png" alt="" class="back-logo">&larr; Sandbox</a>
   <span class="tool-name"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#86efac"/><stop offset=".55" stop-color="#22c55e"/><stop offset="1" stop-color="#15803d"/></linearGradient></defs><path d="M30,70 C20,75 10,70 12,60 C14,50 24,48 28,55 C31,61 27,65 23,61" fill="none" stroke="url(#lg)" stroke-width="5" stroke-linecap="round"/><path d="M30,70 Q40,40 65,35 Q85,32 91,45 Q93,56 79,59 Q58,63 44,66 Q35,69 30,70 Z" fill="url(#lg)"/><circle cx="24" cy="58" r="2.2" fill="#a855f7"/><circle cx="45" cy="50" r="3" fill="#ef4444"/><circle cx="55" cy="43" r="2.8" fill="#f97316"/><circle cx="66" cy="39" r="2.6" fill="#eab308"/><circle cx="76" cy="40" r="2.8" fill="#3b82f6"/><circle cx="88" cy="42" r="6" fill="#0b0d12"/><circle cx="90" cy="40" r="2" fill="#fff"/></svg>Chameleon</span>
-  <a href="app.html" target="_blank" rel="noopener" class="fullscreen">Full screen &#8599;</a>
 </div>
 <iframe src="app.html" title="Chameleon" allow="fullscreen"></iframe>
 
