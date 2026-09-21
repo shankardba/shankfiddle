@@ -120,8 +120,23 @@
     56%{ transform:translate(3px,-3px) rotate(4deg); }
     64%,100%{ transform:translate(0,0) rotate(0deg); }
   }
+  /* the hand's two fingers pivot from the wrist, opposite directions, so the
+     Y-hand visibly opens while airborne and closes again as it re-grips —
+     phase-matched to footLift's own airborne window (roughly 8%-60%). */
+  #mascot .m-finger1{ transform-origin:122px 119px; animation:fingerSpread1 7s ease-in-out infinite; }
+  #mascot .m-finger2{ transform-origin:122px 119px; animation:fingerSpread2 7s ease-in-out infinite; }
+  @keyframes fingerSpread1{
+    0%,8%{ transform:rotate(0deg); }
+    24%,46%{ transform:rotate(-16deg); }
+    60%,100%{ transform:rotate(0deg); }
+  }
+  @keyframes fingerSpread2{
+    0%,8%{ transform:rotate(0deg); }
+    24%,46%{ transform:rotate(16deg); }
+    60%,100%{ transform:rotate(0deg); }
+  }
   @media (prefers-reduced-motion: reduce){
-    #mascot .m-tail,#mascot .m-body,#mascot .m-spots,#mascot .m-head,#mascot .m-legs,#mascot .m-foot-lift{ animation:none; }
+    #mascot .m-tail,#mascot .m-body,#mascot .m-spots,#mascot .m-head,#mascot .m-legs,#mascot .m-foot-lift,#mascot .m-finger1,#mascot .m-finger2{ animation:none; }
   }
 
   /* ---- slide panels ---- */
@@ -300,9 +315,14 @@
     </g>
 
     <g class="m-foot-lift">
-      <path d="M152,72 Q140,90 128,104 Q120,113 118,120" stroke="url(#mg-legs)" stroke-width="9" stroke-linecap="round" fill="none"/>
-      <path d="M108,118 Q113,126 122,127" stroke="url(#mg-legs)" stroke-width="6" stroke-linecap="round" fill="none"/>
-      <path d="M118,116 Q125,124 132,120" stroke="url(#mg-legs)" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <path d="M152,72 Q140,90 128,104 Q122,111 120,116" stroke="url(#mg-legs)" stroke-width="9" stroke-linecap="round" fill="none"/>
+      <path d="M120,116 L122,119" stroke="url(#mg-legs)" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <g class="m-finger1">
+        <path d="M122,119 Q115,123 109,127" stroke="url(#mg-legs)" stroke-width="5" stroke-linecap="round" fill="none"/>
+      </g>
+      <g class="m-finger2">
+        <path d="M122,119 Q129,124 134,127" stroke="url(#mg-legs)" stroke-width="5" stroke-linecap="round" fill="none"/>
+      </g>
     </g>
 
     <g class="m-head">
