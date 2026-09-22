@@ -352,6 +352,11 @@
     </div>
 
     <div class="math-section">
+      <div class="math-sub">How axiom, rules &amp; &theta; shape the picture</div>
+      <p class="math-prose">These three knobs do genuinely different jobs. The <b style="color:var(--text)">axiom</b> sets the shape's starting topology before any growth happens — a single <b>F</b> seeds an open curve, while <b>F</b> repeated n times with 360/n-degree turns between them (as in the Koch Snowflake and Pentaplexity) closes it into an n-fold symmetric shape from generation zero. The <b style="color:var(--text)">rules</b> are what actually generate self-similarity: each rule replaces one symbol with a small motif containing that same symbol (or one that eventually leads back to it), so applying it again nests a smaller copy of the motif inside itself — <b>iteration depth</b> just controls how many times that nesting happens, it doesn't change the shape's basic character. <b style="color:var(--text)">&theta;</b> controls how sharply the path folds back on itself: a wide angle (90&deg;&ndash;120&deg;) makes a repeated rule interlock into dense, hard-edged shapes like the Sierpinski Triangle, while a narrow angle (15&deg;&ndash;35&deg;) keeps successive turns from re-crossing each other, which is why every branching plant/tree rule here uses a narrow angle — the same rule at a wide angle would fold its branches back into a tangle instead of spreading them out. <b>[</b>&hellip;<b>]</b> brackets are what turn a single folding path into a branching tree at all: they let the turtle jump back to an earlier position instead of always continuing from where it left off, so a rule with brackets removed collapses from a tree into one continuous self-crossing curve.</p>
+    </div>
+
+    <div class="math-section">
       <div class="math-sub">This system</div>
       <div class="math-caption">Axiom &amp; rules</div>
       <div class="math-block" id="mathRules"></div>
@@ -371,9 +376,13 @@
         <a href="https://texample.net/lindenmayer-systems/" target="_blank" rel="noopener">Stefan Kottwitz's TikZ lindenmayersystems examples</a>.
         The Gosper Curve and Pentaplexity rules are from Prusinkiewicz &amp; Lindenmayer's
         <a href="http://algorithmicbotany.org/papers/abop/abop.pdf" target="_blank" rel="noopener">The Algorithmic Beauty of Plants</a>.
-        "Randomize system" is adapted from
-        <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>
-        (guarantee-at-least-one-F, and blending curated "nice" angles with fully random ones).
+        "Randomize system" picks from four hand-built families (branching plant, phyllotaxis-style
+        rosette, n-fold symmetric snowflake, Sierpinski-style hard edge) rather than free-form random
+        symbols, each constructed so a drawable symbol is always reachable; the branching-rule shape
+        and angle ranges are informed by the worked examples on
+        <a href="https://fedimser.github.io/l-systems.html" target="_blank" rel="noopener">Fedimser's L-systems reference</a>,
+        and the original "blend curated nice angles with free ones" idea came from
+        <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>.
       </p>
     </div>
   </div>
@@ -422,14 +431,14 @@
     <div class="section">
       <div class="label">Color</div>
       <div class="swatches" id="paletteSwatches">
-        <div class="swatch active" data-p="0" style="background:linear-gradient(135deg,#3a1a05,#f2a65a)" title="Amber"></div>
+        <div class="swatch" data-p="0" style="background:linear-gradient(135deg,#3a1a05,#f2a65a)" title="Amber"></div>
         <div class="swatch" data-p="1" style="background:linear-gradient(135deg,#0a1f2b,#57d9c4)" title="Teal"></div>
         <div class="swatch" data-p="2" style="background:linear-gradient(135deg,#1a0a2b,#c77af2)" title="Violet"></div>
         <div class="swatch" data-p="3" style="background:linear-gradient(135deg,#111,#eee)" title="Mono"></div>
         <div class="swatch" data-p="4" style="background:linear-gradient(135deg,#f24a4a,#57d9c4)" title="Fire &amp; Ice"></div>
         <div class="swatch" data-p="5" style="background:conic-gradient(from 0deg,red,orange,yellow,limegreen,cyan,blue,violet,red)" title="Rainbow"></div>
         <div class="swatch" data-p="6" style="background:linear-gradient(135deg,#f2a65a 50%,#57d9c4 50%)" title="Zebra"></div>
-        <div class="swatch" data-p="7" style="background:#f2a65a" title="Custom color" id="customSwatch"></div>
+        <div class="swatch active" data-p="7" style="background:#f2a65a" title="Custom color" id="customSwatch"></div>
       </div>
       <div class="custom-color-row" id="customColorRow">
         <input type="color" id="customColorPicker" value="#f2a65a">
@@ -477,7 +486,9 @@
     <div class="section" style="border-top:1px solid var(--border);padding-top:14px;">
       <p class="credit">
         Grammar from the <a href="https://en.wikipedia.org/wiki/L-system" target="_blank" rel="noopener">Wikipedia L-system article</a>.
-        Random-system generation adapted from <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>.
+        Random-system generation uses four curated families (see &Sigma; panel for details), informed by
+        <a href="https://fedimser.github.io/l-systems.html" target="_blank" rel="noopener">Fedimser's L-systems reference</a> and
+        <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>.
       </p>
     </div>
   </div>
@@ -547,7 +558,7 @@
     axiom: 'F', rules: {F:'F+F-F-F+F'}, angle: 90, heading: 0, drawSymbols: ['F','G'], cantorMode: false,
     depth: 4, depthMax: 4,
     lineWidth: 1.6, glow: true, glowIntensity: 8,
-    palette: 0, solidColor: '#f2a65a', brightness: 0.9,
+    palette: 7, solidColor: '#f2a65a', brightness: 0.9,
     animate: true, speedMult: 1,
     theme: 'dark'
   };
@@ -650,38 +661,111 @@
     return segs;
   }
 
-  // ---------- random system generation (technique adapted from ehrenjn's LSystems) ----------
+  // ---------- random system generation ----------
+  // Built as four hand-designed "families" instead of one big unconstrained symbol
+  // soup. The old approach (pick random characters from a pool, hope a drawable
+  // symbol stays reachable) had two real bugs: (1) the axiom or a rule could end up
+  // built entirely from non-terminal symbols that never resolved to a draw symbol —
+  // reachability was never actually checked, just a shallow "does some rule's text
+  // contain the letter F" test, so a fair fraction of spins rendered nothing; and
+  // (2) a fully free angle + free alphabet very often produces a self-crossing tangle
+  // with no visual logic, which is what "jumbled" was. Each family below is
+  // constructed so a drawable symbol is reachable BY CONSTRUCTION (no post-hoc
+  // validation needed) and uses an angle/alphabet range that keeps that family's
+  // shape coherent. Weighted so plant + rosette + snowflake (nature-referencing
+  // forms) come up more often than not, without excluding the hard-edged
+  // Sierpinski-style family. Plant branch angles, the F/G Sierpinski-variant shape,
+  // and general "keep the alphabet small" restraint are informed by the worked
+  // examples on Paul Fedimser's L-systems reference
+  // (https://fedimser.github.io/l-systems.html), which catalogs a bush rule
+  // (F > FF+[+F-F-F]-[-F+F+F], angle 22.5) in the same style as family 'plant' below.
   const NICE_ANGLES = [15,18,20,22.5,25,30,36,45,60,72,90,120,135];
   function randInt(lo,hi){ return lo + Math.floor(Math.random()*(hi-lo+1)); }
-  function randomSystem(){
-    const angle = Math.random() < 0.5
-      ? NICE_ANGLES[randInt(0, NICE_ANGLES.length-1)]
-      : Math.round(randInt(5,179));
-    const pool = ['F','+','-','A','B'];
-    function randSeq(len, allowBrackets){
-      let s = '';
-      let i = 0;
-      while(i < len){
-        if(allowBrackets && Math.random() < 0.14){
-          s += '[' + randSeq(randInt(1,3), false) + ']';
-        } else {
-          s += pool[randInt(0, pool.length-1)];
-        }
-        i++;
-      }
-      return s;
+  function pick(arr){ return arr[randInt(0, arr.length-1)]; }
+
+  // Branching plant/tree: a single scaffold symbol X always recurses into itself
+  // (directly or through a trunk segment F), so X can never go "dead" — every branch
+  // clause and the trunk continuation both always contain X or F. Small angle range
+  // (15-35°) is what keeps siblings from overlapping into a tangle: a branching rule
+  // re-applied at a wide angle folds back over itself fast, which is exactly why real
+  // plants/trees branch narrow, not wide.
+  function familyPlant(){
+    const angle = pick([15,18,20,22.5,25,28,30,32.5,35]);
+    const branches = randInt(1,2);
+    let body = 'F';
+    for(let i=0;i<branches;i++){
+      const turn = Math.random() < 0.5 ? '+' : '-';
+      body += `[${turn}${Math.random() < 0.5 ? 'X' : 'FX'}]`;
     }
-    const axiom = randSeq(randInt(1,2), false);
-    const ruleKeys = ['F','A','B'].slice(0, randInt(1,3));
-    const rules = {};
-    let hasF = false;
-    ruleKeys.forEach(k => {
-      const seq = randSeq(randInt(4,10), true);
-      rules[k] = seq;
-      if(seq.includes('F')) hasF = true;
-    });
-    if(!hasF) rules[ruleKeys[0]] += 'F';
-    return { axiom, rules, angle, heading: 90 };
+    body += Math.random() < 0.6 ? 'FX' : 'X';
+    return { axiom:'X', rules:{ X: body }, angle, heading:90, drawSymbols:['F'], depthRange:[4,6] };
+  }
+
+  // Rosette / phyllotaxis: many spokes radiating from ONE shared center point, each
+  // turned from the last by a fixed golden-angle-family increment. Each spoke is
+  // wrapped in its own [ ] so the turtle returns to center before drawing the next
+  // one — without that bracket, "F+F+F+..." just chains into a connected zigzag
+  // instead of a fan. Repeatedly turning by ~137.5° (or a nearby irrational-ish
+  // divergence angle) between spokes is the same mechanism real phyllotaxis uses:
+  // it means no two spokes ever land exactly on top of each other or leave a large
+  // gap, which is what produces the even radiating look of a sunflower head or
+  // pinecone. Spoke counts are Fibonacci numbers, matching real parastichy counts.
+  function familyRosette(){
+    const angle = pick([137.5, 99.5, 77.5, 151.1]);
+    const spokes = pick([8,13,21,34]);
+    const grow = Math.random() < 0.5;
+    const spoke = grow ? 'F[+F]F' : 'F';
+    const axiom = Array(spokes).fill(`[${spoke}]`).join('+');
+    return { axiom, rules:{}, angle, heading:0, drawSymbols:['F'], depthRange:[0,0] };
+  }
+
+  // Snowflake / star: a closed n-fold symmetric axiom (n copies of F, turned 360/n
+  // apart — the same construction as the Koch Snowflake and Pentaplexity presets),
+  // with a single edge-replacement rule restricted to just {F,+,-}. Edge-replacement
+  // on a closed symmetric axiom looks crystalline/self-similar almost regardless of
+  // the exact generator, as long as the alphabet stays this small — that restraint is
+  // what keeps it a "snowflake" instead of noise.
+  function familySnowflake(){
+    const n = pick([3,4,5,6,7]);
+    const angle = 360/(2*n);
+    const genLen = randInt(4,9);
+    let rule = 'F', fCount = 1;
+    while(rule.length < genLen){
+      if(fCount < 2 || Math.random() < 0.6){ rule += 'F'; fCount++; }
+      else rule += (Math.random() < 0.5 ? '+' : '-');
+    }
+    return { axiom: Array(n).fill('F++').join(''), rules:{ F: rule }, angle, heading:0, drawSymbols:['F'], depthRange:[3,4] };
+  }
+
+  // Hard-edge / Sierpinski-style: parametrized variations on the real Sierpinski
+  // Triangle grammar (F-G+F+G-F / G→GG) rather than free-form symbol soup, so it
+  // keeps that grammar's interlocking-triangle character. F and G are both draw
+  // symbols and both are guaranteed to appear in each other's rules, so neither can
+  // go unreachable.
+  function familyHardEdge(){
+    const angle = pick([60,90,120]);
+    const axiomTurn = Math.random() < 0.5 ? '-' : '+';
+    const axiom = `F${axiomTurn}G${axiomTurn}G`;
+    // t1/t2 always opposite signs (as in the real Sierpinski Triangle grammar,
+    // F-G+F+G-F) — that opposition is what folds the two flanks back into
+    // interlocking triangles; same-sign turns just trace out a plain polygon.
+    const t1 = Math.random() < 0.5 ? '-' : '+';
+    const t2 = t1 === '-' ? '+' : '-';
+    const fRule = `F${t1}G${t2}F${t2}G${t1}F`;
+    const gRule = pick(['GG', `G${t1}G`, `G${t2}G`]);
+    return { axiom, rules:{ F:fRule, G:gRule }, angle, heading:0, drawSymbols:['F','G'], depthRange:[4,5] };
+  }
+
+  const FAMILIES = [
+    { fn: familyPlant,    weight: 0.40 },
+    { fn: familyRosette,  weight: 0.15 },
+    { fn: familySnowflake,weight: 0.20 },
+    { fn: familyHardEdge, weight: 0.25 }
+  ];
+  function randomSystem(){
+    let r = Math.random(), acc = 0, chosen = FAMILIES[FAMILIES.length-1].fn;
+    for(const f of FAMILIES){ acc += f.weight; if(r <= acc){ chosen = f.fn; break; } }
+    return chosen();
   }
 
   // ---------- view (pan/zoom) ----------
@@ -1083,10 +1167,12 @@
     state.rules = sys.rules;
     state.angle = sys.angle;
     state.heading = sys.heading;
-    state.drawSymbols = ['F','G'];
+    state.drawSymbols = sys.drawSymbols;
     state.cantorMode = false;
     presetSelect.value = 'custom';
-    state.depth = Math.min(6, maxSafeDepth(state.axiom, state.rules));
+    const safe = maxSafeDepth(state.axiom, state.rules);
+    state.depth = Math.max(0, Math.min(sys.depthRange[1], safe));
+    if(state.depth < sys.depthRange[0]) state.depth = Math.min(sys.depthRange[0], safe);
     resetView();
     doRecompute(true);
   });
