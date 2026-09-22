@@ -373,9 +373,16 @@
         Grammar &amp; turtle conventions from the
         <a href="https://en.wikipedia.org/wiki/L-system" target="_blank" rel="noopener">Wikipedia L-system article</a>.
         The Hilbert Curve rules are the classic ones used in
-        <a href="https://texample.net/lindenmayer-systems/" target="_blank" rel="noopener">Stefan Kottwitz's TikZ lindenmayersystems examples</a>.
+        <a href="https://texample.net/lindenmayer-systems/" target="_blank" rel="noopener">Stefan Kottwitz's TikZ lindenmayersystems examples</a>;
+        the Peano and Moore Curve rules are the constructions given on their own Wikipedia articles.
         The Gosper Curve and Pentaplexity rules are from Prusinkiewicz &amp; Lindenmayer's
         <a href="http://algorithmicbotany.org/papers/abop/abop.pdf" target="_blank" rel="noopener">The Algorithmic Beauty of Plants</a>.
+        The Quadratic Koch Island/Snowflake, Border, Doily and Maze presets are drawn from
+        <a href="https://fedimser.github.io/l-systems.html" target="_blank" rel="noopener">Fedimser's L-systems reference</a>,
+        a catalog of worked rule tables; the Sierpinski Carpet rule is attributed there to William
+        McWorter, tracing to R. M. Crownover's <i>Fractals and Chaos in Dynamical Systems</i>. The
+        Phyllotaxis Spiral is this tool's own construction (bracket-wrapped spokes turned by the
+        golden angle, 137.5&deg;) rather than a rule from any of those sources.
         "Randomize system" picks from four hand-built families (branching plant, phyllotaxis-style
         rosette, n-fold symmetric snowflake, Sierpinski-style hard edge) rather than free-form random
         symbols, each constructed so a drawable symbol is always reachable; the branching-rule shape
@@ -485,9 +492,11 @@
 
     <div class="section" style="border-top:1px solid var(--border);padding-top:14px;">
       <p class="credit">
-        Grammar from the <a href="https://en.wikipedia.org/wiki/L-system" target="_blank" rel="noopener">Wikipedia L-system article</a>.
+        Grammar from the <a href="https://en.wikipedia.org/wiki/L-system" target="_blank" rel="noopener">Wikipedia L-system article</a>;
+        several presets are drawn from <a href="https://fedimser.github.io/l-systems.html" target="_blank" rel="noopener">Fedimser's L-systems reference</a>
+        (full source list in the &Sigma; panel).
         Random-system generation uses four curated families (see &Sigma; panel for details), informed by
-        <a href="https://fedimser.github.io/l-systems.html" target="_blank" rel="noopener">Fedimser's L-systems reference</a> and
+        that same reference and
         <a href="https://ehrenjn.github.io/LSystems/" target="_blank" rel="noopener">ehrenjn's L-Systems visualizer</a>.
       </p>
     </div>
@@ -512,20 +521,37 @@
   function clamp(v,lo,hi){ return Math.min(hi, Math.max(lo, v)); }
 
   // ---------- presets (axiom/rules/angle straight from the standard L-system table) ----------
+  // Sources beyond the Wikipedia L-system article (credited in full in the math panel):
+  // Quadratic Koch Island/Snowflake, Border, Doily and Maze are from Fedimser's L-systems
+  // reference (fedimser.github.io/l-systems.html); Sierpinski Carpet is attributed there to
+  // William McWorter, tracing to R. M. Crownover's "Fractals and Chaos in Dynamical Systems";
+  // Peano and Moore curves are the Lindenmayer-system constructions given on their own
+  // Wikipedia articles.
   const PRESETS = {
     koch: { label:'Koch Curve', axiom:'F', rules:{F:'F+F-F-F+F'}, angle:90, depth:4, heading:0 },
     kochSnowflake: { label:'Koch Snowflake', axiom:'F++F++F', rules:{F:'F+F-F-F+F'}, angle:60, depth:4, heading:0 },
+    quadKochSnowflake: { label:'Quadratic Koch Snowflake', axiom:'F-F-F-F', rules:{F:'F-F+F+F-F'}, angle:90, depth:5, heading:0 },
+    quadKochIsland: { label:'Quadratic Koch Island', axiom:'F+F+F+F', rules:{F:'F+F-F-FF+F+F-F'}, angle:90, depth:3, heading:0 },
+    pentaplexity: { label:'Pentaplexity', axiom:'F++F++F++F++F', rules:{F:'F++F++F+++++F-F++F'}, angle:36, depth:4, heading:0 },
     sierpinski: { label:'Sierpinski Triangle', axiom:'F-G-G', rules:{F:'F-G+F+G-F', G:'GG'}, angle:120, depth:5, heading:0 },
     arrowhead: { label:'Sierpinski Arrowhead', axiom:'A', rules:{A:'B-A-B', B:'A+B+A'}, angle:60, depth:6, heading:0, drawSymbols:['A','B'] },
+    sierpinskiCarpet: { label:'Sierpinski Carpet', axiom:'F', rules:{F:'F+F-F-F-f+F+F+F-F', f:'fff'}, angle:90, depth:3, heading:0 },
     dragon: { label:'Dragon Curve', axiom:'F', rules:{F:'F+G', G:'F-G'}, angle:90, depth:11, heading:0 },
+    levy: { label:'Lévy C Curve', axiom:'F', rules:{F:'-F++F-'}, angle:45, depth:14, heading:0 },
+    terdragon: { label:'Terdragon Curve', axiom:'F', rules:{F:'F+F-F'}, angle:120, depth:7, heading:0 },
+    gosper: { label:'Gosper Curve', axiom:'A', rules:{A:'A-B--B+A++AA+B-', B:'+A-BB--B-A++A+B'}, angle:60, depth:4, heading:0, drawSymbols:['A','B'] },
+    peano: { label:'Peano Curve', axiom:'F', rules:{F:'F+F-F-FF-F-F-FF'}, angle:90, depth:4, heading:0 },
+    hilbert: { label:'Hilbert Curve', axiom:'L', rules:{L:'+RF-LFL-FR+', R:'-LF+RFR+FL-'}, angle:90, depth:5, heading:0, drawSymbols:['F'] },
+    moore: { label:'Moore Curve', axiom:'LFL+F+LFL', rules:{L:'-RF+LFL+FR-', R:'+LF-RFR-FL+'}, angle:90, depth:5, heading:0, drawSymbols:['F'] },
+    maze: { label:'Maze', axiom:'X', rules:{X:'FY+FYFY-FY', Y:'FX-FXFX+FX'}, angle:120, depth:5, heading:0, drawSymbols:['F'] },
+    border: { label:'Border', axiom:'F--F--F--F--F--F', rules:{F:'-F[--F--F]++F--F+'}, angle:30, depth:4, heading:0 },
+    doily: { label:'Doily', axiom:'F+F+F', rules:{F:'F+FF-F'}, angle:120, depth:5, heading:0 },
     plant: { label:'Fractal Plant', axiom:'X', rules:{X:'F+[[X]-X]-F[-FX]+X', F:'FF'}, angle:25, depth:5, heading:90 },
     tree: { label:'Binary Tree', axiom:'F', rules:{F:'F[+F]F[-F]F'}, angle:30, depth:5, heading:90 },
-    hilbert: { label:'Hilbert Curve', axiom:'L', rules:{L:'+RF-LFL-FR+', R:'-LF+RFR+FL-'}, angle:90, depth:5, heading:0, drawSymbols:['F'] },
-    gosper: { label:'Gosper Curve', axiom:'A', rules:{A:'A-B--B+A++AA+B-', B:'+A-BB--B-A++A+B'}, angle:60, depth:4, heading:0, drawSymbols:['A','B'] },
-    pentaplexity: { label:'Pentaplexity', axiom:'F++F++F++F++F', rules:{F:'F++F++F+++++F-F++F'}, angle:36, depth:4, heading:0 },
+    phyllotaxis: { label:'Phyllotaxis Spiral', axiom: Array(21).fill('[F[+F]F]').join('+'), rules:{}, angle:137.5, depth:0, heading:0, drawSymbols:['F'] },
     cantor: { label:'Cantor Set', axiom:'F', rules:{F:'FfF', f:'fff'}, angle:0, depth:5, heading:0, cantor:true }
   };
-  const PRESET_ORDER = ['koch','kochSnowflake','pentaplexity','sierpinski','arrowhead','dragon','gosper','plant','tree','hilbert','cantor'];
+  const PRESET_ORDER = ['koch','kochSnowflake','quadKochSnowflake','quadKochIsland','pentaplexity','sierpinski','arrowhead','sierpinskiCarpet','dragon','levy','terdragon','gosper','peano','hilbert','moore','maze','border','doily','plant','tree','phyllotaxis','cantor'];
 
   // ---------- color palettes (same cosine family as the fractal explorer / spirograph) ----------
   const PALETTES = [
