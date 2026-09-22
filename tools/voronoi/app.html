@@ -26,6 +26,16 @@
   A "the math" panel explains all of the above with the live site/cell count
   for whatever is currently on screen.
 
+  Beyond the scatter/lattice presets, a few site layouts are named constructions
+  worth calling out: Phyllotaxis (Vogel's golden-angle sunflower model), Golden
+  Spiral (logarithmic/equiangular, r = a*phi^(2*theta/pi) — the first member of
+  the wider metallic-ratio family, named in the math panel), Nested Polygons
+  (radius growth by sec(pi/n)
+  per ring, the Kepler-Bouwkamp construction), Mandala (one asymmetric motif
+  repeated at n rotations for cyclic symmetry, optionally mirrored for
+  dihedral), and Polygon Vortex (repeated multiplication of every vertex by one
+  fixed complex number — rotate-and-shrink iterated into nested rings).
+
   Self-contained: no build step, no dependencies beyond two Google Fonts.
   To embed:
     1) Easiest / safest: <iframe src="index.html" style="width:100%;height:600px;border:0;"></iframe>
@@ -335,6 +345,11 @@
     </div>
 
     <div class="math-section">
+      <div class="math-sub">Where the sites come from</div>
+      <p class="math-prose">Where you scatter the sites shapes the whole diagram just as much as the geometry rules do. A few of the presets are built from named constructions worth knowing: <b style="color:var(--text)">Phyllotaxis</b> places site i at angle i&middot;137.5&deg; and radius &radic;i — the golden angle, the one divergence angle that never lets two spiral arms line up no matter how far out you go, which is also how a sunflower packs its seeds with no gaps. <b style="color:var(--text)">Golden Spiral</b> grows its radius by a constant ratio every constant turn (r=a&middot;g<sup>2&theta;/&pi;</sup>) rather than a constant amount, so — unlike the evenly-coiled Archimedean spiral above it in the list — it flares outward; g=&phi; (golden ratio) is the classic case, part of a family that also includes the silver and bronze ratios. <b style="color:var(--text)">Nested Polygons</b> grows each ring's radius by sec(&pi;/sides) from the ring before it — the same alternating circle-in-polygon-in-circle construction behind the Kepler&ndash;Bouwkamp constant. <b style="color:var(--text)">Mandala</b> repeats one asymmetric cluster of points at n evenly-spaced rotations, which guarantees exact n-fold (cyclic) symmetry regardless of what the cluster looks like; mirroring each copy too upgrades it to dihedral symmetry. <b style="color:var(--text)">Polygon Vortex</b> repeatedly multiplies every vertex of a polygon by one fixed complex number — a combined rotate-and-shrink — to chase out a spiral of nested, shrinking, rotating rings.</p>
+    </div>
+
+    <div class="math-section">
       <div class="math-sub">Building it faster</div>
       <p class="math-prose">This tool clips each cell out of the canvas directly, testing every site against every other one — simple to follow, but O(n&sup2;) work. Real-world tools instead use <b style="color:var(--text)">Fortune's algorithm</b>, a single left-to-right sweep that builds the whole diagram in O(n&nbsp;log&nbsp;n) time, or build the Delaunay triangulation incrementally (Bowyer&ndash;Watson, used for the overlay here) and take its dual. Neither is implemented as an animated sweep in this tool, to keep things focused on the geometry itself.</p>
     </div>
@@ -489,16 +504,23 @@
   }
 
   // ---------- presets: site-layout generators ----------
+  // GOLDEN_ANGLE and the metallic-ratio spiral family are shared by a few generators below.
+  const GOLDEN_ANGLE = Math.PI*(3-Math.sqrt(5)); // ~137.50776 degrees — see genPhyllotaxis
   const PRESETS = {
-    blueNoise: { label:'Blue Noise', gen: genBlueNoise },
-    random:    { label:'Random Scatter', gen: genRandom },
-    grid:      { label:'Grid Lattice', gen: genGrid },
-    hex:       { label:'Hex Lattice', gen: genHex },
-    rings:     { label:'Concentric Rings', gen: genRings },
-    spiral:    { label:'Spiral', gen: genSpiral },
-    clusters:  { label:'Clusters', gen: genClusters }
+    blueNoise:      { label:'Blue Noise', gen: genBlueNoise },
+    random:         { label:'Random Scatter', gen: genRandom },
+    grid:           { label:'Grid Lattice', gen: genGrid },
+    hex:            { label:'Hex Lattice', gen: genHex },
+    spiral:         { label:'Archimedean Spiral', gen: genSpiral },
+    goldenSpiral:   { label:'Golden Spiral', gen: genGoldenSpiral },
+    rings:          { label:'Concentric Rings', gen: genRings },
+    nestedPolygons: { label:'Nested Polygons', gen: genNestedPolygons },
+    phyllotaxis:    { label:'Phyllotaxis', gen: genPhyllotaxis },
+    mandala:        { label:'Mandala', gen: genMandala },
+    polygonVortex:  { label:'Polygon Vortex', gen: genPolygonVortex },
+    clusters:       { label:'Clusters', gen: genClusters }
   };
-  const PRESET_ORDER = ['blueNoise','random','grid','hex','rings','spiral','clusters'];
+  const PRESET_ORDER = ['blueNoise','random','grid','hex','spiral','goldenSpiral','rings','nestedPolygons','phyllotaxis','mandala','polygonVortex','clusters'];
 
   function genRandom(n, rng, w, h){
     const mx = w*0.04, my = h*0.04;
@@ -521,7 +543,8 @@
   }
 
   function genGrid(n, rng, w, h){
-    const cols = Math.max(1, Math.round(Math.sqrt(n*w/h)));
+    const aspectJitter = 0.8+rng()*0.5; // reshuffles the rows x cols split between reseeds
+    const cols = Math.max(1, Math.round(Math.sqrt(n*w/h*aspectJitter)));
     const rows = Math.max(1, Math.ceil(n/cols));
     const cw = w/cols, ch = h/rows;
     const pts = [];
@@ -533,7 +556,8 @@
   }
 
   function genHex(n, rng, w, h){
-    const cols = Math.max(1, Math.round(Math.sqrt(n*w/h / 0.866)));
+    const aspectJitter = 0.8+rng()*0.5; // reshuffles the rows x cols split between reseeds
+    const cols = Math.max(1, Math.round(Math.sqrt(n*w/h*aspectJitter / 0.866)));
     const cw = w/cols;
     const ch = cw*0.866;
     const rows = Math.max(1, Math.ceil(n/cols));
@@ -556,14 +580,15 @@
   function genRings(n, rng, w, h){
     const cx = w/2, cy = h/2;
     const maxR = Math.min(w,h)*0.46;
-    const ringCount = clamp(Math.round(Math.sqrt(n/3)), 2, 8);
+    const ringCount = clamp(Math.round(Math.sqrt(n/3)) + Math.floor(rng()*3)-1, 2, 9);
+    const weightExp = 0.6 + rng()*1.2; // <1 crowds points inward, >1 crowds them outward
     const pts = [];
     let remaining = n;
     let weightTotal = 0;
-    for(let k=0;k<ringCount;k++) weightTotal += (k+1);
+    for(let k=0;k<ringCount;k++) weightTotal += Math.pow(k+1, weightExp);
     for(let k=0;k<ringCount;k++){
       const isLast = k===ringCount-1;
-      const count = isLast ? remaining : Math.max(1, Math.round(n*(k+1)/weightTotal));
+      const count = isLast ? remaining : Math.max(1, Math.round(n*Math.pow(k+1,weightExp)/weightTotal));
       const r = maxR * (k+1)/ringCount;
       const phase = rng()*Math.PI*2;
       for(let i=0;i<count;i++){
@@ -576,15 +601,166 @@
     return pts.slice(0,n);
   }
 
+  // Nested regular polygons — triangle, then square, then pentagon, and so on outward — each
+  // ring's radius growing by sec(pi/sides) from the ring inside it: that's exactly the
+  // circle-polygon-circle-polygon... construction behind the Kepler-Bouwkamp constant (see the
+  // math panel), run as a discrete sequence of vertex rings instead of alternating circles.
+  // A small twist per ring keeps the polygons from all sharing one spoke.
+  function genNestedPolygons(n, rng, w, h){
+    const cx = w/2, cy = h/2;
+    const maxR = Math.min(w,h)*0.46;
+    const startSides = 3 + Math.floor(rng()*3); // triangle, square, or pentagon innermost
+    const sidesList = [];
+    let total = 0, sides = startSides;
+    while(total < n && sidesList.length < 9){ sidesList.push(sides); total += sides; sides++; }
+    const ratios = [1];
+    for(let k=1;k<sidesList.length;k++) ratios.push(ratios[k-1]/Math.cos(Math.PI/sidesList[k-1]));
+    const maxRatio = ratios[ratios.length-1];
+    const twistPerRing = (rng()-0.5)*1.1;
+    const pts = [];
+    let remaining = n;
+    for(let k=0;k<sidesList.length && remaining>0;k++){
+      const sides_k = sidesList[k];
+      const r = maxR * (ratios[k]/maxRatio);
+      const phase = k*twistPerRing;
+      const count = Math.min(sides_k, remaining);
+      for(let i=0;i<count;i++){
+        const a = phase + (i/sides_k)*Math.PI*2;
+        pts.push({x: cx+Math.cos(a)*r, y: cy+Math.sin(a)*r});
+      }
+      remaining -= count;
+    }
+    while(pts.length<n) pts.push({x: cx+(rng()-0.5)*maxR*0.15, y: cy+(rng()-0.5)*maxR*0.15});
+    return pts.slice(0,n);
+  }
+
+  // Vogel's model for sunflower-seed packing: seed i sits at angle i*GOLDEN_ANGLE, radius
+  // proportional to sqrt(i) (so every seed occupies equal AREA, since area grows as radius
+  // squared). The golden angle (~137.5 degrees) is the unique divergence angle that never lets
+  // two spiral arms line up, however far out you go — see the math panel for why.
+  function genPhyllotaxis(n, rng, w, h){
+    const cx = w/2, cy = h/2;
+    const maxR = Math.min(w,h)*0.46;
+    const c = n>1 ? maxR/Math.sqrt(n-1) : maxR;
+    const rotation = rng()*Math.PI*2; // which way the whole flower faces — doesn't change its structure
+    const pts = [];
+    for(let i=0;i<n;i++){
+      const r = c*Math.sqrt(i);
+      const a = rotation + i*GOLDEN_ANGLE;
+      pts.push({x: cx+Math.cos(a)*r, y: cy+Math.sin(a)*r});
+    }
+    return pts;
+  }
+
+  // Repeat an asymmetric little cluster of points at n evenly-spaced rotations around a
+  // center: whatever the motif looks like, the arrangement gains exact n-fold rotational
+  // (cyclic) symmetry. Optionally add a mirrored copy of the motif at every position too, which
+  // upgrades the symmetry to dihedral (rotations AND reflections) — see the math panel.
+  function genMandala(n, rng, w, h){
+    const cx = w/2, cy = h/2;
+    const maxR = Math.min(w,h)*0.46;
+    const armCount = 5 + Math.floor(rng()*6); // 5..10 arms
+    const mirror = rng()<0.55;
+    // floor (not round) so every arm gets the exact same motif — rounding up, combined with
+    // trimming the final total down to n, would silently cut the last arm's motif short and
+    // break the exact rotational symmetry that's the entire point of this preset.
+    const perArm = Math.max(1, Math.floor(n/(mirror ? armCount*2 : armCount)));
+    const wedge = (Math.PI*2/armCount)*0.75; // motif stays inside its own wedge, off-center within it
+    const motif = [];
+    for(let i=0;i<perArm;i++){
+      motif.push({ r: maxR*(0.12+0.85*rng()), a: (rng()-0.5)*wedge + wedge*0.15 });
+    }
+    const pts = [];
+    for(let arm=0; arm<armCount; arm++){
+      const base = arm*(Math.PI*2/armCount);
+      motif.forEach(m => {
+        pts.push({x: cx+Math.cos(base+m.a)*m.r, y: cy+Math.sin(base+m.a)*m.r});
+        if(mirror) pts.push({x: cx+Math.cos(base-m.a)*m.r, y: cy+Math.sin(base-m.a)*m.r});
+      });
+    }
+    while(pts.length<n) pts.push({x: cx+(rng()-0.5)*maxR*0.3, y: cy+(rng()-0.5)*maxR*0.3});
+    return pts.slice(0,n);
+  }
+
+  // Nested, shrinking, rotating polygons: start with one regular polygon's vertices, then
+  // repeatedly replace every vertex V with V*lambda (a single fixed complex multiplier) to get
+  // the next, smaller, rotated ring — the same "chase the next vertex by a fraction" mechanism
+  // behind rep-tile spirals and the classic "mice problem" pursuit curve. See the math panel.
+  function genPolygonVortex(n, rng, w, h){
+    const cx = w/2, cy = h/2;
+    const maxR = Math.min(w,h)*0.46;
+    // sides stays >=5: at 3 or 4 sides, each chase-step cuts the radius so sharply that
+    // almost every point ends up crammed within a few rings of the center, leaving only 3-4
+    // outer points to cover (as giant wedge cells) the rest of the canvas.
+    const sides = 5 + Math.floor(rng()*4); // 5..8
+    const t = 0.08 + rng()*0.14;           // fraction each vertex chases its neighbor by
+    const omega = Math.PI*2/sides;
+    const lr = (1-t) + t*Math.cos(omega), li = t*Math.sin(omega); // lambda = (1-t) + t*e^(i*omega)
+    const startAngle = rng()*Math.PI*2;
+    let verts = [];
+    for(let k=0;k<sides;k++){
+      const a = startAngle + k*omega;
+      verts.push({x: Math.cos(a)*maxR, y: Math.sin(a)*maxR});
+    }
+    const pts = [];
+    let guard = 0;
+    while(pts.length<n && guard<200){
+      for(const v of verts){
+        if(pts.length>=n) break;
+        pts.push({x: cx+v.x, y: cy+v.y});
+      }
+      verts = verts.map(v => ({ x: v.x*lr - v.y*li, y: v.x*li + v.y*lr })); // v *= lambda
+      if(Math.hypot(verts[0].x, verts[0].y) < maxR*0.02) break; // spiraled down to the center
+      guard++;
+    }
+    while(pts.length<n) pts.push({x: cx+(rng()-0.5)*4, y: cy+(rng()-0.5)*4});
+    return pts.slice(0,n);
+  }
+
+  // Archimedean spiral: radius grows LINEARLY with angle (r = t*maxR), so coils stay evenly
+  // spaced — like a rolled carpet or a vinyl groove. Contrast genGoldenSpiral, whose radius
+  // grows EXPONENTIALLY with angle instead, so coils flare outward.
   function genSpiral(n, rng, w, h){
     const cx = w/2, cy = h/2;
     const maxR = Math.min(w,h)*0.46;
-    const turns = 4.2;
+    const turns = 2.6 + rng()*3.2;   // 2.6..5.8 turns — tight and dense, or loose and airy
+    const dir = rng()<0.5 ? 1 : -1;  // clockwise or counterclockwise
     const pts = [];
     for(let i=0;i<n;i++){
       const t = n<=1 ? 0 : i/(n-1);
-      const a = t*turns*Math.PI*2;
+      const a = dir*t*turns*Math.PI*2;
       const r = t*maxR;
+      pts.push({x: cx+Math.cos(a)*r, y: cy+Math.sin(a)*r});
+    }
+    return pts;
+  }
+
+  // Golden (logarithmic/equiangular) spiral: crosses every ray from its center at the same
+  // fixed angle, which means it grows by a constant RATIO every constant increment of
+  // rotation rather than a constant amount — r(theta) = a * g^(2*theta/pi), where g is how
+  // much the radius multiplies by every quarter turn. g=phi (the golden ratio) is the classic
+  // case; phi is the first of a family of "metallic ratios" (silver, bronze, ...), the
+  // positive root of x^2 = k*x + 1 for integer k, each giving a differently-flared spiral of
+  // the same family. See the "Golden spiral" section of the math panel.
+  function genGoldenSpiral(n, rng, w, h){
+    const cx = w/2, cy = h/2;
+    const maxR = Math.min(w,h)*0.46;
+    const dir = rng()<0.5 ? 1 : -1;
+    const g = (1+Math.sqrt(5))/2; // golden ratio phi — see the math panel for the wider metallic-ratio family
+    const b = (2*Math.log(g))/Math.PI; // r = a * e^(b*theta): radius grows by phi every quarter turn
+    // An equiangular spiral's radius grows exponentially with angle — at golden ratio, ~6.9x
+    // per full turn — so there's a narrow window that both wraps at least one full turn (any
+    // less leaves a big angular gap with no points in it, which Voronoi turns into one huge
+    // wedge-shaped cell) and doesn't cram almost every point into a near-invisible cluster at
+    // the center (many more turns). 1.4-2.0 turns keeps it comfortably inside that window.
+    const turns = 1.4 + rng()*0.6;
+    const thetaMax = turns*Math.PI*2;
+    const pts = [];
+    for(let i=0;i<n;i++){
+      const t = n<=1 ? 1 : i/(n-1);
+      const theta = t*thetaMax;
+      const r = maxR*Math.exp(b*(theta-thetaMax)); // normalized so the outermost point sits at maxR
+      const a = dir*theta;
       pts.push({x: cx+Math.cos(a)*r, y: cy+Math.sin(a)*r});
     }
     return pts;
@@ -1342,7 +1518,11 @@
 
   function loadFromUrl(){
     const q = new URLSearchParams(window.location.search);
-    if(q.has('n')) state.siteCount = clamp(parseInt(q.get('n'),10)||state.siteCount, 5, 150);
+    if(q.has('n')){
+      state.siteCount = clamp(parseInt(q.get('n'),10)||state.siteCount, 5, 150);
+      siteCountSlider.value = state.siteCount;
+      siteCountVal.textContent = state.siteCount;
+    }
     if(q.has('metric') && ['euclidean','manhattan','chebyshev'].includes(q.get('metric'))) state.metric = q.get('metric');
     if(q.has('delaunay')) state.showDelaunay = q.get('delaunay')==='1';
     if(q.has('palette')) state.palette = clamp(parseInt(q.get('palette'),10),0,7);
