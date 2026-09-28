@@ -2088,10 +2088,14 @@
     paramValues: {},
     toggleValues: {},
     progress: 1,
-    randomSeqToken: 0
+    randomSeqToken: 0,
+    zoom: 1,
+    panX: 0,
+    panY: 0
   };
 
   var CX = 300, CY = 270, NODE_R = 42;
+  var ZOOM_MIN = 0.35, ZOOM_MAX = 6;
 
   function angleFor(idx, count, rotationDeg){
     return (-90 + idx * (360/count) + rotationDeg) * Math.PI/180;
@@ -2112,6 +2116,125 @@
     for (var k in attrs) e.setAttribute(k, attrs[k]);
     return e;
   }
+
+  /* Persistent wrapper around everything each diagram draws.
+     render()/renderAutomaton()/renderGenerative() clear and repopulate ITS
+     insides, never the raw <svg> — so pan/zoom state living on this one
+     group's transform survives every re-render. */
+  var cameraGroup = el('g', {id:'cameraGroup'});
+  svg.appendChild(cameraGroup);
+
+  function applyCamera(){
+    cameraGroup.setAttribute('transform',
+      'translate('+state.panX+','+state.panY+') translate('+CX+','+CY+') scale('+state.zoom+') translate('+(-CX)+','+(-CY)+')');
+  }
+
+  function resetCamera(){
+    state.zoom = 1; state.panX = 0; state.panY = 0;
+    applyCamera();
+  }
+
+  function svgPointFromClient(clientX, clientY){
+    var rect = svg.getBoundingClientRect();
+    var vb = svg.viewBox.baseVal;
+    return {
+      x: vb.x + ((clientX-rect.left)/rect.width) * vb.width,
+      y: vb.y + ((clientY-rect.top)/rect.height) * vb.height
+    };
+  }
+
+  /* Change zoom while keeping the diagram-space point currently under
+     (svgX,svgY) fixed on screen — "zoom toward cursor/pinch-center." */
+  function zoomToward(svgX, svgY, newZoom){
+    newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
+    var px = CX + (svgX - state.panX - CX) / state.zoom;
+    var py = CY + (svgY - state.panY - CY) / state.zoom;
+    state.zoom = newZoom;
+    state.panX = svgX - CX - newZoom*(px-CX);
+    state.panY = svgY - CY - newZoom*(py-CY);
+    applyCamera();
+  }
+
+  (function wireCameraControls(){
+    var dragging = false, dragStartX=0, dragStartY=0, panStartX=0, panStartY=0;
+    var moved = false;
+
+    svg.style.touchAction = 'none';
+    svg.style.cursor = 'grab';
+
+    svg.addEventListener('wheel', function(e){
+      e.preventDefault();
+      var factor = e.deltaY < 0 ? 1.12 : 1/1.12;
+      var pt = svgPointFromClient(e.clientX, e.clientY);
+      zoomToward(pt.x, pt.y, state.zoom*factor);
+    }, {passive:false});
+
+    svg.addEventListener('pointerdown', function(e){
+      if (e.pointerType === 'touch') return;
+      dragging = true; moved = false;
+      dragStartX = e.clientX; dragStartY = e.clientY;
+      panStartX = state.panX; panStartY = state.panY;
+      svg.style.cursor = 'grabbing';
+      svg.setPointerCapture(e.pointerId);
+    });
+    svg.addEventListener('pointermove', function(e){
+      if (!dragging) return;
+      var rect = svg.getBoundingClientRect();
+      var vb = svg.viewBox.baseVal;
+      var scaleX = vb.width/rect.width, scaleY = vb.height/rect.height;
+      var dx = (e.clientX-dragStartX)*scaleX, dy = (e.clientY-dragStartY)*scaleY;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
+      state.panX = panStartX + dx;
+      state.panY = panStartY + dy;
+      applyCamera();
+    });
+    function endDrag(){ dragging = false; svg.style.cursor = 'grab'; }
+    svg.addEventListener('pointerup', endDrag);
+    svg.addEventListener('pointercancel', endDrag);
+    svg.addEventListener('dblclick', function(){ resetCamera(); });
+
+    /* Touch: single finger pans, two fingers pinch-zoom. Handled
+       separately from pointer events above (which explicitly ignore
+       'touch') so the two code paths never double-handle the same
+       gesture. */
+    var touchPan = null;
+    var pinch = null;
+    svg.addEventListener('touchstart', function(e){
+      if (e.touches.length === 1){
+        pinch = null;
+        touchPan = {x:e.touches[0].clientX, y:e.touches[0].clientY, panX:state.panX, panY:state.panY};
+      } else if (e.touches.length === 2){
+        touchPan = null;
+        var t0=e.touches[0], t1=e.touches[1];
+        var mid = svgPointFromClient((t0.clientX+t1.clientX)/2, (t0.clientY+t1.clientY)/2);
+        pinch = {
+          dist: Math.hypot(t1.clientX-t0.clientX, t1.clientY-t0.clientY),
+          zoom: state.zoom, panX: state.panX, panY: state.panY, mid: mid
+        };
+      }
+    }, {passive:true});
+    svg.addEventListener('touchmove', function(e){
+      if (e.touches.length === 1 && touchPan){
+        e.preventDefault();
+        var rect = svg.getBoundingClientRect();
+        var vb = svg.viewBox.baseVal;
+        var scaleX = vb.width/rect.width, scaleY = vb.height/rect.height;
+        state.panX = touchPan.panX + (e.touches[0].clientX-touchPan.x)*scaleX;
+        state.panY = touchPan.panY + (e.touches[0].clientY-touchPan.y)*scaleY;
+        applyCamera();
+      } else if (e.touches.length === 2 && pinch){
+        e.preventDefault();
+        var t0=e.touches[0], t1=e.touches[1];
+        var dist = Math.hypot(t1.clientX-t0.clientX, t1.clientY-t0.clientY);
+        state.zoom = pinch.zoom; state.panX = pinch.panX; state.panY = pinch.panY;
+        zoomToward(pinch.mid.x, pinch.mid.y, pinch.zoom*(dist/pinch.dist));
+      }
+    }, {passive:false});
+    svg.addEventListener('touchend', function(e){
+      if (e.touches.length < 2) pinch = null;
+      if (e.touches.length < 1) touchPan = null;
+    });
+  })();
 
   function edgePath(p1, p2, fromKey, toKey){
     var mx = (p1.x+p2.x)/2, my = (p1.y+p2.y)/2;
@@ -2152,23 +2275,23 @@
   }
 
   function renderGenerative(){
-    svg.innerHTML = '';
+    cameraGroup.innerHTML = '';
     var scale = state.radius/190;
     var g = el('g', {transform:'translate('+CX+','+CY+') rotate('+state.rotation+') scale('+scale+')'});
-    svg.appendChild(g);
+    cameraGroup.appendChild(g);
     var progress = state.autoplay ? state.progress : 1;
     state.diagram.draw(g, state.paramValues, state.toggleValues, genPalette(), progress);
   }
 
   function renderAutomaton(){
-    svg.innerHTML = '';
+    cameraGroup.innerHTML = '';
     edgeEls = {}; nodeEls = {}; badgeEls = {};
 
     var defs = el('defs', {});
     var marker = el('marker', {id:'arrowhead', viewBox:'0 0 10 10', refX:'8', refY:'5', markerWidth:'7', markerHeight:'7', orient:'auto-start-reverse'});
     marker.appendChild(el('path', {d:'M 0 0 L 10 5 L 0 10 z', fill:'var(--border)'}));
     defs.appendChild(marker);
-    svg.appendChild(defs);
+    cameraGroup.appendChild(defs);
 
     var pos = layoutPositions();
     var diagram = state.diagram;
@@ -2176,9 +2299,9 @@
     var edgeLayer = el('g', {});
     var labelLayer = el('g', {});
     var nodeLayer = el('g', {});
-    svg.appendChild(edgeLayer);
-    svg.appendChild(labelLayer);
-    svg.appendChild(nodeLayer);
+    cameraGroup.appendChild(edgeLayer);
+    cameraGroup.appendChild(labelLayer);
+    cameraGroup.appendChild(nodeLayer);
 
     diagram.edges.forEach(function(edge){
       var geo = edgePath(pos[edge.from], pos[edge.to], edge.from, edge.to);
@@ -2538,10 +2661,10 @@
   function applyHint(html){
     var hint = byId('hint');
     if (!hint || !html) return;
-    hint.innerHTML = html;
+    hint.innerHTML = html + '<br><span style="opacity:0.7;font-size:0.9em;">Scroll or pinch to zoom · drag to pan · double-click to reset</span>';
     hint.style.opacity = '1';
     if (state.hintTimer) clearTimeout(state.hintTimer);
-    state.hintTimer = setTimeout(function(){ hint.style.opacity = '0'; }, 4200);
+    state.hintTimer = setTimeout(function(){ hint.style.opacity = '0'; }, 5200);
   }
 
   function switchDiagram(found){
@@ -2550,6 +2673,7 @@
     state.toggleValues = defaultToggleValues(found);
     state.progress = 1;
     state.randomSeqToken++;
+    resetCamera();
     setAutoplay(false);
     buildPresetUI();
     buildParamsUI();
@@ -2604,6 +2728,7 @@
     byId('radiusSlider').value = 190; byId('radiusVal').textContent = 190;
     byId('rotationSlider').value = 0; byId('rotationVal').textContent = '0°';
     byId('curveSlider').value = 0.3; byId('curveVal').textContent = '0.30';
+    resetCamera();
     render();
   });
   byId('randomizeShapeBtn').addEventListener('click', function(){
@@ -2759,6 +2884,10 @@
     var serializer = new XMLSerializer();
     var clone = svg.cloneNode(true);
     clone.setAttribute('xmlns', svgNS);
+    /* Export the whole diagram at its natural framing, regardless of
+       whatever pan/zoom the user currently has dialed in on screen. */
+    var cloneCamera = clone.querySelector('#cameraGroup');
+    if (cloneCamera) cloneCamera.removeAttribute('transform');
     var bgRect = el('rect', {x:0,y:0,width:600,height:560,fill:'#0A0E16'});
     clone.insertBefore(bgRect, clone.firstChild);
     var svgStr = serializer.serializeToString(clone);
