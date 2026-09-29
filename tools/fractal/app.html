@@ -625,6 +625,35 @@
   const JULIA_BASE = 100;
   const shapeDefaults = { power: 2.0, bailout: 16.0, colorScale: 0.035, colorOffset: 0.0, rotation: 0, relax: 1.0 };
 
+  // ---------- "clean" randomizers ----------
+  // Shared by every Randomize button so a single click never lands on a
+  // combination that's technically valid but reads as noise:
+  //  - power is snapped to an integer. cpow's theta*n has a branch cut at
+  //    +-pi; for non-integer n that seam is visible as a stray radial
+  //    slit through the fractal. Integers close it cleanly.
+  //  - Julia c is picked from known points near the Mandelbrot boundary
+  //    (plus a little jitter), not a uniform square — most of that square
+  //    is either deep inside the set (a plain filled disk) or well
+  //    outside it (scattered dust), neither of which reads as "a fractal".
+  //  - Phoenix feedback is kept small; past roughly +-0.6 it tends to blow
+  //    the iteration up into visual static rather than fine structure.
+  const JULIA_SEEDS = [
+    [-0.700, 0.27015], [-0.800, 0.156], [-0.400, 0.600], [0.285, 0.010],
+    [-0.7017, -0.3842], [-0.835, -0.2321], [0.450, 0.1428], [-0.100, 0.651],
+    [-1.25066, 0.02012], [-0.391, -0.587], [-0.123, 0.745], [0.355, 0.355]
+  ];
+  function randomPower(){ return Math.floor(2 + Math.random() * 5); } // 2..6, integer
+  function randomBailout(){ return Math.round(10 + Math.random() * 30); } // 10..40
+  function randomColorScale(){ return Math.round((0.02 + Math.random() * 0.06) * 1000) / 1000; } // 0.02..0.08
+  function randomPhoenixP(){
+    return [ Math.round((Math.random() * 2 - 1) * 50) / 100, Math.round((Math.random() * 2 - 1) * 50) / 100 ]; // +-0.5
+  }
+  function randomJuliaSeed(){
+    const [re, im] = JULIA_SEEDS[Math.floor(Math.random() * JULIA_SEEDS.length)];
+    const jitter = () => (Math.random() * 2 - 1) * 0.02;
+    return [ Math.round((re + jitter()) * 1000) / 1000, Math.round((im + jitter()) * 1000) / 1000 ];
+  }
+
   let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   function resize(){
@@ -1060,7 +1089,7 @@
   });
 
   document.getElementById('randomizeBtn').addEventListener('click', () => {
-    state.juliaC = [ (Math.random()*2-1)*1.2, (Math.random()*2-1)*1.2 ];
+    state.juliaC = randomJuliaSeed();
     syncJuliaSliders();
     render();
   });
@@ -1080,7 +1109,7 @@
     render();
   });
   document.getElementById('randomizePhoenixBtn').addEventListener('click', () => {
-    state.phoenixP = [ Math.round((Math.random()*2-1)*100)/100, Math.round((Math.random()*2-1)*100)/100 ];
+    state.phoenixP = randomPhoenixP();
     phoenixReSlider.value = state.phoenixP[0]; phoenixReVal.textContent = state.phoenixP[0].toFixed(2);
     phoenixImSlider.value = state.phoenixP[1]; phoenixImVal.textContent = state.phoenixP[1].toFixed(2);
     render();
@@ -1164,7 +1193,7 @@
   document.getElementById('randomizePaletteBtn').addEventListener('click', () => {
     state.palette = Math.floor(Math.random()*swatches.children.length);
     setActiveSwatch(state.palette);
-    state.colorScale = Math.round((0.01 + Math.random()*0.14)*1000)/1000;
+    state.colorScale = randomColorScale();
     state.colorOffset = Math.round(Math.random()*100)/100;
     densitySlider.value = state.colorScale; densityVal.textContent = state.colorScale.toFixed(3);
     offsetSlider.value = state.colorOffset; offsetVal.textContent = state.colorOffset.toFixed(2);
@@ -1183,8 +1212,8 @@
   });
 
   document.getElementById('randomizeShapeBtn').addEventListener('click', () => {
-    state.power = Math.round((2 + Math.random()*4)*10)/10;
-    state.bailout = Math.round(4 + Math.random()*56);
+    state.power = randomPower();
+    state.bailout = randomBailout();
     state.rotation = Math.round(Math.random()*360);
     powerSlider.value = state.power; powerVal.textContent = state.power.toFixed(1);
     bailoutSlider.value = state.bailout; bailoutVal.textContent = state.bailout;
@@ -1199,20 +1228,36 @@
 
   document.getElementById('randomizeAllBtn').addEventListener('click', () => {
     state.mode = Math.floor(Math.random()*modeNames.length);
-    state.juliaMode = state.mode !== NEWTON && Math.random() < 0.6;
-    modeSelect.value = state.juliaMode ? JULIA_BASE + state.mode : state.mode;
 
-    state.phoenixOn = state.mode <= 7 && Math.random() < 0.35;
+    // Julia and Phoenix each add real visual complexity on their own;
+    // stacking both onto one already-random family/power/rotation pick
+    // is what tends to produce a busy, illegible result. Pick at most
+    // one "flourish" per randomize instead of rolling them independently.
+    // Barnsley 1/2 are excluded: with |c| in the curated-seed range they're
+    // a contraction almost everywhere (every pixel stays bounded), so their
+    // Julia variant renders as a near-solid dark frame rather than a
+    // fractal boundary. Magnet is excluded too: its interesting region for
+    // a given seed isn't reliably near the origin, so the shared default
+    // view often crops it out entirely. All three still work fine as their
+    // own (non-Julia) family, and are still reachable manually via the
+    // dropdown + "Randomize seed" for hand exploration.
+    const juliaUnreliable = state.mode === 8 || state.mode === 9 || state.mode === 11;
+    const canJulia = state.mode !== NEWTON && !juliaUnreliable;
+    const canPhoenix = state.mode <= 7;
+    const flourish = Math.random();
+    state.juliaMode = canJulia && flourish < 0.45;
+    state.phoenixOn = !state.juliaMode && canPhoenix && flourish < 0.70;
+    modeSelect.value = state.juliaMode ? JULIA_BASE + state.mode : state.mode;
     phoenixToggle.classList.toggle('on', state.phoenixOn);
 
-    state.juliaC = [ Math.round((Math.random()*3-1.5)*1000)/1000, Math.round((Math.random()*3-1.5)*1000)/1000 ];
-    state.phoenixP = [ Math.round((Math.random()*2-1)*100)/100, Math.round((Math.random()*2-1)*100)/100 ];
-    state.power = Math.round((2 + Math.random()*4)*10)/10;
-    state.bailout = Math.round(4 + Math.random()*56);
+    state.juliaC = randomJuliaSeed();
+    state.phoenixP = randomPhoenixP();
+    state.power = randomPower();
+    state.bailout = randomBailout();
     state.rotation = Math.round(Math.random()*360);
     state.relax = Math.round((0.3 + Math.random()*1.9)*100)/100;
     state.palette = Math.floor(Math.random()*swatches.children.length);
-    state.colorScale = Math.round((0.01 + Math.random()*0.14)*1000)/1000;
+    state.colorScale = randomColorScale();
     state.colorOffset = Math.round(Math.random()*100)/100;
     state.liveSeed = false;
     liveSeedToggle.classList.remove('on');
