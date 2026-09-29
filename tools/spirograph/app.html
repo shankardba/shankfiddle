@@ -202,6 +202,23 @@
     font-size:12px;
   }
   .num-field input[type=number]:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+  .num-field input[type=text]{
+    width:100%;padding:7px 8px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;text-transform:uppercase;
+  }
+  .num-field input[type=text]::placeholder{text-transform:none;color:var(--text-muted);}
+  .num-field input[type=text]:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+  .stamp-error{font-size:10.5px;color:var(--error);min-height:0;margin-top:4px;}
+  .stamp-error:empty{display:none;}
+  .stamp-hint{font-size:10px;color:var(--text-muted);margin-top:6px;}
+  .stamp-info{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;
+    font-size:11px;line-height:1.4;color:var(--text-muted);}
+  .stamp-info b{color:var(--text);font-weight:600;}
+  .stamp-use{flex:none;padding:4px 9px;font-size:11px;font-family:inherit;color:var(--text);
+    background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;}
+  .stamp-use:hover{border-color:var(--cool);}
+  .stamp-use:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
 
   .swatches{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
   .swatch{
@@ -487,6 +504,30 @@
     </div>
 
     <div class="section">
+      <div class="label" title="Draw the same curve several times, turning the gears in place by a number of teeth between each drawing (each drawing is one &quot;stamp&quot;), just like re-seating the physical gears.">Gear-tooth stamps</div>
+      <div class="num-field">
+        <label><span title="Type a recipe like 126-126-56-14_F1B1 (ring-wheel-hoop-pen, then the outer gear's and pen gear's turn per stamp: F = forward/clockwise, B = backward/counter-clockwise). Press Enter to apply.">Recipe</span></label>
+        <input type="text" id="stampRecipe" placeholder="e.g. 126-126-56-14_F1B1" spellcheck="false" autocomplete="off" autocapitalize="characters">
+      </div>
+      <div class="stamp-error" id="stampRecipeError"></div>
+      <div class="grid2" style="margin-top:10px;">
+        <div class="num-field"><label><span title="Teeth to turn the outer gear (n1) in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Outer gear turn</span></label><input type="number" id="stampF" min="-600" max="600" value="0"></div>
+        <div class="num-field"><label><span id="stampBLabel" title="Teeth to turn the pen gear in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Pen gear turn</span></label><input type="number" id="stampB" min="-600" max="600" value="0"></div>
+      </div>
+      <div class="stamp-hint">Teeth per stamp · + clockwise (F) · − counter-clockwise (B)</div>
+      <div class="slider-row" style="margin-top:10px;">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Stamps</span><span class="val" id="stampCountVal">1</span></div>
+          <input type="range" id="stampCountSlider" min="1" max="400" step="1" value="1">
+        </div>
+      </div>
+      <div class="stamp-info" id="stampInfo">
+        <span id="stampInfoText"></span>
+        <button class="stamp-use" id="stampUseBtn" type="button" style="display:none;"></button>
+      </div>
+    </div>
+
+    <div class="section">
       <div class="label">Display</div>
       <div class="toggle-row">
         <div class="label" style="margin:0;">Show gear mechanism</div>
@@ -665,6 +706,7 @@
     n0:140, n1:128, n2:54, n3:45,
     h:0.48, p:0.8, phi:0, holeMm:3,
     extraWheel:false, n4:30, n5:18, h2:0.3,
+    stampF:0, stampB:0, stampCount:1,
     showCircles:false, showSymm:false, showF0:false, showLabels:false, showEquations:false,
     palette:0, solidColor:'#f2a65a', density:2.0, brightness:0.9, glow:true,
     lineWidth:1.6, glowIntensity:8, ptDens:512,
@@ -694,6 +736,8 @@
 
   let derived = null;
   let f0points = null;
+  let stampVariants = null;
+  let stampInfo = null;
   let eqCaption = {x:'', y:''}; // plain-text x(t)/y(t), refreshed in updateMathPanel(), drawn on-canvas by drawEquationCaption()
 
   // The full example gallery from the reference tool (all 34 srset(...) buttons).
@@ -734,7 +778,7 @@
     {n:[96,80,40,32],   h:0.3751, p:0.7000}
   ].map(pr => ({...pr, label: `${pr.n[0]}:${pr.n[1]};${pr.n[2]}:${pr.n[3]}`}));
 
-  const DEFAULTS = { n0:140, n1:128, n2:54, n3:45, h:0.48, p:0.8, phi:0, holeMm:3, extraWheel:false, n4:30, n5:18, h2:0.3 };
+  const DEFAULTS = { n0:140, n1:128, n2:54, n3:45, h:0.48, p:0.8, phi:0, holeMm:3, extraWheel:false, n4:30, n5:18, h2:0.3, stampF:0, stampB:0, stampCount:1 };
 
   // ---------- color palettes ----------
   // 0-4: cosine palettes (shared visual family with the fractal explorer).
@@ -800,6 +844,63 @@
 
   // ---------- generative math (faithful port of the second-order roulette, with an
   // optional third level — see the file header for how n4/n5/h2 were derived) ----------
+  // The core per-sample loop, factored out so it can be re-run with a phase offset for
+  // gear-tooth "stamps" (phaseF shifts the outer wheel's mesh position — a rigid rotation
+  // when n0===n1, a genuine reshape otherwise since it feeds the nonlinear hoop-offset
+  // correction below; phaseB shifts the pen angle, same role as an extra `phi`).
+  function computeRoulettePoints(params, phaseF, phaseB){
+    phaseF = phaseF || 0; phaseB = phaseB || 0;
+    const {n0,n1,n2,n3,n4,n5,extraOn,h,h2,p,phi,holeWorld,npts,tend,m0,m1,m2} = params;
+    const pts = new Float64Array((npts+1)*2);
+    let xmax=0, ymax=0, rsav=0;
+
+    for(let i=0;i<=npts;i++){
+      const t = i * tend / npts;
+      const t1 = m0*t + phaseF;
+      const t2 = t1 + Math.atan2(h*Math.sin(t1), 1 - h*Math.cos(t1));
+      const t3 = m1*t2;
+      const a0 = t - t1;
+      const a1 = a0 + t2 - t3;
+
+      const baseX = (n0-n1)*Math.cos(t) + n1*h*Math.cos(a0) + (n2-n3)*Math.cos(a0+t2);
+      const baseY = (n0-n1)*Math.sin(t) + n1*h*Math.sin(a0) + (n2-n3)*Math.sin(a0+t2);
+
+      let x, y, xt, yt;
+      if(extraOn){
+        const t3c = t3 + Math.atan2(h2*Math.sin(t3), 1 - h2*Math.cos(t3));
+        const a1t3c = a1 + t3c;
+        const t5 = m2*t3c;
+        const a2 = a1 + t3c - t5;
+
+        const n4x = baseX + n3*h2*Math.cos(a1);
+        const n4y = baseY + n3*h2*Math.sin(a1);
+        const n5cx = n4x + (n4-n5)*Math.cos(a1t3c);
+        const n5cy = n4y + (n4-n5)*Math.sin(a1t3c);
+
+        xt = n5cx; yt = n5cy;
+        x = n5cx + n5*p*Math.cos(a2+phi+phaseB);
+        y = n5cy + n5*p*Math.sin(a2+phi+phaseB);
+      } else {
+        xt = baseX; yt = baseY;
+        x = baseX + n3*p*Math.cos(a1+phi+phaseB);
+        y = baseY + n3*p*Math.sin(a1+phi+phaseB);
+      }
+
+      if(holeWorld !== 0){
+        const ang = Math.atan2(yt-y, xt-x);
+        x += holeWorld*Math.cos(ang);
+        y += holeWorld*Math.sin(ang);
+      }
+
+      const r = x*x + y*y;
+      if(r > rsav){ rsav = r; xmax = x; ymax = y; }
+
+      pts[i*2] = x; pts[i*2+1] = y;
+    }
+
+    return {points: pts, npts, xmax, ymax};
+  }
+
   function computeDerived(){
     const n0=state.n0, n1=state.n1, n2=state.n2, n3=state.n3;
     const n4=state.n4, n5=state.n5;
@@ -863,58 +964,80 @@
     const tend = T * 2 * Math.PI;
     const m0 = n0/n1, m1 = n2/n3, m2 = extraOn ? n4/n5 : 0;
 
-    const pts = new Float64Array((npts+1)*2);
-    let xmax=0, ymax=0, rsav=0;
-
-    for(let i=0;i<=npts;i++){
-      const t = i * tend / npts;
-      const t1 = m0*t;
-      const t2 = t1 + Math.atan2(h*Math.sin(t1), 1 - h*Math.cos(t1));
-      const t3 = m1*t2;
-      const a0 = t - t1;
-      const a1 = a0 + t2 - t3;
-
-      const baseX = (n0-n1)*Math.cos(t) + n1*h*Math.cos(a0) + (n2-n3)*Math.cos(a0+t2);
-      const baseY = (n0-n1)*Math.sin(t) + n1*h*Math.sin(a0) + (n2-n3)*Math.sin(a0+t2);
-
-      let x, y, xt, yt;
-      if(extraOn){
-        const t3c = t3 + Math.atan2(h2*Math.sin(t3), 1 - h2*Math.cos(t3));
-        const a1t3c = a1 + t3c;
-        const t5 = m2*t3c;
-        const a2 = a1 + t3c - t5;
-
-        const n4x = baseX + n3*h2*Math.cos(a1);
-        const n4y = baseY + n3*h2*Math.sin(a1);
-        const n5cx = n4x + (n4-n5)*Math.cos(a1t3c);
-        const n5cy = n4y + (n4-n5)*Math.sin(a1t3c);
-
-        xt = n5cx; yt = n5cy;
-        x = n5cx + n5*p*Math.cos(a2+phi);
-        y = n5cy + n5*p*Math.sin(a2+phi);
-      } else {
-        xt = baseX; yt = baseY;
-        x = baseX + n3*p*Math.cos(a1+phi);
-        y = baseY + n3*p*Math.sin(a1+phi);
-      }
-
-      if(holeWorld !== 0){
-        const ang = Math.atan2(yt-y, xt-x);
-        x += holeWorld*Math.cos(ang);
-        y += holeWorld*Math.sin(ang);
-      }
-
-      const r = x*x + y*y;
-      if(r > rsav){ rsav = r; xmax = x; ymax = y; }
-
-      pts[i*2] = x; pts[i*2+1] = y;
-    }
+    const rp = computeRoulettePoints({n0,n1,n2,n3,n4,n5,extraOn,h,h2,p,phi,holeWorld,npts,tend,m0,m1,m2});
+    const pts = rp.points, xmax = rp.xmax, ymax = rp.ymax;
 
     return {
       points: pts, npts, T, T1, T3, T5, nsymm, nsymmCore, pltmax, xmax, ymax,
       h, h2, p, holeWorld, m0, m1, m2, phi, tend, extraOn,
-      n0scl, n1scl, n2scl, n3scl, cP, cQ, nC, simL, simM
+      n0scl, n1scl, n2scl, n3scl, cP, cQ, nC, simL, simM,
+      n0, n1, n2, n3, n4, n5
     };
+  }
+
+  // ---------- when do stamps close up, and how symmetric is the result? ----------
+  // A stamp's state is (u, v): the outer gear n1 turned u teeth and the pen gear v teeth
+  // (counter-clockwise positive, matching phaseF/phaseB). Two states draw the identical curve
+  // exactly when they differ by a vector of the lattice spanned by
+  //   (n0, 0)   one more lap of the wheel round the ring — just a time shift of the same curve
+  //   (n1, n2)  a full turn of n1, which rolls the pen gear once round its hoop
+  //   (0,  n3)  a full turn of the pen gear
+  // With the extra wheel the middle one becomes q*(n1, n2*n4/n3), q = n3/gcd(n2,n3), and the pen
+  // gear is n5. Stamp k sits at k*(F, -B), so the pattern closes at the first k that lands back
+  // in the lattice. Rotating the whole drawing by 2*pi*j/n0 is the state shift (-j, 0), so its
+  // symmetry is n0 / (smallest j reachable from the stamps). Checked against brute-force curve
+  // comparison and every stamp/symmetry count in the source notes.
+  function egcd(a, b){
+    let [r0, r1, s0, s1, t0, t1] = [a, b, 1, 0, 0, 1];
+    while(r1 !== 0){
+      const q = Math.floor(r0 / r1);
+      [r0, r1] = [r1, r0 - q*r1];
+      [s0, s1] = [s1, s0 - q*s1];
+      [t0, t1] = [t1, t0 - q*t1];
+    }
+    return r0 < 0 ? [-r0, -s0, -t0] : [r0, s0, t0];
+  }
+  function mod(a, m){ return ((a % m) + m) % m; }
+  // Hermite form of the lattice spanned by gens: {(x,y) : a | x and c | y - (x/a)*b}.
+  function latticeHNF(gens){
+    let a = 0, b = 0, c = 0;
+    for(const [x, y] of gens){
+      if(x === 0){ c = gcd(c, y); continue; }
+      if(a === 0){ a = x; b = y; }
+      else {
+        const [g, s, t] = egcd(a, x);
+        c = gcd(c, (x/g)*b - (a/g)*y);
+        [a, b] = [g, s*b + t*y];
+      }
+      if(a < 0){ a = -a; b = -b; }
+    }
+    return {a, b: c ? mod(b, c) : b, c};
+  }
+  function inLattice(x, y, L){
+    if(mod(x, L.a) !== 0) return false;
+    const r = y - (x / L.a) * L.b;
+    return L.c ? mod(r, L.c) === 0 : r === 0;
+  }
+  function computeStampInfo(gears, F, B){
+    const {n0, n1, n2, n3, n4, n5, extraOn} = gears;
+    let gens;
+    if(extraOn){
+      const g = gcd(n2, n3);
+      gens = [[n0, 0], [(n3/g)*n1, n2*n4/g], [0, n5]];
+    } else {
+      gens = [[n0, 0], [n1, n2], [0, n3]];
+    }
+    const L = latticeHNF(gens);
+    let closes = 1;
+    if(F || B){
+      const kmax = L.a * L.c;
+      for(let k=1; k<=kmax; k++){
+        if(inLattice(F*k, -B*k, L)){ closes = k; break; }
+      }
+    }
+    const L2 = latticeHNF(gens.concat([[F, -B]]));
+    const jmin = L2.c ? L2.a * (L2.c / gcd(L2.b, L2.c)) : L2.a;
+    return {closes, symmetry: Math.round(n0 / jmin)};
   }
 
   function computeF0(){
@@ -1142,14 +1265,21 @@
     ctx.restore();
   }
 
+  // A complete stamp set has its own (usually higher) symmetry; otherwise it's the curve's.
+  function shownSymmetry(){
+    const stamping = (state.stampF || state.stampB) && state.stampCount > 1;
+    return stamping && stampInfo && state.stampCount >= stampInfo.closes ? stampInfo.symmetry : derived.nsymm;
+  }
+
   function drawSymmetry(){
-    if(derived.nsymm <= 1) return;
+    const nsym = shownSymmetry();
+    if(nsym <= 1) return;
     const ang = Math.atan2(derived.ymax, derived.xmax);
     const rmax = Math.max(1.1*Math.sqrt(derived.xmax**2 + derived.ymax**2), 1.1*state.n0);
     ctx.strokeStyle = mc().link;
     ctx.lineWidth = 1*dpr;
-    for(let i=0;i<derived.nsymm;i++){
-      const a = ang + i*2*Math.PI/derived.nsymm;
+    for(let i=0;i<nsym;i++){
+      const a = ang + i*2*Math.PI/nsym;
       const [ox,oy] = worldToScreen(0,0);
       const [ex,ey] = worldToScreen(rmax*Math.cos(a), rmax*Math.sin(a));
       ctx.beginPath();
@@ -1213,6 +1343,57 @@
     ctx.globalAlpha = 1;
   }
 
+  // A multi-stamp drawing colors each stamp as one pen stroke (the palette sweeps across the
+  // stamps, like switching pens) and reveals the stamps one after another, the order they're
+  // drawn by hand. A single curve keeps the classic along-the-curve gradient via drawCurve.
+  function drawStamps(variants, revealFrac, opts){
+    opts = opts || {};
+    const n = variants.length;
+    if(n === 1){ drawCurve(variants[0].points, variants[0].npts, revealFrac, opts); return; }
+    const palette = opts.palette !== undefined ? opts.palette : state.palette;
+    const density = opts.density !== undefined ? opts.density : state.density;
+    const glow = opts.glow !== undefined ? opts.glow : state.glow;
+    const opacity = opts.opacity !== undefined ? opts.opacity : state.brightness;
+    const solidColor = opts.solidColor !== undefined ? opts.solidColor : state.solidColor;
+    const showTip = opts.showTip !== undefined ? opts.showTip : true;
+
+    ctx.lineWidth = (state.lineWidth + (glow ? 0.2 : 0)) * dpr;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = opacity;
+    const prog = revealFrac * n;
+    // worldToScreen inlined: hundreds of stamps can mean ~10^6 points per frame
+    const s = baseScale * view.zoom;
+    const ox = canvas.width/2 + view.offX, oy = canvas.height/2 + view.offY;
+    let tip = null;
+    for(let k=0; k<n; k++){
+      const f = Math.min(1, prog - k);
+      if(f <= 0) break;
+      const {points, npts} = variants[k];
+      const end = Math.max(1, Math.round(npts * f));
+      const color = getStrokeColor(palette, (k/n)*density, k, solidColor);
+      ctx.beginPath();
+      ctx.moveTo(ox - s*points[1], oy - s*points[0]);
+      for(let i=1; i<=end; i++) ctx.lineTo(ox - s*points[i*2+1], oy - s*points[i*2]);
+      if(f < 1) tip = [ox - s*points[end*2+1], oy - s*points[end*2]];
+      ctx.strokeStyle = color;
+      if(glow){ ctx.shadowColor = color; ctx.shadowBlur = state.glowIntensity*dpr; }
+      else ctx.shadowBlur = 0;
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    if(showTip && tip){
+      ctx.beginPath();
+      ctx.arc(tip[0], tip[1], 3*dpr, 0, 2*Math.PI);
+      ctx.fillStyle = '#fff';
+      ctx.shadowColor = '#fff';
+      ctx.shadowBlur = state.glowIntensity*1.25*dpr;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function render(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     if(!derived) return;
@@ -1220,7 +1401,8 @@
     // committed layers first (background), the live curve drawn last (foreground)
     for(const layer of state.layers){
       if(layer.visible === false) continue;
-      drawCurve(layer.points, layer.npts, 1, {
+      const variants = layer.stampVariants || [{points: layer.points, npts: layer.npts}];
+      drawStamps(variants, 1, {
         palette:layer.palette, density:layer.density, glow:layer.glow,
         opacity:layer.opacity, showTip:false, solidColor:layer.solidColor
       });
@@ -1231,7 +1413,7 @@
     if(state.showF0 && f0points) drawCurve(f0points.points, f0points.npts, 1, {withColor:false, showTip:false});
     // While a layer is selected, its entry in the loop above already shows the live edits
     // (kept in sync by syncSelectedLayerFromState) — drawing it again here would double it up.
-    if(state.selectedLayer === null) drawCurve(derived.points, derived.npts, animProgress);
+    if(state.selectedLayer === null && stampVariants) drawStamps(stampVariants, animProgress);
     if(state.showCircles) drawMechanismLabels(derived.tend * animProgress);
     if(state.showEquations) drawEquationCaption();
   }
@@ -1239,10 +1421,12 @@
   function startAnimation(){
     cancelAnimationFrame(animFrame);
     if(!state.animate && !state.loop){ animProgress = 1; render(); return; }
-    const baseDur = 1400;
+    const nStamps = stampVariants ? stampVariants.length : 1;
+    const stampScale = nStamps > 1 ? Math.min(5, 1 + Math.sqrt(nStamps)/4) : 1;
+    const baseDur = 1400 * stampScale;
     let t0 = performance.now();
     function step(now){
-      const dur = state.loop ? Math.max(500, 6000/state.speedMult) : baseDur;
+      const dur = state.loop ? Math.max(500, 6000/state.speedMult) * stampScale : baseDur;
       const f = clamp((now - t0)/dur, 0, 1);
       animProgress = state.loop ? f : 1 - Math.pow(1-f, 2); // ease-out for the one-shot reveal
       render();
@@ -1273,6 +1457,21 @@
   function doRecompute(animate){
     derived = computeDerived();
     f0points = state.showF0 ? computeF0() : null;
+    // Stamp k = the same curve with the outer gear (n1) turned in place k*F teeth and the pen
+    // gear turned in place k*B teeth, both positive = clockwise. A clockwise turn is a negative
+    // angle, so the pen gear's phase is subtracted; phaseF enters t1, where a positive value
+    // already turns the wheel clockwise (a0 = t - t1).
+    stampVariants = [{points: derived.points, npts: derived.npts}];
+    if(state.stampCount > 1){
+      const refN = derived.extraOn ? derived.n5 : derived.n3;
+      for(let k=1; k<state.stampCount; k++){
+        const phaseF = k * state.stampF * (2*Math.PI / derived.n1);
+        const phaseB = -k * state.stampB * (2*Math.PI / refN);
+        stampVariants.push(computeRoulettePoints(derived, phaseF, phaseB));
+      }
+    }
+    stampInfo = computeStampInfo(derived, state.stampF, state.stampB);
+    updateStampReadout();
     fitScale();
     syncSelectedLayerFromState();
     updateHud();
@@ -1293,6 +1492,8 @@
     L.n0=state.n0; L.n1=state.n1; L.n2=state.n2; L.n3=state.n3;
     L.n4=state.n4; L.n5=state.n5; L.extraWheel=state.extraWheel;
     L.h=state.h; L.p=state.p; L.phi=state.phi; L.holeMm=state.holeMm;
+    L.stampF=state.stampF; L.stampB=state.stampB; L.stampCount=state.stampCount;
+    L.stampVariants=stampVariants;
     L.palette=state.palette; L.density=state.density; L.glow=state.glow;
     L.opacity=state.brightness; L.solidColor=state.solidColor;
     renderLayerList();
@@ -1308,7 +1509,7 @@
     fStr += ')';
     document.getElementById('hF').textContent = fStr;
 
-    document.getElementById('hsymm').textContent = derived.nsymm;
+    document.getElementById('hsymm').textContent = shownSymmetry();
     document.getElementById('derivedInfo').innerHTML =
       `n0=${derived.n0scl}a &nbsp; n1=${derived.n1scl}a &nbsp; n2=${derived.n2scl}b &nbsp; n3=${derived.n3scl}b<br>`+
       `C=${derived.cP}/${derived.cQ} &nbsp; n<sub>C</sub>=${derived.nC} &nbsp; m=${derived.simM} &nbsp; l=${derived.simL}`;
@@ -1438,6 +1639,9 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   function layerGearLabel(layer){
     let s = `n0=${layer.n0} n1=${layer.n1} n2=${layer.n2} n3=${layer.n3}`;
     if(layer.extraWheel) s += ` n4=${layer.n4} n5=${layer.n5}`;
+    if(layer.stampCount > 1 && (layer.stampF || layer.stampB)){
+      s += ` · ${turnCode(layer.stampF)}${turnCode(layer.stampB)} ×${layer.stampCount}`;
+    }
     return s;
   }
   function renderLayerList(){
@@ -1491,6 +1695,14 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     phiSlider.value = state.phi; phiVal.textContent = state.phi + '°';
     holeSlider.value = state.holeMm; holeVal.textContent = state.holeMm.toFixed(1) + 'mm';
     if(state.extraWheel) refreshH2Range();
+
+    state.stampF = layer.stampF !== undefined ? layer.stampF : 0;
+    state.stampB = layer.stampB !== undefined ? layer.stampB : 0;
+    state.stampCount = layer.stampCount !== undefined ? layer.stampCount : 1;
+    document.getElementById('stampF').value = state.stampF;
+    document.getElementById('stampB').value = state.stampB;
+    stampCountSlider.value = state.stampCount;
+    stampCountVal.textContent = state.stampCount;
 
     state.density = layer.density;
     densitySlider.value = state.density; densityVal.textContent = state.density.toFixed(1);
@@ -1738,6 +1950,126 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     state.holeMm = parseFloat(holeSlider.value);
     holeVal.textContent = state.holeMm.toFixed(1) + 'mm';
     scheduleUpdate();
+  });
+
+  // ---- gear-tooth stamps (F/B) — same input/change split as bindNumber, but signed ----
+  function bindSignedInt(id, key, min, max){
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      const raw = parseFloat(el.value);
+      if(!isFinite(raw)) return;
+      const v = clamp(Math.round(raw), min, max);
+      if(state[key] === v) return;
+      state[key] = v;
+      scheduleUpdate();
+    });
+    el.addEventListener('change', () => {
+      const v = clamp(Math.round(parseFloat(el.value) || 0), min, max);
+      el.value = v;
+      if(state[key] !== v){ state[key] = v; }
+      scheduleUpdate();
+    });
+  }
+  bindSignedInt('stampF','stampF',-600,600);
+  bindSignedInt('stampB','stampB',-600,600);
+
+  const stampCountSlider = document.getElementById('stampCountSlider');
+  const stampCountVal = document.getElementById('stampCountVal');
+  stampCountSlider.addEventListener('input', () => {
+    state.stampCount = parseInt(stampCountSlider.value,10);
+    stampCountVal.textContent = state.stampCount;
+    scheduleUpdate();
+  });
+
+  const STAMP_MAX = parseInt(stampCountSlider.max, 10);
+  const stampInfoText = document.getElementById('stampInfoText');
+  const stampUseBtn = document.getElementById('stampUseBtn');
+  const stampRecipeEl = document.getElementById('stampRecipe');
+  const stampRecipeError = document.getElementById('stampRecipeError');
+
+  function turnCode(n){ return (n < 0 ? 'B' : 'F') + Math.abs(n); }
+  function currentRecipe(){
+    let s = `${state.n0}-${state.n1}-${state.n2}-${state.n3}`;
+    if(state.extraWheel) s += `-${state.n4}-${state.n5}`;
+    if(state.stampF || state.stampB) s += `_${turnCode(state.stampF)}${turnCode(state.stampB)}`;
+    return s;
+  }
+  function setStampCount(n){
+    state.stampCount = clamp(n, 1, STAMP_MAX);
+    stampCountSlider.value = state.stampCount;
+    stampCountVal.textContent = state.stampCount;
+  }
+  function updateStampReadout(){
+    if(document.activeElement !== stampRecipeEl) stampRecipeEl.value = currentRecipe();
+    const {closes, symmetry} = stampInfo;
+    const symTxt = symmetry > 1 ? `${symmetry}-fold symmetry` : 'no rotational symmetry';
+    let html, useN = null;
+    if(!state.stampF && !state.stampB){
+      html = 'Set a gear turn to start stamping.';
+    } else if(closes > STAMP_MAX){
+      html = `Needs <b>${closes.toLocaleString()}</b> stamps to close (this tool draws up to ${STAMP_MAX}) · ${symTxt} once complete`;
+      if(state.stampCount !== STAMP_MAX) useN = STAMP_MAX;
+    } else {
+      html = `Closes after <b>${closes}</b> stamps · ${symTxt}`;
+      if(state.stampCount > closes) html += ` — the extra ${state.stampCount - closes} retrace earlier ones`;
+      if(state.stampCount !== closes) useN = closes;
+    }
+    stampInfoText.innerHTML = html;
+    if(useN){
+      stampUseBtn.textContent = `Use ${useN}`;
+      stampUseBtn.dataset.n = useN;
+      stampUseBtn.style.display = '';
+    } else {
+      stampUseBtn.style.display = 'none';
+    }
+  }
+  stampUseBtn.addEventListener('click', () => {
+    setStampCount(parseInt(stampUseBtn.dataset.n, 10));
+    doRecompute(true);
+  });
+
+  // Recipe notation from the physical gear sets: ring-wheel-hoop-pen[-hoop2-pen2]_<dir><teeth><dir><teeth>,
+  // e.g. 126-126-56-14_F1B1 = outer gear 1 tooth forward (clockwise), pen gear 1 tooth backward.
+  // Anything after the turns (a "(30 lines)" note, "x36", ...) is ignored.
+  function applyRecipe(){
+    const m = stampRecipeEl.value.trim().match(
+      /^(\d+)\s*-\s*(\d+)\s*-\s*(\d+)\s*-\s*(\d+)(?:\s*-\s*(\d+)\s*-\s*(\d+))?(?:\s*[_\s]\s*([FB])\s*(\d+)\s*([FB])\s*(\d+))?/i);
+    if(!m){ stampRecipeError.textContent = 'Couldn’t read that — try 126-126-56-14_F1B1'; return; }
+    const [n0, n1, n2, n3] = m.slice(1, 5).map(v => parseInt(v, 10));
+    const extra = m[5] !== undefined;
+    const n4 = extra ? parseInt(m[5], 10) : state.n4, n5 = extra ? parseInt(m[6], 10) : state.n5;
+    const fits = n1 <= n0 && n2 < n1 && n3 < n2 && (!extra || (n4 < n3 && n5 < n4)) && n0 <= 600 && n5 >= 1;
+    if(!fits){ stampRecipeError.textContent = 'Each gear has to fit inside the one before it.'; return; }
+    stampRecipeError.textContent = '';
+
+    const turn = (dir, teeth) => dir === undefined ? 0 : (dir.toUpperCase() === 'B' ? -1 : 1) * parseInt(teeth, 10);
+    state.stampF = clamp(turn(m[7], m[8]), -600, 600);
+    state.stampB = clamp(turn(m[9], m[10]), -600, 600);
+    document.getElementById('stampF').value = state.stampF;
+    document.getElementById('stampB').value = state.stampB;
+
+    state.extraWheel = extra;
+    state.n4 = n4; state.n5 = n5;
+    document.getElementById('n4').value = n4;
+    document.getElementById('n5').value = n5;
+    extraToggleEl.classList.toggle('on', extra);
+    extraFieldsEl.style.display = extra ? 'block' : 'none';
+    if(extra) refreshH2Range();
+
+    const info = computeStampInfo({n0, n1, n2, n3, n4, n5, extraOn: extra}, state.stampF, state.stampB);
+    setStampCount(state.stampF || state.stampB ? info.closes : 1);
+    applyState(n0, n1, n2, n3, state.h, state.p, state.phi, state.holeMm);
+    stampRecipeEl.value = currentRecipe();
+  }
+  stampRecipeEl.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); applyRecipe(); stampRecipeEl.blur(); }
+  });
+  stampRecipeEl.addEventListener('change', () => {
+    if(stampRecipeEl.value.trim().toUpperCase() !== currentRecipe()) applyRecipe();
+  });
+  stampRecipeEl.addEventListener('input', () => { stampRecipeError.textContent = ''; });
+  stampRecipeEl.addEventListener('blur', () => {
+    if(!stampRecipeError.textContent) stampRecipeEl.value = currentRecipe();
   });
 
   // ---- extra wheel (n4, n5, h2) ----
@@ -2045,7 +2377,9 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
       opacity: state.brightness, solidColor: state.solidColor, visible: true,
       n0: state.n0, n1: state.n1, n2: state.n2, n3: state.n3,
       n4: state.n4, n5: state.n5, h2: state.h2, extraWheel: state.extraWheel,
-      h: state.h, p: state.p, phi: state.phi, holeMm: state.holeMm
+      h: state.h, p: state.p, phi: state.phi, holeMm: state.holeMm,
+      stampF: state.stampF, stampB: state.stampB, stampCount: state.stampCount,
+      stampVariants: stampVariants
     });
     if(state.layers.length > MAX_LAYERS) state.layers.shift();
     // "Keep" always freezes the current work into a fresh layer and clears selection,
@@ -2300,6 +2634,11 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     document.getElementById('n4').value = state.n4;
     document.getElementById('n5').value = state.n5;
     extraFieldsEl.style.display = state.extraWheel ? 'block' : 'none';
+    state.stampF = DEFAULTS.stampF; state.stampB = DEFAULTS.stampB; state.stampCount = DEFAULTS.stampCount;
+    document.getElementById('stampF').value = state.stampF;
+    document.getElementById('stampB').value = state.stampB;
+    stampCountSlider.value = state.stampCount;
+    stampCountVal.textContent = state.stampCount;
     applyState(DEFAULTS.n0, DEFAULTS.n1, DEFAULTS.n2, DEFAULTS.n3, DEFAULTS.h, DEFAULTS.p, DEFAULTS.phi, DEFAULTS.holeMm);
     refreshH2Range();
   });
