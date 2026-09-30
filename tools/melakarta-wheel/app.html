@@ -638,11 +638,18 @@
   const chakraLinkEls = {}, halfLinkEls = {}, chakraHubDotEls = {}, halfHubDotEls = {}, chakraLabelEls = {};
 
   function buildWheel(){
-    // cream face disc, matching circle-of-fifths-chord-wheel's bezel — the
-    // page background is dark, so this backs the fan-line annulus and the
-    // center hub with the same cream tone the wedges use, rather than
-    // leaving a dark ring showing through between them.
-    svg.appendChild(el('circle', {cx:CX, cy:CY, r:WEDGE_INNER, fill:'var(--panel)'}));
+    // Face disc, matching circle-of-fifths-chord-wheel's bezel — the page
+    // background is dark, so this backs the fan-line annulus and the
+    // center hub with the same tones the wedges use, rather than leaving
+    // a dark ring showing through between them. Split into the same two
+    // half-tones as the outer wedges (not one flat fill) so the inner
+    // disc echoes the Prati/Śuddha split the hemisphere divider line
+    // draws — Śuddha's side reuses --panel (identical to its own wedges'
+    // odd-chakra tone), Prati's side uses the matching light blue-white
+    // wedge tone instead of white/cream, drawn as two sectors from the
+    // center so the seam between them lands exactly on the divider line.
+    svg.appendChild(el('path', {d:describeWedge(0, WEDGE_INNER, -90, 90), fill:'var(--panel)'}));
+    svg.appendChild(el('path', {d:describeWedge(0, WEDGE_INNER, 90, 270), fill:'#eaf1f3'}));
 
     // wedges (drawn first, underneath the fan lines/hub dots — the network
     // layer reads as an overlay tracing the full hub-to-leaf hierarchy
