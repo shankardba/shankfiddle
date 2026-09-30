@@ -392,12 +392,13 @@
   //
   // A chakra's level-2 link, sampled at this same radius, sits almost
   // exactly AT that chakra's own mid-angle (confirmed by sampling the
-  // rendered path: at r≈220 every link is within ~0.5° of its target
-  // chakra's mid-angle — by r=220 the fan-curve has already finished
-  // bundling near the hub and is fanning out toward its target). So a
-  // label centered on its own mid-angle always sits right on its own
-  // link; every chakra needs an angular push off that spoke, not just
-  // the ones close to their half-hub's own angle.
+  // rendered path: from r≈220 out to the hub at 254, every link is
+  // within ~2° of its target chakra's mid-angle — the fan-curve has
+  // already finished bundling near the half-hub and is fanning out
+  // toward its target well before it gets this close). So a label
+  // centered on its own mid-angle always sits right on its own link;
+  // every chakra needs an angular push off that spoke, not just the
+  // ones close to their half-hub's own angle.
   //
   // The push direction matters and differs by tier — this is the part
   // that's easy to get backwards:
@@ -423,7 +424,16 @@
   //    own half" — passing both scores while still being visibly wrong
   //    is exactly how that got through; check that first now, then verify
   //    clearance same as before.
-  const CHAKRA_LABEL_R=220, CHAKRA_LABEL_NUDGE_CLOSE=10, CHAKRA_LABEL_NUDGE_FAR=10;
+  const CHAKRA_LABEL_R=248, CHAKRA_LABEL_NUDGE=8;
+  // CHAKRA_LABEL_R sits just inside CHAKRA_HUB_R (254) — as close to the
+  // hub dot as a numeric sweep found still clears everything with margin
+  // (~17px from any level-2 link, ~37px between adjacent labels, ~12px
+  // from the hub dot itself), rather than the far-more-conservative 220
+  // an earlier pass used. The nudge that was needed is smaller too (8°
+  // vs the old 10°) — both tiers converged to the same value once R
+  // moved this close, so there's only one constant now; only the *sign*
+  // (direction, toward vs. away from the half-hub) still differs by
+  // tier, per the comment above.
   const START_ANGLE=-90, DEG_PER_RAGA=5, DEG_PER_CHAKRA=30;
   // Śuddha Madhyama (chakras 1-6) spans -90°..+90°, so its angular center
   // is 0°; Prati Madhyama (7-12) spans +90°..+270°, centered on 180°.
@@ -804,8 +814,8 @@
       // the opposite reason — can't cross the boundary, and clears its own
       // link just as well since the link sits at mid, not at the hub).
       const labelAngle = Math.abs(diff) <= DEG_PER_CHAKRA/2
-        ? mid + Math.sign(diff||1)*CHAKRA_LABEL_NUDGE_CLOSE
-        : mid - Math.sign(diff||1)*CHAKRA_LABEL_NUDGE_FAR;
+        ? mid + Math.sign(diff||1)*CHAKRA_LABEL_NUDGE
+        : mid - Math.sign(diff||1)*CHAKRA_LABEL_NUDGE;
       const lp = polar(CHAKRA_LABEL_R, labelAngle);
       const t = el('text', {
         x:lp.x.toFixed(2), y:lp.y.toFixed(2),
