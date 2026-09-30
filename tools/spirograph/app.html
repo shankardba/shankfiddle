@@ -97,9 +97,15 @@
   canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;}
   canvas.dragging{cursor:grabbing;}
 
-  .hud{
+  /* lower-left stack: the advisor sits on top of the HUD and grows upward */
+  .corner-bl{
     position:absolute;left:14px;bottom:14px;
-    display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px);
+    display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+    max-width:calc(100% - 28px);
+    pointer-events:none;
+  }
+  .hud{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:100%;
     background:var(--chip-bg);
     border:1px solid var(--border);
     padding:7px 12px;border-radius:4px;
@@ -109,6 +115,105 @@
     backdrop-filter:blur(2px);
   }
   .hud span{color:var(--cool);}
+
+  .advisor{
+    pointer-events:auto;
+    max-width:min(100%, calc(100vw - 74px)); /* keeps clear of the zoom buttons on the right */
+    background:var(--panel-bg);
+    border:1px solid var(--border);border-radius:6px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.22);
+    color:var(--text);
+  }
+  .advisor.open{width:330px;}
+  .advisor-head{
+    display:flex;align-items:center;gap:8px;width:100%;
+    padding:7px 10px;background:none;border:0;border-radius:6px;
+    color:var(--text);font-family:inherit;font-size:12px;text-align:left;cursor:pointer;
+  }
+  .advisor-head:hover .advisor-title{color:var(--cool);}
+  .advisor-head:focus-visible{outline:2px solid var(--cool);outline-offset:-2px;}
+  .advisor-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--text-muted);}
+  .advisor[data-level="good"] .advisor-dot{background:var(--cool);}
+  .advisor[data-level="long"] .advisor-dot{background:var(--warm);}
+  .advisor[data-level="never"] .advisor-dot,
+  .advisor[data-level="repeat"] .advisor-dot,
+  .advisor[data-level="problem"] .advisor-dot{background:var(--error);}
+  .advisor-title{font-weight:600;flex:none;}
+  .advisor-summary{
+    flex:1;min-width:0;color:var(--text-muted);font-size:11.5px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .advisor-chev{width:14px;height:14px;flex:none;stroke:var(--text-muted);transition:transform 0.2s ease;}
+  .advisor.open .advisor-chev{transform:rotate(180deg);}
+  .advisor-body{
+    border-top:1px solid var(--border);
+    padding:0 12px 12px;
+    max-height:min(62vh, calc(100vh - 170px));overflow-y:auto;
+  }
+  .advisor-body[hidden]{display:none;}
+  @media (max-width:480px){ .advisor-body{max-height:min(48vh, calc(100vh - 170px));} }
+  .adv-verdict{padding:11px 0 4px;}
+  .adv-headline{font-size:15px;font-weight:600;line-height:1.3;}
+  .adv-headline .adv-n{font-family:'IBM Plex Mono',monospace;color:var(--cool);}
+  .advisor[data-level="long"] .adv-headline .adv-n{color:var(--warm);}
+  .adv-meta{font-size:11px;line-height:1.55;color:var(--text-muted);margin-top:4px;}
+  .adv-rec{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text);}
+  .adv-warn{font-size:11px;line-height:1.5;color:var(--error);margin-top:6px;}
+  .adv-progress{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin-top:8px;font-size:11px;line-height:1.4;color:var(--text-muted);
+  }
+  .adv-sub{
+    font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--cool);
+    margin:14px 0 2px;
+  }
+  .adv-note{font-size:10.5px;line-height:1.5;color:var(--text-muted);margin:2px 0 0;}
+  .adv-prop{
+    display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:center;
+    padding:7px 0;border-bottom:1px solid var(--border);
+  }
+  .adv-prop:last-child{border-bottom:0;}
+  .adv-recipe{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text);overflow-wrap:anywhere;}
+  .adv-recipe mark{background:none;color:var(--warm);font-weight:600;}
+  .adv-why{grid-column:1;font-size:10.5px;line-height:1.45;color:var(--text-muted);}
+  .adv-why b{color:var(--text);font-weight:600;}
+  .adv-btn{
+    flex:none;padding:4px 10px;font-size:11px;font-family:inherit;color:var(--text);
+    background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;
+  }
+  .adv-prop .adv-btn{grid-column:2;grid-row:1 / span 2;}
+  .adv-btn:hover{border-color:var(--cool);color:var(--cool);}
+  .adv-btn:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+  .adv-undo{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin-top:10px;padding:6px 8px;border:1px dashed var(--border);border-radius:4px;
+    font-size:11px;color:var(--text-muted);
+  }
+  .adv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .adv-chip{
+    min-width:32px;padding:3px 8px;border-radius:12px;
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:center;cursor:pointer;
+  }
+  .adv-chip:hover{border-color:var(--cool);color:var(--cool);}
+  .adv-chip:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+  .adv-chip.current{border-color:var(--cool);color:var(--cool);cursor:default;}
+  .adv-check input{
+    width:100%;margin-top:6px;padding:7px 8px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;text-transform:uppercase;
+  }
+  .adv-check input::placeholder{text-transform:none;color:var(--text-muted);}
+  .adv-check input:focus-visible{outline:2px solid var(--cool);outline-offset:1px;}
+  .adv-check-out{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin-top:6px;font-size:11px;line-height:1.45;color:var(--text-muted);
+  }
+  .adv-check-out:empty{display:none;}
+  .adv-check-out b{color:var(--text);}
+  .adv-check-out [data-level="good"] b{color:var(--cool);}
+  .adv-check-out [data-level="long"] b{color:var(--warm);}
+  .adv-check-out [data-level="never"] b, .adv-check-out [data-level="repeat"] b, .adv-check-out .adv-bad{color:var(--error);}
 
   .gear-btn, .download-btn, .explain-btn, .theme-btn{
     position:absolute;top:14px;z-index:2;
@@ -358,6 +463,7 @@
     .hint{transition:none;}
     .panel,.math-panel{transition:none;}
     .gear-btn svg{transition:none;}
+    .advisor-chev{transition:none;}
   }
 </style>
 </head>
@@ -365,10 +471,30 @@
 <div id="wrap">
   <canvas id="cv"></canvas>
 
-  <div class="hud" id="hud">
-    <span id="hgears">(140:128;54:45)</span> ·
-    F=<span id="hF">(35/32,42/32)</span> ·
-    n<sub>symm</sub>=<span id="hsymm">7</span>
+  <div class="corner-bl">
+    <section class="advisor" id="advisor" aria-label="Pattern advisor">
+      <button class="advisor-head" id="advisorToggle" type="button" aria-expanded="false" aria-controls="advisorBody"
+              title="Will these gears and turns converge? Suggestions to converge in one cycle fewer or more.">
+        <span class="advisor-dot" aria-hidden="true"></span>
+        <span class="advisor-title">Advisor</span>
+        <span class="advisor-summary" id="advisorSummary"></span>
+        <svg class="advisor-chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+      </button>
+      <div class="advisor-body" id="advisorBody" hidden>
+        <div id="advisorMain"></div>
+        <div class="adv-check">
+          <div class="adv-sub">Check a recipe without drawing it</div>
+          <input type="text" id="advisorCheck" placeholder="e.g. 135-135-63-21_F1B1" spellcheck="false" autocomplete="off" autocapitalize="characters" aria-label="Recipe to check">
+          <div class="adv-check-out" id="advisorCheckOut" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="hud" id="hud">
+      <span id="hgears">(140:128;54:45)</span> ·
+      F=<span id="hF">(35/32,42/32)</span> ·
+      n<sub>symm</sub>=<span id="hsymm">7</span>
+    </div>
   </div>
 
   <button class="download-btn" id="downloadBtn" aria-label="Download image">
@@ -1013,31 +1139,216 @@
     }
     return {a, b: c ? mod(b, c) : b, c};
   }
-  function inLattice(x, y, L){
-    if(mod(x, L.a) !== 0) return false;
-    const r = y - (x / L.a) * L.b;
-    return L.c ? mod(r, L.c) === 0 : r === 0;
-  }
-  function computeStampInfo(gears, F, B){
+  function stampGens(gears){
     const {n0, n1, n2, n3, n4, n5, extraOn} = gears;
-    let gens;
     if(extraOn){
       const g = gcd(n2, n3);
-      gens = [[n0, 0], [(n3/g)*n1, n2*n4/g], [0, n5]];
-    } else {
-      gens = [[n0, 0], [n1, n2], [0, n3]];
+      return [[n0, 0], [(n3/g)*n1, n2*n4/g], [0, n5]];
     }
-    const L = latticeHNF(gens);
-    let closes = 1;
-    if(F || B){
-      const kmax = L.a * L.c;
-      for(let k=1; k<=kmax; k++){
-        if(inLattice(F*k, -B*k, L)){ closes = k; break; }
-      }
-    }
+    return [[n0, 0], [n1, n2], [0, n3]];
+  }
+  // Smallest k > 0 with k*(F, -B) in L, read straight off the Hermite form: k has to be a
+  // multiple of k1 = a/gcd(a, F) for the first coordinate, and then c has to divide what's
+  // left of the second one.
+  function stampOrder(L, F, B){
+    const k1 = L.a / gcd(L.a, F);
+    const r = -k1*B - (k1*F/L.a)*L.b;
+    return k1 * (L.c / gcd(L.c, r));
+  }
+  function stampSymmetry(gens, n0, F, B){
     const L2 = latticeHNF(gens.concat([[F, -B]]));
     const jmin = L2.c ? L2.a * (L2.c / gcd(L2.b, L2.c)) : L2.a;
-    return {closes, symmetry: Math.round(n0 / jmin)};
+    return Math.round(n0 / jmin);
+  }
+  function computeStampInfo(gears, F, B){
+    const gens = stampGens(gears);
+    const closes = (F || B) ? stampOrder(latticeHNF(gens), F, B) : 1;
+    return {closes, symmetry: stampSymmetry(gens, gears.n0, F, B)};
+  }
+
+  // ---------- advisor: does a gear set + turns converge, and what's the smallest change
+  // that converges in one cycle (stamp) fewer or more? Pure arithmetic on the lattice above,
+  // so it answers instantly without drawing anything. ----------
+  const ADVISOR_EASY = 150;   // up to here it's a comfortable hand drawing (the source notes go to 144)
+  const ADVISOR_MIN_TEETH = 8;
+
+  function gearProblem(g){
+    if(g.n1 > g.n0) return 'The wheel (n1) has to fit inside the ring (n0).';
+    if(g.n2 >= g.n1) return 'The hoop (n2) has to be smaller than the wheel (n1).';
+    if(g.n3 >= g.n2) return 'The pen gear (n3) has to be smaller than the hoop (n2).';
+    if(g.extraOn && g.n4 >= g.n3) return 'The second hoop (n4) has to be smaller than n3.';
+    if(g.extraOn && g.n5 >= g.n4) return 'The pen gear (n5) has to be smaller than the second hoop (n4).';
+    return null;
+  }
+
+  function advisorAnalyze(g, F, B){
+    const gens = stampGens(g);
+    const stamping = !!(F || B);
+    const N = stamping ? stampOrder(latticeHNF(gens), F, B) : 1;
+    let level;
+    if(!stamping) level = 'single';
+    else if(N === 1) level = 'repeat';
+    else if(N <= ADVISOR_EASY) level = 'good';
+    else if(N <= STAMP_MAX) level = 'long';
+    else level = 'never';
+    return {
+      N, S: stampSymmetry(gens, g.n0, F, B), stamping, level, fixed: g.n0 === g.n1, problem: gearProblem(g),
+      laps: computePeriod(g.n0, g.n1, g.n2, g.n3, g.extraOn, g.n4, g.n5)
+    };
+  }
+
+  function turnCost(from, to){ return to === from ? 0 : 1 + 0.3*Math.abs(to - from); }
+
+  // Every candidate within reach, each with a rough "how much did we change" cost so the
+  // simplest way to reach a target count wins. Tier 0: other turns on the same gears. Tier 1:
+  // those, plus one gear swapped (within ~20%) with the turns nudged by up to 2 teeth. Tier 2
+  // (only searched when tier 1 can't hit the exact target): two gears swapped (within ~12%),
+  // same turns.
+  // A candidate must keep both turns if both were set (dropping one is a different technique),
+  // keep some rotational symmetry, and not balloon the laps per cycle — past that it no
+  // longer looks like, or takes anything like as long as, the design it came from.
+  function advisorSearch(g, F, B, tier){
+    const out = [];
+    const penOf = gg => gg.extraOn ? gg.n5 : gg.n3;
+    const T0 = computePeriod(g.n0, g.n1, g.n2, g.n3, g.extraOn, g.n4, g.n5);
+    const Tmax = Math.max(3*T0, T0 + 6);
+    const S0 = Math.max(1, stampSymmetry(stampGens(g), g.n0, F, B));
+    function consider(gg, f, b, gearChanges){
+      if(!f && !b) return;
+      if((F && !f) || (B && !b)) return;
+      if(2*Math.abs(f) > gg.n1 || 2*Math.abs(b) > penOf(gg)) return; // past half a turn, the other direction is shorter
+      const T = gearChanges.length ? computePeriod(gg.n0, gg.n1, gg.n2, gg.n3, gg.extraOn, gg.n4, gg.n5) : T0;
+      if(T > Tmax) return;
+      const gens = stampGens(gg);
+      const N = stampOrder(latticeHNF(gens), f, b);
+      if(N < 2 || N > STAMP_MAX) return;
+      const S = stampSymmetry(gens, gg.n0, f, b);
+      if(S < 2) return;
+      const changes = gearChanges.slice();
+      let cost = 0.06*(Math.abs(f) + Math.abs(b)) + 1.5*Math.abs(Math.log2(T/T0)) + 0.5*Math.abs(Math.log2(S/S0));
+      for(const ch of changes) cost += ch.cost;
+      if(f !== F){ changes.push({key:'F', from:F, to:f}); cost += turnCost(F, f); }
+      if(b !== B){ changes.push({key:'B', from:B, to:b}); cost += turnCost(B, b); }
+      if(!changes.length) return;
+      out.push({g: gg, F: f, B: b, N, S, T, cost, changes});
+    }
+    const fixed = g.n0 === g.n1;
+    const keys = fixed ? ['n0','n2','n3'] : ['n0','n1','n2','n3'];
+    if(g.extraOn) keys.push('n4','n5');
+    // gear `key` of gg resized by d teeth -> [new gear set, change record], or null if it can't be
+    // built; a fixed-gear ring and wheel are one piece, so they resize together
+    function resize(gg, key, d){
+      const from = g[key], to = from + d;
+      if(to < ADVISOR_MIN_TEETH || to > 600) return null;
+      const r = {...gg, [key]: to};
+      if(fixed && key === 'n0') r.n1 = to;
+      if(!fixed && r.n1 >= r.n0) return null; // a wheel as big as the ring is a different (fixed-gear) machine
+      return [r, {key: fixed && key === 'n0' ? 'n0n1' : key, from, to, cost: 2 + 12*Math.abs(d)/from}];
+    }
+    if(tier <= 1){
+      for(let f=-12; f<=12; f++) for(let b=-12; b<=12; b++) consider(g, f, b, []);
+      if(tier === 1) for(const key of keys){
+        const D = clamp(Math.round(g[key]*0.2), 4, 60);
+        for(let d=-D; d<=D; d++){
+          const r = d && resize(g, key, d);
+          if(!r || gearProblem(r[0])) continue;
+          for(let df=-2; df<=2; df++) for(let db=-2; db<=2; db++) consider(r[0], F+df, B+db, [r[1]]);
+        }
+      }
+    } else {
+      for(let i=0; i<keys.length; i++) for(let j=i+1; j<keys.length; j++){
+        const Di = clamp(Math.round(g[keys[i]]*0.12), 3, 40), Dj = clamp(Math.round(g[keys[j]]*0.12), 3, 40);
+        for(let di=-Di; di<=Di; di++){
+          const ri = di && resize(g, keys[i], di);
+          if(!ri) continue;
+          for(let dj=-Dj; dj<=Dj; dj++){
+            const rj = dj && resize(ri[0], keys[j], dj);
+            if(!rj || gearProblem(rj[0])) continue;
+            consider(rj[0], F, B, [ri[1], rj[1]]);
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  // cheapest first, but never two proposals that change the same set of things
+  function pickDiverse(list, k){
+    list.sort((a,b) => a.cost - b.cost || a.N - b.N);
+    const picked = [], kinds = new Set();
+    for(const c of list){
+      const kind = c.changes.map(ch => ch.key).sort().join('+');
+      if(kinds.has(kind)) continue;
+      kinds.add(kind); picked.push(c);
+      if(picked.length === k) break;
+    }
+    return picked;
+  }
+
+  // One side of N: the best ways to hit exactly N-1 / N+1 — or, when nothing within reach does,
+  // the simplest ways to get as close as possible on that side.
+  function sideProposals(cands, N, dir){
+    const side = cands.filter(c => dir < 0 ? c.N < N : c.N > N);
+    const exact = pickDiverse(side.filter(c => c.N === N + dir), 2);
+    if(exact.length || !side.length) return {target: N + dir, exact, near: []};
+    let nearN = side[0].N;
+    for(const c of side) if(Math.abs(c.N - N) < Math.abs(nearN - N)) nearN = c.N;
+    return {target: N + dir, exact, near: pickDiverse(side.filter(c => c.N === nearN), 2)};
+  }
+
+  // Starting points in the notes' own style for a gear set: both gears turned a few teeth at
+  // most, the ones that converge comfortably first, one per cycle count.
+  function simpleTurns(g){
+    const simple = advisorSearch(g, 0, 0, 0).filter(c => c.F && c.B && Math.abs(c.F) <= 4 && Math.abs(c.B) <= 4);
+    simple.sort((a,b) => (a.N > ADVISOR_EASY) - (b.N > ADVISOR_EASY)
+      || (Math.abs(a.F) + Math.abs(a.B)) - (Math.abs(b.F) + Math.abs(b.B))
+      || (b.F > 0) - (a.F > 0) || (a.B > 0) - (b.B > 0));
+    const seen = new Set(), list = [];
+    for(const c of simple){ if(seen.has(c.N)) continue; seen.add(c.N); list.push(c); if(list.length === 4) break; }
+    return list;
+  }
+
+  function advisorProposals(g, F, B, info){
+    if(!info.stamping) return {mode:'start', list: simpleTurns(g)};
+    // turns that are whole revolutions are really no turns at all: start over from simple ones
+    if(info.level === 'repeat') return {mode:'fix', list: simpleTurns(g), plain: true};
+    let cands = advisorSearch(g, F, B, 1);
+    if(info.level === 'never'){
+      let ok = cands.filter(c => c.N <= ADVISOR_EASY);
+      if(!ok.length) ok = cands;
+      return {mode:'fix', list: pickDiverse(ok, 3)};
+    }
+    const N = info.N;
+    if((N > 2 && !cands.some(c => c.N === N - 1)) || (N < STAMP_MAX && !cands.some(c => c.N === N + 1))){
+      cands = cands.concat(advisorSearch(g, F, B, 2));
+    }
+    return {mode:'adjust', N,
+      fewer: N > 2 ? sideProposals(cands, N, -1) : null,
+      more: N < STAMP_MAX ? sideProposals(cands, N, +1) : null};
+  }
+
+  // Other cycle counts these same gears can reach just by changing the turns (simplest turns for
+  // each count, both gears turned, symmetric), keeping the `limit` counts nearest N0.
+  function sameGearCounts(g, N0, limit){
+    const gens = stampGens(g), L = latticeHNF(gens);
+    const Fc = Math.min(24, Math.floor(g.n1/2)), Bc = Math.min(24, Math.floor((g.extraOn ? g.n5 : g.n3)/2));
+    const best = new Map();
+    for(let f=-Fc; f<=Fc; f++) for(let b=-Bc; b<=Bc; b++){
+      if(!f || !b) continue;
+      const N = stampOrder(L, f, b);
+      if(N < 2 || N > STAMP_MAX) continue;
+      const score = Math.abs(f) + Math.abs(b) + (f < 0 ? 0.1 : 0) + (b > 0 ? 0.05 : 0);
+      const cur = best.get(N);
+      if(cur && cur.score <= score) continue;
+      const S = stampSymmetry(gens, g.n0, f, b);
+      if(S >= 2) best.set(N, {g, F:f, B:b, N, S, score});
+    }
+    let list = [...best.values()];
+    if(list.length > limit){
+      const dist = c => Math.abs(Math.log(c.N / N0));
+      list = list.sort((a,b) => dist(a) - dist(b)).slice(0, limit);
+    }
+    return list.sort((a,b) => a.N - b.N);
   }
 
   function computeF0(){
@@ -1472,6 +1783,7 @@
     }
     stampInfo = computeStampInfo(derived, state.stampF, state.stampB);
     updateStampReadout();
+    updateAdvisor();
     fitScale();
     syncSelectedLayerFromState();
     updateHud();
@@ -1988,12 +2300,16 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   const stampRecipeError = document.getElementById('stampRecipeError');
 
   function turnCode(n){ return (n < 0 ? 'B' : 'F') + Math.abs(n); }
-  function currentRecipe(){
-    let s = `${state.n0}-${state.n1}-${state.n2}-${state.n3}`;
-    if(state.extraWheel) s += `-${state.n4}-${state.n5}`;
-    if(state.stampF || state.stampB) s += `_${turnCode(state.stampF)}${turnCode(state.stampB)}`;
+  function recipeOf(g, F, B){
+    let s = `${g.n0}-${g.n1}-${g.n2}-${g.n3}`;
+    if(g.extraOn) s += `-${g.n4}-${g.n5}`;
+    if(F || B) s += `_${turnCode(F)}${turnCode(B)}`;
     return s;
   }
+  function currentGears(){
+    return {n0:state.n0, n1:state.n1, n2:state.n2, n3:state.n3, n4:state.n4, n5:state.n5, extraOn:state.extraWheel};
+  }
+  function currentRecipe(){ return recipeOf(currentGears(), state.stampF, state.stampB); }
   function setStampCount(n){
     state.stampCount = clamp(n, 1, STAMP_MAX);
     stampCountSlider.value = state.stampCount;
@@ -2031,34 +2347,40 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   // Recipe notation from the physical gear sets: ring-wheel-hoop-pen[-hoop2-pen2]_<dir><teeth><dir><teeth>,
   // e.g. 126-126-56-14_F1B1 = outer gear 1 tooth forward (clockwise), pen gear 1 tooth backward.
   // Anything after the turns (a "(30 lines)" note, "x36", ...) is ignored.
-  function applyRecipe(){
-    const m = stampRecipeEl.value.trim().match(
+  function parseRecipe(text){
+    const m = text.trim().match(
       /^(\d+)\s*-\s*(\d+)\s*-\s*(\d+)\s*-\s*(\d+)(?:\s*-\s*(\d+)\s*-\s*(\d+))?(?:\s*[_\s]\s*([FB])\s*(\d+)\s*([FB])\s*(\d+))?/i);
-    if(!m){ stampRecipeError.textContent = 'Couldn’t read that — try 126-126-56-14_F1B1'; return; }
+    if(!m) return {error: 'Couldn’t read that — try 126-126-56-14_F1B1'};
     const [n0, n1, n2, n3] = m.slice(1, 5).map(v => parseInt(v, 10));
-    const extra = m[5] !== undefined;
-    const n4 = extra ? parseInt(m[5], 10) : state.n4, n5 = extra ? parseInt(m[6], 10) : state.n5;
-    const fits = n1 <= n0 && n2 < n1 && n3 < n2 && (!extra || (n4 < n3 && n5 < n4)) && n0 <= 600 && n5 >= 1;
-    if(!fits){ stampRecipeError.textContent = 'Each gear has to fit inside the one before it.'; return; }
-    stampRecipeError.textContent = '';
-
+    const extraOn = m[5] !== undefined;
+    const n4 = extraOn ? parseInt(m[5], 10) : state.n4, n5 = extraOn ? parseInt(m[6], 10) : state.n5;
+    const fits = n1 <= n0 && n2 < n1 && n3 < n2 && (!extraOn || (n4 < n3 && n5 < n4)) && n0 <= 600 && n5 >= 1;
+    if(!fits) return {error: 'Each gear has to fit inside the one before it.'};
     const turn = (dir, teeth) => dir === undefined ? 0 : (dir.toUpperCase() === 'B' ? -1 : 1) * parseInt(teeth, 10);
-    state.stampF = clamp(turn(m[7], m[8]), -600, 600);
-    state.stampB = clamp(turn(m[9], m[10]), -600, 600);
-    document.getElementById('stampF').value = state.stampF;
-    document.getElementById('stampB').value = state.stampB;
+    return {g: {n0, n1, n2, n3, n4, n5, extraOn}, F: clamp(turn(m[7], m[8]), -600, 600), B: clamp(turn(m[9], m[10]), -600, 600)};
+  }
+  // Loads a whole gear set, both turns and a stamp count into state and every control, then redraws.
+  function setCombo(g, F, B, count){
+    state.stampF = F; state.stampB = B;
+    document.getElementById('stampF').value = F;
+    document.getElementById('stampB').value = B;
 
-    state.extraWheel = extra;
-    state.n4 = n4; state.n5 = n5;
-    document.getElementById('n4').value = n4;
-    document.getElementById('n5').value = n5;
-    extraToggleEl.classList.toggle('on', extra);
-    extraFieldsEl.style.display = extra ? 'block' : 'none';
-    if(extra) refreshH2Range();
+    state.extraWheel = g.extraOn;
+    state.n4 = g.n4; state.n5 = g.n5;
+    document.getElementById('n4').value = g.n4;
+    document.getElementById('n5').value = g.n5;
+    extraToggleEl.classList.toggle('on', g.extraOn);
+    extraFieldsEl.style.display = g.extraOn ? 'block' : 'none';
+    if(g.extraOn) refreshH2Range();
 
-    const info = computeStampInfo({n0, n1, n2, n3, n4, n5, extraOn: extra}, state.stampF, state.stampB);
-    setStampCount(state.stampF || state.stampB ? info.closes : 1);
-    applyState(n0, n1, n2, n3, state.h, state.p, state.phi, state.holeMm);
+    setStampCount(count);
+    applyState(g.n0, g.n1, g.n2, g.n3, state.h, state.p, state.phi, state.holeMm);
+  }
+  function applyRecipe(){
+    const r = parseRecipe(stampRecipeEl.value);
+    if(r.error){ stampRecipeError.textContent = r.error; return; }
+    stampRecipeError.textContent = '';
+    setCombo(r.g, r.F, r.B, r.F || r.B ? computeStampInfo(r.g, r.F, r.B).closes : 1);
     stampRecipeEl.value = currentRecipe();
   }
   stampRecipeEl.addEventListener('keydown', (e) => {
@@ -2070,6 +2392,209 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   stampRecipeEl.addEventListener('input', () => { stampRecipeError.textContent = ''; });
   stampRecipeEl.addEventListener('blur', () => {
     if(!stampRecipeError.textContent) stampRecipeEl.value = currentRecipe();
+  });
+
+  // ---- advisor panel (lower left) ----
+  // A "cycle" is one stamp: draw the curve once, then turn the gears F/B teeth. The pill always
+  // shows the verdict; the body (when open) adds proposals, each with an Apply button, plus a
+  // recipe box that answers for any combination without drawing it.
+  const advisorEl = document.getElementById('advisor');
+  const advisorToggle = document.getElementById('advisorToggle');
+  const advisorBody = document.getElementById('advisorBody');
+  const advisorSummary = document.getElementById('advisorSummary');
+  const advisorMain = document.getElementById('advisorMain');
+  const advisorCheck = document.getElementById('advisorCheck');
+  const advisorCheckOut = document.getElementById('advisorCheckOut');
+  let advisorOpen = false;
+  try { advisorOpen = localStorage.getItem('spirograph.advisorOpen') === '1'; } catch(e){}
+  advisorEl.classList.toggle('open', advisorOpen);
+  advisorBody.hidden = !advisorOpen;
+  advisorToggle.setAttribute('aria-expanded', advisorOpen);
+  let advisorShownKey = null;                  // what the open body currently describes
+  let advisorCache = {key: null, props: null}; // proposals for the current gears + turns
+  let advisorOffers = [];                      // on-screen proposals, by their buttons' data-offer
+  let advisorUndo = null;                      // {snap, label, after}: settings before the last Apply
+  let checkOffer = null;
+
+  const PART_NAMES = {n0:'ring', n1:'wheel', n0n1:'ring & wheel', n2:'hoop', n3:'pen gear', n4:'second hoop', n5:'pen gear'};
+  function describeChange(ch, extraOn){
+    if(ch.key === 'F') return `outer turn ${turnCode(ch.from)}→${turnCode(ch.to)}`;
+    if(ch.key === 'B') return `pen turn ${turnCode(ch.from)}→${turnCode(ch.to)}`;
+    return `${extraOn && ch.key === 'n3' ? 'middle wheel' : PART_NAMES[ch.key]} ${ch.from}→${ch.to}`;
+  }
+  function lapsText(laps, fixed){ return `${laps} lap${laps === 1 ? '' : 's'} round the ${fixed ? 'hoop' : 'ring'}`; }
+  function symText(S){ return S > 1 ? `${S}-fold symmetry` : 'no rotational symmetry'; }
+  // the recipe with whatever a proposal changed picked out
+  function recipeHTML(c, g0, F0, B0){
+    const keys = c.g.extraOn ? ['n0','n1','n2','n3','n4','n5'] : ['n0','n1','n2','n3'];
+    const mark = (changed, s) => changed ? `<mark>${s}</mark>` : s;
+    return keys.map(k => mark(c.g[k] !== g0[k], c.g[k])).join('-')
+      + '_' + mark(c.F !== F0, turnCode(c.F)) + mark(c.B !== B0, turnCode(c.B));
+  }
+  function offerHTML(c, g0, F0, B0, showChanges){
+    const i = advisorOffers.push(c) - 1;
+    const what = showChanges ? ' · ' + c.changes.map(ch => describeChange(ch, c.g.extraOn)).join(', ') : '';
+    return `<div class="adv-prop">
+      <span class="adv-recipe">${recipeHTML(c, g0, F0, B0)}</span>
+      <button type="button" class="adv-btn" data-offer="${i}">Apply</button>
+      <span class="adv-why"><b>${c.N} cycles</b>${what} · ${c.S}-fold · ${c.T} lap${c.T === 1 ? '' : 's'} each</span>
+    </div>`;
+  }
+
+  function advisorVerdictHTML(info, g, F, B){
+    const rec = `<span class="adv-rec">${recipeOf(g, F, B)}</span>`;
+    let head, meta, progress = '';
+    if(info.level === 'single'){
+      head = 'One drawing, no stamping';
+      meta = `${rec} · ${symText(info.S)} · ${lapsText(info.laps, info.fixed)}. Set a gear turn to stamp it — starting points below.`;
+    } else if(info.level === 'repeat'){
+      head = 'Every cycle repeats the first';
+      meta = `${rec}: these turns bring each stamp straight back onto the first one.`;
+    } else if(info.level === 'never'){
+      head = 'Won’t converge in practice';
+      meta = `${rec} needs <b>${info.N.toLocaleString()}</b> cycles before it lines up with itself (this tool draws up to ${STAMP_MAX}).`;
+    } else {
+      head = `Converges after <span class="adv-n">${info.N}</span> cycles`;
+      meta = `${rec} · ${symText(info.S)} · each cycle is ${lapsText(info.laps, info.fixed)}`
+        + (info.level === 'long' ? ' — a long one to draw by hand' : '');
+      const n = state.stampCount;
+      if(n < info.N) progress = `<span>Showing ${n} of ${info.N} — it stops before it converges.</span><button type="button" class="adv-btn" data-count="${info.N}">Draw all ${info.N}</button>`;
+      else if(n > info.N) progress = `<span>Showing ${n}: the ${n - info.N} after ${info.N} retrace earlier ones.</span><button type="button" class="adv-btn" data-count="${info.N}">Use ${info.N}</button>`;
+      else progress = `<span>Showing all ${info.N}.</span>`;
+    }
+    return `<div class="adv-verdict"><div class="adv-headline">${head}</div><div class="adv-meta">${meta}</div>`
+      + (info.problem ? `<div class="adv-warn">${info.problem} As typed, it can’t be built from real gears.</div>` : '')
+      + (progress ? `<div class="adv-progress">${progress}</div>` : '') + '</div>';
+  }
+
+  function advisorProposalsHTML(info, g, F, B){
+    const key = recipeOf(g, F, B);
+    if(advisorCache.key !== key) advisorCache = {key, props: advisorProposals(g, F, B, info)};
+    const P = advisorCache.props;
+    if(P.mode === 'start'){
+      return P.list.length ? `<div class="adv-sub">Try stamping</div>` + P.list.map(c => offerHTML(c, g, F, B, false)).join('') : '';
+    }
+    if(P.mode === 'fix'){
+      return `<div class="adv-sub">Make it converge</div>` + (P.list.length
+        ? P.list.map(c => offerHTML(c, g, F, B, !P.plain)).join('')
+        : `<p class="adv-note">Nothing within a gear or two of this converges — try other turns below.</p>`);
+    }
+    let html = '';
+    for(const [side, word] of [[P.fewer, 'fewer'], [P.more, 'more']]){
+      if(!side) continue;
+      html += `<div class="adv-sub">One cycle ${word} · ${side.target}</div>`;
+      if(!side.exact.length){
+        html += side.near.length
+          ? `<p class="adv-note">Nothing close converges in exactly ${side.target}; the nearest is ${side.near[0].N}.</p>`
+          : `<p class="adv-note">Nothing close converges in ${word} cycles.</p>`;
+      }
+      html += side.exact.concat(side.near).map(c => offerHTML(c, g, F, B, true)).join('');
+    }
+    return html;
+  }
+
+  function advisorChipsHTML(info, g){
+    const list = sameGearCounts(g, info.stamping && info.level !== 'never' ? info.N : 24, 14);
+    if(!list.length) return '';
+    return `<div class="adv-sub">Same gears, other turns</div><div class="adv-chips">` + list.map(c => {
+      const tip = `${turnCode(c.F)}${turnCode(c.B)}: ${c.N} cycles, ${c.S}-fold`;
+      if(info.stamping && c.N === info.N) return `<span class="adv-chip current" title="${tip} — the current count">${c.N}</span>`;
+      const i = advisorOffers.push(c) - 1;
+      return `<button type="button" class="adv-chip" data-offer="${i}" title="${tip}" aria-label="${tip}">${c.N}</button>`;
+    }).join('') + `</div>`;
+  }
+
+  function paramsKey(){
+    return [currentRecipe(), state.stampCount, state.h, state.p, state.phi, state.holeMm, state.h2].join('|');
+  }
+  function updateAdvisor(){
+    const g = currentGears(), F = state.stampF, B = state.stampB;
+    const info = advisorAnalyze(g, F, B);
+    advisorEl.dataset.level = info.problem ? 'problem' : info.level;
+    advisorSummary.textContent = info.problem ? 'gears don’t nest'
+      : info.level === 'single' ? 'no stamping'
+      : info.level === 'never' ? `won’t converge (${info.N.toLocaleString()} cycles)`
+      : info.level === 'repeat' ? 'every cycle repeats'
+      : `converges in ${info.N} cycles`;
+    // an Apply can be undone until anything else changes
+    if(advisorUndo && advisorUndo.after !== null && advisorUndo.after !== paramsKey()) advisorUndo = null;
+    if(!advisorOpen) return;
+    const shown = `${currentRecipe()}|${state.stampCount}|${advisorUndo ? advisorUndo.label : ''}`;
+    if(shown === advisorShownKey) return;
+    if(!advisorShownKey || advisorShownKey.split('|')[0] !== currentRecipe()) advisorBody.scrollTop = 0; // new design: start at its verdict
+    advisorShownKey = shown;
+    advisorOffers = [];
+    const undo = advisorUndo ? `<div class="adv-undo"><span>Applied <span class="adv-rec">${advisorUndo.label}</span></span><button type="button" class="adv-btn" data-undo>Undo</button></div>` : '';
+    advisorMain.innerHTML = undo + advisorVerdictHTML(info, g, F, B) + advisorProposalsHTML(info, g, F, B) + advisorChipsHTML(info, g);
+  }
+
+  function setAdvisorOpen(open){
+    advisorOpen = open;
+    advisorEl.classList.toggle('open', open);
+    advisorBody.hidden = !open;
+    advisorToggle.setAttribute('aria-expanded', open);
+    try { localStorage.setItem('spirograph.advisorOpen', open ? '1' : '0'); } catch(e){}
+    advisorShownKey = null;
+    if(open && derived) updateAdvisor();
+  }
+  advisorToggle.addEventListener('click', () => setAdvisorOpen(!advisorOpen));
+  advisorEl.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && advisorOpen){ setAdvisorOpen(false); advisorToggle.focus(); }
+  });
+
+  // Plugs a proposal in (drawing the full converged set of stamps), remembering what it replaced.
+  function advisorApply(c, count){
+    advisorUndo = {
+      snap: {g: currentGears(), F: state.stampF, B: state.stampB, count: state.stampCount, h: state.h, p: state.p, h2: state.h2},
+      label: recipeOf(c.g, c.F, c.B), after: null
+    };
+    setCombo(c.g, c.F, c.B, count);
+    advisorUndo.after = paramsKey();
+  }
+  function advisorRestore(){
+    const u = advisorUndo;
+    if(!u) return;
+    advisorUndo = null;
+    state.h = u.snap.h; state.p = u.snap.p; state.h2 = u.snap.h2;
+    setCombo(u.snap.g, u.snap.F, u.snap.B, u.snap.count);
+  }
+  advisorMain.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    if(btn.dataset.offer !== undefined){
+      const c = advisorOffers[+btn.dataset.offer];
+      if(c) advisorApply(c, c.N);
+    } else if(btn.dataset.count !== undefined){
+      setStampCount(parseInt(btn.dataset.count, 10));
+      doRecompute(true);
+    } else if(btn.dataset.undo !== undefined){
+      advisorRestore();
+    }
+  });
+
+  // what-if box: the verdict for any typed recipe, without touching the drawing until Apply
+  let checkTimer = 0;
+  function renderCheck(){
+    checkOffer = null;
+    const text = advisorCheck.value.trim();
+    if(!text){ advisorCheckOut.innerHTML = ''; return; }
+    const r = parseRecipe(text);
+    if(r.error){ advisorCheckOut.innerHTML = `<span class="adv-bad">${r.error}</span>`; return; }
+    const info = advisorAnalyze(r.g, r.F, r.B);
+    let msg;
+    if(info.level === 'single') msg = `One drawing · ${symText(info.S)} · ${lapsText(info.laps, info.fixed)}. Add turns (like _F1B1) to check stamping.`;
+    else if(info.level === 'repeat') msg = `<b>Every cycle repeats the first.</b>`;
+    else if(info.level === 'never') msg = `<b>Won’t converge</b> — needs ${info.N.toLocaleString()} cycles.`;
+    else msg = `<b>Converges after ${info.N} cycles</b> · ${symText(info.S)}${info.level === 'long' ? ' · long by hand' : ''}.`;
+    checkOffer = {g: r.g, F: r.F, B: r.B, N: info.stamping ? info.N : 1};
+    advisorCheckOut.innerHTML = `<span data-level="${info.level}">${msg}</span><button type="button" class="adv-btn" data-check>Apply</button>`;
+  }
+  advisorCheck.addEventListener('input', () => { clearTimeout(checkTimer); checkTimer = setTimeout(renderCheck, 120); });
+  advisorCheck.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); clearTimeout(checkTimer); renderCheck(); }
+  });
+  advisorCheckOut.addEventListener('click', e => {
+    if(e.target.closest('[data-check]') && checkOffer) advisorApply(checkOffer, checkOffer.N);
   });
 
   // ---- extra wheel (n4, n5, h2) ----
