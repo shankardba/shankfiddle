@@ -363,7 +363,26 @@
   // Three inward hub levels, mirroring the data hierarchy (rāga ⊂ chakra ⊂
   // Madhyama half ⊂ the whole system): rāgas fan into their chakra hub,
   // chakra hubs fan into their half hub, half hubs fan into the center.
-  const CHAKRA_HUB_R=254, HALF_HUB_R=70, SA_CIRCLE_R=30;
+  const CHAKRA_HUB_R=254, HALF_HUB_R=130, SA_CIRCLE_R=30;
+  // HALF_HUB_R moved out from its original 70 specifically to make room
+  // for the two-line hemisphere label between it and the Sa circle — see
+  // HALF_LABEL_R/HALF_LABEL_ANGLE_OFFSET below. This needed a real
+  // numeric sweep, not just "push the hub out a bit": the 6 chakra-links
+  // per half all leave their hub heading the *same* direction (the hub's
+  // own angle, by fanCurve's design — see the fan-curve-bundling note
+  // below) before slowly diverging, so EVERY one of them passes close to
+  // angle 0 for some stretch right past the hub, regardless of its final
+  // target angle — including the ones whose target is 75° away. That
+  // means a label can't just dodge into the gap "between" two chakra
+  // lines near the hub; there isn't one near the hub, at any angle, for
+  // a box this size. The one open lane is *inside* the hub (between it
+  // and the Sa circle), where only the single half-link line exists.
+  // Swept (HALF_HUB_R × label radius × label angle) jointly, sampling
+  // the real fanCurve-generated paths, for the smallest hub offset that
+  // gets the label's angle down to something that still reads as
+  // "beside the hub" rather than "above it" (roughly ≤30°) with ≥12px
+  // real clearance from every one of: all 6 chakra-links, the half-link,
+  // the Sa circle, and the hub dot itself.
   // Horizontal chakra-name labels sit inside the hub's own radius (toward
   // WEDGE_INNER) rather than outside it — the region between WEDGE_INNER
   // and the hub only ever has that chakra's single level-2 link line
@@ -812,12 +831,29 @@
         stroke:'var(--border-soft)', 'stroke-width':1
       }));
     });
-    const hLabelR = WEDGE_INNER-24;
-    [{a:0,txt:'Śuddha Madhyama'},{a:180,txt:'Prati Madhyama'}].forEach(h=>{
-      const p = polar(hLabelR, h.a);
-      svg.appendChild(Object.assign(el('text', {
-        x:p.x.toFixed(2), y:p.y.toFixed(2), class:'half-label', 'text-anchor':'middle', dy:'0.32em'
-      }), {textContent:h.txt}));
+    // Hemisphere labels sit mostly inside the hub (between Sa and the
+    // half-hub dot), not beyond it — see the HALF_HUB_R comment above for
+    // why there's no usable gap anywhere between the hub and WEDGE_INNER,
+    // at any angle. Even placed inside the hub, the label's own bbox
+    // corners reach past the hub's radius (it's a ~72×31px box, not a
+    // point), so all 6 chakra-links still had to be sampled and checked,
+    // not just the single half-link — an earlier pass that checked only
+    // the half-link picked a position that read as clear in isolation but
+    // still clipped a chakra-link in the real render. Two lines, not one
+    // — "Madhyama" alone is narrower than the old single-line text,
+    // letting it fit in the available gap at all. HALF_LABEL_R/ANGLE_OFFSET
+    // were swept jointly with HALF_HUB_R above against all of: the 6
+    // chakra-links, the half-link, the Sa circle, and the hub dot —
+    // re-sweep all three together if any of them change.
+    const HALF_LABEL_R = 82, HALF_LABEL_ANGLE_OFFSET = 28;
+    [{half:1, lines:['Śuddha','Madhyama']}, {half:2, lines:['Prati','Madhyama']}].forEach(h=>{
+      const sign = h.half===1 ? 1 : -1;
+      const angle = HALF_ANGLE[h.half] + sign*HALF_LABEL_ANGLE_OFFSET;
+      const p = polar(HALF_LABEL_R, angle);
+      const t = el('text', {x:p.x.toFixed(2), y:p.y.toFixed(2), class:'half-label', 'text-anchor':'middle'});
+      t.appendChild(Object.assign(el('tspan', {x:p.x.toFixed(2), dy:'-0.1em'}), {textContent:h.lines[0]}));
+      t.appendChild(Object.assign(el('tspan', {x:p.x.toFixed(2), dy:'1.1em'}), {textContent:h.lines[1]}));
+      svg.appendChild(t);
     });
 
     // center — always zooms all the way back out, never a toggle target
