@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mēḷakarta Wheel — The 72 Carnatic Scales</title>
+<meta name="description" content="An interactive wheel of the 72 Mēḷakarta rāgas of Carnatic music — click a scale to see and hear its Ārōhaṇam and Avarōhaṇam.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Gentium+Plus:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Same palette as circle-of-fifths-chord-wheel: dark stage, cream
+       wheel-face/cards, brass borders+accents. */
+    --bg:#17130f;
+    --panel:#efe6cf;
+    --panel-dim:#e6dabd;
+    --ink:#2b2118;
+    --ink-soft:#6b5f4e;
+    --brass:#b8863b;
+    --brass-light:#d8b876;
+    --gold-tonic:#d1a437;
+    --muted:#9c9075;
+    --border-soft:rgba(184,134,59,.35);
+    --m1:#b8863b;         /* shuddha madhyama half — brass */
+    --m1-soft:#e6dabd;
+    --m2:#6f93ab;          /* prati madhyama half — the chord wheel's --blue-iv */
+    --m2-soft:#dde6ea;
+    --select:#c9483a;      /* selection accent — warm red, reads on cream */
+    --hub:#a9884f;
+    --gold:#d1a437;
+    --vein:#8c4a3a;         /* neuron/root-fan connector lines — warm maroon */
+    --shadow:0 10px 30px -12px rgba(0,0,0,.55);
+    /* Chord-tone colors — the exact hex values circle-of-fifths-chord-wheel
+       uses for root/3rd/5th/7th, reused verbatim so the same tone always
+       reads the same color across the whole claude-applets family. */
+    --chord-root:#2fa84f;    --chord-root-b:#103a1b;
+    --chord-third:#e8681a;   --chord-third-b:#512409;
+    --chord-fifth:#e8ad0e;   --chord-fifth-b:#513c04;
+    --chord-seventh:#9142c4; --chord-seventh-b:#321744;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--panel);font-family:Inter,system-ui,sans-serif;}
+  body{
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(216,184,118,.10) 1px, transparent 0);
+    background-size:22px 22px;
+  }
+  h1,h2,h3,.display{font-family:Fraunces,serif;}
+  .raga-name{font-family:'Gentium Plus',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  header{
+    max-width:1040px;margin:0 auto;padding:28px 20px 10px;
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 22px;justify-content:space-between;
+  }
+  .titleblock h1{margin:0;font-size:clamp(26px,4vw,34px);font-weight:700;letter-spacing:.2px;color:var(--panel);}
+  .titleblock p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:52ch;}
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  #searchIconBtn{
+    position:fixed;top:14px;right:14px;z-index:200;
+    width:38px;height:38px;border-radius:8px;border:1px solid var(--brass);
+    background:var(--bg);color:var(--brass-light);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;
+  }
+  #searchIconBtn:hover, #searchIconBtn.active{background:var(--brass);color:var(--bg);}
+  .search-popover{
+    position:fixed;top:58px;right:14px;z-index:200;
+    background:var(--panel);border:1px solid var(--brass);border-radius:10px;
+    padding:10px;box-shadow:var(--shadow);
+  }
+  .search-popover.hidden{display:none;}
+  #search{
+    font:14px/1.4 Inter,sans-serif;padding:9px 12px;border:1px solid var(--brass);
+    border-radius:8px;background:#fff;min-width:220px;color:var(--ink);
+  }
+  #search::placeholder{color:var(--ink-soft);}
+  #search:focus{outline:2px solid var(--brass);outline-offset:1px;}
+  .btn-link{
+    font:600 13px/1 Inter,sans-serif;color:var(--brass-light);text-decoration:none;border:1px solid var(--brass);
+    padding:9px 14px;border-radius:8px;background:transparent;white-space:nowrap;
+    cursor:pointer;transition:background .15s,color .15s;
+  }
+  .btn-link:hover{background:var(--brass);color:var(--bg);}
+
+  main{max-width:1040px;margin:0 auto;padding:6px 20px 60px;}
+
+  .wheel-wrap{
+    position:relative;max-width:760px;margin:10px auto 0;
+  }
+  /* A half-zoom's viewBox is naturally tall and narrow (full diameter
+     vertically, one radius horizontally) — with height:auto alone, the
+     SVG's own box would stretch to match that ratio and blow the whole
+     page out to ~1300px tall. Pinning a square aspect-ratio keeps the
+     wheel's on-page footprint stable at every zoom level; the (possibly
+     tall/narrow) zoomed content is letterboxed within it instead. */
+  svg#wheel{width:100%;aspect-ratio:1/1;height:auto;display:block;overflow:hidden;cursor:pointer;}
+  .wedge{transition:opacity .3s ease;}
+  .fan-line{fill:none;stroke:var(--vein);stroke-width:1.1;opacity:.55;pointer-events:none;transition:opacity .3s ease,stroke-width .3s ease;}
+  .fan-line.selected{stroke:var(--select);stroke-width:2.2;opacity:1;}
+  .chakra-link{fill:none;stroke:var(--vein);stroke-width:1.6;opacity:.6;pointer-events:none;transition:opacity .3s ease;}
+  .half-link{fill:none;stroke:var(--vein);stroke-width:2.2;opacity:.65;pointer-events:none;transition:opacity .3s ease;}
+  .hub-dot{fill:var(--select);opacity:.85;transition:opacity .3s ease;}
+  .half-hub-dot{fill:#5c7a52;opacity:.9;transition:opacity .3s ease;}
+  .hub-node{cursor:pointer;}
+  .hub-node:hover .hub-dot,.hub-node:hover .half-hub-dot{opacity:1;}
+  .rim-dot{fill:var(--panel);stroke:var(--select);stroke-width:1.4;transition:fill .12s ease,stroke .12s ease,opacity .3s ease;}
+  .rim-dot.selected{fill:var(--select);stroke:var(--select);}
+  .raga-node{cursor:pointer;}
+  .raga-node:hover .rim-dot{fill:var(--brass-light);}
+  .raga-label{font-family:'Gentium Plus',serif;font-size:8.6px;fill:var(--brass-light);pointer-events:none;transition:opacity .3s ease;}
+  .raga-label.selected{fill:var(--select);font-weight:700;}
+  .chakra-label{font-family:'Gentium Plus',serif;font-weight:700;font-size:11px;letter-spacing:.3px;fill:var(--ink-soft);pointer-events:none;transition:opacity .3s ease;}
+  .half-label{font-family:Fraunces,serif;font-size:13px;fill:var(--ink-soft);pointer-events:none;letter-spacing:.5px;}
+
+  /* Spotlight: everything outside the focused node's ancestor+descendant
+     path fades — applied/cleared by applyDim() in the script below. */
+  .wedge.dimmed{opacity:.22;}
+  .fan-line.dimmed{opacity:.08;}
+  .chakra-link.dimmed{opacity:.1;}
+  .half-link.dimmed{opacity:.12;}
+  .hub-dot.dimmed{opacity:.25;}
+  .half-hub-dot.dimmed{opacity:.3;}
+  .rim-dot.dimmed{opacity:.3;}
+  .raga-label.dimmed{opacity:.28;}
+  .chakra-label.dimmed{opacity:.28;}
+  .center-sa{font-family:Fraunces,serif;font-size:22px;fill:var(--brass);pointer-events:none;}
+  .sa-hub{cursor:pointer;}
+  .center-sub{font-family:Inter,sans-serif;font-size:9px;fill:var(--ink-soft);}
+
+  #detail{
+    margin-top:28px;background:var(--panel);border:1px solid var(--border-soft);
+    border-radius:16px;padding:22px 24px 24px;box-shadow:var(--shadow);
+    min-height:150px;
+  }
+  #detail.empty{display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:14px;text-align:center;}
+  .detail-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;}
+  .detail-head h2{margin:0;font-size:26px;color:var(--ink);}
+  .detail-tags{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);}
+  .tag{border:1px solid var(--border-soft);border-radius:999px;padding:3px 10px;background:var(--panel-dim);}
+  .tag-tonic{border-color:var(--brass);color:var(--ink);font-weight:600;background:#fff;}
+  .formula{margin:6px 0 18px;font-size:15px;color:var(--ink);}
+  .formula sub{font-size:65%;}
+
+  .dir-toggle{display:flex;gap:8px;margin:4px 0 16px;}
+  .dir-btn{
+    font:600 14px/1 Inter,sans-serif;border:1px solid var(--m1);color:var(--ink-soft);
+    background:transparent;padding:9px 16px;border-radius:999px;cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .dir-btn.avar-btn{border-color:var(--m2);}
+  .dir-btn.active{background:var(--m1);color:#fff;}
+  .dir-btn.avar-btn.active{background:var(--m2);}
+
+  .scale-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 0 14px;}
+  .scale-notes{flex:1;min-width:220px;font-size:17px;letter-spacing:.5px;color:var(--ink);}
+  .scale-notes sub{font-size:60%;}
+  .play-btn{
+    border:none;background:var(--m1);color:#fff;font:600 13px Inter,sans-serif;
+    padding:9px 16px;border-radius:8px;cursor:pointer;white-space:nowrap;
+  }
+  .play-btn.avar{background:var(--m2);}
+  .play-btn:active{transform:translateY(1px);}
+  .play-btn[disabled]{opacity:.5;cursor:default;}
+  .play-both-link{
+    display:inline-block;margin-top:14px;border:none;background:none;cursor:pointer;
+    font:600 13px Inter,sans-serif;color:var(--ink-soft);text-decoration:underline;padding:2px 0;
+  }
+  .play-both-link:hover{color:var(--ink);}
+
+  .keys{display:flex;margin-top:16px;position:relative;height:64px;width:100%;max-width:640px;}
+  .wkey{flex:1;background:#fffdf7;border:1px solid var(--border-soft);border-left:none;position:relative;border-radius:0 0 4px 4px;}
+  .wkey:first-child{border-left:1px solid var(--border-soft);}
+  .wkey.hit{background:var(--gold-tonic);}
+  .bkey{position:absolute;top:0;width:5.5%;height:60%;background:var(--ink);border-radius:0 0 3px 3px;z-index:2;}
+  .bkey.hit{background:var(--select);}
+
+  .notation{margin:4px 0 4px;display:flex;justify-content:center;overflow-x:auto;}
+  .staff{display:block;width:100%;max-width:440px;height:auto;}
+
+  #rootBtn{display:inline-flex;align-items:center;gap:7px;}
+  #rootBtn .fifths-icon{width:15px;height:15px;flex:none;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;
+    z-index:1000;padding:20px;
+  }
+  .modal-overlay.hidden{display:none;}
+  .modal-card{
+    background:var(--panel);border:1px solid var(--brass);border-radius:18px;
+    padding:22px 24px 26px;box-shadow:var(--shadow);max-width:380px;width:100%;text-align:center;
+  }
+  .modal-card h3{margin:0 0 4px;font-size:19px;color:var(--ink);}
+  .modal-card .modal-sub{color:var(--ink-soft);font-size:13px;margin:0 0 14px;}
+  .modal-close{
+    border:none;background:none;color:var(--ink-soft);font-size:13px;cursor:pointer;margin-top:12px;
+    text-decoration:underline;
+  }
+  #fifthsWheel{width:100%;max-width:300px;margin:0 auto;display:block;}
+  .fifths-wedge{cursor:pointer;transition:filter .12s ease;}
+  .fifths-wedge:hover{filter:brightness(1.1);}
+  .fifths-wedge.current{stroke:var(--select);stroke-width:2.5;}
+  .fifths-label{font-family:Fraunces,serif;font-weight:700;font-size:15px;fill:var(--ink);pointer-events:none;}
+
+  .chords-section{margin-top:26px;padding-top:20px;border-top:1px solid var(--border-soft);}
+  .chords-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
+  .chords-head h3{margin:0;font-size:16px;color:var(--ink);font-family:Fraunces,serif;}
+  .chords-sub{margin:0 0 14px;font-size:12.5px;color:var(--ink-soft);max-width:60ch;}
+  .chord-ext-toggle{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .chord-ext-btn{
+    font:600 12.5px/1 Inter,sans-serif;border:1px solid var(--brass);color:var(--ink-soft);
+    background:transparent;border-radius:999px;padding:6px 13px;cursor:pointer;transition:background .12s,color .12s;
+  }
+  .chord-ext-btn.active{background:var(--brass);color:#fff;}
+  .chord-tone-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-soft);margin-bottom:12px;}
+  .chord-tone-legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px;}
+  .chord-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;}
+  .chord-card{
+    background:var(--panel-dim);border:1px solid var(--border-soft);border-radius:10px;
+    padding:10px 8px 8px;text-align:center;
+  }
+  .chord-card .chord-name{font:700 14px/1.2 Fraunces,serif;color:var(--ink);margin-bottom:6px;min-height:2.2em;display:flex;align-items:center;justify-content:center;}
+  .chord-card .fretboard{width:100%;max-width:88px;height:auto;display:block;margin:0 auto;}
+  .chord-card .chord-deg{font:600 10.5px/1 'IBM Plex Mono',monospace;color:var(--muted);margin-top:6px;}
+
+  footer{max-width:1040px;margin:0 auto;padding:10px 20px 50px;color:var(--muted);font-size:12.5px;text-align:center;}
+  footer a{color:var(--brass-light);}
+
+  #audioHint{position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:#3a2f22;color:#f5edd6;font:13px/1.4 Inter,sans-serif;text-align:center;z-index:9999;display:none;}
+
+  @media (max-width:640px){
+    .detail-head h2{font-size:22px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="titleblock">
+    <h1>Mēḷakarta Wheel</h1>
+    <p>The 72 parent scales of Carnatic music. Click a rāga to hear its Ārōhaṇam and Avarōhaṇam — the wheel never moves, only your selection does.</p>
+  </div>
+  <div class="toolbar">
+    <button id="rootBtn" class="btn-link" type="button" title="Change the root (Sa) — opens the circle of fifths">
+      <svg class="fifths-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+      <span id="rootLabel">Sa = C</span>
+    </button>
+    <a class="btn-link" href="history.html">History &amp; Theory →</a>
+  </div>
+</header>
+
+<button id="searchIconBtn" type="button" title="Search rāgas" aria-label="Search rāgas">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="21" y1="21" x2="15.5" y2="15.5"/></svg>
+</button>
+<div id="searchPopover" class="search-popover hidden">
+  <input id="search" type="text" placeholder="Jump to a rāga…" autocomplete="off">
+</div>
+
+<main>
+  <div class="wheel-wrap">
+    <svg id="wheel" viewBox="-90 -90 1000 1000" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div id="detail" class="empty">Click any rāga on the wheel to see its swaras and hear it played.</div>
+</main>
+
+<footer>
+  Scale data cross-checked against Wikipedia's Mēḷakarta table, the
+  <a href="https://www.karnatik.com/melakarta.pdf" target="_blank" rel="noopener">karnatik.com chart</a>,
+  and <a href="https://melakarta.com" target="_blank" rel="noopener">melakarta.com</a> — all three agree on
+  every rāga's name, number and swara formula. See the
+  <a href="history.html">History &amp; Theory</a> page for sources and the derivation.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------------------------------------------------------------
+   * DATA MODEL
+   * Only two things are hand-transcribed: the 72 rāga names (in
+   * katapayadi order) and the 12 chakra names — both copied verbatim
+   * from Wikipedia's Mēḷakarta table and cross-checked against
+   * karnatik.com's chart and melakarta.com (all three agree exactly,
+   * including the historically corrected 27/28 and 70/71 ordering).
+   * Every rāga's actual swara formula (R/G/M/D/N variant numbers) is
+   * *derived* from its position, not hardcoded — same "derive, don't
+   * duplicate" approach as circle-of-fifths-chord-wheel's chord data.
+   * ------------------------------------------------------------------- */
+
+  const CHAKRA_NAMES = ["Indu","Netra","Agni","Vēda","Bāṇa","Ṛtu","Ṛṣi","Vasu","Brahma","Diśi","Rudra","Āditya"];
+
+  const RAGA_NAMES = [
+    "Kanakāngi","Ratnāngi","Gānamūrti","Vanaspati","Mānavati","Tānarūpi",
+    "Senāvati","Hanumatōdi","Dhenukā","Nāṭakapriyā","Kōkilapriyā","Rūpavati",
+    "Gāyakapriyā","Vakuḷābharaṇam","Māyāmāḷavagowḷa","Chakravākam","Sūryakāntam","Hāṭakāmbari",
+    "Jhankāradhvani","Naṭabhairavi","Kīravāṇi","Kharaharapriyā","Gourimanōhari","Varuṇapriyā",
+    "Māraranjani","Chārukēśi","Sarasāngi","Harikāmbhōji","Dhīraśankarābharaṇam","Nāgānandini",
+    "Yāgapriyā","Rāgavardhini","Gāngeyabhūṣaṇi","Vāgadhīśwari","Śūlini","Chalanāṭa",
+    "Sālagam","Jalārṇavam","Jhālavarāḷi","Navanītam","Pāvani","Raghupriyā",
+    "Gavāmbhōdi","Bhavapriyā","Śubhapantuvarāḷi","Ṣaḍvidamārgini","Suvarṇāngi","Divyamaṇi",
+    "Dhavaḷāmbari","Nāmanārāyaṇi","Kāmavardhini","Rāmapriyā","Gamanāśrama","Viśvambari",
+    "Śyāmaḷāngi","Ṣaṇmukhapriyā","Simhēndramadhyamam","Hēmavati","Dharmavati","Nītimati",
+    "Kāntāmaṇi","Ṛṣabhapriyā","Latāngi","Vāchaspati","Mēchakalyāni","Chitrāmbari",
+    "Sucharitra","Jyōtiswarūpini","Dhātuvardhani","Nāsikābhūṣaṇi","Kōsalam","Rasikapriyā"
+  ];
+
+  // Alternate/older names for a handful of rāgas, per karnatik.com's chart —
+  // shown as a footnote in the detail panel when present, never replacing
+  // the standard Govindāchārya name used everywhere else in the app.
+  const ALT_NAMES = {
+    1:"Kanakāmbari", 2:"Phēnadyuti", 15:"— (no alternate)", 28:"Harikēdāragowḷa",
+    45:"Śivapantuvarāḷi", 51:"Kāśirāmakriyā", 57:"Sumadyuti"
+  };
+
+  const GROUP_PAIRS = [[1,1],[1,2],[1,3],[2,2],[2,3],[3,3]];   // (R,G) by chakra-within-half
+  const POS_PAIRS   = [[1,1],[1,2],[1,3],[2,2],[2,3],[3,3]];   // (D,N) by position-within-chakra
+
+  function semitone(letter, n){
+    switch(letter){
+      case 'R': return n;        // R1=1 R2=2 R3=3
+      case 'G': return n+1;      // G1=2 G2=3 G3=4
+      case 'M': return n+4;      // M1=5 M2=6
+      case 'D': return n+7;      // D1=8 D2=9 D3=10
+      case 'N': return n+8;      // N1=9 N2=10 N3=11
+    }
+  }
+
+  function buildRagas(){
+    const out = [];
+    for(let c=1;c<=12;c++){
+      const [R,G] = GROUP_PAIRS[(c-1)%6];
+      const M = c<=6 ? 1 : 2;
+      for(let p=1;p<=6;p++){
+        const num = (c-1)*6 + p;
+        const [D,N] = POS_PAIRS[p-1];
+        const rSemi=semitone('R',R), gSemi=semitone('G',G), mSemi=semitone('M',M),
+              dSemi=semitone('D',D), nSemi=semitone('N',N);
+        out.push({
+          number:num, chakra:c, chakraName:CHAKRA_NAMES[c-1], posInChakra:p,
+          name:RAGA_NAMES[num-1], alt:ALT_NAMES[num],
+          R,G,M,D,N,
+          semitones:[0,rSemi,gSemi,mSemi,7,dSemi,nSemi,12],
+          labels:['S',`R${R}`,`G${G}`,`M${M}`,'P',`D${D}`,`N${N}`,'Ṡ']
+        });
+      }
+    }
+    return out;
+  }
+
+  const RAGAS = buildRagas();
+
+  /* ---------------------------------------------------------------------
+   * WHEEL GEOMETRY — fixed, no rotation ever. Chakras 1-6 (Śuddha
+   * Madhyama) occupy the right half (-90°..+90°, clockwise from top);
+   * chakras 7-12 (Prati Madhyama) occupy the left half. This split falls
+   * straight out of the data (M1 chakras are exactly 1-6, M2 exactly
+   * 7-12) rather than being a separate layout decision.
+   * ------------------------------------------------------------------- */
+
+  const CX=410, CY=410;
+  const OUTER_R=372, WEDGE_OUTER=358, WEDGE_INNER=150;
+  // Three inward hub levels, mirroring the data hierarchy (rāga ⊂ chakra ⊂
+  // Madhyama half ⊂ the whole system): rāgas fan into their chakra hub,
+  // chakra hubs fan into their half hub, half hubs fan into the center.
+  const CHAKRA_HUB_R=254, HALF_HUB_R=70, SA_CIRCLE_R=30;
+  // Horizontal chakra-name labels sit inside the hub's own radius (toward
+  // WEDGE_INNER) rather than outside it — the region between WEDGE_INNER
+  // and the hub only ever has that chakra's single level-2 link line
+  // passing through, while the region outside the hub is where all 6
+  // level-3 fan lines fan out toward the rim, so keeping labels inside
+  // the hub is the less cluttered choice.
+  //
+  // Two competing collisions had to be solved *together*, not one after
+  // the other — fixing either alone reintroduces the other:
+  //  1. A chakra sitting close to its half-hub's own angle (e.g. only
+  //     15° away) has a level-2 link that stays close to a straight
+  //     line for its whole length, hugging that chakra's own spoke —
+  //     exactly where a label centered on the chakra's mid-angle would
+  //     sit. Fixed by nudging the label angularly off that spoke, away
+  //     from the half-hub's own angle (where every level-2 link bows in
+  //     *from*).
+  //  2. That same "nudge away from your own half-hub" rule, applied to
+  //     the two chakras that sit at the *far* edge of each half (75°
+  //     from their own hub — e.g. chakra 1 and chakra 12, adjacent
+  //     across the top boundary between the two halves), pushes them
+  //     toward *each other* instead of apart, since "away from my own
+  //     hub" for both of them points at the shared boundary between
+  //     the halves.
+  // Solved by sweeping a (radius x per-group nudge) grid numerically,
+  // scoring each candidate on the *worse* of two real, bbox-measured
+  // minimums: every label's clearance from all 12 level-2 links, and
+  // every angularly-adjacent label PAIR's clearance from each other
+  // (using each label's own actual rendered width, not an assumed
+  // uniform one — an earlier pass that approximated width uniformly
+  // missed a near-collision between chakra 1 and chakra 12's labels
+  // that only showed up once measured for real). CHAKRA_LABEL_NUDGE_CLOSE
+  // is smaller than CHAKRA_LABEL_NUDGE despite the close chakras'
+  // line-hugging problem being the more severe one in isolation — at
+  // CHAKRA_LABEL_R=220 their link's bow is already tight enough to
+  // clear with a modest push, while the far-edge chakras need the
+  // larger push to keep the two halves' boundary-adjacent label pairs
+  // apart.
+  const CHAKRA_LABEL_R=220, CHAKRA_LABEL_NUDGE_CLOSE=10, CHAKRA_LABEL_NUDGE=21;
+  const START_ANGLE=-90, DEG_PER_RAGA=5, DEG_PER_CHAKRA=30;
+  // Śuddha Madhyama (chakras 1-6) spans -90°..+90°, so its angular center
+  // is 0°; Prati Madhyama (7-12) spans +90°..+270°, centered on 180°.
+  const HALF_ANGLE = {1:0, 2:180};
+
+  function polar(r, deg){
+    const rad = deg*Math.PI/180;
+    return {x: CX + r*Math.cos(rad), y: CY + r*Math.sin(rad)};
+  }
+
+  function wedgeAngles(i){ // i = 0..71
+    const a0 = START_ANGLE + i*DEG_PER_RAGA;
+    return {a0, a1:a0+DEG_PER_RAGA, mid:a0+DEG_PER_RAGA/2};
+  }
+
+  function chakraMidAngle(c){
+    return START_ANGLE + (c-1)*DEG_PER_CHAKRA + DEG_PER_CHAKRA/2;
+  }
+
+  function halfOfChakra(c){ return c<=6 ? 1 : 2; }
+
+  // A cubic connector from a hub point to a target point, both given in
+  // polar terms — tuned to bundle tightly right at the hub and fan out
+  // only as it nears the target, the neuron-dendrite/root look every
+  // line from the same hub should share. The first control point sits at
+  // the HUB's own angle (not the target's), so every sibling line leaves
+  // the hub heading the same "straight outward" direction and only peels
+  // toward its own target angle in the second half of the curve — a
+  // single shared control-point angle (as a plain quadratic bezier would
+  // need) can't do this, since it would make every line diverge from the
+  // hub immediately instead of bundling.
+  function fanCurve(hubR, hubAngle, targetR, targetAngle){
+    const hub = polar(hubR, hubAngle);
+    const target = polar(targetR, targetAngle);
+    // The second control point normally sits right at the target's own
+    // angle, which degenerates to a dead-straight line whenever a target
+    // happens to fall close to the hub's angle (e.g. the rāga nearest a
+    // chakra's own mid-angle). Padding that angle outward by a constant
+    // (never zero) keeps every curve visibly bowed, like a sine curve,
+    // regardless of how small the real angular gap is.
+    let delta = targetAngle - hubAngle;
+    while(delta>180) delta-=360;
+    while(delta<-180) delta+=360;
+    const sign = delta===0 ? 1 : Math.sign(delta);
+    const bowedAngle = hubAngle + delta + sign*8;
+    const c1 = polar(hubR + (targetR-hubR)*0.28, hubAngle);
+    const c2 = polar(hubR + (targetR-hubR)*0.72, bowedAngle);
+    return `M ${hub.x.toFixed(2)} ${hub.y.toFixed(2)} C ${c1.x.toFixed(2)} ${c1.y.toFixed(2)} ${c2.x.toFixed(2)} ${c2.y.toFixed(2)} ${target.x.toFixed(2)} ${target.y.toFixed(2)}`;
+  }
+
+  /* ---------------------------------------------------------------------
+   * ZOOM NAVIGATION — clicking a hub node (chakra or half) smoothly
+   * pans/zooms the SVG viewBox to frame just that sector; clicking it
+   * again (or the center, or empty space, or Escape) smoothly zooms back
+   * out. Pure camera movement — no element ever moves or resizes on its
+   * own, only what fraction of the fixed wheel the viewBox shows.
+   * ------------------------------------------------------------------- */
+
+  // Padded well past the wedge ring (OUTER_R=372) so the longest rāga
+  // labels never clip against the SVG's own edge now that overflow is
+  // `hidden` (needed so zoomed-in sectors crop cleanly instead of
+  // showing the rest of the wheel bleeding in around them).
+  const FULL_VIEWBOX = [-90, -90, 1000, 1000];
+  const ZOOM_LABEL_PAD = 140; // room for the longest rāga-name labels past OUTER_R
+
+  // Bounding box (relative to CX,CY) of a circular sector from rInner out
+  // to rOuter, spanning angles a0..a1 (our polar() angle convention:
+  // 0=top, clockwise, same units chakraMidAngle/HALF_ANGLE use). Includes
+  // both radii's arc endpoints plus any cardinal direction (0/90/180/270)
+  // the sector actually spans across — a wide sector like a Madhyama half
+  // can bulge past its endpoints at a cardinal angle, narrow single-chakra
+  // sectors here never do (none is centered on a cardinal), but the check
+  // keeps this correct for either. rInner=0 also folds in the true center
+  // point itself, for a zoom level whose own hub sits there.
+  function sectorBBox(rInner, rOuter, a0, a1){
+    const pts = rInner===0 ? [{x:0,y:0}] : [];
+    [rInner, rOuter].forEach(r=>{
+      [a0,a1].forEach(a=>{
+        const rad=a*Math.PI/180;
+        pts.push({x:r*Math.cos(rad), y:r*Math.sin(rad)});
+      });
+      [-90,0,90,180,270].forEach(ca=>{
+        if(ca>=a0 && ca<=a1){
+          const rad=ca*Math.PI/180;
+          pts.push({x:r*Math.cos(rad), y:r*Math.sin(rad)});
+        }
+      });
+    });
+    const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+    return {minX:Math.min(...xs), maxX:Math.max(...xs), minY:Math.min(...ys), maxY:Math.max(...ys)};
+  }
+
+  // rInner lets a chakra zoom skip the dead space back to the wheel's true
+  // center — its own hub only starts at CHAKRA_HUB_R, so cropping from 0
+  // left a large empty gap above it and pushed the hub/fan visually to the
+  // edge of the frame instead of sitting within its own geometry. A half
+  // zoom keeps rInner=0 since its hub *is* the true center's first ring.
+  function sectorViewBox(a0, a1, rInner){
+    const box = sectorBBox(rInner||0, OUTER_R+ZOOM_LABEL_PAD, a0, a1);
+    const pad = 24;
+    return [
+      CX+box.minX-pad, CY+box.minY-pad,
+      (box.maxX-box.minX)+pad*2, (box.maxY-box.minY)+pad*2
+    ];
+  }
+
+  let currentViewBox = FULL_VIEWBOX.slice();
+  let vbAnimId = null;
+  function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+  function animateViewBox(target, duration){
+    if(vbAnimId) cancelAnimationFrame(vbAnimId);
+    const start = currentViewBox.slice();
+    const dur = duration || 550;
+    const t0 = performance.now();
+    function step(now){
+      const t = Math.min(1, (now-t0)/dur);
+      const e = easeInOutCubic(t);
+      currentViewBox = start.map((s,i)=> s + (target[i]-s)*e);
+      svg.setAttribute('viewBox', currentViewBox.join(' '));
+      if(t<1){ vbAnimId = requestAnimationFrame(step); }
+      else { vbAnimId=null; currentViewBox=target.slice(); }
+    }
+    vbAnimId = requestAnimationFrame(step);
+  }
+
+  let zoomFocus = null; // null | {type:'half',id} | {type:'chakra',id}
+  // Half/chakra clicks drive the camera and the dim spotlight together —
+  // applyDim() is called after dimFocus is (re)assigned below, once that
+  // function exists.
+  function zoomToFull(){ zoomFocus=null; dimFocus=null; animateViewBox(FULL_VIEWBOX); applyDim(); }
+  function zoomToHalf(half){
+    zoomFocus = {type:'half', id:half};
+    dimFocus = {type:'half', id:half};
+    animateViewBox(sectorViewBox(half===1?-90:90, half===1?90:270));
+    applyDim();
+  }
+  function zoomToChakra(c){
+    zoomFocus = {type:'chakra', id:c};
+    dimFocus = {type:'chakra', id:c};
+    const mid = chakraMidAngle(c);
+    animateViewBox(sectorViewBox(mid-DEG_PER_CHAKRA/2, mid+DEG_PER_CHAKRA/2, HALF_HUB_R));
+    applyDim();
+  }
+  function isFocused(type, id){ return zoomFocus && zoomFocus.type===type && zoomFocus.id===id; }
+
+  /* ---------------------------------------------------------------------
+   * DIM / SPOTLIGHT — everything outside the focused node's own ancestor
+   * path + descendant subtree fades out, so the active branch reads
+   * clearly against the rest of the network. Independent of (but usually
+   * set alongside) zoomFocus: a half/chakra click drives both together;
+   * a rāga leaf click narrows dimFocus alone, without moving the camera.
+   * ------------------------------------------------------------------- */
+
+  let dimFocus = null; // null | {type:'half'|'chakra'|'raga', id}
+
+  function activeSet(){
+    if(!dimFocus) return null; // null = nothing dimmed, everything active
+    if(dimFocus.type==='half'){
+      const chakras = dimFocus.id===1 ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
+      return {
+        halves:new Set([dimFocus.id]), chakras:new Set(chakras),
+        ragas:new Set(RAGAS.filter(r=>chakras.includes(r.chakra)).map(r=>r.number))
+      };
+    }
+    if(dimFocus.type==='chakra'){
+      return {
+        halves:new Set([halfOfChakra(dimFocus.id)]), chakras:new Set([dimFocus.id]),
+        ragas:new Set(RAGAS.filter(r=>r.chakra===dimFocus.id).map(r=>r.number))
+      };
+    }
+    // raga: just the one leaf and its ancestor chain
+    const r = RAGAS.find(x=>x.number===dimFocus.id);
+    return { halves:new Set([halfOfChakra(r.chakra)]), chakras:new Set([r.chakra]), ragas:new Set([r.number]) };
+  }
+
+  function applyDim(){
+    const active = activeSet();
+    RAGAS.forEach(r=>{
+      const on = !active || active.ragas.has(r.number);
+      fanEls[r.number].classList.toggle('dimmed', !on);
+      rimEls[r.number].classList.toggle('dimmed', !on);
+      labelEls[r.number].classList.toggle('dimmed', !on);
+    });
+    for(let c=1;c<=12;c++){
+      const on = !active || active.chakras.has(c);
+      wedgeEls[c].classList.toggle('dimmed', !on);
+      chakraLinkEls[c].classList.toggle('dimmed', !on);
+      chakraHubDotEls[c].classList.toggle('dimmed', !on);
+      chakraLabelEls[c].classList.toggle('dimmed', !on);
+    }
+    [1,2].forEach(h=>{
+      const on = !active || active.halves.has(h);
+      halfLinkEls[h].classList.toggle('dimmed', !on);
+      halfHubDotEls[h].classList.toggle('dimmed', !on);
+    });
+  }
+
+  // A rāga leaf click narrows the spotlight to just that one path without
+  // touching the camera; clicking the same already-spotlighted leaf again
+  // steps back up to whatever half/chakra the camera is currently zoomed
+  // to (or fully off, if the camera is already at the full view) — not a
+  // full reset, since the camera didn't move for a leaf click either.
+  function focusRaga(num){
+    if(dimFocus && dimFocus.type==='raga' && dimFocus.id===num){
+      dimFocus = zoomFocus ? {type:zoomFocus.type, id:zoomFocus.id} : null;
+    } else {
+      dimFocus = {type:'raga', id:num};
+    }
+    applyDim();
+  }
+
+  function describeWedge(r0,r1,a0,a1){
+    const large = (a1-a0)>180?1:0;
+    const po0=polar(r1,a0), po1=polar(r1,a1), pi1=polar(r0,a1), pi0=polar(r0,a0);
+    return `M ${po0.x.toFixed(2)} ${po0.y.toFixed(2)} `+
+           `A ${r1} ${r1} 0 ${large} 1 ${po1.x.toFixed(2)} ${po1.y.toFixed(2)} `+
+           `L ${pi1.x.toFixed(2)} ${pi1.y.toFixed(2)} `+
+           `A ${r0} ${r0} 0 ${large} 0 ${pi0.x.toFixed(2)} ${pi0.y.toFixed(2)} Z`;
+  }
+
+  const svgns = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    const e = document.createElementNS(svgns, tag);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  const svg = document.getElementById('wheel');
+  let selectedNum = null;
+  const wedgeEls = {}, fanEls = {}, rimEls = {}, labelEls = {};
+  const chakraLinkEls = {}, halfLinkEls = {}, chakraHubDotEls = {}, halfHubDotEls = {}, chakraLabelEls = {};
+
+  function buildWheel(){
+    // cream face disc, matching circle-of-fifths-chord-wheel's bezel — the
+    // page background is dark, so this backs the fan-line annulus and the
+    // center hub with the same cream tone the wedges use, rather than
+    // leaving a dark ring showing through between them.
+    svg.appendChild(el('circle', {cx:CX, cy:CY, r:WEDGE_INNER, fill:'var(--panel)'}));
+
+    // wedges (drawn first, underneath the fan lines/hub dots — the network
+    // layer reads as an overlay tracing the full hub-to-leaf hierarchy
+    // across the wedge band, not just the empty inner disc, matching the
+    // melakarta.com reference's lines running all the way to each rāga).
+    // One wedge per chakra (12 total, each spanning its 6 rāgas) — not one
+    // per rāga — so the outer ring reads as 12 grouped segments instead of
+    // a 72-cell grid; the reference has no per-rāga subdivision either.
+    for(let c=1;c<=12;c++){
+      const a0 = START_ANGLE + (c-1)*DEG_PER_CHAKRA;
+      const a1 = a0 + DEG_PER_CHAKRA;
+      const shell = c<=6 ? 'm1' : 'm2';
+      const shade = (c % 2 === 0) ? 0.5 : 1; // alternating tone between neighboring chakras
+      const path = el('path', {
+        d:describeWedge(WEDGE_INNER, WEDGE_OUTER, a0, a1),
+        class:'wedge',
+        'data-chakra':c,
+        fill: shell==='m1'
+          ? (shade===1 ? '#e6dabd' : '#efe6cf')
+          : (shade===1 ? '#dde6ea' : '#eaf1f3'),
+        stroke:'var(--panel)', 'stroke-width':1
+      });
+      // Wedges are the visual backdrop only — selection happens on the
+      // rim-dot/label nodes, not these 12 chakra polygons.
+      svg.appendChild(path);
+      wedgeEls[c]=path;
+    }
+
+    // Hierarchical fan lines — three levels deep, matching the data
+    // hierarchy: rāga -> chakra hub -> half hub -> center. Drawn on top of
+    // the wedges so the network is visible all the way out to the rim.
+
+    // Level 3: each rāga's own line, chakra hub outward to its rim dot.
+    RAGAS.forEach((r,i)=>{
+      const {mid} = wedgeAngles(i);
+      const path = el('path', {
+        d:fanCurve(CHAKRA_HUB_R, chakraMidAngle(r.chakra), WEDGE_OUTER+3, mid),
+        class:'fan-line'
+      });
+      svg.appendChild(path);
+      fanEls[r.number]=path;
+    });
+
+    // Level 2: each chakra hub's own line, half hub outward to that chakra.
+    for(let c=1;c<=12;c++){
+      const half = halfOfChakra(c);
+      const path = el('path', {
+        d:fanCurve(HALF_HUB_R, HALF_ANGLE[half], CHAKRA_HUB_R, chakraMidAngle(c)),
+        class:'chakra-link'
+      });
+      svg.appendChild(path);
+      chakraLinkEls[c]=path;
+    }
+
+    // Level 1: the two half hubs, center outward to each.
+    [1,2].forEach(half=>{
+      const path = el('path', {
+        d:fanCurve(SA_CIRCLE_R, HALF_ANGLE[half], HALF_HUB_R, HALF_ANGLE[half]),
+        class:'half-link'
+      });
+      svg.appendChild(path);
+      halfLinkEls[half]=path;
+    });
+
+    // Hub dots, one size per level so the hierarchy reads at a glance —
+    // and the click targets that zoom into that chakra/half.
+    for(let c=1;c<=12;c++){
+      const h = polar(CHAKRA_HUB_R, chakraMidAngle(c));
+      const g = el('g', {class:'hub-node'});
+      const hit = el('circle', {cx:h.x.toFixed(2), cy:h.y.toFixed(2), r:16, fill:'transparent'});
+      const dot = el('circle', {cx:h.x.toFixed(2), cy:h.y.toFixed(2), r:5.5, class:'hub-dot'});
+      g.appendChild(hit); g.appendChild(dot);
+      g.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        isFocused('chakra',c) ? zoomToFull() : zoomToChakra(c);
+      });
+      svg.appendChild(g);
+      chakraHubDotEls[c]=dot;
+    }
+    [1,2].forEach(half=>{
+      const h = polar(HALF_HUB_R, HALF_ANGLE[half]);
+      const g = el('g', {class:'hub-node'});
+      const hit = el('circle', {cx:h.x.toFixed(2), cy:h.y.toFixed(2), r:20, fill:'transparent'});
+      const dot = el('circle', {cx:h.x.toFixed(2), cy:h.y.toFixed(2), r:8, class:'half-hub-dot'});
+      g.appendChild(hit); g.appendChild(dot);
+      g.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        isFocused('half',half) ? zoomToFull() : zoomToHalf(half);
+      });
+      svg.appendChild(g);
+      halfHubDotEls[half]=dot;
+    });
+
+    // rim dots + labels — the actual click targets for selecting a rāga
+    RAGAS.forEach((r,i)=>{
+      const {mid} = wedgeAngles(i);
+      const rim = polar(WEDGE_OUTER+3, mid);
+      const g = el('g', {class:'raga-node'});
+      const hit = el('circle', {cx:rim.x.toFixed(2), cy:rim.y.toFixed(2), r:12, fill:'transparent'});
+      const dot = el('circle', {cx:rim.x.toFixed(2), cy:rim.y.toFixed(2), r:5, class:'rim-dot'});
+      g.appendChild(hit); g.appendChild(dot);
+      g.addEventListener('click', (e)=>{ e.stopPropagation(); selectRaga(r.number); focusRaga(r.number); });
+      svg.appendChild(g);
+      rimEls[r.number]=dot;
+
+      const lp = polar(OUTER_R, mid);
+      const flip = mid>90 && mid<270;
+      const rot = flip ? mid+180 : mid;
+      const t = el('text', {
+        x:lp.x.toFixed(2), y:lp.y.toFixed(2),
+        class:'raga-label',
+        'text-anchor': flip ? 'end' : 'start',
+        transform:`rotate(${rot.toFixed(2)} ${lp.x.toFixed(2)} ${lp.y.toFixed(2)})`,
+        dy:'0.32em'
+      });
+      t.textContent = r.name;
+      t.style.cursor='pointer';
+      t.addEventListener('click', (e)=>{ e.stopPropagation(); selectRaga(r.number); focusRaga(r.number); });
+      svg.appendChild(t);
+      labelEls[r.number]=t;
+    });
+
+    // Chakra labels — always upright (no rotation), unlike the rāga
+    // labels on the rim which do follow the wheel around. Positioned at
+    // CHAKRA_LABEL_R, inside the hub dot's own radius (see CHAKRA_LABEL_R
+    // above for why that side has less line traffic to stay clear of).
+    for(let c=1;c<=12;c++){
+      const mid = chakraMidAngle(c);
+      const hubAngle = HALF_ANGLE[halfOfChakra(c)];
+      const diff = ((mid - hubAngle + 540) % 360) - 180; // signed shortest diff, mid relative to its own half-hub's angle
+      const nudge = Math.abs(diff) <= DEG_PER_CHAKRA/2 ? CHAKRA_LABEL_NUDGE_CLOSE : CHAKRA_LABEL_NUDGE;
+      const labelAngle = mid + Math.sign(diff||1)*nudge;
+      const lp = polar(CHAKRA_LABEL_R, labelAngle);
+      const t = el('text', {
+        x:lp.x.toFixed(2), y:lp.y.toFixed(2),
+        class:'chakra-label',
+        'text-anchor':'middle',
+        dy:'0.32em'
+      });
+      t.textContent = CHAKRA_NAMES[c-1];
+      svg.appendChild(t);
+      chakraLabelEls[c]=t;
+    }
+
+    // half labels + outer bezel
+    svg.appendChild(el('circle', {cx:CX, cy:CY, r:OUTER_R+3, fill:'none', stroke:'var(--brass)', 'stroke-width':2}));
+    svg.appendChild(el('circle', {cx:CX, cy:CY, r:WEDGE_INNER-3, fill:'none', stroke:'var(--border-soft)', 'stroke-width':1}));
+    const hLabelR = WEDGE_INNER-24;
+    [{a:0,txt:'Śuddha Madhyama'},{a:180,txt:'Prati Madhyama'}].forEach(h=>{
+      const p = polar(hLabelR, h.a);
+      svg.appendChild(Object.assign(el('text', {
+        x:p.x.toFixed(2), y:p.y.toFixed(2), class:'half-label', 'text-anchor':'middle', dy:'0.32em'
+      }), {textContent:h.txt}));
+    });
+
+    // center — always zooms all the way back out, never a toggle target
+    const sa = el('circle', {cx:CX, cy:CY, r:SA_CIRCLE_R, fill:'var(--panel)', stroke:'var(--brass)', 'stroke-width':1.5, class:'sa-hub'});
+    sa.addEventListener('click', (e)=>{ e.stopPropagation(); zoomToFull(); });
+    svg.appendChild(sa);
+    const saTxt = el('text', {x:CX, y:CY, class:'center-sa', 'text-anchor':'middle', dy:'0.34em'});
+    saTxt.textContent = 'स';
+    saTxt.style.pointerEvents = 'none';
+    svg.appendChild(saTxt);
+  }
+
+  buildWheel();
+
+  // Clicking anything that isn't a node (empty wedge area, the cream
+  // backing, page background) zooms back out to the full wheel — the
+  // node-level handlers above stopPropagation() so their own clicks
+  // never reach this.
+  svg.addEventListener('click', ()=>{ if(zoomFocus || dimFocus) zoomToFull(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && (zoomFocus || dimFocus)) zoomToFull(); });
+
+  /* ---------------------------------------------------------------------
+   * SELECTION — highlights the wedge in place; the wheel never rotates
+   * or resizes, and all detail renders in the section below it, not in
+   * a side panel.
+   * ------------------------------------------------------------------- */
+
+  function selectRaga(num){
+    if(selectedNum!=null){
+      fanEls[selectedNum].classList.remove('selected');
+      rimEls[selectedNum].classList.remove('selected');
+      labelEls[selectedNum].classList.remove('selected');
+    }
+    selectedNum = num;
+    fanEls[num].classList.add('selected');
+    rimEls[num].classList.add('selected');
+    labelEls[num].classList.add('selected');
+    renderDetail(RAGAS.find(r=>r.number===num));
+  }
+
+  /* ---------------------------------------------------------------------
+   * AUDIO — ported from circle-of-fifths-chord-wheel's Web Audio setup
+   * (iOS unlock handling, additive piano-ish oscillator voice), adapted
+   * from simultaneous chords to a sequential melodic line.
+   * ------------------------------------------------------------------- */
+
+  let actx, masterFilter;
+  function getCtx(){
+    if(!actx){
+      actx = new (window.AudioContext||window.webkitAudioContext)();
+      masterFilter = actx.createBiquadFilter();
+      masterFilter.type='lowpass'; masterFilter.frequency.value=4200; masterFilter.Q.value=0.3;
+      const limiter = actx.createDynamicsCompressor();
+      limiter.threshold.value=-6; limiter.knee.value=2; limiter.ratio.value=12;
+      limiter.attack.value=0.003; limiter.release.value=0.2;
+      masterFilter.connect(limiter); limiter.connect(actx.destination);
+    }
+    if(actx.state==='suspended') actx.resume();
+    return actx;
+  }
+  ['touchend','pointerdown','click'].forEach(evt=>{
+    document.addEventListener(evt, ()=>getCtx(), {once:true, passive:true});
+  });
+
+  function showAudioHint(msg){
+    let e=document.getElementById('audioHint');
+    if(!e){ e=document.createElement('div'); e.id='audioHint'; document.body.appendChild(e); }
+    e.textContent=msg; e.style.display='block';
+  }
+  function hideAudioHint(){ const e=document.getElementById('audioHint'); if(e) e.style.display='none'; }
+  function checkAudioUnlocked(){
+    setTimeout(()=>{
+      if(!actx) return;
+      if(actx.state==='running') hideAudioHint();
+      else showAudioHint('No sound? Check your device isn’t muted, then tap play again.');
+    },400);
+  }
+
+  function playPianoNote(freq, startTime, duration, ctx, velocity){
+    const vel = velocity!==undefined?velocity:1;
+    const harmonics=[
+      {mult:1,gain:1.00,decay:duration*1.00},
+      {mult:2,gain:0.50,decay:duration*0.70},
+      {mult:3,gain:0.26,decay:duration*0.50},
+      {mult:4,gain:0.14,decay:duration*0.35}
+    ];
+    harmonics.forEach(h=>{
+      const osc=ctx.createOscillator(); osc.type='sine'; osc.frequency.value=freq*h.mult;
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(0,startTime);
+      g.gain.linearRampToValueAtTime(h.gain*0.28*vel, startTime+0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, startTime+h.decay);
+      osc.connect(g); g.connect(masterFilter);
+      osc.start(startTime); osc.stop(startTime+h.decay+0.05);
+    });
+  }
+
+  /* ---------------------------------------------------------------------
+   * ROOT / TONIC + CLASSICAL NOTATION
+   *
+   * Every rāga's swara formula (S R2 G3 M1 P D2 N3 Ṡ, etc.) is already
+   * tonic-independent — that's just "which of the 12 semitones relative
+   * to Sa." Actual staff notation needs one more layer: a real letter
+   * name (C/D/E/F/G/A/B) plus accidental for each of the 7 scale
+   * degrees, which DOES depend on where Sa sits. The rule used here is
+   * the same one Western scale-degree spelling already follows: each
+   * swara always takes the *next letter* in sequence from the tonic's
+   * own letter (S=tonic's letter, R=next letter, G=the one after, …),
+   * with whatever accidental (up to double sharp/flat) makes that letter
+   * land on the correct pitch. This is why, e.g., Kanakāngi's Ga (2
+   * semitones above Sa — a whole step) spells as a double-flatted 3rd-
+   * letter rather than as a sharped 2nd-letter: the swara's *position*
+   * in the 7-degree cycle is what picks the letter, the semitone count
+   * only picks the accidental on top of it.
+   * ------------------------------------------------------------------- */
+
+  const LETTERS = ['C','D','E','F','G','A','B'];
+  const NATURAL_SEMI = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+  const LETTER_IDX = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
+
+  // Circle-of-fifths order/spelling, matching circle-of-fifths-chord-wheel's
+  // `order` array exactly, so a rāga's root picked here always matches the
+  // canonical spelling a musician would expect for that key.
+  const TONIC_OPTIONS = [
+    {name:'C',  letter:'C', acc:0}, {name:'G',  letter:'G', acc:0}, {name:'D',  letter:'D', acc:0},
+    {name:'A',  letter:'A', acc:0}, {name:'E',  letter:'E', acc:0}, {name:'B',  letter:'B', acc:0},
+    {name:'G♭', letter:'G', acc:-1}, {name:'D♭', letter:'D', acc:-1}, {name:'A♭', letter:'A', acc:-1},
+    {name:'E♭', letter:'E', acc:-1}, {name:'B♭', letter:'B', acc:-1}, {name:'F',  letter:'F', acc:0}
+  ];
+
+  function tonicSemitone(t){ return ((NATURAL_SEMI[t.letter] + t.acc) % 12 + 12) % 12; }
+
+  let currentTonic = TONIC_OPTIONS[0]; // C
+
+  // Spell all 8 scale degrees (S..Ṡ) for a given tonic + semitone offsets
+  // (r.semitones, always ascending). Returns one {letter, acc, diatonicStep}
+  // per degree — diatonicStep is an *unbounded* letter-count from a fixed
+  // reference (not mod 7), so it doubles as the input to the staff-position
+  // math below without any extra octave bookkeeping.
+  function spellScale(tonic, semitones){
+    const tLetterIdx = LETTER_IDX[tonic.letter];
+    const tAbs = tonicSemitone(tonic);
+    return semitones.map((offset, d)=>{
+      const diatonicStep = tLetterIdx + d;
+      const letterIdx = diatonicStep % 7;
+      const octaveBump = Math.floor(diatonicStep / 7);
+      const naturalSemi = NATURAL_SEMI[LETTERS[letterIdx]] + 12*octaveBump;
+      const target = tAbs + offset;
+      return { letter:LETTERS[letterIdx], acc: target - naturalSemi, diatonicStep };
+    });
+  }
+
+  function accidentalGlyph(acc){
+    if(acc<=-2) return '♭♭';
+    if(acc===-1) return '♭';
+    if(acc===1) return '♯';
+    if(acc>=2) return '♯♯';
+    return '';
+  }
+
+  // Treble clef, bottom line = E4 (same reference circle-of-fifths-chord-
+  // wheel uses), so a viewer already familiar with that app's notation
+  // reads this one the same way.
+  const TREBLE_REF_ABS = 4*7 + LETTER_IDX['E'];
+
+  // Renders one pre-spelled note sequence (ascending or already reversed
+  // for descending — order here is purely visual left-to-right, the pitch
+  // math per note doesn't change) as whole notes on a treble staff.
+  // `octaveBase` is shared between the Ārōhaṇam/Avarōhaṇam pair for one
+  // rāga so both staves place the same absolute pitches, just in mirrored
+  // order.
+  function renderStaff(spelledSeq, octaveBase){
+    const bottomY=86, spacing=13, startX=64, stepX=40;
+    const positions = spelledSeq.map(s => octaveBase*7 + s.diatonicStep - TREBLE_REF_ABS);
+    const xs = positions.map((_,i)=> startX + i*stepX);
+    const ys = positions.map(p => bottomY - p*(spacing/2));
+
+    let ledgerSvg = '';
+    positions.forEach((pos,i)=>{
+      const nx = xs[i];
+      if(pos<0){
+        const n = Math.floor(-pos/2);
+        for(let k=1;k<=n;k++){
+          const ly = bottomY - (-2*k)*(spacing/2);
+          ledgerSvg += `<line x1="${nx-9}" y1="${ly}" x2="${nx+9}" y2="${ly}" stroke="#2b2118" stroke-width="1.2"/>`;
+        }
+      } else if(pos>8){
+        const n = Math.floor((pos-8)/2);
+        for(let k=1;k<=n;k++){
+          const ly = bottomY - (8+2*k)*(spacing/2);
+          ledgerSvg += `<line x1="${nx-9}" y1="${ly}" x2="${nx+9}" y2="${ly}" stroke="#2b2118" stroke-width="1.2"/>`;
+        }
+      }
+    });
+
+    let noteSvg = '';
+    spelledSeq.forEach((s,i)=>{
+      const acc = accidentalGlyph(s.acc);
+      if(acc) noteSvg += `<text x="${xs[i]-17}" y="${ys[i]}" dominant-baseline="central" font-size="13" fill="#2b2118">${acc}</text>`;
+      noteSvg += `<ellipse cx="${xs[i]}" cy="${ys[i]}" rx="7" ry="5" fill="none" stroke="#2b2118" stroke-width="1.8"/>`;
+    });
+
+    const rightEdge = startX + (spelledSeq.length-1)*stepX + 26;
+    const leftEdge = 26;
+    const lines = [0,1,2,3,4].map(i=>{
+      const ly = bottomY - i*spacing;
+      return `<line x1="${leftEdge}" y1="${ly}" x2="${rightEdge}" y2="${ly}" stroke="#2b2118" stroke-width="1.2"/>`;
+    }).join('');
+
+    // Treble clef sized to the staff's own height (bottom line to top
+    // line = 4*spacing) rather than a fixed font-size — the glyph's
+    // natural bounding box runs noticeably taller than its nominal
+    // font-size, so it's scaled up from that span rather than set equal
+    // to it, and vertically centered on the staff's middle line (G4).
+    const staffHeight = 4*spacing;
+    const clefFontSize = staffHeight*1.7;
+    const clefY = bottomY - 2*spacing + staffHeight*0.32;
+
+    // viewBox is sized from the ACTUAL notes rendered, not a fixed
+    // formula — a low tonic (e.g. Sa=C puts this "major scale" pattern's
+    // whole run a couple of ledger lines below the staff) was pushing
+    // noteheads/ledger lines below the old fixed-height box, clipping
+    // them. Every y-producing element (staff lines, clef glyph, every
+    // notehead+ledger line) is folded into one min/max so the box always
+    // fits whatever actually got drawn, for any tonic/rāga combination.
+    const noteR = 7, notePad = 6;
+    const clefTop = clefY - clefFontSize*0.72, clefBottom = clefY + clefFontSize*0.30;
+    const yExtents = ys.concat([bottomY, bottomY-4*spacing, clefTop, clefBottom]);
+    const vbTop = Math.min(...yExtents) - noteR - notePad;
+    const vbBottom = Math.max(...yExtents) + noteR + notePad;
+
+    return `<svg class="staff" viewBox="0 ${vbTop.toFixed(1)} ${rightEdge+10} ${(vbBottom-vbTop).toFixed(1)}" xmlns="http://www.w3.org/2000/svg">
+      ${lines}
+      <text x="0" y="${clefY.toFixed(1)}" font-size="${clefFontSize.toFixed(1)}" fill="#2b2118">\u{1D11E}</text>
+      ${ledgerSvg}
+      ${noteSvg}
+    </svg>`;
+  }
+
+  // Picks the single octave (shared by both directions) that keeps the
+  // 8-note run closest to the staff's middle line overall, so the whole
+  // scale reads with as few ledger lines as possible regardless of tonic.
+  function bestOctaveFor(spelled){
+    let best=4, bestScore=Infinity;
+    for(let O=2;O<=6;O++){
+      let score=0;
+      spelled.forEach(s=>{
+        const pos = O*7 + s.diatonicStep - TREBLE_REF_ABS;
+        score += Math.abs(pos-4);
+      });
+      if(score<bestScore){ bestScore=score; best=O; }
+    }
+    return best;
+  }
+
+  /* ---------------------------------------------------------------------
+   * DIATONIC CHORDS — every rāga's ascending scale is exactly 7 svaras
+   * (S R G M P D N, same shape as a Western diatonic scale, however
+   * unusual the individual R/G/M/D/N intervals get — see the Dhīraśankarā-
+   * bharaṇam/major-scale note below). Stacking every OTHER scale tone —
+   * "1-3-5, skipping a scale tone" — off any of the 7 degrees produces
+   * that degree's diatonic triad exactly the way it does in Western
+   * stacked-third harmony; one more skip gives the 7th, one more the 9th.
+   * See [[triad-construction-by-stacked-thirds-and-diatonic-qualities]]
+   * and [[diatonic-seventh-ninth-derivation]] in ClaudeHub's music
+   * domain — this is the same rule, just applied to a scale whose 7
+   * intervals aren't constrained to a major/natural-minor pattern.
+   *
+   * Rāga #29, Dhīraśankarābharaṇam, is *exactly* the Western major scale
+   * (semitones 0,2,4,5,7,9,11) — stacking this same rule on it reproduces
+   * the textbook I-ii-iii-IV-V-vi-vii° triad-quality sequence exactly
+   * (verified: 4-3,3-4,3-4,4-3,4-3,3-4,3-3 semitone gaps), confirming the
+   * generic degree-stacking approach below is the same rule, not a
+   * reinterpretation of it, before it's applied to the other 71 rāgas
+   * whose R/G/M/D/N choices *don't* happen to fall on a major-scale
+   * pattern.
+   *
+   * Because Carnatic svara leaps aren't confined to the ~1-2 semitone
+   * steps a major/minor scale allows, this "skip a tone" stacking
+   * produces triad/7th/9th shapes a 12-key Western system never does —
+   * computed across all 72 rāgas × 7 degrees (504 triads), only 61% land
+   * on one of the 4 classic stacked-third qualities (major/minor/dim/
+   * aug) or the 2 well-known suspended ones (sus2/sus4); the remaining
+   * ~39% are genuinely new triad geometries with no standard jazz/pop
+   * name (e.g. a root-M2-M3 tone cluster, or a "5th" that's actually a
+   * 6th away because a rāga's D/N sits far from where a Western P5 would
+   * land). Rather than inventing names for these, chordQualityName()
+   * recognizes the known shapes and falls back to an explicit, always-
+   * correct interval-degree list for anything else — degrading
+   * gracefully the same way guitarVoicing() already does for pitch-class
+   * sets with no standard fingering.
+   * ------------------------------------------------------------------- */
+
+  // degree = 0..6 (S,R,G,M,P,D,N). count = 3 (triad), 4 (7th), 5 (9th).
+  // Returns semitone offsets from Sa, ascending, each including whatever
+  // octave jump "skipping a tone" past N back to S requires.
+  function chordDegreeSemitones(scale7, degree, count){
+    const stepOffsets = [0,2,4,6,8];
+    const out = [];
+    for(let k=0;k<count;k++){
+      const so = stepOffsets[k];
+      const idx = (degree+so)%7;
+      const octJump = Math.floor((degree+so)/7);
+      out.push(scale7[idx] + octJump*12);
+    }
+    return out;
+  }
+
+  // Degree name relative to a chord's own root, jazz-alteration style —
+  // used for whichever tones a recognized shape doesn't already account
+  // for. Index 6 and 8 use the same °/+ glyphs the app's full
+  // diminished/augmented triad symbols use (not "♭5"/"♯5" text) — a
+  // diminished or augmented 5th reads as that glyph no matter which
+  // chord-tone slot it happens to land in.
+  const DEGREE_NAME = ['1','♭2','2','♭3','3','4','°','5','+','6','♭7','7'];
+  // '3-3' (diminished) is deliberately not in this table — see
+  // dim5Glyph() below, which resolves its glyph dynamically.
+  const TRIAD_SYMBOL = { '4-3':'', '3-4':'m', '4-4':'+', '2-5':'sus2', '5-2':'sus4' };
+  function mod12(n){ return ((n%12)+12)%12; }
+
+  // A "flat 5" isn't always the same chord: stacking a minor 7th above
+  // it makes the triad read as half-diminished (ø — a diminished triad
+  // that's *not* built from an unbroken minor-3rd stack all the way up),
+  // while a diminished 7th makes it fully diminished (°) — the exact °
+  // vs ø distinction circle-of-fifths-chord-wheel's CLAUDE.md documents
+  // for major's vii/minor's ii (half-dim, unaltered scale degree) versus
+  // harmonic minor's raised-leading-tone VII (fully dim). Resolved from
+  // the rāga's own scale regardless of whether the UI is currently
+  // showing triads, 7ths, or 9ths, so a triad-only view already shows
+  // the glyph its own 7th chord would resolve to.
+  function dim5Glyph(scale7, degree){
+    const withSeventh = chordDegreeSemitones(scale7, degree, 4);
+    const iv3 = mod12(withSeventh[3]-withSeventh[0]);
+    return iv3===10 ? 'ø' : '°'; // dim7(9) or any other/exotic 7th -> plain diminished glyph
+  }
+
+  function thirdToken(lo){
+    if(lo===3) return 'm';
+    if(lo===4) return '';
+    if(lo===2) return 'sus2';
+    if(lo===5) return 'sus4';
+    return null; // needs the bracketed degree name instead
+  }
+  function fifthToken(span, scale7, degree){
+    if(span===7) return '';
+    if(span===6) return dim5Glyph(scale7, degree);
+    if(span===8) return '+';
+    return null;
+  }
+
+  // Composes a triad's label: the 6 recognized shapes (major/minor/
+  // augmented/sus2/sus4, plus diminished via dim5Glyph) keep their own
+  // established symbol; anything else tries to build a compact composite
+  // from a third-token and a fifth-token (e.g. "sus2°", "m+" — a real,
+  // if uncommon, minor-augmented symbol) before falling all the way back
+  // to an explicit bracketed interval list for whichever part doesn't
+  // fit either.
+  function composeTriad(lo, up, scale7, degree){
+    const key = lo+'-'+up;
+    if(key === '3-3') return dim5Glyph(scale7, degree);
+    if(TRIAD_SYMBOL[key] !== undefined) return TRIAD_SYMBOL[key];
+
+    const span = lo+up;
+    const tSym = thirdToken(lo);
+
+    // Two more real, if uncommon, voicings: a "5th" collapsed all the
+    // way down to a 3rd (root+M2+M3, no true 5th at all — really an
+    // add9 with the 5th dropped) and a "5th" stretched out to a 6th
+    // (root+3rd+M6, no true 5th — a completely standard "6 chord voiced
+    // without its 5th," common real-world guitar/piano practice). Both
+    // get their own name instead of falling into the generic
+    // third/fifth-token bracket below.
+    if(lo===2 && span===4) return 'add9(no5)';
+    if(span===9 && tSym!==null) return `6${tSym}(no5)`;
+
+    let fSym = fifthToken(span, scale7, degree);
+    // A blank (major) third with a bare '°' fifth would misread as the
+    // reserved fully-diminished triad symbol, which is only ever earned
+    // by an actual minor third (handled by the '3-3' branch above) —
+    // parenthesize just that one combination so "major 3rd + diminished
+    // 5th" can't be confused with true diminished.
+    if(tSym==='' && fSym==='°') fSym = '(°)';
+
+    const brackets = [];
+    if(tSym===null) brackets.push(DEGREE_NAME[mod12(lo)]);
+    if(fSym===null) brackets.push(DEGREE_NAME[mod12(span)]);
+    const bracketStr = brackets.length ? `(${brackets.join(',')})` : '';
+    return (tSym||'') + (fSym||'') + bracketStr;
+  }
+
+  function chordQualityName(scale7, degree, count){
+    const semis = chordDegreeSemitones(scale7, degree, count);
+    const iv = semis.map(s => s - semis[0]); // intervals from this chord's own root
+    const lo = iv[1], up = iv[2]-iv[1];
+    const triadKey = lo+'-'+up;
+    const isDim = triadKey === '3-3';
+    const knownTriad = isDim || TRIAD_SYMBOL[triadKey] !== undefined;
+    const triadLabel = composeTriad(lo, up, scale7, degree);
+    if(count === 3) return triadLabel;
+
+    if(!knownTriad){
+      const extra = iv.slice(3).map(x => DEGREE_NAME[mod12(x)]);
+      return triadLabel + (extra.length ? `(${extra.join(',')})` : '');
+    }
+
+    // The shape driving the 7th/9th suffix choice below — for the
+    // diminished case this is always '°' here regardless of which glyph
+    // (° or ø) the triad itself displayed; the 7th interval checked next
+    // is what actually distinguishes them.
+    const triadSymBase = isDim ? '°' : TRIAD_SYMBOL[triadKey];
+
+    const iv3 = mod12(iv[3]);
+    let seventhName;
+    if(triadSymBase==='' && iv3===11) seventhName='maj7';
+    else if(triadSymBase==='' && iv3===10) seventhName='7';
+    else if(triadSymBase==='m' && iv3===10) seventhName='m7';
+    else if(triadSymBase==='m' && iv3===11) seventhName='m(maj7)';
+    else if(triadSymBase==='°' && iv3===9)  seventhName='°7';
+    else if(triadSymBase==='°' && iv3===10) seventhName='ø7';
+    else if(triadSymBase==='+' && iv3===11) seventhName='maj7♯5';
+    else if(triadSymBase==='+' && iv3===10) seventhName='7♯5';
+    else if(triadSymBase==='sus2' && iv3===10) seventhName='7sus2';
+    else if(triadSymBase==='sus2' && iv3===11) seventhName='maj7sus2';
+    else if(triadSymBase==='sus4' && iv3===10) seventhName='7sus4';
+    else if(triadSymBase==='sus4' && iv3===11) seventhName='maj7sus4';
+    else {
+      const extra = iv.slice(3).map(x => DEGREE_NAME[mod12(x)]);
+      return triadLabel + `(${extra.join(',')})`;
+    }
+    if(count === 4) return seventhName;
+
+    const iv4 = mod12(iv[4]);
+    const ninthDeg = iv4===1?'♭9': iv4===2?'9': iv4===3?'♯9': null;
+    if(ninthDeg===null){
+      const extra = iv.slice(4).map(x => DEGREE_NAME[mod12(x)]);
+      return seventhName + `(${extra.join(',')})`;
+    }
+    // The "…7" family's *natural* 9th drops the bare 7 for the familiar
+    // maj9/9/m9/9sus2/9sus4 spelling; every other combination (an
+    // altered 9th, or any 9th on a °/ø/+ triad) gets the alteration
+    // spelled explicitly rather than forcing it into a name that isn't
+    // standard usage.
+    const NATURAL_9_SWAP = {maj7:'maj9', '7':'9', m7:'m9', '7sus2':'9sus2', '7sus4':'9sus4'};
+    if(ninthDeg==='9' && NATURAL_9_SWAP[seventhName]) return NATURAL_9_SWAP[seventhName];
+    return `${seventhName}(${ninthDeg})`;
+  }
+
+  // --- guitar chord charts (ported from circle-of-fifths-chord-wheel's
+  // guitarVoicing()/fretboardSVG() — see that project's CLAUDE.md for the
+  // full derivation rationale). Operates on pitch classes directly here
+  // rather than spelled note strings, since a chord tone's letter name
+  // doesn't affect which fret it lands on. ---
+  const STRING_PC = [4,9,2,7,11,4]; // low E, A, D, G, B, high e
+
+  // Colors are static (:root tokens, no runtime theme switch), so read
+  // once rather than calling getComputedStyle per note.
+  const CHORD_TONE_COLORS = (()=>{
+    const cs = getComputedStyle(document.documentElement);
+    const v = n => cs.getPropertyValue(n).trim();
+    return [
+      { fill:v('--chord-root'),    border:v('--chord-root-b') },
+      { fill:v('--chord-third'),   border:v('--chord-third-b') },
+      { fill:v('--chord-fifth'),   border:v('--chord-fifth-b') },
+      { fill:v('--chord-seventh'), border:v('--chord-seventh-b') }
+    ];
+  })();
+  function chordToneAccent(i){ return CHORD_TONE_COLORS[i] || null; }
+
+  function guitarVoicing(pcs){
+    const chordSet = new Set(pcs);
+    const rootPC = pcs[0];
+    const fretFor = s => mod12(rootPC - STRING_PC[s]);
+    const FE = fretFor(0), FA = fretFor(1);
+    const useEShape = FE <= FA;
+    const anchor = useEShape ? 0 : 1;
+    const barreFret = useEShape ? FE : FA;
+    const frets = new Array(6).fill(null);
+    if(pcs.length >= 5){
+      const juicePCs = [pcs[1], pcs[3], pcs[4]]; // third, seventh, ninth
+      const tiers = [juicePCs, [pcs[2]], [rootPC]]; // juice > fifth > root
+      const tierOf = new Array(6).fill(-1);
+      for(let s=0; s<6; s++){
+        stringLoop:
+        for(let t=0; t<tiers.length; t++){
+          for(let f=barreFret; f<=barreFret+3; f++){
+            if(tiers[t].includes(mod12(STRING_PC[s]+f))){ frets[s]=f; tierOf[s]=t; break stringLoop; }
+          }
+        }
+      }
+      const clusters = () => {
+        const list=[]; let i=0;
+        const frettedFrets = frets.filter(f=>f!==null && f!==0);
+        if(frettedFrets.length===0) return list;
+        const lowFret = Math.min(...frettedFrets);
+        while(i<6){
+          if(frets[i]===null || frets[i]===0){ i++; continue; }
+          if(frets[i]===lowFret){
+            let j=i; while(j+1<6 && frets[j+1]===lowFret) j++;
+            list.push(Array.from({length:j-i+1},(_,k)=>i+k)); i=j+1;
+          } else { list.push([i]); i++; }
+        }
+        return list;
+      };
+      const dropRank = [0,2,1]; // [juice, fifth, root] -> drop rank
+      let cs = clusters();
+      while(cs.length>4){
+        let worst=-1;
+        for(const group of cs){
+          if(group.length!==1) continue;
+          const s=group[0];
+          if(worst===-1 || dropRank[tierOf[s]]>dropRank[tierOf[worst]]) worst=s;
+        }
+        if(worst===-1) break;
+        frets[worst]=null; tierOf[worst]=-1;
+        cs = clusters();
+      }
+    } else {
+      frets[anchor] = barreFret;
+      for(let s=anchor+1; s<6; s++){
+        for(let f=barreFret; f<=barreFret+3; f++){
+          if(chordSet.has(mod12(STRING_PC[s]+f))){ frets[s]=f; break; }
+        }
+      }
+    }
+    return { frets, barreFret };
+  }
+
+  function fretboardSVG(pcs){
+    const { frets, barreFret } = guitarVoicing(pcs);
+    const stringXs = [8,18,28,38,48,58];
+    const fretTop = 16, fretSpacing = 14, cells = 4;
+    const ink = '#2b2118';
+    const rowZeroFret = barreFret===0 ? 1 : barreFret;
+
+    const stringLines = stringXs.map(sx =>
+      `<line x1="${sx}" y1="${fretTop}" x2="${sx}" y2="${fretTop+cells*fretSpacing}" stroke="${ink}" stroke-width="1"/>`
+    ).join('');
+    const fretLines = Array.from({length:cells+1}, (_,i)=>{
+      const y = fretTop + i*fretSpacing;
+      const w = (i===0 && barreFret===0) ? 3 : 1;
+      return `<line x1="${stringXs[0]}" y1="${y}" x2="${stringXs[5]}" y2="${y}" stroke="${ink}" stroke-width="${w}"/>`;
+    }).join('');
+
+    const frettedFrets = frets.filter(f=>f!==null && f!==0);
+    const lowFret = frettedFrets.length ? Math.min(...frettedFrets) : barreFret;
+    let barreSvg = '', runStart = -1;
+    for(let s=0; s<=6; s++){
+      const onBarre = s<6 && frets[s]===lowFret && lowFret>0;
+      if(onBarre && runStart===-1) runStart=s;
+      if(!onBarre && runStart!==-1){
+        if(s-runStart>=2){
+          const y = fretTop + (lowFret-rowZeroFret)*fretSpacing + fretSpacing/2;
+          barreSvg += `<line x1="${stringXs[runStart]}" y1="${y}" x2="${stringXs[s-1]}" y2="${y}" stroke="${ink}" stroke-width="8" stroke-linecap="round" opacity="0.85"/>`;
+        }
+        runStart=-1;
+      }
+    }
+
+    let markers = '';
+    frets.forEach((fret,s)=>{
+      const sx = stringXs[s];
+      if(fret===null){
+        markers += `<text x="${sx}" y="10" text-anchor="middle" font-size="9" fill="${ink}">✕</text>`;
+      } else if(fret===0){
+        const pc = STRING_PC[s];
+        const accent = chordToneAccent(pcs.indexOf(pc));
+        const stroke = accent ? accent.border : ink;
+        markers += `<circle cx="${sx}" cy="10" r="3" fill="none" stroke="${stroke}" stroke-width="1.4"/>`;
+      } else {
+        const offset = fret - rowZeroFret;
+        const cy = fretTop + offset*fretSpacing + fretSpacing/2;
+        const pc = mod12(STRING_PC[s]+fret);
+        const accent = chordToneAccent(pcs.indexOf(pc));
+        const fill = accent ? accent.fill : ink;
+        const stroke = accent ? accent.border : 'none';
+        markers += `<circle cx="${sx}" cy="${cy}" r="4.2" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>`;
+      }
+    });
+
+    const label = barreFret>0
+      ? `<text x="${stringXs[5]+8}" y="${fretTop+fretSpacing/2+3}" font-size="9" fill="${ink}">${barreFret}fr</text>`
+      : '';
+
+    return `<svg class="fretboard" viewBox="0 0 92 ${fretTop+cells*fretSpacing+6}" xmlns="http://www.w3.org/2000/svg">
+      ${fretLines}
+      ${stringLines}
+      ${barreSvg}
+      ${markers}
+      ${label}
+    </svg>`;
+  }
+
+  let chordExtension = 'triad'; // 'triad' | 'seventh' | 'ninth'
+  const CHORD_COUNT = { triad:3, seventh:4, ninth:5 };
+
+  function renderChordsSection(r){
+    const section = document.createElement('div'); section.className='chords-section';
+    const head = document.createElement('div'); head.className='chords-head';
+    head.innerHTML = `<h3>Diatonic guitar chords</h3>`;
+    const extToggle = document.createElement('div'); extToggle.className='chord-ext-toggle';
+    [['triad','Triads'],['seventh','7th chords'],['ninth','9th chords']].forEach(([val,label])=>{
+      const b = document.createElement('button');
+      b.type='button'; b.className='chord-ext-btn'+(chordExtension===val?' active':'');
+      b.textContent=label;
+      b.addEventListener('click', ()=>{ chordExtension=val; renderDetail(r); });
+      extToggle.appendChild(b);
+    });
+    head.appendChild(extToggle);
+    section.appendChild(head);
+
+    const sub = document.createElement('p'); sub.className='chords-sub';
+    sub.textContent = `Each of the 7 svaras' own chord, built by stacking every other scale tone (1-3-5, skipping a tone) off that degree — the same rule that builds a Western scale's diatonic triads, applied to ${r.name}'s own Ārōhaṇam.`;
+    section.appendChild(sub);
+
+    const legend = document.createElement('div'); legend.className='chord-tone-legend';
+    [['--chord-root','Root'],['--chord-third','3rd'],['--chord-fifth','5th'],['--chord-seventh','7th']].forEach(([v,label])=>{
+      legend.innerHTML += `<span><span class="dot" style="background:var(${v})"></span>${label}</span>`;
+    });
+    section.appendChild(legend);
+
+    const grid = document.createElement('div'); grid.className='chord-grid';
+    const scale7 = r.semitones.slice(0,7);
+    const spelled = spellScale(currentTonic, r.semitones);
+    const tonicPC = tonicSemitone(currentTonic);
+    const count = CHORD_COUNT[chordExtension];
+
+    for(let deg=0; deg<7; deg++){
+      const rootSpelled = spelled[deg];
+      const rootName = rootSpelled.letter + accidentalGlyph(rootSpelled.acc);
+      const quality = chordQualityName(scale7, deg, count);
+      const semis = chordDegreeSemitones(scale7, deg, count);
+      const pcs = semis.map(s => mod12(tonicPC + s));
+
+      const card = document.createElement('div'); card.className='chord-card';
+      const name = document.createElement('div'); name.className='chord-name';
+      name.textContent = rootName + quality;
+      card.appendChild(name);
+      card.insertAdjacentHTML('beforeend', fretboardSVG(pcs));
+      const degCaption = document.createElement('div'); degCaption.className='chord-deg mono';
+      degCaption.innerHTML = noteHtml([r.labels[deg]]);
+      card.appendChild(degCaption);
+      grid.appendChild(card);
+    }
+    section.appendChild(grid);
+    detail.appendChild(section);
+  }
+
+  /* ---------------------------------------------------------------------
+   * ROOT PICKER — a small circle-of-fifths (outer ring only, no relative
+   * minors) in a modal, matching circle-of-fifths-chord-wheel's wedge
+   * order/orientation (C at top, clockwise).
+   * ------------------------------------------------------------------- */
+
+  function fifthsPolar(r, deg){
+    const a = (deg-90)*Math.PI/180;
+    return {x: 150 + r*Math.cos(a), y: 150 + r*Math.sin(a)};
+  }
+  function fifthsWedgePath(r0,r1,a0,a1){
+    const large = (a1-a0)>180?1:0;
+    const po0=fifthsPolar(r1,a0), po1=fifthsPolar(r1,a1), pi1=fifthsPolar(r0,a1), pi0=fifthsPolar(r0,a0);
+    return `M ${po0.x.toFixed(2)} ${po0.y.toFixed(2)} A ${r1} ${r1} 0 ${large} 1 ${po1.x.toFixed(2)} ${po1.y.toFixed(2)} `+
+           `L ${pi1.x.toFixed(2)} ${pi1.y.toFixed(2)} A ${r0} ${r0} 0 ${large} 0 ${pi0.x.toFixed(2)} ${pi0.y.toFixed(2)} Z`;
+  }
+
+  const rootLabel = document.getElementById('rootLabel');
+  let modalEl = null;
+
+  function buildRootModal(){
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay hidden';
+    overlay.id = 'rootModal';
+
+    const card = document.createElement('div');
+    card.className = 'modal-card';
+    card.innerHTML = `<h3>Choose the root (Sa)</h3><p class="modal-sub">Every rāga's swara pattern stays the same — only the actual pitches and notation shift.</p>`;
+
+    const wheelSvg = document.createElementNS(svgns,'svg');
+    wheelSvg.id='fifthsWheel';
+    wheelSvg.setAttribute('viewBox','0 0 300 300');
+
+    TONIC_OPTIONS.forEach((t,i)=>{
+      const a0=i*30-15, a1=i*30+15;
+      const path = el('path', {
+        d:fifthsWedgePath(58,132,a0,a1),
+        class:'fifths-wedge',
+        fill: i%2===0 ? '#e6dabd' : '#efe6cf',
+        stroke:'var(--panel)','stroke-width':1,
+        'data-idx':i
+      });
+      path.addEventListener('click', ()=>chooseTonic(i));
+      wheelSvg.appendChild(path);
+      const lp = fifthsPolar(95, i*30);
+      const label = el('text', {x:lp.x.toFixed(2), y:(lp.y+5).toFixed(2), 'text-anchor':'middle', class:'fifths-label'});
+      label.textContent = t.name;
+      label.style.pointerEvents='none';
+      wheelSvg.appendChild(label);
+    });
+    wheelSvg.appendChild(el('circle',{cx:150,cy:150,r:56,fill:'var(--panel)',stroke:'var(--border-soft)','stroke-width':1.5}));
+
+    card.appendChild(wheelSvg);
+    const closeBtn = document.createElement('button');
+    closeBtn.className='modal-close'; closeBtn.type='button'; closeBtn.textContent='Cancel';
+    closeBtn.addEventListener('click', closeRootModal);
+    card.appendChild(closeBtn);
+
+    overlay.appendChild(card);
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeRootModal(); });
+    document.body.appendChild(overlay);
+    modalEl = overlay;
+  }
+
+  function openRootModal(){
+    if(!modalEl) buildRootModal();
+    modalEl.querySelectorAll('.fifths-wedge').forEach(w=>{
+      w.classList.toggle('current', TONIC_OPTIONS[+w.dataset.idx]===currentTonic);
+    });
+    modalEl.classList.remove('hidden');
+  }
+  function closeRootModal(){ if(modalEl) modalEl.classList.add('hidden'); }
+
+  function chooseTonic(i){
+    currentTonic = TONIC_OPTIONS[i];
+    rootLabel.textContent = 'Sa = '+currentTonic.name;
+    closeRootModal();
+    stopAll();
+    if(selectedNum!=null) renderDetail(RAGAS.find(r=>r.number===selectedNum));
+  }
+
+  document.getElementById('rootBtn').addEventListener('click', openRootModal);
+
+  let timeoutIds = [];
+  function stopAll(){ timeoutIds.forEach(id=>clearTimeout(id)); timeoutIds=[]; setKeyHighlights([]); }
+
+  function playSequence(semitones, keys){
+    stopAll();
+    const ctx = getCtx();
+    const base = 261.63 * Math.pow(2, tonicSemitone(currentTonic)/12); // 261.63 = C4
+    const noteMs = 340, gapMs = 60;
+    const now = ctx.currentTime;
+    semitones.forEach((st,idx)=>{
+      const freq = base * Math.pow(2, st/12);
+      const t = now + idx*(noteMs+gapMs)/1000;
+      timeoutIds.push(setTimeout(()=>playPianoNote(freq, getCtx().currentTime, noteMs/1000*1.6, getCtx(), 1), idx*(noteMs+gapMs)));
+      timeoutIds.push(setTimeout(()=>setKeyHighlights([keys[idx]]), idx*(noteMs+gapMs)));
+    });
+    timeoutIds.push(setTimeout(()=>setKeyHighlights([]), semitones.length*(noteMs+gapMs)+200));
+    checkAudioUnlocked();
+  }
+
+  /* ---------------------------------------------------------------------
+   * DETAIL PANEL
+   * ------------------------------------------------------------------- */
+
+  const detail = document.getElementById('detail');
+  let currentKeyMap = null;
+  let dirState = 'aroh'; // 'aroh' or 'avar' — which direction the toggle currently shows
+
+  function noteHtml(labels){
+    return labels.map(l=>{
+      const m = l.match(/^([A-ZṠ]+)(\d)?$/);
+      if(!m) return l;
+      return m[2] ? `${m[1]}<sub>${m[2]}</sub>` : m[1];
+    }).join(' ');
+  }
+
+  // Two full octaves (Sa..Ṡ..Ṡ, semitones 0-24) so the top Sa of the scale
+  // (semitone 12) gets its own key distinct from the tonic, and the pattern
+  // has room to breathe once rāgas start transposing to other roots — a
+  // single octave was clipping the upper Ṡ down onto the same key as S
+  // (both showing as semitone 0 mod 12).
+  function buildKeyboard(){
+    const wrap = document.createElement('div'); wrap.className='keys';
+    const whiteSemisOneOct = [0,2,4,5,7,9,11];
+    const blackSemisOneOct = [1,3,6,8,10];
+    const whiteSemis = whiteSemisOneOct.concat(whiteSemisOneOct.map(s=>s+12)).concat([24]);
+    const blackSemis = blackSemisOneOct.concat(blackSemisOneOct.map(s=>s+12));
+    whiteSemis.forEach(s=>{
+      const k=document.createElement('div'); k.className='wkey'; k.dataset.semi=s; wrap.appendChild(k);
+    });
+    const whiteWidthPct = 100/whiteSemis.length;
+    blackSemis.forEach(s=>{
+      const beforeCount = whiteSemis.filter(w=>w<s).length;
+      const k=document.createElement('div'); k.className='bkey'; k.dataset.semi=s;
+      k.style.left = (beforeCount*whiteWidthPct - whiteWidthPct*0.28) + '%';
+      wrap.appendChild(k);
+    });
+    return wrap;
+  }
+
+  // Only the first octave (0-12, the actual scale) ever highlights — the
+  // second octave is purely visual context, so matching is exact, not
+  // wrapped mod 12 (that would double-highlight the same pitch class an
+  // octave up, which isn't what's playing).
+  function setKeyHighlights(semis){
+    if(!currentKeyMap) return;
+    currentKeyMap.forEach(el=>el.classList.remove('hit'));
+    currentKeyMap.forEach(el=>{
+      if(semis.includes(parseInt(el.dataset.semi,10))) el.classList.add('hit');
+    });
+  }
+
+  function renderDetail(r){
+    detail.classList.remove('empty');
+    detail.innerHTML = '';
+
+    const head = document.createElement('div'); head.className='detail-head';
+    const h2 = document.createElement('h2'); h2.className='raga-name'; h2.textContent = r.name;
+    const tags = document.createElement('div'); tags.className='detail-tags';
+    tags.innerHTML = `<span class="tag tag-tonic mono">Sa = ${currentTonic.name}</span>`+
+                      `<span class="tag mono">Mēḷakarta #${r.number}</span>`+
+                      `<span class="tag">${r.chakraName} Chakra</span>`+
+                      `<span class="tag">${r.M===1?'Śuddha':'Prati'} Madhyama</span>`;
+    head.appendChild(h2); head.appendChild(tags);
+    detail.appendChild(head);
+
+    if(r.alt && !/no alternate/i.test(r.alt)){
+      const p=document.createElement('div'); p.style.cssText='font-size:12.5px;color:var(--muted);margin:-8px 0 14px;';
+      p.textContent = 'Also known as: '+r.alt;
+      detail.appendChild(p);
+    }
+
+    const formula = document.createElement('div'); formula.className='formula mono';
+    formula.innerHTML = noteHtml(r.labels);
+    detail.appendChild(formula);
+
+    // Spelled once here (ascending) and shared by both directions, so
+    // Ārōhaṇam and Avarōhaṇam always notate the same absolute pitches —
+    // the descending stave just reverses the array, it never re-derives
+    // letter names from reversed semitones (that would reassign letters
+    // to the wrong scale degrees).
+    const spelled = spellScale(currentTonic, r.semitones);
+    const octaveBase = bestOctaveFor(spelled);
+    const spelledDesc = spelled.slice().reverse();
+    const avLabels = r.labels.slice().reverse();
+    const avSemis = r.semitones.slice().reverse();
+    const bothSemis = r.semitones.concat(avSemis.slice(1));
+
+    const toggle = document.createElement('div'); toggle.className='dir-toggle';
+    const arohToggleBtn = document.createElement('button');
+    arohToggleBtn.type='button'; arohToggleBtn.className='dir-btn'; arohToggleBtn.textContent='Ārōhaṇam ↑';
+    const avarToggleBtn = document.createElement('button');
+    avarToggleBtn.type='button'; avarToggleBtn.className='dir-btn avar-btn'; avarToggleBtn.textContent='Avarōhaṇam ↓';
+    toggle.appendChild(arohToggleBtn); toggle.appendChild(avarToggleBtn);
+    detail.appendChild(toggle);
+
+    const scaleRow = document.createElement('div'); scaleRow.className='scale-row';
+    detail.appendChild(scaleRow);
+    const staffWrap = document.createElement('div'); staffWrap.className='notation';
+    detail.appendChild(staffWrap);
+
+    const bothLink = document.createElement('button');
+    bothLink.type='button'; bothLink.className='play-both-link';
+    bothLink.textContent='▶ Play Ārōhaṇam then Avarōhaṇam, back to back';
+    bothLink.addEventListener('click', ()=>playSequence(bothSemis, bothSemis));
+    detail.appendChild(bothLink);
+
+    function showDirection(){
+      const isAroh = dirState==='aroh';
+      arohToggleBtn.classList.toggle('active', isAroh);
+      avarToggleBtn.classList.toggle('active', !isAroh);
+      const labels = isAroh ? r.labels : avLabels;
+      const semis = isAroh ? r.semitones : avSemis;
+      const staffSeq = isAroh ? spelled : spelledDesc;
+      // No repeated "Ārōhaṇam ↑"/"Avarōhaṇam ↓" text here — the toggle
+      // buttons above already say which direction is showing.
+      scaleRow.innerHTML = `<div class="scale-notes mono">${noteHtml(labels)}</div>`;
+      const btn = document.createElement('button');
+      btn.className = 'play-btn'+(isAroh?'':' avar'); btn.textContent='▶ Play';
+      btn.addEventListener('click', ()=>playSequence(semis, semis));
+      scaleRow.appendChild(btn);
+      staffWrap.innerHTML = renderStaff(staffSeq, octaveBase);
+    }
+    arohToggleBtn.addEventListener('click', ()=>{ dirState='aroh'; showDirection(); });
+    avarToggleBtn.addEventListener('click', ()=>{ dirState='avar'; showDirection(); });
+    showDirection();
+
+    const kb = buildKeyboard();
+    detail.appendChild(kb);
+    currentKeyMap = Array.from(kb.querySelectorAll('.wkey,.bkey'));
+
+    renderChordsSection(r);
+  }
+
+  /* ---------------------------------------------------------------------
+   * SEARCH
+   * ------------------------------------------------------------------- */
+  const search = document.getElementById('search');
+  const datalist = document.createElement('datalist');
+  datalist.id='ragaList';
+  RAGAS.forEach(r=>{
+    const o=document.createElement('option'); o.value=r.name; datalist.appendChild(o);
+  });
+  document.body.appendChild(datalist);
+  search.setAttribute('list','ragaList');
+
+  // Diacritic-insensitive matching — most visitors won't type IAST macrons
+  // (ā, ī, ṅ, ṇ, ś…), so folding both the query and the rāga names down to
+  // plain ASCII for comparison matters more here than exact-string matching.
+  function fold(s){
+    return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  }
+  const FOLDED = RAGAS.map(r=>({r, f:fold(r.name)}));
+
+  function trySearch(){
+    const q = fold(search.value.trim());
+    if(!q) return;
+    const hit = FOLDED.find(x=>x.f===q) || FOLDED.find(x=>x.f.startsWith(q)) || FOLDED.find(x=>x.f.includes(q));
+    // Reset zoom to full first — a searched-for rāga could live in a
+    // chakra the camera isn't currently showing, and this guarantees
+    // it's visible; focusRaga then spotlights just its path.
+    if(hit){ zoomToFull(); selectRaga(hit.r.number); focusRaga(hit.r.number); search.value=''; closeSearch(); }
+  }
+  search.addEventListener('keydown', e=>{
+    if(e.key==='Enter') trySearch();
+    if(e.key==='Escape') closeSearch();
+  });
+  search.addEventListener('change', trySearch);
+
+  // Search lives behind a small magnifying-glass icon (top-right), not
+  // inline on the landing page — the icon toggles a popover holding the
+  // same input/datalist/trySearch logic above.
+  const searchIconBtn = document.getElementById('searchIconBtn');
+  const searchPopover = document.getElementById('searchPopover');
+  function openSearch(){
+    searchPopover.classList.remove('hidden');
+    searchIconBtn.classList.add('active');
+    search.focus();
+  }
+  function closeSearch(){
+    searchPopover.classList.add('hidden');
+    searchIconBtn.classList.remove('active');
+    search.blur();
+  }
+  searchIconBtn.addEventListener('click', ()=>{
+    searchPopover.classList.contains('hidden') ? openSearch() : closeSearch();
+  });
+  document.addEventListener('click', (e)=>{
+    if(!searchPopover.classList.contains('hidden') &&
+       !searchPopover.contains(e.target) && e.target!==searchIconBtn && !searchIconBtn.contains(e.target)){
+      closeSearch();
+    }
+  });
+
+  // Default: select rāga #29, Dhīraśankarābharaṇam — the Carnatic
+  // equivalent of the major scale, a familiar starting point.
+  selectRaga(29);
+
+})();
+</script>
+</body>
+</html>
