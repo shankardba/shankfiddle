@@ -795,6 +795,16 @@
     // half labels + outer bezel
     svg.appendChild(el('circle', {cx:CX, cy:CY, r:OUTER_R+3, fill:'none', stroke:'var(--brass)', 'stroke-width':2}));
     svg.appendChild(el('circle', {cx:CX, cy:CY, r:WEDGE_INNER-3, fill:'none', stroke:'var(--border-soft)', 'stroke-width':1}));
+    // Hemisphere divider — splits the inner disc into Prati/Śuddha halves
+    // to match the outer wedges' color split, but stops at the Sa circle
+    // on both ends instead of running through it, so Sa stays a single
+    // uninterrupted circle rather than getting bisected by the line.
+    [-1,1].forEach(dir=>{
+      svg.appendChild(el('line', {
+        x1:CX, y1:CY+dir*SA_CIRCLE_R, x2:CX, y2:CY+dir*(WEDGE_INNER-3),
+        stroke:'var(--border-soft)', 'stroke-width':1
+      }));
+    });
     const hLabelR = WEDGE_INNER-24;
     [{a:0,txt:'Śuddha Madhyama'},{a:180,txt:'Prati Madhyama'}].forEach(h=>{
       const p = polar(hLabelR, h.a);
