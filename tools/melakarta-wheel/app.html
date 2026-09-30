@@ -371,37 +371,40 @@
   // level-3 fan lines fan out toward the rim, so keeping labels inside
   // the hub is the less cluttered choice.
   //
-  // Two competing collisions had to be solved *together*, not one after
-  // the other — fixing either alone reintroduces the other:
-  //  1. A chakra sitting close to its half-hub's own angle (e.g. only
-  //     15° away) has a level-2 link that stays close to a straight
-  //     line for its whole length, hugging that chakra's own spoke —
-  //     exactly where a label centered on the chakra's mid-angle would
-  //     sit. Fixed by nudging the label angularly off that spoke, away
-  //     from the half-hub's own angle (where every level-2 link bows in
-  //     *from*).
-  //  2. That same "nudge away from your own half-hub" rule, applied to
-  //     the two chakras that sit at the *far* edge of each half (75°
-  //     from their own hub — e.g. chakra 1 and chakra 12, adjacent
-  //     across the top boundary between the two halves), pushes them
-  //     toward *each other* instead of apart, since "away from my own
-  //     hub" for both of them points at the shared boundary between
-  //     the halves.
-  // Solved by sweeping a (radius x per-group nudge) grid numerically,
-  // scoring each candidate on the *worse* of two real, bbox-measured
-  // minimums: every label's clearance from all 12 level-2 links, and
-  // every angularly-adjacent label PAIR's clearance from each other
-  // (using each label's own actual rendered width, not an assumed
-  // uniform one — an earlier pass that approximated width uniformly
-  // missed a near-collision between chakra 1 and chakra 12's labels
-  // that only showed up once measured for real). CHAKRA_LABEL_NUDGE_CLOSE
-  // is smaller than CHAKRA_LABEL_NUDGE despite the close chakras'
-  // line-hugging problem being the more severe one in isolation — at
-  // CHAKRA_LABEL_R=220 their link's bow is already tight enough to
-  // clear with a modest push, while the far-edge chakras need the
-  // larger push to keep the two halves' boundary-adjacent label pairs
-  // apart.
-  const CHAKRA_LABEL_R=220, CHAKRA_LABEL_NUDGE_CLOSE=10, CHAKRA_LABEL_NUDGE=21;
+  // A chakra's level-2 link, sampled at this same radius, sits almost
+  // exactly AT that chakra's own mid-angle (confirmed by sampling the
+  // rendered path: at r≈220 every link is within ~0.5° of its target
+  // chakra's mid-angle — by r=220 the fan-curve has already finished
+  // bundling near the hub and is fanning out toward its target). So a
+  // label centered on its own mid-angle always sits right on its own
+  // link; every chakra needs an angular push off that spoke, not just
+  // the ones close to their half-hub's own angle.
+  //
+  // The push direction matters and differs by tier — this is the part
+  // that's easy to get backwards:
+  //  - Close tier (mid only 15° from the half-hub's own angle, e.g.
+  //    chakra 3/4/9/10): push AWAY from the hub. Plenty of room (75°)
+  //    before the half boundary, so this can't overshoot, and it moves
+  //    the label toward the roomier, lower-traffic side.
+  //  - Far tier (mid 45° or 75° from hub, e.g. chakra 1/2/5/6/7/8/11/12):
+  //    push TOWARD the hub instead. Pushing away from hub (as an earlier
+  //    version of this code did, uniformly for the whole far tier) drives
+  //    the two chakras nearest each half boundary (e.g. chakra 1 and 12,
+  //    adjacent across the top) past it entirely — the label text is
+  //    still correct but ends up rendered over the *other* half's wedge.
+  //    Pushing toward the hub instead can never cross the boundary (it
+  //    moves toward 0° offset, not away from it), and empirically clears
+  //    its own link and every neighboring label just as well — verified
+  //    by sweeping the push magnitude and scoring, per candidate, the
+  //    worst-case of (a) every label's bbox clearance from all 12 level-2
+  //    links and (b) every angularly-adjacent label pair's bbox clearance
+  //    from each other, both using each label's real rendered width, not
+  //    an assumed uniform one. A prior version of this fix scored those
+  //    same two things but never checked "does the label stay inside its
+  //    own half" — passing both scores while still being visibly wrong
+  //    is exactly how that got through; check that first now, then verify
+  //    clearance same as before.
+  const CHAKRA_LABEL_R=220, CHAKRA_LABEL_NUDGE_CLOSE=10, CHAKRA_LABEL_NUDGE_FAR=10;
   const START_ANGLE=-90, DEG_PER_RAGA=5, DEG_PER_CHAKRA=30;
   // Śuddha Madhyama (chakras 1-6) spans -90°..+90°, so its angular center
   // is 0°; Prati Madhyama (7-12) spans +90°..+270°, centered on 180°.
@@ -770,8 +773,13 @@
       const mid = chakraMidAngle(c);
       const hubAngle = HALF_ANGLE[halfOfChakra(c)];
       const diff = ((mid - hubAngle + 540) % 360) - 180; // signed shortest diff, mid relative to its own half-hub's angle
-      const nudge = Math.abs(diff) <= DEG_PER_CHAKRA/2 ? CHAKRA_LABEL_NUDGE_CLOSE : CHAKRA_LABEL_NUDGE;
-      const labelAngle = mid + Math.sign(diff||1)*nudge;
+      // Close tier pushes away from the hub (safe — 75° of room before the
+      // half boundary); far tier pushes toward the hub instead (safe for
+      // the opposite reason — can't cross the boundary, and clears its own
+      // link just as well since the link sits at mid, not at the hub).
+      const labelAngle = Math.abs(diff) <= DEG_PER_CHAKRA/2
+        ? mid + Math.sign(diff||1)*CHAKRA_LABEL_NUDGE_CLOSE
+        : mid - Math.sign(diff||1)*CHAKRA_LABEL_NUDGE_FAR;
       const lp = polar(CHAKRA_LABEL_R, labelAngle);
       const t = el('text', {
         x:lp.x.toFixed(2), y:lp.y.toFixed(2),
