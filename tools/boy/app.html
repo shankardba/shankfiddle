@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Boy — a tiny diorama adventure</title>
-<meta name="description" content="Boy — a miniature 3D top-down adventure in the browser, in the tilt-shift diorama style of Zelda: Link's Awakening.">
+<title>BOY — a tiny diorama adventure</title>
+<meta name="description" content="BOY — a miniature 3D top-down adventure in the browser, in the tilt-shift diorama style of Zelda: Link's Awakening.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -327,44 +327,34 @@
   }
   #begin-btn:hover { transform: translateY(-2px); }
 
-  /* ---- touch controls ---- */
-  .touch-controls { display: none; }
-  @media (hover: none) and (pointer: coarse) {
-    .touch-controls { display: block; }
+  /* ---- end card: title, then a short credits roll ---- */
+  #end-card {
+    position: absolute; inset: 0; z-index: 60;
+    background: #05070a; color: #f7ece9;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; text-align: center;
+    opacity: 0; pointer-events: none; transition: opacity 2.4s ease;
   }
-  #dpad {
-    position: absolute; z-index: 20; left: 18px; bottom: 22px;
-    width: 148px; height: 148px;
-  }
-  #dpad button {
-    position: absolute;
-    width: 50px; height: 50px;
-    background: rgba(20,12,16,0.55);
-    border: 1px solid rgba(240,168,60,0.4);
-    border-radius: 12px;
-    color: #ffd27a;
-    font-size: 1.2rem;
-    backdrop-filter: blur(4px);
-  }
-  #dpad button:active { background: rgba(255,46,166,0.35); }
-  #dpad .up { top: 0; left: 49px; }
-  #dpad .down { bottom: 0; left: 49px; }
-  #dpad .left { left: 0; top: 49px; }
-  #dpad .right { right: 0; top: 49px; }
+  #end-card.open { opacity: 1; pointer-events: auto; }
+  #end-title { transition: opacity 1.2s ease 6s; }
+  #end-card.open #end-title { opacity: 0; }
+  #end-title h1 { font-family: 'Cinzel', serif; font-size: clamp(2.6rem, 9vw, 4.4rem); letter-spacing: 0.3em; color: #ffd27a; margin-bottom: 10px; }
+  #end-title p { font-size: 0.95rem; color: #c7abb8; letter-spacing: 0.08em; }
+  #end-credits { position: absolute; left: 0; right: 0; top: 100%; }
+  #end-card.open #end-credits { animation: credits-roll 26s linear 7s forwards; }
+  @keyframes credits-roll { from { transform: translateY(0); } to { transform: translateY(calc(-100% - 50vh)); } }
+  #end-credits h2 { font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.2em; color: #ffd27a; margin: 34px 0 14px; text-transform: uppercase; }
+  #end-credits h2.brand { text-transform: none; letter-spacing: 0.08em; font-size: 1rem; }
+  #end-credits ul { list-style: none; }
+  #end-credits li { font-size: 1rem; line-height: 2; color: #f7ece9; }
+  #end-credits .thanks { margin-top: 40px; font-family: 'Cinzel', serif; font-size: 1.2rem; color: #ffd27a; }
 
-  #action-btn {
-    position: absolute; z-index: 20; right: 26px; bottom: 34px;
-    width: 74px; height: 74px;
-    border-radius: 50%;
-    background: rgba(255,46,166,0.28);
-    border: 1px solid rgba(255,46,166,0.6);
-    color: #f7ece9;
-    font-weight: 700;
-    font-size: 0.75rem;
-    letter-spacing: 0.5px;
-    backdrop-filter: blur(4px);
-  }
-  #action-btn:active { background: rgba(255,46,166,0.5); }
+  /* ---- touch vs keyboard copy ---- */
+  /* Touch devices tap-to-move (see handleTap()) instead of an on-screen
+     d-pad, so control hints swap wording rather than showing buttons. */
+  @media not all and (hover: none) and (pointer: coarse) { .touch-only { display: none !important; } }
+  @media (hover: none) and (pointer: coarse) { .kb-only { display: none !important; } }
+  canvas { touch-action: none; }
 
   #shankfiddle-credit {
     position: absolute; z-index: 10; left: 16px; bottom: 12px;
@@ -392,13 +382,13 @@
     <div id="dialogue-speaker"></div>
     <div id="dialogue-text"></div>
     <div id="dialogue-link"></div>
-    <div class="prompt">&#9660; space to close</div>
+    <div class="prompt">&#9660; <span class="kb-only">space</span><span class="touch-only">tap</span> to close</div>
   </div>
   <div id="toast" class="hud"></div>
   <div id="car-menu" class="hud">
     <div class="car-menu-title" id="car-menu-title">Drive to&hellip;</div>
     <div id="car-menu-list"></div>
-    <div class="prompt">&#9660; space to close</div>
+    <div class="prompt">&#9660; <span class="kb-only">space</span><span class="touch-only">tap outside</span> to close</div>
   </div>
   <div id="choice-overlay" class="hud">
     <div id="choice-speaker"></div>
@@ -412,22 +402,29 @@
     </div>
     <iframe id="tool-frame" allow="autoplay"></iframe>
   </div>
-  <div id="shankfiddle-credit">Boy — a shankFiddle production</div>
+  <div id="shankfiddle-credit">BOY — a shankFiddle production</div>
 
-  <div class="touch-controls" id="dpad">
-    <button class="up" data-dir="up">&#9650;</button>
-    <button class="down" data-dir="down">&#9660;</button>
-    <button class="left" data-dir="left">&#9664;</button>
-    <button class="right" data-dir="right">&#9654;</button>
+  <div id="end-card">
+    <div id="end-title">
+      <h1>BOY</h1>
+      <p>a shankFiddle production</p>
+    </div>
+    <div id="end-credits">
+      <h2>Cast</h2>
+      <ul id="end-cast"></ul>
+      <h2 class="brand">a shankFiddle production</h2>
+      <p class="thanks">Thank you for playing</p>
+    </div>
   </div>
-  <button class="touch-controls" id="action-btn">ACT</button>
 
   <div id="start-overlay">
     <h1>BOY</h1>
     <p class="tag">a tiny diorama adventure</p>
     <div class="controls">
-      <div><b>Move</b>WASD / Arrow Keys</div>
-      <div><b>Talk &amp; Interact</b>Space</div>
+      <div class="kb-only"><b>Move</b>WASD / Arrow Keys</div>
+      <div class="kb-only"><b>Talk &amp; Interact</b>Space</div>
+      <div class="touch-only"><b>Move</b>Tap any square</div>
+      <div class="touch-only"><b>Talk &amp; Interact</b>Tap a character</div>
       <div><b>Goal</b>Talk to everyone you meet</div>
     </div>
     <button id="begin-btn">Begin Adventure</button>
@@ -659,6 +656,17 @@
   //                                     // community noticing and respecting
   //                                     // you for it, not just a line of
   //                                     // dialogue — see talkToNpc().
+  //             musings: [              // optional — one-time "big
+  //               { key: 'sim',         // question" lines a friend springs
+  //                 chapter: 'diagnosis', // on Boy at different points in
+  //                 requires: '...',    // the story, separate from whatever
+  //                 line: '...' }       // else they do. Each plays once,
+  //             ]                       // the first talk in its `chapter`
+  //                                     // (after `requires`, a learned key,
+  //                                     // if set), then normal talk resumes
+  //                                     // on the next visit. No respect —
+  //                                     // they're there to make Boy think.
+  //                                     // See pendingMusing().
   //           } }
   //         dialogue is looked up for the CURRENT story chapter, falling
   //         back to the closest earlier chapter that has a line — so a
@@ -766,7 +774,7 @@
         "###########",
         "#.........#",
         "#..oV.....#",
-        "#.......D.#",
+        "#.......DT#",
         "#.........#",
         "#....@...M#",
         "#o........#",
@@ -810,25 +818,25 @@
             earning_respect: [
               {
                 requires: 'practiced',
-                reminder: "Go pick up that violin and put in the work yourself, Boy — then we'll talk.",
-                line: "Boy. You practiced again without me telling you to. That's something, I suppose."
+                reminder: "Go pick up that violin and put in the work yourself, BOY — then we'll talk.",
+                line: "BOY. You practiced again without me telling you to. That's something, I suppose."
               },
               {
                 requires: 'worked_farmer_jono',
-                reminder: "Jono hasn't said a word about you to me. Have you even been out to his fields, Boy?",
-                line: "Farmer Jono says you're reliable, Boy. That's not nothing, coming from him."
+                reminder: "Jono hasn't said a word about you to me. Have you even been out to his fields, BOY?",
+                line: "Farmer Jono says you're reliable, BOY. That's not nothing, coming from him."
               },
               {
                 requires: 'kindness_hungry_kid',
-                reminder: "Kindness isn't a feeling, Boy. It's a thing you do for somebody, or it's nothing at all.",
-                line: "Someone told me you gave that hungry boy in the clearing something to eat, without anyone asking. That's not nothing, Boy."
+                reminder: "Kindness isn't a feeling, BOY. It's a thing you do for somebody, or it's nothing at all.",
+                line: "Someone told me you gave that hungry boy in the clearing something to eat, without anyone asking. That's not nothing, BOY."
               },
-              "...I don't say this enough, Boy. I'm proud of the effort you're putting in."
+              "...I don't say this enough, BOY. I'm proud of the effort you're putting in."
             ],
             // The earning_respect -> diagnosis reveal, delivered right here
             // at home before he leaves for the Hospital — see the trigger
             // in talkToNpc().
-            diagnosis: "...I'm not as strong as I used to be, Boy. But I'm glad you're here.",
+            diagnosis: "...I'm not as strong as I used to be, BOY. But I'm glad you're here.",
             // FLAGGED DEBT, not yet fixed: "You read to me yesterday"
             // claims a task (reading aloud) with no matching mechanic,
             // same problem the earning_respect beats above were fixed
@@ -837,16 +845,16 @@
             // exists; leaving it alone for now rather than inventing a
             // new mechanic unasked.
             hospice: [
-              "It's good to be home, Boy. Don't fuss over me too much — just sit with me a while.",
-              "You read to me yesterday. I don't remember the story, but I remember your voice, Boy.",
-              "I'm tired today, Boy. But you're here. That's enough."
+              "It's good to be home, BOY. Don't fuss over me too much — just sit with me a while.",
+              "You read to me yesterday. I don't remember the story, but I remember your voice, BOY.",
+              "I'm tired today, BOY. But you're here. That's enough."
             ],
             // His last line, delivered once as the hospice -> grief trigger
             // fires — see talkToNpc(). He's presentDuring hospice only, so
             // by the next visit here he's simply gone. The tone arc's whole
             // payoff: the word that opened as a put-down in earning_respect
             // now opens his goodbye as an endearment.
-            grief: "Come here, Boy. ...You've become someone I'm proud of. Take care of your mother for me."
+            grief: "Come here, BOY. ...You've become someone I'm proud of. Take care of your mother for me."
           },
           careMessages: {
             earning_respect: 'Dad noticed the effort. 🏡 +1 family respect',
@@ -879,15 +887,15 @@
               {
                 requires: 'fractal_navigate',
                 reminder: "You've been home an awful lot for a boy your age. Isn't there somewhere in this village worth losing yourself in?",
-                line: "I heard you've been down at the schoolhouse, lost in Mr. Lester's fractals, Boy. Good — a mind like that shouldn't sit still."
+                line: "I heard you've been down at the schoolhouse, lost in Mr. Lester's fractals, BOY. Good — a mind like that shouldn't sit still."
               },
               {
                 requires: 'worked_elsie',
-                reminder: "Elsie hasn't mentioned you once. Have you even introduced yourself at the shop, Boy?",
-                line: "I heard you've been helping Elsie at the shop, Boy. That matters more than you know."
+                reminder: "Elsie hasn't mentioned you once. Have you even introduced yourself at the shop, BOY?",
+                line: "I heard you've been helping Elsie at the shop, BOY. That matters more than you know."
               },
               "You checked in on me today just because. That's rare in a boy your age.",
-              "I know your father is hard on you, Boy. I see how hard you're trying anyway.",
+              "I know your father is hard on you, BOY. I see how hard you're trying anyway.",
               // The one moment tied directly to growthScaleForChapter() —
               // see its doc comment and the Character Gallery/Progression
               // Map's 📏 notes. Gated on story.learned.visitedCollege
@@ -896,24 +904,24 @@
               // not from talking alone.
               {
                 requires: 'visitedCollege',
-                reminder: "You'll grow into it soon enough, Boy — there's a whole college waiting whenever you're ready to walk through those doors.",
-                line: "Look at you, Boy — all the way to college now. You've grown so much I can hardly believe it. Whatever comes next, I'm proud of who you're becoming."
+                reminder: "You'll grow into it soon enough, BOY — there's a whole college waiting whenever you're ready to walk through those doors.",
+                line: "Look at you, BOY — all the way to college now. You've grown so much I can hardly believe it. Whatever comes next, I'm proud of who you're becoming."
               }
             ],
-            diagnosis: "I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know, Boy.",
+            diagnosis: "I keep driving back and forth to see him. Some days I don't know how much I have left in me. But you being here helps more than you know, BOY.",
             hospice: [
-              "Having him home is better, even like this, Boy. Thank you for helping me take care of him.",
-              "You've learned how to give him his medicine without being asked. I don't know how you grew up so fast, Boy.",
-              "Some nights I don't think I could do this without you here, Boy."
+              "Having him home is better, even like this, BOY. Thank you for helping me take care of him.",
+              "You've learned how to give him his medicine without being asked. I don't know how you grew up so fast, BOY.",
+              "Some nights I don't think I could do this without you here, BOY."
             ],
             grief: [
-              "Some days the house feels too quiet, Boy. But you're still here. That's not nothing.",
-              "You've been getting up early, taking care of things before I even ask. I see it, Boy."
+              "Some days the house feels too quiet, BOY. But you're still here. That's not nothing.",
+              "You've been getting up early, taking care of things before I even ask. I see it, BOY."
             ],
             // The grief -> duty trigger's reveal — see talkToNpc(). The
             // arc's payoff, same as Dad's grief line: "Boy" opens her
             // biggest line now, not a put-down anymore.
-            duty: "Come here, Boy. It's just the two of us now. We're building something new out of what we lost — I'm proud of who you've become in the middle of it."
+            duty: "Come here, BOY. It's just the two of us now. We're building something new out of what we lost — I'm proud of who you've become in the middle of it."
           },
           careMessages: {
             earning_respect: 'Mom noticed the effort. 🏡 +1 family respect',
@@ -965,8 +973,8 @@
           // respect from talking, even while waiting on the real task.
           challenge: {
             key: 'violin',
-            introLine: "Hold the bow properly, boy! Wrist loose, not limp. Go practice for real, and come back when you've got something to show me.",
-            completeLine: "Alright, boy — you've earned it. I'll teach you the violin, properly this time. Come by whenever you like now; you're welcome here.",
+            introLine: "Hold the bow properly, BOY! Wrist loose, not limp. Go practice for real, and come back when you've got something to show me.",
+            completeLine: "Alright, BOY — you've earned it. I'll teach you the violin, properly this time. Come by whenever you like now; you're welcome here.",
             learnedMessage: 'You learned the Violin! 🎻',
             goal: { tool: 'violin', id: 'practice', href: '../violin/app.html', linkLabel: 'Go practice →' }
           }
@@ -980,8 +988,8 @@
             trust: {
               need: 2,
               lines: [
-                "You're the new kid hanging around my fields, boy. Watch where you step.",
-                "...Alright, boy. You keep showing up, you don't get underfoot. Maybe I can use you."
+                "You're the new kid hanging around my fields, BOY. Watch where you step.",
+                "...Alright, BOY. You keep showing up, you don't get underfoot. Maybe I can use you."
               ]
             },
             // Once trusted (see `trust` above), the actual picking happens
@@ -1000,7 +1008,7 @@
                   needLine: "The field's through that gate — bring me 5 vegetables, whatever you find growing, and I'll pay you for the work."
                 },
                 lines: [
-                  "Now that's a haul. Good hands, boy.",
+                  "Now that's a haul. Good hands, BOY.",
                   "Fields don't tend themselves. Thanks for the help.",
                   "Good hands. Come back anytime there's more to pick."
                 ]
@@ -1023,8 +1031,8 @@
                   needLine: "You've earned more than picking. There's open ground at the back of the field — plant 3 rows for me and I'll pay you properly this time."
                 },
                 lines: [
-                  "Straight rows, good spacing. You've got a real feel for this now, boy.",
-                  "That's a farmer's work, not a kid's chore anymore, boy — I mean that. Field'll grow back faster for it, too. You've more than earned your place here."
+                  "Straight rows, good spacing. You've got a real feel for this now, BOY.",
+                  "That's a farmer's work, not a kid's chore anymore, BOY — I mean that. Field'll grow back faster for it, too. You've more than earned your place here."
                 ]
               }
             ]
@@ -1039,8 +1047,8 @@
             trust: {
               need: 2,
               lines: [
-                "Careful with the shelves, boy! ...You're the one who's been hanging around lately, aren't you.",
-                "You've been polite every time you've come in, boy. That's worth something to me."
+                "Careful with the shelves, BOY! ...You're the one who's been hanging around lately, aren't you.",
+                "You've been polite every time you've come in, BOY. That's worth something to me."
               ]
             },
             tiers: [
@@ -1057,7 +1065,7 @@
                 lines: [
                   "Welcome back! Everything's fresh today.",
                   "That'll keep the shelves full a while. Thank you.",
-                  "You're becoming a familiar face around here, boy."
+                  "You're becoming a familiar face around here, BOY."
                 ]
               },
               {
@@ -1071,9 +1079,9 @@
                   needLine: "I trust you with the good stuff now — bring in 3 of the imported crates and I'll pay you properly."
                 },
                 lines: [
-                  "Careful hands with the fine goods, boy. I knew I could trust you with these.",
-                  "Half my customers ask for you by name now. Funny — I still just think of you as 'boy'. Softer, these days, isn't it?",
-                  "You've earned a real cut of this, not just pocket change, boy."
+                  "Careful hands with the fine goods, BOY. I knew I could trust you with these.",
+                  "Half my customers ask for you by name now. Funny — I still just think of you as 'BOY'. Softer, these days, isn't it?",
+                  "You've earned a real cut of this, not just pocket change, BOY."
                 ]
               }
             ]
@@ -1166,7 +1174,7 @@
           missions: [
             {
               key: 'piano_wheel',
-              introLine: "Fingers curved, not flat, boy! You're playing piano, not slapping a table. Every key on that wheel needs the same care — set it to Piano and find yours.",
+              introLine: "Fingers curved, not flat, BOY! You're playing piano, not slapping a table. Every key on that wheel needs the same care — set it to Piano and find yours.",
               completeLine: "That's almost a melody. Almost — but you found it.",
               learnedMessage: 'You found your key on the wheel! 🎹',
               goal: { tool: 'circleOfFifths', id: 'wheel_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel and find your key →' }
@@ -1181,26 +1189,26 @@
             {
               key: 'piano_progression',
               introLine: "A chord alone is a shrug. String a progression together and say something with it.",
-              completeLine: "Now you're saying something, boy. Not just noodling.",
+              completeLine: "Now you're saying something, BOY. Not just noodling.",
               learnedMessage: 'You learned to play a progression! 🎼',
               goal: { tool: 'circleOfFifths', id: 'progression_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
             },
             {
               key: 'piano_extensions',
-              introLine: "Plain triads are for practicing, boy, not performing. Turn on the 7ths and 9ths and let your hands stretch.",
-              completeLine: "That's a real pianist's chord, boy. Good.",
+              introLine: "Plain triads are for practicing, BOY, not performing. Turn on the 7ths and 9ths and let your hands stretch.",
+              completeLine: "That's a real pianist's chord, BOY. Good.",
               learnedMessage: 'You learned piano extensions! 🎨',
               goal: { tool: 'circleOfFifths', id: 'extensions_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
             },
             {
               key: 'piano_charts',
-              introLine: "Now look at it differently, boy — change the clef, read the chart a new way.",
-              completeLine: "There. Now you're actually playing, boy. I'll teach you properly from here.",
+              introLine: "Now look at it differently, BOY — change the clef, read the chart a new way.",
+              completeLine: "There. Now you're actually playing, BOY. I'll teach you properly from here.",
               learnedMessage: 'You learned to read every chart! 📖',
               goal: { tool: 'circleOfFifths', id: 'charts_piano', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
             }
           ],
-          dialogue: { default: "Come sit at the bench, boy. It's always waiting." },
+          dialogue: { default: "Come sit at the bench, BOY. It's always waiting." },
           instrumentSting: 'piano'
         }
       },
@@ -1213,7 +1221,7 @@
         "###########",
         "#.........#",
         "#..~~~....#",
-        "#.~~~~~.G.#",
+        "#K~~~~~.G.#",
         "#..~~~....#",
         "#....@....#",
         "#,.......,#",
@@ -1276,6 +1284,17 @@
             }
           ],
           dialogue: { default: "Hey — bring the guitar next time. Or don't, I'll just hum it at you." },
+          // Eric challenges Boy beyond music: a best friend's big questions
+          // about the world, one per chapter. The first comes once they've
+          // found their first key together, so it never cuts in ahead of
+          // his very first guitar lesson.
+          musings: [
+            { key: 'video_game', chapter: 'earning_respect', requires: 'guitar_wheel', line: "Dude, we should make a video game!" },
+            { key: 'simulation', chapter: 'diagnosis', line: "Do you ever think this is all just a simulation?" },
+            { key: 'one_day', chapter: 'hospice', line: "Okay, real question. If you could keep just one day forever — replay it whenever you wanted — which one would you pick?" },
+            { key: 'grey', chapter: 'grief', line: "Dude... do you think the world's actually different now? Or does it just look different?" },
+            { key: 'the_game', chapter: 'duty', line: "Remember when I said we should make a video game? I think you kind of did. You just had to live it first." }
+          ],
           instrumentSting: 'guitar'
         }
       },
@@ -1323,26 +1342,26 @@
             {
               key: 'flute_progression',
               introLine: "A single note is just air. String a few together with real phrasing — pick a progression and play it all the way through.",
-              completeLine: "Now you're not just breathing through notes, boy. You're phrasing a line.",
+              completeLine: "Now you're not just breathing through notes, BOY. You're phrasing a line.",
               learnedMessage: 'You learned to phrase a progression! 🎼',
               goal: { tool: 'fluteCircleOfFifths', id: 'progression', href: '../flute-circle-of-fifths/app.html', linkLabel: 'Play a progression →' }
             },
             {
               key: 'flute_extensions',
               introLine: "Once more, with your whole breath this time — and don't stop at the plain triad. Turn on the 7ths, even the 9ths, and let the color in.",
-              completeLine: "Beautiful, boy. That's the whole breath, and the whole color too.",
+              completeLine: "Beautiful, BOY. That's the whole breath, and the whole color too.",
               learnedMessage: 'You learned flute extensions! 🎨',
               goal: { tool: 'fluteCircleOfFifths', id: 'extensions', href: '../flute-circle-of-fifths/app.html', linkLabel: 'Stack a 7th or 9th →' }
             },
             {
               key: 'flute_charts',
-              introLine: "Now look at it a different way, boy — switch the fingering chart and see how the same breath reads on another instrument.",
-              completeLine: "Now you can carry this with you, boy, on any instrument, in any key. Beautiful. Now let's really teach you the flute.",
+              introLine: "Now look at it a different way, BOY — switch the fingering chart and see how the same breath reads on another instrument.",
+              completeLine: "Now you can carry this with you, BOY, on any instrument, in any key. Beautiful. Now let's really teach you the flute.",
               learnedMessage: 'You learned to read every fingering chart! 📖',
               goal: { tool: 'fluteCircleOfFifths', id: 'charts', href: '../flute-circle-of-fifths/app.html', linkLabel: 'Switch the fingering chart →' }
             }
           ],
-          dialogue: { default: "Come sit a while, boy. The breath is always there when you need it." },
+          dialogue: { default: "Come sit a while, BOY. The breath is always there when you need it." },
           // Each mission step's own key (flute_wheel, flute_minor, ...)
           // doesn't match INSTRUMENT_STINGS, so the per-step sting in
           // completeMissionStep() falls back to the generic sfxWin() —
@@ -1375,7 +1394,7 @@
           missions: [
             {
               key: 'fractal_navigate',
-              introLine: "Numbers aren't the boring part, boy. Look closer. Go on — zoom in until it stops looking like anything.",
+              introLine: "Numbers aren't the boring part, BOY. Look closer. Go on — zoom in until it stops looking like anything.",
               completeLine: "There. You just found self-similarity with your own hands. Go get lost in it.",
               learnedMessage: 'You learned to navigate fractals! 🔍',
               goal: { tool: 'fractal', id: 'zoom', href: '../fractal/app.html', linkLabel: 'Pan and zoom into the fractal →' }
@@ -1397,12 +1416,12 @@
             {
               key: 'fractal_color',
               introLine: "Now make it yours. Push the iterations up, pick your own colors — a fractal with no palette is just math homework.",
-              completeLine: "You're not just doing my homework anymore, boy. You're exploring — and I mean that as the compliment it is now.",
+              completeLine: "You're not just doing my homework anymore, BOY. You're exploring — and I mean that as the compliment it is now.",
               learnedMessage: 'You learned to shape fractals! 🎨',
               goal: { tool: 'fractal', id: 'color', href: '../fractal/app.html', linkLabel: 'Tune the color and detail →' }
             }
           ],
-          dialogue: { default: "Come back to stare at infinity again, boy? Good — that means it's working. How are you keeping?" }
+          dialogue: { default: "Come back to stare at infinity again, BOY? Good — that means it's working. How are you keeping?" }
         }
       },
       exits: { '1': { to: 'clearing', x: 4, y: 1 } }
@@ -1433,7 +1452,7 @@
           missions: [
             {
               key: 'synth_oscillator',
-              introLine: "Another kid at my door. Fine, boy — meet the oscillator. It's just a wave. Patch the keyboard into it, one volt per octave, and play something.",
+              introLine: "Another kid at my door. Fine, BOY — meet the oscillator. It's just a wave. Patch the keyboard into it, one volt per octave, and play something.",
               completeLine: "Good. You just built an instrument out of electricity. Coffee's on me.",
               learnedMessage: 'You learned the oscillator! 〰️',
               goal: { tool: 'synth', id: 'oscillator_keyboard', href: '../synth/app.html', linkLabel: 'Meet the oscillator and keyboard →' }
@@ -1469,12 +1488,12 @@
             {
               key: 'synth_patching',
               introLine: "Last lesson. Patch something back into itself, or just wire up everything you've got. Careful — this is where it gets chaotic.",
-              completeLine: "That's not a mistake, boy, that's a modular synthesizer. Now go make noise — you've earned the run of this place.",
+              completeLine: "That's not a mistake, BOY, that's a modular synthesizer. Now go make noise — you've earned the run of this place.",
               learnedMessage: 'You learned self-patching! ⚡',
               goal: { tool: 'synth', id: 'self_patch', href: '../synth/app.html', linkLabel: 'Patch everything at once →' }
             }
           ],
-          dialogue: { default: "Still here, boy? Good — the coffee's fresh. Come sit, patch something weird, stay as long as you like." }
+          dialogue: { default: "Still here, BOY? Good — the coffee's fresh. Come sit, patch something weird, stay as long as you like." }
         }
       },
       exits: { '1': { to: 'college', x: 8, y: 6 } }
@@ -1522,7 +1541,7 @@
           missions: [
             {
               key: 'theory_wheel',
-              introLine: "Every key has its place on this wheel, boy. Find your tonic — the home note — and turn the wheel until you feel where it sits.",
+              introLine: "Every key has its place on this wheel, BOY. Find your tonic — the home note — and turn the wheel until you feel where it sits.",
               completeLine: "You have found your way home in twelve keys, not just one. That is no small thing.",
               learnedMessage: 'You learned the Circle of Fifths! 🎼',
               goal: { tool: 'circleOfFifths', id: 'wheel', href: '../circle-of-fifths/app.html', linkLabel: 'Turn the wheel yourself →' }
@@ -1551,12 +1570,12 @@
             {
               key: 'theory_charts',
               introLine: "Theory is not just for the ear. Switch the chart to guitar or ukulele, or change the clef — read it a different way.",
-              completeLine: "Now you can carry this with you, boy, on any instrument, in any key. That was the whole lesson.",
+              completeLine: "Now you can carry this with you, BOY, on any instrument, in any key. That was the whole lesson.",
               learnedMessage: 'You learned to read every chart! 📖',
               goal: { tool: 'circleOfFifths', id: 'charts', href: '../circle-of-fifths/app.html', linkLabel: 'Read the guitar and staff charts →' }
             }
           ],
-          dialogue: { default: "Come sit a while, boy. I could show you my trumpet, but the wheel's the real lesson — it'll still be turning when you return. It always is." }
+          dialogue: { default: "Come sit a while, BOY. I could show you my trumpet, but the wheel's the real lesson — it'll still be turning when you return. It always is." }
         }
       },
       exits: { '1': { to: 'college', x: 3, y: 7 } }
@@ -1857,6 +1876,116 @@
         }
       },
       exits: { '3': { to: 'hell_2', x: 5, y: 4 } }
+    },
+    {
+      // The lake is the only way to the island, and the kayak (the 'K' at
+      // the Riverside, bought with real money — see useKayak()) is the
+      // only way onto the lake. `onWater` flips what's walkable: open
+      // water ('~') is where Boy paddles, sand ('=') and the tree line
+      // are the shore he can't paddle into, and rocks/reeds ('o'/'b')
+      // are obstacles out on the water. `kayakOnly` keeps it, and the
+      // island past it, out of the car's drive-to menu.
+      id: 'lake',
+      name: 'The Lake',
+      onWater: true,
+      kayakOnly: true,
+      map: [
+        "####=2=####",
+        "#==~~~~~==#",
+        "#=~~~o~~~=#",
+        "#~~b~~~~~~#",
+        "#~~~~~~o~~#",
+        "#~o~~b~~~~#",
+        "#~~~~~~~~=#",
+        "#=~~~o~~~~#",
+        "#~~~~~~b~~#",
+        "#~b~~~~~~~#",
+        "#=~~~@~~~=#",
+        "#==~~~~~==#",
+        "####=1=####"
+      ],
+      exits: {
+        '1': { to: 'riverside', x: 1, y: 4 },
+        '2': { to: 'island_shore', x: 5, y: 5 }
+      }
+    },
+    {
+      // Anybody's island is three levels climbing UP to him, the mirror
+      // image of Hell's three levels down to the Devil: a beach, a rocky
+      // slope, and the summit. Each climb is a north-edge exit landing on
+      // the next level's south edge ('4' up, '3' down on every one, same
+      // convention as Hell). Boy's own kayak waits on the beach — using it
+      // paddles him back out onto the lake (see `kayakLaunch`).
+      id: 'island_shore',
+      name: 'The Island',
+      kayakOnly: true,
+      kayakLaunch: { x: 5, y: 1 },
+      map: [
+        "#####4#####",
+        "#..o...,..#",
+        "#,.......o#",
+        "#....@....#",
+        "#.........#",
+        "#=.......=#",
+        "~==..K..==~",
+        "~~=======~~",
+        "~~~~~~~~~~~"
+      ],
+      exits: { '4': { to: 'island_slope', x: 5, y: 7 } }
+    },
+    {
+      id: 'island_slope',
+      name: 'The Island',
+      kayakOnly: true,
+      map: [
+        "#####4#####",
+        "#oo.....oo#",
+        "#o..oo#..o#",
+        "#..#oo...##",
+        "#.....o#..#",
+        "##o.......#",
+        "#..oo#....#",
+        "#o...@..oo#",
+        "#####3#####"
+      ],
+      exits: {
+        '3': { to: 'island_shore', x: 5, y: 1 },
+        '4': { to: 'island_summit', x: 5, y: 7 }
+      }
+    },
+    {
+      // Anybody — see talkToAnybody(). He has no name at first (the
+      // dialogue box shows "?"), until he tells Boy he was never given
+      // one and Boy can call him Anybody. His real role — teaching how
+      // everything Boy learns (math, music, art) is connected — is still
+      // to be designed; for now he only has his naming exchange.
+      id: 'island_summit',
+      name: 'The Island',
+      kayakOnly: true,
+      map: [
+        "###########",
+        "#oo..o..oo#",
+        "#o.......o#",
+        "#....A....#",
+        "#..,...,..#",
+        "#.........#",
+        "#o.......o#",
+        "#oo..@..oo#",
+        "#####3#####"
+      ],
+      npcs: {
+        A: {
+          id: 'anybody',
+          name: 'Anybody',
+          appearance: { top: 0x7d80d9, bottom: 0x2e2a35, hairStyle: 'short', hair: 0x000000, skin: 0xa17c5e, pieceType: 'pawn', pieceAccent: 0xf0a83c },
+          lines: {
+            first: "Hm. A boy, in a kayak, all the way up here. Nobody climbs this far, BOY. What do you want?",
+            naming: "You came back. ...You asked my name last time. I was never given one — never knew my parents, either. So call me whatever you like. Call me Anybody.",
+            named: "Sit a while, BOY. The numbers, the music, the colors — everything you've been learning down there is one thing, if you look at it long enough. We'll get to that."
+          }
+        }
+      },
+      exits: { '3': { to: 'island_slope', x: 5, y: 1 } }
     }
   ];
 
@@ -1907,13 +2036,14 @@
   // plantsSeeds job tier — see updateCropRespawns()/FIELD_REGROW_FAST.
   // colorRestored: which GREYSCALE_ROSTER members you've reconnected with
   // since Dad died — see worldColorFactor()/markReconnected() below.
-  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, fieldSeedsPlanted: false, colorRestored: {} };
+  var story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, hasKayak: false, fieldSeedsPlanted: false, colorRestored: {} };
   var CAR_FAMILY_RESPECT_THRESHOLD = 3;
 
   // ----------------------------------------------------------------------
   // Grief's greyscale — from the moment Dad dies (setChapter('grief')) the
-  // whole world desaturates. Mom and the Devil are the two permanent
-  // exceptions (colorful from the start of grief, see applyWorldColor());
+  // whole world desaturates. Mom, Anybody, and every demon are the
+  // permanent exceptions (colorful from the start of grief, see
+  // keepsColor());
   // everyone and everything else — ground, props, every other NPC, Boy
   // himself — follows ONE shared dial:
   // worldColorFactor(). It climbs as you genuinely reconnect with each
@@ -2070,14 +2200,19 @@
     var exits = levelDef.exits || {};
     var npcs = levelDef.npcs || {};
     var obstacles = new Set();
-    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null };
+    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null };
     var groundKinds = [];
     var playerStart = { x: 1, y: 1 };
+    // On an `onWater` level (the lake) Boy is in his kayak: open water is
+    // the walkable surface and sand is the shore he bumps into, and every
+    // tile that isn't explicitly land or a landing sits on water.
+    var onWater = !!levelDef.onWater;
 
     for (var y = 0; y < h; y++) {
       groundKinds.push(map[y].split(''));
       for (var x = 0; x < w; x++) {
         var c = map[y][x];
+        if (onWater && c !== '=' && c !== '#' && !exits[c]) groundKinds[y][x] = '~';
         if (exits[c]) {
           features.portals.push({ x: x, y: y, to: exits[c].to, spawn: { x: exits[c].x, y: exits[c].y } });
           continue;
@@ -2093,7 +2228,8 @@
           case '#': obstacles.add(key(x, y)); features.trees.push({ x: x, y: y }); break;
           case 'o': obstacles.add(key(x, y)); features.rocks.push({ x: x, y: y }); break;
           case 'b': obstacles.add(key(x, y)); features.bushes.push({ x: x, y: y }); break;
-          case '~': obstacles.add(key(x, y)); break;
+          case '~': if (!onWater) obstacles.add(key(x, y)); break;
+          case '=': if (onWater) obstacles.add(key(x, y)); break;
           case 'H': obstacles.add(key(x, y)); features.houseTiles.push({ x: x, y: y }); break;
           case 'S': obstacles.add(key(x, y)); features.signs.push({ x: x, y: y, message: (levelDef.signs || [])[features.signs.length] || 'A weathered sign, worn smooth by rain.' }); break;
           case ',': features.flowers.push({ x: x, y: y }); break;
@@ -2113,6 +2249,14 @@
             // figure, so Boy walks around them rather than through them.
             obstacles.add(key(x, y)); features.crowd.push({ x: x, y: y }); break;
           case 'C': obstacles.add(key(x, y)); features.car = { x: x, y: y }; break;
+          case 'K': obstacles.add(key(x, y)); features.kayak = { x: x, y: y }; break;
+          // Dad's bedside table — only there from his diagnosis on, when his
+          // crown comes off and waits on it (see useCrown()).
+          case 'T':
+            if (CHAPTERS.indexOf(story.chapter) >= CHAPTERS.indexOf('diagnosis')) {
+              obstacles.add(key(x, y)); features.crownTable = { x: x, y: y };
+            }
+            break;
           case 'V': obstacles.add(key(x, y)); features.practiceSpots.push({ x: x, y: y }); break;
           case '@': playerStart = { x: x, y: y }; break;
         }
@@ -2122,6 +2266,7 @@
     return {
       id: levelDef.id,
       name: levelDef.name,
+      onWater: onWater,
       W: w, H: h,
       ORIGIN_X: (w - 1) / 2, ORIGIN_Z: (h - 1) / 2,
       exitChars: new Set(Object.keys(exits)),
@@ -2129,7 +2274,8 @@
       features: features,
       groundKinds: groundKinds,
       playerStart: playerStart,
-      totalShards: features.shards.length
+      totalShards: features.shards.length,
+      actors: []
     };
   }
 
@@ -2232,9 +2378,11 @@
     }
     if (c === '=') return new THREE.Color(0xC9A876).offsetHSL(rand(-0.01, 0.01), 0, rand(-0.03, 0.02));
     if (c === '~') return new THREE.Color(0x3aa0c9);
-    // grass base, with per-tile jitter for a hand-painted look
-    return new THREE.Color(0x5fae4c).offsetHSL(rand(-0.02, 0.02), rand(-0.05, 0.05), rand(-0.04, 0.03));
+    // grass base, with per-tile jitter for a hand-painted look — the
+    // island's upper two levels fade toward bare mountain rock as Boy climbs.
+    return new THREE.Color(OUTDOOR_GROUND[levelId] || 0x5fae4c).offsetHSL(rand(-0.02, 0.02), rand(-0.05, 0.05), rand(-0.04, 0.03));
   }
+  var OUTDOOR_GROUND = { island_slope: 0x76955a, island_summit: 0x8c9183 };
   var PORTAL_TILE_COLOR = 0x554a66;
 
   // Boy is telling his own story: he and his family (Mom, Dad) are Indian
@@ -2668,6 +2816,62 @@
       g.add(headlight);
     });
 
+    return g;
+  }
+
+  // Long axis along +z, the way every character faces at rotation 0, so
+  // the same kayak works tied up on a shore and slung under Boy on the
+  // lake. `paddleY` raises the paddle to hand height when he's in it.
+  function createKayak(paddleY) {
+    var g = new THREE.Group();
+    var hull = new THREE.Mesh(new THREE.SphereGeometry(0.5, 18, 10), new THREE.MeshStandardMaterial({ color: 0xe8742c, roughness: 0.45 }));
+    hull.scale.set(0.5, 0.24, 1.7);
+    hull.position.y = 0.08;
+    hull.castShadow = true;
+    g.add(hull);
+    var rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.03, 8, 18), new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.6 }));
+    rim.rotation.x = Math.PI / 2;
+    rim.scale.set(1, 1.35, 1);
+    rim.position.y = 0.17;
+    g.add(rim);
+    var paddleMat = new THREE.MeshStandardMaterial({ color: 0x3b2a1e, roughness: 0.7 });
+    var paddle = new THREE.Group();
+    var shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.15, 6), paddleMat);
+    shaft.rotation.z = Math.PI / 2;
+    paddle.add(shaft);
+    [-0.58, 0.58].forEach(function (x) {
+      var blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.2), paddleMat);
+      blade.position.x = x;
+      paddle.add(blade);
+    });
+    paddle.position.y = paddleY || 0.22;
+    paddle.rotation.z = paddleY ? 0.3 : 0;
+    g.add(paddle);
+    return g;
+  }
+
+  // Dad's crown is his king piece's own topper (createCrossTopper(), in the
+  // same default gold every king without a pieceAccent wears), so the one
+  // on the bedside table and the one Boy finally puts on are exactly his.
+  var DAD_CROWN_COLOR = 0xf0a83c;
+  function createBedsideTable(withCrown) {
+    var g = new THREE.Group();
+    var wood = new THREE.MeshStandardMaterial({ color: 0x5a3b26, roughness: 0.75 });
+    var top = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.06, 0.5), wood);
+    top.position.y = 0.6;
+    top.castShadow = true;
+    g.add(top);
+    [[-0.26, -0.2], [0.26, -0.2], [-0.26, 0.2], [0.26, 0.2]].forEach(function (p) {
+      var leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.05), wood);
+      leg.position.set(p[0], 0.3, p[1]);
+      g.add(leg);
+    });
+    if (withCrown) {
+      var crown = createCrossTopper(DAD_CROWN_COLOR);
+      crown.position.y = 0.63;
+      g.add(crown);
+      g.userData.crown = crown;
+    }
     return g;
   }
 
@@ -3482,7 +3686,8 @@
     hair.position.z = 0;
     pivot.add(hair);
 
-    g.userData = { pivot: pivot, idlePhase: rand(0, Math.PI * 2) };
+    // noWiggle: a whole bed tipping side to side when he speaks reads wrong.
+    g.userData = { pivot: pivot, idlePhase: rand(0, Math.PI * 2), noWiggle: true };
     return g;
   }
 
@@ -3757,6 +3962,23 @@
       w.features.car.obj = carObj;
     }
 
+    if (w.features.crownTable) {
+      var tablePos = worldPos(w, w.features.crownTable.x, w.features.crownTable.y);
+      var tableObj = createBedsideTable(!story.learned.crownTaken);
+      tableObj.position.set(tablePos.x, GROUND_SURFACE_Y, tablePos.z);
+      group.add(tableObj);
+      w.features.crownTable.obj = tableObj;
+    }
+
+    if (w.features.kayak) {
+      var kayakPos = worldPos(w, w.features.kayak.x, w.features.kayak.y);
+      var kayakObj = createKayak();
+      kayakObj.position.set(kayakPos.x, GROUND_SURFACE_Y, kayakPos.z);
+      kayakObj.rotation.y = Math.PI / 2;
+      group.add(kayakObj);
+      w.features.kayak.obj = kayakObj;
+    }
+
     return { group: group, waterTiles: waterTiles };
   }
 
@@ -3812,26 +4034,41 @@
   // worldColorFactor() — called once from loadLevel() (a fresh level
   // starts at today's factor) and again from markReconnected() (so
   // reconnecting with someone recolors the world you're standing in
-  // immediately, with no level reload needed). Mom, the Devil, and Boy are
-  // the three standing exceptions to the shared dial — see the doc above
-  // it. Mom/Devil's line here is harmless before 'grief' too: the shared
-  // factor is already 1 for everyone then, so forcing them to 1 changes
-  // nothing until the world actually starts desaturating.
+  // immediately, with no level reload needed). keepsColor()'s characters
+  // and Boy are the standing exceptions to the shared dial — see the doc
+  // above it. Forcing keepsColor() characters to 1 is harmless before
+  // 'grief': the shared factor is already 1 for everyone then.
+  // Who stays in full color through grief, regardless of the shared dial:
+  // Mom, Anybody, and every demon — any character built with horns or a
+  // tail, which is how Hell's residents are made (see buildHorns()/
+  // buildTail()), so a future demon keeps its color automatically.
+  // Everything else earns its color back through GREYSCALE_ROSTER.
+  function isDemon(appearance) {
+    return !!(appearance && (appearance.horns || appearance.tail));
+  }
+  function keepsColor(def) {
+    if (def.id === 'mom' || def.id === 'anybody') return true;
+    return isDemon(def.appearance);
+  }
   function applyWorldColor() {
     if (!world) return;
     var factor = worldColorFactor();
     tagBaseColors(world.group);
     applyColorFactor(world.group, factor);
     world.features.npcs.forEach(function (n) {
-      if (n.def.id === 'mom' || n.def.id === 'devil') applyColorFactor(n.obj, 1);
+      if (keepsColor(n.def)) applyColorFactor(n.obj, 1);
     });
     // Boy's own exception is a hard binary, not a ride on the shared dial —
     // "he's the LAST to return to color" means a distinct reveal the
     // instant 'duty' begins, not whatever the world's factor happens to be
     // at that moment (which could coincidentally already be 1 if every
     // roster member was reconnected with before Mom's own arc finished).
+    // Before grief he's in full color like everything else.
     tagBaseColors(player.obj);
-    applyColorFactor(player.obj, story.chapter === 'duty' ? 1 : 0);
+    applyColorFactor(player.obj, story.chapter === 'grief' ? 0 : 1);
+    // His kayak is a thing in the world, not Boy himself — it follows the
+    // shared dial even while it's riding along under him.
+    applyColorFactor(playerKayak, factor);
   }
 
   // ----------------------------------------------------------------------
@@ -3862,23 +4099,44 @@
 
   var MOVE_DURATION = 0.17;
 
-  // A one-shot "speak wiggle" — reuses Boy's own per-tile movement hop
-  // shape (position.y = sin(frac * PI) * amplitude, see the walking code
-  // in update() below) rather than inventing a new motion, so it reads as
-  // "similar to how Boy moves" instead of a generic wobble. Two quick
-  // bounces, not one — a single hop reads as a nod, not a wiggle — at a
-  // smaller amplitude than Boy's own travel hop, since this NPC isn't
-  // going anywhere, just reacting in place. triggerSpeakWiggle() just
-  // stamps a start time; update()'s NPC loop (which already runs every
-  // frame regardless of dialogueOpen, for the idle-breathing pulse) reads
-  // elapsed time off that stamp and stops touching position.y once the
+  // Boy's own kayak rides along on his outer object and is only shown on
+  // an `onWater` level (see loadLevel()), where he bobs instead of hopping.
+  var playerKayak = createKayak(0.5);
+  playerKayak.visible = false;
+  player.obj.add(playerKayak);
+
+  // A one-shot "speak wiggle": the speaking chess piece rocks side to side
+  // on its own base, like a piece nudged on the board, and settles within
+  // WIGGLE_DURATION — once per line, never a loop. The outer object's
+  // origin sits at the base, so rotating it tips the piece rather than
+  // spinning it. triggerSpeakWiggle() just stamps a start time; update()'s
+  // NPC loop (which runs every frame regardless of dialogueOpen) reads
+  // elapsed time off that stamp and stops touching rotation.z once the
   // duration has passed — no separate "turn it off" bookkeeping needed.
-  var WIGGLE_DURATION = 0.32;
-  var WIGGLE_BOUNCES = 2;
-  var WIGGLE_AMPLITUDE = 0.07;
+  var WIGGLE_DURATION = 0.7;
+  var WIGGLE_SWINGS = 2.5;
+  var WIGGLE_ANGLE = 0.17; // radians, ~10°
   function triggerSpeakWiggle(obj) {
-    if (!obj) return;
+    if (!obj || obj.userData.noWiggle) return;
     obj.userData.wiggleAt = clock.elapsedTime;
+  }
+  function applyWiggle(obj, t) {
+    if (obj.userData.wiggleAt == null) return;
+    var elapsed = t - obj.userData.wiggleAt;
+    if (elapsed < WIGGLE_DURATION) {
+      var frac = elapsed / WIGGLE_DURATION;
+      obj.rotation.z = Math.sin(frac * WIGGLE_SWINGS * Math.PI * 2) * WIGGLE_ANGLE * (1 - frac);
+    } else {
+      obj.rotation.z = 0;
+      obj.userData.wiggleAt = null;
+    }
+  }
+  // Idle breathing plus the speak wiggle — every standing NPC and every
+  // cutscene actor, each frame.
+  function animateFigure(obj, t) {
+    var breathe = 1 + Math.sin(t * 1.8 + obj.userData.idlePhase) * 0.012;
+    obj.userData.pivot.scale.set(1, breathe, 1);
+    applyWiggle(obj, t);
   }
 
   // ----------------------------------------------------------------------
@@ -3887,9 +4145,22 @@
   var camOffset = new THREE.Vector3(0, 10.5, 6.2);
   var camLookAhead = new THREE.Vector3(0, 0.6, -1.1);
 
-  window.addEventListener('resize', function () {
-    camera.aspect = root.clientWidth / root.clientHeight;
+  // A portrait phone at the fixed 30° vertical FOV sees barely 1.5 tiles
+  // across — too little to tap anything. Below square, widen the vertical
+  // FOV just enough that horizontal coverage matches a square screen;
+  // landscape/desktop keeps the original 30° framing untouched.
+  var BASE_FOV = 30;
+  function fitCamera() {
+    var aspect = root.clientWidth / root.clientHeight;
+    camera.aspect = aspect;
+    camera.fov = aspect >= 1 ? BASE_FOV
+      : 2 * Math.atan(Math.tan(BASE_FOV * Math.PI / 360) / aspect) * 180 / Math.PI;
     camera.updateProjectionMatrix();
+  }
+  fitCamera();
+
+  window.addEventListener('resize', function () {
+    fitCamera();
     renderer.setSize(root.clientWidth, root.clientHeight);
   });
 
@@ -3972,12 +4243,14 @@
     world = newWorld;
     scene.add(world.group);
     world.group.add(player.obj);
+    playerKayak.visible = world.onWater;
     applyWorldColor();
 
     var spawnTile = spawnOverride || world.playerStart;
     player.tileX = spawnTile.x;
     player.tileY = spawnTile.y;
     player.isMoving = false;
+    if (tapRoute) cancelTapRoute();
     var p = tileToWorld(player.tileX, player.tileY);
     player.obj.position.set(p.x, 0, p.z);
 
@@ -4001,6 +4274,14 @@
 
     startMusicForLevel(levelDef.id);
     showToast(levelDef.name, 2000);
+
+    setLightLevel(1);
+    var queen = world.features.npcs.filter(function (n) {
+      var app = (n.def.appearanceDuring && n.def.appearanceDuring[story.chapter]) || n.def.appearance;
+      return app && app.pieceType === 'queen';
+    })[0];
+    if (queen) scatterDemons(queen.x, queen.y);
+    startLevelCutscene();
   }
 
   // ----------------------------------------------------------------------
@@ -4410,13 +4691,178 @@
     if (dir) releaseDir(dir);
   });
 
-  document.querySelectorAll('#dpad button').forEach(function (btn) {
-    var dir = btn.getAttribute('data-dir');
-    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); pushDir(dir); setFacing(dir); });
-    btn.addEventListener('pointerup', function () { releaseDir(dir); });
-    btn.addEventListener('pointerleave', function () { releaseDir(dir); });
+  // ---- Touch: tap-to-move / tap-to-talk ----
+  // Keyboard stays the desktop control scheme; a touch (or pen) tap on
+  // the scene instead walks Boy there tile-by-tile along a BFS route,
+  // using the exact same attemptMove() hop as a keypress. Tapping a
+  // character (or the car, a sign, a practice spot) walks him to a tile
+  // beside it, turns him to face it, and interacts. Mouse clicks are
+  // deliberately ignored so desktop play is unchanged.
+  var tapRoute = null; // { dirs: [...], target: {kind, feature} | null }
+  var tapStart = null;
+  var raycaster = new THREE.Raycaster();
+  var tapNdc = new THREE.Vector2();
+  var groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -GROUND_SURFACE_Y);
+  var tapHit = new THREE.Vector3();
+
+  var tapMarker = new THREE.Mesh(
+    new THREE.RingGeometry(TILE * 0.22, TILE * 0.32, 40),
+    new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.9, depthWrite: false })
+  );
+  tapMarker.rotation.x = -Math.PI / 2;
+  tapMarker.visible = false;
+  scene.add(tapMarker);
+
+  function showTapMarker(tx, ty) {
+    var p = tileToWorld(tx, ty);
+    tapMarker.position.set(p.x, GROUND_SURFACE_Y + 0.02, p.z);
+    tapMarker.userData.shownAt = clock.elapsedTime;
+    tapMarker.visible = true;
+  }
+  function cancelTapRoute() {
+    tapRoute = null;
+    tapMarker.visible = false;
+  }
+
+  function isTouchPointer(e) { return e.pointerType === 'touch' || e.pointerType === 'pen'; }
+
+  function tapTargets() {
+    var list = [];
+    var f = world.features;
+    f.npcs.forEach(function (n) { list.push({ kind: 'npc', feature: n }); });
+    if (f.car) list.push({ kind: 'car', feature: f.car });
+    if (f.kayak) list.push({ kind: 'kayak', feature: f.kayak });
+    if (f.crownTable) list.push({ kind: 'crown', feature: f.crownTable });
+    f.signs.forEach(function (s) { list.push({ kind: 'sign', feature: s }); });
+    f.practiceSpots.forEach(function (s) { list.push({ kind: 'practice', feature: s }); });
+    return list;
+  }
+
+  // Characters stand up off the ground, so a tap on someone's head would
+  // land a tile or so behind them on the ground plane — hit-test their
+  // actual meshes first, and only fall back to the ground tile after.
+  function pickTap(clientX, clientY) {
+    var rect = renderer.domElement.getBoundingClientRect();
+    tapNdc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(tapNdc, camera);
+
+    var targets = tapTargets();
+    var objs = [];
+    targets.forEach(function (t) { if (t.feature.obj) objs.push(t.feature.obj); });
+    var hits = raycaster.intersectObjects(objs, true);
+    if (hits.length) {
+      var o = hits[0].object;
+      while (o) {
+        for (var i = 0; i < targets.length; i++) {
+          if (targets[i].feature.obj === o) return { tx: targets[i].feature.x, ty: targets[i].feature.y, target: targets[i] };
+        }
+        o = o.parent;
+      }
+    }
+
+    if (!raycaster.ray.intersectPlane(groundPlane, tapHit)) return null;
+    var tx = Math.round(tapHit.x / TILE + world.ORIGIN_X);
+    var ty = Math.round(tapHit.z / TILE + world.ORIGIN_Z);
+    if (!inBounds(tx, ty)) return null;
+    for (var j = 0; j < targets.length; j++) {
+      if (targets[j].feature.x === tx && targets[j].feature.y === ty) return { tx: tx, ty: ty, target: targets[j] };
+    }
+    return { tx: tx, ty: ty, target: null };
+  }
+
+  // Breadth-first route over walkable tiles. A walkable tile is its own
+  // goal; a blocked one (a character, a tree, the house) routes to
+  // whichever free tile beside it is closest. Portal tiles are only ever
+  // a route's final step — never passed through — so a tap across the
+  // map can't accidentally load another level partway there.
+  // `from` (optional) routes a cutscene actor instead of Boy — Boy's own
+  // tile then counts as occupied, so an actor sent "to Boy" stops beside him.
+  function findRoute(tx, ty, from) {
+    var walkable = function (x, y) {
+      if (from && x === player.tileX && y === player.tileY) return false;
+      return inBounds(x, y) && !world.obstacles.has(key(x, y));
+    };
+    var portalKeys = new Set(world.features.portals.map(function (p) { return key(p.x, p.y); }));
+    var goals = new Set();
+    if (walkable(tx, ty)) goals.add(key(tx, ty));
+    else ['up', 'down', 'left', 'right'].forEach(function (d) {
+      var gx = tx + DIR_VEC[d].dx, gy = ty + DIR_VEC[d].dz;
+      if (walkable(gx, gy)) goals.add(key(gx, gy));
+    });
+    if (!goals.size) return null;
+
+    var start = from || { x: player.tileX, y: player.tileY };
+    var prev = {};
+    prev[key(start.x, start.y)] = null;
+    var queue = [{ x: start.x, y: start.y }];
+    while (queue.length) {
+      var cur = queue.shift();
+      var ck = key(cur.x, cur.y);
+      if (goals.has(ck)) {
+        var dirs = [];
+        while (prev[ck]) { dirs.unshift(prev[ck].dir); ck = prev[ck].from; }
+        return dirs;
+      }
+      for (var d in DIR_VEC) {
+        var nx = cur.x + DIR_VEC[d].dx, ny = cur.y + DIR_VEC[d].dz;
+        var nk = key(nx, ny);
+        if (prev.hasOwnProperty(nk) || !walkable(nx, ny)) continue;
+        if (portalKeys.has(nk) && !goals.has(nk)) continue;
+        prev[nk] = { from: ck, dir: d };
+        queue.push({ x: nx, y: ny });
+      }
+    }
+    return null;
+  }
+
+  function handleTap(clientX, clientY) {
+    if (!started || toolFrameOpen || gameEnded) return;
+    if (cutscene) { cutsceneAction(); return; }
+    if (choiceOpen) return;
+    ensureAudio();
+    if (carMenuOpen) { closeCarMenu(); return; }
+    if (dialogueOpen) { closeDialogue(); return; }
+    var pick = pickTap(clientX, clientY);
+    if (!pick) return;
+    var dirs = findRoute(pick.tx, pick.ty);
+    if (!dirs) { cancelTapRoute(); sfxBump(); return; }
+    tapRoute = { dirs: dirs, target: pick.target };
+    showTapMarker(pick.tx, pick.ty);
+  }
+
+  // Called from update() whenever Boy is idle and no key is held.
+  function stepTapRoute() {
+    if (tapRoute.dirs.length) {
+      attemptMove(tapRoute.dirs.shift());
+      if (!player.isMoving) cancelTapRoute();
+      return;
+    }
+    var target = tapRoute.target;
+    cancelTapRoute();
+    if (!target) return;
+    var f = target.feature;
+    var dx = f.x - player.tileX, dy = f.y - player.tileY;
+    if (Math.abs(dx) + Math.abs(dy) !== 1) return;
+    setFacing(dx > 0 ? 'right' : dx < 0 ? 'left' : dy > 0 ? 'down' : 'up');
+    interactWith(target);
+  }
+
+  renderer.domElement.addEventListener('pointerdown', function (e) {
+    if (!isTouchPointer(e)) return;
+    tapStart = { x: e.clientX, y: e.clientY };
   });
-  document.getElementById('action-btn').addEventListener('pointerdown', function (e) { e.preventDefault(); handleAction(); });
+  renderer.domElement.addEventListener('pointerup', function (e) {
+    if (!isTouchPointer(e) || !tapStart) return;
+    var moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y);
+    tapStart = null;
+    if (moved > 14) return;
+    handleTap(e.clientX, e.clientY);
+  });
+  dialogueEl.addEventListener('pointerup', function (e) {
+    if (!isTouchPointer(e) || e.target.closest('a')) return;
+    if (cutscene) cutsceneAction();
+    else closeDialogue();
+  });
 
   setMuted(muted); // sync the button's icon to the restored localStorage preference
   document.getElementById('mute-btn').addEventListener('click', function () {
@@ -4477,6 +4923,452 @@
     return dx + dy <= 1 ? car : null;
   }
 
+  function findNearbyKayak() {
+    var kayak = world.features.kayak;
+    if (!kayak) return null;
+    var dx = Math.abs(kayak.x - player.tileX), dy = Math.abs(kayak.y - player.tileY);
+    return dx + dy <= 1 ? kayak : null;
+  }
+
+  // The kayak is the only way onto the lake, and the lake the only way to
+  // Anybody's island. Buying it costs real money earned from jobs — no
+  // respect gate, nothing story-required, purely Boy's own choice. Once
+  // owned, the same kayak (tied up at the Riverside, or beached on the
+  // island) launches him onto the lake from wherever it sits.
+  var KAYAK_COST = 15;
+  function useKayak() {
+    if (!story.hasKayak) {
+      if (story.money < KAYAK_COST) {
+        openDialogue('A little orange kayak tied up at the water\'s edge, with a hand-lettered tag: "$' + KAYAK_COST + '." (You have $' + story.money + '.)');
+        return;
+      }
+      openChoice('A little orange kayak tied up at the water\'s edge. The tag says $' + KAYAK_COST + '. Buy it?', null, [
+        { label: 'Buy it ($' + KAYAK_COST + ')', onSelect: function () {
+          story.money -= KAYAK_COST;
+          story.hasKayak = true;
+          renderStats();
+          sfxPickup();
+          openDialogue("It's yours. Somewhere past the reeds, the lake opens up — people say there's an island out there.");
+          showToast('🛶 You bought a kayak!', 2400);
+        } },
+        { label: 'Not yet' }
+      ]);
+      return;
+    }
+    var launch = LEVELS[LEVEL_INDEX[world.id]].kayakLaunch;
+    openChoice('Paddle out onto the lake?', null, [
+      { label: 'Paddle out', onSelect: function () { sfxPortal(); loadLevel(LEVEL_INDEX.lake, launch); } },
+      { label: 'Not now' }
+    ]);
+  }
+
+  function findNearbyCrownTable() {
+    var t = world.features.crownTable;
+    if (!t) return null;
+    var dx = Math.abs(t.x - player.tileX), dy = Math.abs(t.y - player.tileY);
+    return dx + dy <= 1 ? t : null;
+  }
+
+  // ----------------------------------------------------------------------
+  // Cutscenes — a fixed script of steps the player watches but doesn't
+  // control: Boy can't move, and space/tap only advances a spoken line.
+  // Characters "come into frame" as actors: figures that exist only for the
+  // scene (never in a level's `npcs`), so they can't be talked to. Steps
+  // run in order; each one either waits for a line to be read or holds
+  // for its own duration, timed off the same clock as update():
+  //   { say, speaker, actor }   a line, spoken by an actor (who wobbles)
+  //   { spawn: [...], stagger } actors rising up out of the floor, one
+  //                             `stagger` seconds after the next — each is
+  //                             { id, appearance, x, y, facing, enter }
+  //                             (enter: 'rise' default, or 'stand')
+  //   { walk: { actor, to } }   an actor walks there tile by tile; `to` is
+  //                             { x, y }, { actor } or 'boy' (stops beside them)
+  //   { boyWalk: { x, y } }     BOY himself walks there
+  //   { lights: n }             the room's light snaps to n× normal (1 = off)
+  //   { exit: [ids], stagger }  actors sink back down into the floor and go
+  //   { camera: { x, y, zoom } } the camera holds on that tile, pulled
+  //                             back `zoom` times (default 1); null = Boy
+  //   { run: fn }               anything else (put the crown on Boy, etc.)
+  //   { wait: seconds }         a pause — combinable with any step above
+  // ----------------------------------------------------------------------
+  var cutscene = null;
+  var cameraFocus = null;
+  var cameraZoom = 1;
+  var ACTOR_RISE_DURATION = 0.5;
+  var ACTOR_RISE_DEPTH = -1.9;
+  var ACTOR_STEP_DURATION = 0.26;
+  var BASE_HEMI_INTENSITY = hemi.intensity;
+  var BASE_SUN_INTENSITY = sun.intensity;
+  function setLightLevel(m) {
+    hemi.intensity = BASE_HEMI_INTENSITY * m;
+    sun.intensity = BASE_SUN_INTENSITY * m;
+  }
+
+  function playCutscene(steps) {
+    cancelTapRoute();
+    pressedDirs.length = 0;
+    cutscene = { steps: steps, index: 0, waiting: false, resumeAt: clock.elapsedTime, actors: {} };
+  }
+
+  function cutsceneAction() {
+    if (!cutscene || !cutscene.waiting) return;
+    cutscene.waiting = false;
+    closeDialogue();
+    cutscene.resumeAt = clock.elapsedTime;
+  }
+
+  // Called from update() once the current step's hold has run out.
+  function nextCutsceneStep(t) {
+    var cs = cutscene;
+    if (cs.index >= cs.steps.length) { cutscene = null; cameraFocus = null; cameraZoom = 1; return; }
+    var step = cs.steps[cs.index++];
+    var hold = step.wait || 0;
+    if (step.run) step.run();
+    if (step.camera !== undefined) {
+      var focus = step.camera && tileToWorld(step.camera.x, step.camera.y);
+      cameraFocus = focus ? new THREE.Vector3(focus.x, 0, focus.z) : null;
+      cameraZoom = (step.camera && step.camera.zoom) || 1;
+    }
+    if (step.spawn) {
+      step.spawn.forEach(function (spec, i) { spawnActor(spec, t + i * (step.stagger || 0)); });
+      hold = Math.max(hold, (step.spawn.length - 1) * (step.stagger || 0) + ACTOR_RISE_DURATION);
+    }
+    if (step.lights) setLightLevel(step.lights);
+    if (step.exit) {
+      step.exit.forEach(function (id, i) { cs.actors[id].obj.userData.sinkAt = t + i * (step.stagger || 0); });
+      hold = Math.max(hold, (step.exit.length - 1) * (step.stagger || 0) + SINK_DURATION);
+    }
+    if (step.boyWalk) {
+      var boyDirs = findRoute(step.boyWalk.x, step.boyWalk.y) || [];
+      tapRoute = { dirs: boyDirs, target: null };
+      hold = Math.max(hold, boyDirs.length * MOVE_DURATION + 0.2);
+    }
+    if (step.walk) {
+      var a = cs.actors[step.walk.actor];
+      var w = step.walk.to;
+      var to = w === 'boy' ? { x: player.tileX, y: player.tileY } : w.actor ? cs.actors[w.actor] : w;
+      a.path = findRoute(to.x, to.y, { x: a.x, y: a.y }) || [];
+      hold = Math.max(hold, a.path.length * ACTOR_STEP_DURATION + 0.15);
+    }
+    if (step.say) {
+      var speaker = step.actor ? cs.actors[step.actor].obj : null;
+      openDialogue(step.say, step.speaker, null, speaker);
+      cs.waiting = true;
+      return;
+    }
+    cs.resumeAt = t + hold;
+  }
+
+  function spawnActor(spec, at) {
+    var obj = createHuman(spec.appearance);
+    // Same grief greyscale as everyone else, unless keepsColor() would
+    // exempt this character (Mom, Anybody, any demon).
+    tagBaseColors(obj);
+    applyColorFactor(obj, keepsColor({ id: spec.id, appearance: spec.appearance }) ? 1 : worldColorFactor());
+    var p = tileToWorld(spec.x, spec.y);
+    obj.position.set(p.x, 0, p.z);
+    obj.rotation.y = DIR_ROT[spec.facing || 'down'];
+    obj.scale.copy(player.obj.scale);
+    if (spec.enter !== 'stand') {
+      obj.visible = false;
+      obj.position.y = ACTOR_RISE_DEPTH;
+      obj.userData.riseAt = at;
+    }
+    world.group.add(obj);
+    world.obstacles.add(key(spec.x, spec.y));
+    var actor = { obj: obj, x: spec.x, y: spec.y, path: [], step: null, appearance: spec.appearance };
+    world.actors.push(actor);
+    cutscene.actors[spec.id] = actor;
+    if (spec.appearance.pieceType === 'queen') scatterDemons(spec.x, spec.y);
+  }
+
+  // A standing NPC taking part in a cutscene: it walks like any actor, but
+  // stays the same character — still in the level's npcs, still talkable
+  // afterward, wherever the scene left it.
+  function actorFromNpc(npc) {
+    var actor = { obj: npc.obj, x: npc.x, y: npc.y, path: [], step: null, npc: npc,
+      appearance: (npc.def.appearanceDuring && npc.def.appearanceDuring[story.chapter]) || npc.def.appearance };
+    world.actors.push(actor);
+    return actor;
+  }
+
+  // ----------------------------------------------------------------------
+  // Demons run from a queen. Any time a queen shows up — a queen arriving
+  // in a cutscene, or a level that has one standing in it — every demon
+  // (horns or a tail) scatters like a cockroach when the light comes on:
+  // a quick dash away from her, then down into the floor and gone. The one
+  // exception is their king — the Devil can't run; a queen corners him.
+  // Standing NPC demons flee too and stay gone until the level reloads.
+  // ----------------------------------------------------------------------
+  var FLEE_STEP_DURATION = 0.11;
+  var FLEE_MAX_STEPS = 5;
+  var SINK_DURATION = 0.35;
+
+  function scatterDemons(fromX, fromY) {
+    var runners = world.actors.filter(function (a) {
+      return !a.fleeing && !a.gone && isDemon(a.appearance) && a.appearance.pieceType !== 'king';
+    });
+    world.features.npcs.slice().forEach(function (n) {
+      var app = (n.def.appearanceDuring && n.def.appearanceDuring[story.chapter]) || n.def.appearance;
+      if (!isDemon(app) || app.pieceType === 'king') return;
+      if (world.actors.some(function (a) { return a.npc === n; })) return;
+      world.features.npcs.splice(world.features.npcs.indexOf(n), 1);
+      runners.push(actorFromNpc(n));
+    });
+    var reserved = new Set();
+    runners.forEach(function (a) {
+      var best = fleeTarget(a, fromX, fromY, reserved);
+      reserved.add(key(best.x, best.y));
+      a.fleeing = true;
+      a.speed = FLEE_STEP_DURATION;
+      a.path = (best.x === a.x && best.y === a.y) ? [] : (findRoute(best.x, best.y, { x: a.x, y: a.y }) || []);
+      a.fled = false;
+    });
+  }
+
+  // The reachable tile, a few steps away at most, farthest from the queen.
+  function fleeTarget(a, fromX, fromY, reserved) {
+    var best = { x: a.x, y: a.y }, bestD = Math.abs(a.x - fromX) + Math.abs(a.y - fromY);
+    var seen = {}; seen[key(a.x, a.y)] = 0;
+    var queue = [{ x: a.x, y: a.y, d: 0 }];
+    while (queue.length) {
+      var cur = queue.shift();
+      if (cur.d >= FLEE_MAX_STEPS) continue;
+      for (var dir in DIR_VEC) {
+        var nx = cur.x + DIR_VEC[dir].dx, ny = cur.y + DIR_VEC[dir].dz, nk = key(nx, ny);
+        if (seen.hasOwnProperty(nk) || !inBounds(nx, ny) || world.obstacles.has(nk)) continue;
+        if (nx === player.tileX && ny === player.tileY) continue;
+        seen[nk] = cur.d + 1;
+        queue.push({ x: nx, y: ny, d: cur.d + 1 });
+        var dq = Math.abs(nx - fromX) + Math.abs(ny - fromY);
+        if (dq > bestD && !reserved.has(nk)) { best = { x: nx, y: ny }; bestD = dq; }
+      }
+    }
+    return best;
+  }
+
+  // Per-frame animation for every actor: rising up out of the floor, then
+  // a wobble as it lands; walking tile by tile with Boy's own hop; and the
+  // same idle breathing and speak wobble every NPC has.
+  function updateActor(a, t, dt) {
+    var u = a.obj.userData;
+    if (u.riseAt != null) {
+      var k = (t - u.riseAt) / ACTOR_RISE_DURATION;
+      if (k >= 0) {
+        a.obj.visible = true;
+        if (k >= 1) {
+          a.obj.position.y = 0;
+          u.riseAt = null;
+          triggerSpeakWiggle(a.obj);
+        } else {
+          a.obj.position.y = ACTOR_RISE_DEPTH * Math.pow(1 - k, 3);
+        }
+      }
+    }
+    if (!a.step && a.path.length) {
+      var dir = a.path.shift();
+      var nx = a.x + DIR_VEC[dir].dx, ny = a.y + DIR_VEC[dir].dz;
+      world.obstacles.delete(key(a.x, a.y));
+      world.obstacles.add(key(nx, ny));
+      a.obj.rotation.y = DIR_ROT[dir];
+      a.step = { from: tileToWorld(a.x, a.y), to: tileToWorld(nx, ny), elapsed: 0 };
+      a.x = nx; a.y = ny;
+      if (a.npc) { a.npc.x = nx; a.npc.y = ny; }
+    }
+    if (a.step) {
+      a.step.elapsed += dt;
+      var f = Math.min(1, a.step.elapsed / (a.speed || ACTOR_STEP_DURATION));
+      a.obj.position.x = a.step.from.x + (a.step.to.x - a.step.from.x) * f;
+      a.obj.position.z = a.step.from.z + (a.step.to.z - a.step.from.z) * f;
+      a.obj.position.y = Math.sin(f * Math.PI) * 0.16;
+      if (f >= 1) { a.obj.position.y = 0; a.step = null; }
+    }
+    if (a.fleeing && !a.step && !a.path.length && u.sinkAt == null && !a.gone) u.sinkAt = t;
+    if (u.sinkAt != null && t >= u.sinkAt) {
+      var s = (t - u.sinkAt) / SINK_DURATION;
+      if (s >= 1) {
+        a.obj.visible = false;
+        u.sinkAt = null;
+        a.gone = true;
+        world.obstacles.delete(key(a.x, a.y));
+      } else {
+        a.obj.position.y = ACTOR_RISE_DEPTH * s * s;
+      }
+    }
+    if (!a.gone) animateFigure(a.obj, t);
+  }
+
+  // A named character's look as their level defines it for the current
+  // chapter — so a cutscene's Mom or Devil is exactly the one in the game.
+  function npcAppearance(levelId, npcId) {
+    var npcs = LEVELS[LEVEL_INDEX[levelId]].npcs || {};
+    for (var c in npcs) {
+      var def = npcs[c];
+      if (def.id !== npcId) continue;
+      return (def.appearanceDuring && def.appearanceDuring[story.chapter]) || def.appearance;
+    }
+    return null;
+  }
+
+  // Scenes that play on their own the moment BOY arrives somewhere.
+  function startLevelCutscene() {
+    if (world.id === 'hell_3' && CHAPTERS.indexOf(story.chapter) >= CHAPTERS.indexOf('grief') &&
+        story.learned.devilFriend && !story.learned.momInHell) {
+      playMomInHell();
+    }
+  }
+
+  // After Dad dies, with the Devil already BOY's friend: BOY comes down
+  // to find him with his demons, Mom storms in and the lights come on,
+  // the demons scatter, and Mom corners the Devil until he promises to
+  // leave her BOY alone. Plays once (story.learned.momInHell).
+  function playMomInHell() {
+    var devilNpc = world.features.npcs.filter(function (n) { return n.def.id === 'devil'; })[0];
+    if (!devilNpc) return;
+    var party = [
+      { id: 'd0', appearance: DEMON_BISHOP, x: 4, y: 2 }, { id: 'd1', appearance: DEMON_BISHOP, x: 6, y: 2 },
+      { id: 'd2', appearance: DEMON_PAWN, x: 3, y: 3 }, { id: 'd3', appearance: DEMON_PAWN, x: 7, y: 3 },
+      { id: 'd4', appearance: DEMON_PAWN, x: 4, y: 4 }, { id: 'd5', appearance: DEMON_PAWN, x: 6, y: 4 }
+    ].map(function (d) { d.facing = 'down'; d.enter = 'stand'; return d; });
+    playCutscene([
+      { run: function () {
+        story.learned.momInHell = true;
+        cutscene.actors.devil = actorFromNpc(devilNpc);
+      }, spawn: party, camera: { x: 5, y: 4, zoom: 1.5 } },
+      { boyWalk: { x: 5, y: 5 }, wait: 1.2 },
+      { lights: 2.6, spawn: [{ id: 'mom', appearance: npcAppearance('home', 'mom'), x: 5, y: 8, facing: 'up', enter: 'stand' }], wait: 0.3 },
+      { say: 'What the hell are you doing to my son!?', speaker: 'Mom', actor: 'mom' },
+      { walk: { actor: 'devil', to: { x: 1, y: 1 } }, camera: { x: 3, y: 3, zoom: 1.5 } },
+      { walk: { actor: 'mom', to: { actor: 'devil' } } },
+      { run: function () {
+        var m = cutscene.actors.mom, d = cutscene.actors.devil;
+        turnToward(m, d.x, d.y);
+        turnToward(d, m.x, m.y);
+      }, wait: 0.3 },
+      { say: 'You leave my BOY alone. Promise me.', speaker: 'Mom', actor: 'mom' },
+      { say: "...Alright. I promise. I'll leave your BOY alone.", speaker: 'The Devil', actor: 'devil' },
+      { walk: { actor: 'mom', to: { x: 5, y: 8 } } },
+      { run: function () {
+        var m = cutscene.actors.mom;
+        m.obj.visible = false;
+        m.gone = true;
+        world.obstacles.delete(key(m.x, m.y));
+      }, lights: 1, camera: null, wait: 0.4 }
+    ]);
+  }
+
+  function turnToward(a, x, y) {
+    var dx = x - a.x, dy = y - a.y;
+    var dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    a.obj.rotation.y = DIR_ROT[dir];
+  }
+
+  // ----------------------------------------------------------------------
+  // The finale. Dad's crown waits on his bedside table from his diagnosis
+  // on; picking it up is the end of the game. Who can pick it up — what
+  // "enough confidence" means — isn't decided yet, so crownUnlocked() is
+  // a placeholder: the final chapter ('duty') opens it.
+  // ----------------------------------------------------------------------
+  function crownUnlocked() {
+    return story.chapter === 'duty';
+  }
+
+  function useCrown() {
+    if (story.learned.crownTaken) return;
+    if (!crownUnlocked()) {
+      openDialogue("Dad's crown, waiting on his bedside table. You're not ready to carry it yet.");
+      return;
+    }
+    playFinale();
+  }
+
+  function putCrownOnBoy() {
+    var table = world.features.crownTable;
+    if (table && table.obj.userData.crown) table.obj.remove(table.obj.userData.crown);
+    var crown = createCrossTopper(DAD_CROWN_COLOR);
+    crown.position.y = player.obj.userData.head.position.y + 0.2;
+    player.obj.userData.pivot.add(crown);
+    player.obj.userData.crown = crown;
+    story.learned.crownTaken = true;
+    triggerSpeakWiggle(player.obj);
+    sfxWin();
+  }
+
+  // The demons line up like the dark side of a chess board facing Boy —
+  // a row of pawns in front, the bishops and their king (the Devil) behind
+  // — because this is where the real game begins.
+  var DEMON_PAWN = { pieceType: 'pawn', top: 0x2a0a0a, bottom: 0x140808, hairStyle: 'bald', skin: 0x9a1c1c, pieceAccent: 0x2a1414, horns: true, tail: true };
+  var DEMON_BISHOP = { pieceType: 'bishop', top: 0x3a0c10, bottom: 0x140808, hairStyle: 'bald', skin: 0x8a1818, pieceAccent: 0x2a1414, horns: true, tail: true };
+
+  function playFinale() {
+    var mom = world.features.npcs.filter(function (n) { return n.def.id === 'mom'; })[0];
+    var pawns = [1, 2, 3, 4, 5, 6].map(function (y, i) {
+      return { id: 'pawn' + i, appearance: DEMON_PAWN, x: 6, y: y, facing: 'right' };
+    });
+    var bishops = [
+      { id: 'bishop0', appearance: DEMON_BISHOP, x: 5, y: 2, facing: 'right' },
+      { id: 'bishop1', appearance: DEMON_BISHOP, x: 5, y: 5, facing: 'right' }
+    ];
+    playCutscene([
+      { run: function () {
+        if (mom) {
+          mom.obj.visible = false;
+          world.obstacles.delete(key(mom.x, mom.y));
+        }
+        putCrownOnBoy();
+        setFacing('left');
+      }, wait: 1.4 },
+      { camera: { x: 7, y: 4, zoom: 1.7 }, wait: 0.8 },
+      { spawn: pawns, stagger: 0.22 },
+      { spawn: bishops, stagger: 0.35, wait: 0.6 },
+      { spawn: [{ id: 'devil', appearance: npcAppearance('hell_3', 'devil'), x: 5, y: 4, facing: 'right' }], wait: 1.0 },
+      { say: 'Congrats, BOY.', speaker: 'The Devil', actor: 'devil' },
+      { say: 'This is where the game begins. I will go easy on you.', speaker: 'The Devil', actor: 'devil' },
+      // He knows who's coming — he gets himself and his crew out before
+      // she arrives, so the last words are BOY and Mom's alone.
+      { say: 'Alright boys, time for us to get outta here.', speaker: 'The Devil', actor: 'devil' },
+      { exit: pawns.concat(bishops).map(function (d) { return d.id; }).concat(['devil']), stagger: 0.07, wait: 1.0 },
+      { spawn: [{ id: 'mom', appearance: npcAppearance('home', 'mom'), x: 0, y: 7, facing: 'right', enter: 'stand' }] },
+      { walk: { actor: 'mom', to: 'boy' }, wait: 0.4 },
+      { run: function () { faceEachOther(cutscene.actors.mom); }, camera: null, wait: 0.8 },
+      { say: 'You will always be a BOY to me. Now go make me proud.', speaker: 'Mom', actor: 'mom' },
+      { wait: 0.8 },
+      { run: showEndCard }
+    ]);
+  }
+
+  function faceEachOther(a) {
+    var dx = a.x - player.tileX, dy = a.y - player.tileY;
+    var dir = dx > 0 ? 'right' : dx < 0 ? 'left' : dy > 0 ? 'down' : 'up';
+    var back = { right: 'left', left: 'right', down: 'up', up: 'down' }[dir];
+    setFacing(dir);
+    a.obj.rotation.y = DIR_ROT[back];
+  }
+
+  // Title card, then a short credits roll. The cast is read straight from
+  // LEVELS (every named character, in the order they're placed), so it
+  // stays in step with the game as characters are added.
+  function showEndCard() {
+    var seen = {}, cast = ['BOY'];
+    LEVELS.forEach(function (lvl) {
+      var npcs = lvl.npcs || {};
+      for (var c in npcs) {
+        var name = npcs[c].name;
+        if (name && !seen[name]) { seen[name] = true; cast.push(name); }
+      }
+    });
+    var list = document.getElementById('end-cast');
+    list.innerHTML = '';
+    cast.forEach(function (name) {
+      var li = document.createElement('li');
+      li.textContent = name;
+      list.appendChild(li);
+    });
+    document.getElementById('end-card').classList.add('open');
+    gameEnded = true;
+  }
+  var gameEnded = false;
+
   // The car is the fast-travel mechanism: once earned, it can reach any
   // level in LEVELS directly — a new level needs no portal wired into an
   // existing map to be reachable, just an entry in LEVELS.
@@ -4489,7 +5381,7 @@
     carMenuListEl.innerHTML = '';
     var curChapterIdx = CHAPTERS.indexOf(story.chapter);
     LEVELS.forEach(function (lvl, i) {
-      if (lvl.id === world.id) return;
+      if (lvl.id === world.id || lvl.kayakOnly) return;
       if (lvl.availableFrom) {
         var fromIdx = CHAPTERS.indexOf(lvl.availableFrom);
         if (fromIdx === -1 || curChapterIdx < fromIdx) return;
@@ -4589,7 +5481,7 @@
       return null;
     }
     if (!payload || typeof payload.story !== 'object') return null;
-    story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, fieldSeedsPlanted: false, colorRestored: {} };
+    story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, hasKayak: false, fieldSeedsPlanted: false, colorRestored: {} };
     Object.keys(payload.story).forEach(function (k) { story[k] = payload.story[k]; });
     return payload.level || null;
   }
@@ -4617,7 +5509,7 @@
   // everything else (level geometry, NPC defs) is stateless and just
   // re-derives itself correctly once story.chapter is back to 'childhood'.
   function restartGame() {
-    story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, fieldSeedsPlanted: false, colorRestored: {} };
+    story = { chapter: 'childhood', respect: {}, learned: {}, money: 0, communityRespect: {}, missionStep: {}, chapterTalks: {}, produce: {}, goalDone: {}, hasCar: false, hasKayak: false, fieldSeedsPlanted: false, colorRestored: {} };
     player.obj.scale.setScalar(growthScaleForChapter(story.chapter));
     loadLevel(0);
     showToast('The game begins again.', 2400);
@@ -4636,9 +5528,7 @@
   // From 'diagnosis' onward, the "end it" offer retires for good — the
   // first visit that chapter (or any later one) plays a one-time respect
   // beat instead (story.learned.devilFriend), then every visit after that
-  // is a placeholder for the task-giving mechanic described as "TBD" —
-  // no task system exists yet, so this just acknowledges there's nothing
-  // to hand over yet rather than faking one. Note this is a DIFFERENT
+  // he just runs Boy off — Hell's no place for him anymore. Note this is a DIFFERENT
   // trigger than his color exception in applyWorldColor(), which doesn't
   // fire until 'grief' — he earns your respect two chapters before the
   // world (and he) actually turns to color.
@@ -4648,7 +5538,7 @@
         story.learned.devilFriend = true;
         openDialogue("Not anymore. I'm not going to be the one who ends it for you — not you. You're not a soul passing through down here. You're my friend.", 'The Devil', undefined, npc.obj);
       } else {
-        openDialogue("Nothing for you to do yet. When I've got something worth asking, you'll be the first to know.", 'The Devil', undefined, npc.obj);
+        openDialogue("Get the hell out of here, BOY.", 'The Devil', undefined, npc.obj);
       }
       return;
     }
@@ -4723,6 +5613,42 @@
   // whose individual respect actually matters a real `id`.
   function npcRespectKey(def) { return def.id || def.name.toLowerCase(); }
 
+  // Anybody has no name until he gives himself one: the dialogue box shows
+  // "?" on the first visit, he names himself on the second, and he's
+  // "Anybody" from then on (story.learned.anybodyNamed). No respect is
+  // granted here — his real mechanic is still to be designed.
+  function talkToAnybody(npc) {
+    var lines = npc.def.lines;
+    if (story.learned.anybodyNamed) {
+      openDialogue(lines.named, npc.def.name, null, npc.obj);
+      return;
+    }
+    var visits = story.chapterTalks.anybody || 0;
+    story.chapterTalks.anybody = visits + 1;
+    if (visits === 0) {
+      openDialogue(lines.first, '?', null, npc.obj);
+      return;
+    }
+    story.learned.anybodyNamed = true;
+    openDialogue(lines.naming, '?', null, npc.obj);
+    showToast('He has a name now: Anybody', 2400);
+  }
+
+  // The first of this NPC's `musings` (see the doc above LEVELS) that
+  // belongs to the current chapter, has its `requires` met, and hasn't
+  // been heard yet — or null.
+  function pendingMusing(def) {
+    if (!def.musings) return null;
+    for (var i = 0; i < def.musings.length; i++) {
+      var m = def.musings[i];
+      if (m.chapter !== story.chapter) continue;
+      if (m.requires && !story.learned[m.requires]) continue;
+      if (story.learned['musing_' + def.id + '_' + m.key]) continue;
+      return m;
+    }
+    return null;
+  }
+
   function talkToNpc(npc) {
     var def = npc.def;
 
@@ -4731,6 +5657,14 @@
     // (see its doc comment) rather than the respect/dialogue system every
     // other NPC uses. See talkToDevil() below for the fixed three-step text.
     if (def.id === 'devil') { talkToDevil(npc); return; }
+    if (def.id === 'anybody') { talkToAnybody(npc); return; }
+
+    var musing = pendingMusing(def);
+    if (musing) {
+      story.learned['musing_' + def.id + '_' + musing.key] = true;
+      openDialogue(musing.line, def.name, null, npc.obj);
+      return;
+    }
 
     if (def.job) {
       var job = def.job;
@@ -4987,7 +5921,8 @@
   }
 
   function handleAction() {
-    if (toolFrameOpen) return;
+    if (toolFrameOpen || gameEnded) return;
+    if (cutscene) { cutsceneAction(); return; }
     ensureAudio();
     // choiceOpen is deliberately NOT closed here — a choice only advances
     // via clicking one of its own buttons (see openChoice()), never via
@@ -4998,25 +5933,41 @@
     if (dialogueOpen) { closeDialogue(); return; }
 
     var car = findNearbyCar();
-    if (car) {
-      if (story.hasCar) { openCarMenu(); return; }
-      var famRespect = familyRespect();
-      if (famRespect >= CAR_FAMILY_RESPECT_THRESHOLD) {
-        story.hasCar = true;
-        openDialogue('Dad tosses you the keys. "Don\'t make us regret this." Mom just smiles.');
-        showToast('You can drive now! 🚗 Visit the car anytime to travel between towns.', 2800);
-      } else {
-        openDialogue('"This old car won\'t start until Mom and Dad trust you behind the wheel." (' + famRespect + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD + ' family respect)');
-      }
-      return;
-    }
-
+    if (car) { useCar(); return; }
+    var kayak = findNearbyKayak();
+    if (kayak) { useKayak(); return; }
+    var crownTable = findNearbyCrownTable();
+    if (crownTable) { useCrown(); return; }
     var npc = findNearbyNpc();
     if (npc) { talkToNpc(npc); return; }
     var practiceSpot = findNearbyPracticeSpot();
     if (practiceSpot) { practiceViolin(); return; }
     var sign = findNearbySign();
     if (sign) openDialogue(sign.message);
+  }
+
+  function useCar() {
+    if (story.hasCar) { openCarMenu(); return; }
+    var famRespect = familyRespect();
+    if (famRespect >= CAR_FAMILY_RESPECT_THRESHOLD) {
+      story.hasCar = true;
+      openDialogue('Dad tosses you the keys. "Don\'t make us regret this." Mom just smiles.');
+      showToast('You can drive now! 🚗 Visit the car anytime to travel between towns.', 2800);
+    } else {
+      openDialogue('"This old car won\'t start until Mom and Dad trust you behind the wheel." (' + famRespect + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD + ' family respect)');
+    }
+  }
+
+  // A specific tapped target, rather than handleAction()'s "whatever's
+  // adjacent" priority order — so tapping Mom never opens the car menu
+  // just because the car happens to be next to Boy too.
+  function interactWith(target) {
+    if (target.kind === 'car') useCar();
+    else if (target.kind === 'kayak') useKayak();
+    else if (target.kind === 'crown') useCrown();
+    else if (target.kind === 'npc') talkToNpc(target.feature);
+    else if (target.kind === 'practice') practiceViolin();
+    else if (target.kind === 'sign') openDialogue(target.feature.message);
   }
 
   // ----------------------------------------------------------------------
@@ -5166,7 +6117,7 @@
         var frac = Math.min(1, player.moveElapsed / MOVE_DURATION);
         player.obj.position.x = player.from.x + (player.to.x - player.from.x) * frac;
         player.obj.position.z = player.from.z + (player.to.z - player.from.z) * frac;
-        player.obj.position.y = Math.sin(frac * Math.PI) * 0.16;
+        player.obj.position.y = Math.sin(frac * Math.PI) * (world.onWater ? 0.04 : 0.16);
         if (player.obj.userData.legL) {
           var swing = Math.sin(frac * Math.PI * 2) * 0.5;
           player.obj.userData.legL.rotation.x = swing;
@@ -5183,12 +6134,19 @@
           checkCropPickup(t);
           checkPortal();
         }
+      } else if (cutscene || gameEnded) {
+        if (cutscene && tapRoute) stepTapRoute();
+        var stillBreathe = 1 + Math.sin(t * 2.4) * 0.015;
+        player.obj.userData.pivot.scale.set(1, stillBreathe, 1);
       } else if (!dialogueOpen && !carMenuOpen && !toolFrameOpen && !choiceOpen) {
         var dir = pressedDirs[pressedDirs.length - 1];
-        if (dir) attemptMove(dir);
+        if (dir) { if (tapRoute) cancelTapRoute(); attemptMove(dir); }
+        else if (tapRoute) stepTapRoute();
         var breathe = 1 + Math.sin(t * 2.4) * 0.015;
         player.obj.userData.pivot.scale.set(1, breathe, 1);
       }
+      applyWiggle(player.obj, t);
+      if (cutscene && !cutscene.waiting && t >= cutscene.resumeAt) nextCutsceneStep(t);
 
       updateCropRespawns(t);
       world.waterTiles.forEach(function (wt) {
@@ -5204,29 +6162,21 @@
         p.obj.userData.bob.position.y = 0.58 + Math.sin(t * 3 + p.x) * 0.06;
       });
       world.features.npcs.forEach(function (n) {
-        if (!n.obj) return;
-        var breathe = 1 + Math.sin(t * 1.8 + n.obj.userData.idlePhase) * 0.012;
-        n.obj.userData.pivot.scale.set(1, breathe, 1);
-        // One-shot "speak wiggle" — see triggerSpeakWiggle()'s doc comment.
-        // Two quick bounces of Boy's own hop shape (abs(sin), always an
-        // upward bounce, never inverted), fading out across the duration
-        // so it reads as a quick reaction rather than a repeating loop.
-        if (n.obj.userData.wiggleAt != null) {
-          var wiggleElapsed = t - n.obj.userData.wiggleAt;
-          if (wiggleElapsed < WIGGLE_DURATION) {
-            var wiggleFrac = wiggleElapsed / WIGGLE_DURATION;
-            n.obj.position.y = Math.abs(Math.sin(wiggleFrac * WIGGLE_BOUNCES * Math.PI)) * WIGGLE_AMPLITUDE * (1 - wiggleFrac);
-          } else {
-            n.obj.position.y = 0;
-            n.obj.userData.wiggleAt = null;
-          }
-        }
+        if (n.obj) animateFigure(n.obj, t);
       });
+      world.actors.forEach(function (a) { updateActor(a, t, dt); });
 
-      var desiredCamPos = player.obj.position.clone().add(camOffset);
+      if (tapMarker.visible) {
+        var markerAge = t - tapMarker.userData.shownAt;
+        var pop = Math.min(1, markerAge / 0.15);
+        tapMarker.scale.setScalar((0.6 + 0.4 * pop) * (1 + Math.sin(markerAge * 6) * 0.06));
+      }
+
+      var camTarget = cameraFocus || player.obj.position;
+      var desiredCamPos = camTarget.clone().add(camOffset.clone().multiplyScalar(cameraZoom));
       camera.position.lerp(desiredCamPos, 1 - Math.pow(0.0008, dt));
-      var lookTarget = player.obj.position.clone().add(camLookAhead);
-      camera.lookAt(player.obj.position.clone().add(new THREE.Vector3(0, 0.6, 0)).lerp(lookTarget, 1));
+      var lookTarget = camTarget.clone().add(camLookAhead);
+      camera.lookAt(camTarget.clone().add(new THREE.Vector3(0, 0.6, 0)).lerp(lookTarget, 1));
     }
 
     renderer.render(scene, camera);
