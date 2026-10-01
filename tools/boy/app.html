@@ -950,7 +950,7 @@
         "#...~~~.....rrb...#",
         "#Y$.........or..$.#",
         "#..$.,,....eee,S..#",
-        "#########4#########"
+        "###################"
       ],
       signs: [
         "A crooked signpost: \"Six Light Shards sleep in this clearing. Gather them all to wake the grove.\"",
@@ -1108,7 +1108,6 @@
         '1': { to: 'hollow', x: 9, y: 4 },
         '2': { to: 'home', x: 1, y: 7 },
         '3': { to: 'riverside', x: 5, y: 7 },
-        '4': { to: 'meadow', x: 5, y: 1 },
         '5': { to: 'schoolhouse', x: 5, y: 7 },
         // Coffee's Studio and Sir Earth's Conservatory used to be reached
         // from here (old digits '6'/'7') — relocated to College, reached
@@ -1301,17 +1300,22 @@
       exits: { '1': { to: 'clearing', x: 11, y: 1 } }
     },
     {
+      // Sora's meadow sits on the far shore of the Lake — no walking path
+      // reaches it, only the kayak: paddle to the Lake's east landing and
+      // step ashore on the meadow's beach (its west edge). kayakOnly keeps
+      // it out of the car's drive-to menu too.
       id: 'meadow',
       name: 'The Meadow',
+      kayakOnly: true,
       map: [
-        "#####1#####",
-        "#.,.....,.#",
-        "#.........#",
-        "#....F....#",
-        "#.........#",
-        "#....@....#",
-        "#,.......,#",
-        "#.........#",
+        "###########",
+        "~=.,.....,#",
+        "~=........#",
+        "~=...F....#",
+        "2=........#",
+        "~=...@....#",
+        "~=,......,#",
+        "~=........#",
         "###########"
       ],
       npcs: {
@@ -1370,7 +1374,7 @@
           instrumentSting: 'flute'
         }
       },
-      exits: { '1': { to: 'clearing', x: 9, y: 13 } }
+      exits: { '2': { to: 'lake', x: 9, y: 6 } }
     },
     {
       id: 'schoolhouse',
@@ -1883,8 +1887,10 @@
       // only way onto the lake. `onWater` flips what's walkable: open
       // water ('~') is where Boy paddles, sand ('=') and the tree line
       // are the shore he can't paddle into, and rocks/reeds ('o'/'b')
-      // are obstacles out on the water. `kayakOnly` keeps it, and the
-      // island past it, out of the car's drive-to menu.
+      // are obstacles out on the water. Three landings: south back to the
+      // Riverside, north to Anybody's island, east to Sora's meadow on the
+      // far shore. `kayakOnly` keeps it, and everything past it, out of
+      // the car's drive-to menu.
       id: 'lake',
       name: 'The Lake',
       onWater: true,
@@ -1896,7 +1902,7 @@
         "#~~b~~~~~~#",
         "#~~~~~~o~~#",
         "#~o~~b~~~~#",
-        "#~~~~~~~~=#",
+        "#~~~~~~~~~3",
         "#=~~~o~~~~#",
         "#~~~~~~b~~#",
         "#~b~~~~~~~#",
@@ -1906,86 +1912,96 @@
       ],
       exits: {
         '1': { to: 'riverside', x: 1, y: 4 },
-        '2': { to: 'island_shore', x: 5, y: 5 }
+        '2': { to: 'island_shore', x: 5, y: 5 },
+        '3': { to: 'meadow', x: 1, y: 4 }
       }
     },
     {
-      // Anybody's island is three levels climbing UP to him, the mirror
-      // image of Hell's three levels down to the Devil: a beach, a rocky
-      // slope, and the summit. Each climb is a north-edge exit landing on
-      // the next level's south edge ('4' up, '3' down on every one, same
-      // convention as Hell). Boy's own kayak waits on the beach — using it
-      // paddles him back out onto the lake (see `kayakLaunch`).
+      // Anybody's island is a mountain: three levels climbing UP to him,
+      // the mirror image of Hell's three levels DOWN to the Devil. Hell
+      // darkens with every flight down; the mountain brightens with every
+      // climb up — paler sky, clouds sitting below its edges, grass giving
+      // way to bare rock and snow at the summit (see MOUNTAIN_LEVELS).
+      // Every level's way up is a flight of stone steps cut into the cliff
+      // on its north side ('4', stairs: 'up'), landing just above the way
+      // back down ('3') on the next level, same convention as Hell's '4'
+      // down / '3' up. '^' is cliff rock, '*' is snow. BOY's kayak waits
+      // on the beach — using it paddles back out onto the lake.
       id: 'island_shore',
       name: 'The Island',
       kayakOnly: true,
       kayakLaunch: { x: 5, y: 1 },
       map: [
-        "#####4#####",
-        "#..o...,..#",
-        "#,.......o#",
+        "^^^^^^^^^^^",
+        "^^^^^4^^^^^",
+        "#..o...o..#",
+        "#,........#",
         "#....@....#",
-        "#.........#",
         "#=.......=#",
         "~==..K..==~",
         "~~=======~~",
         "~~~~~~~~~~~"
       ],
-      exits: { '4': { to: 'island_slope', x: 5, y: 7 } }
+      exits: { '4': { to: 'island_slope', x: 5, y: 7, stairs: 'up' } }
     },
     {
       id: 'island_slope',
-      name: 'The Island',
+      name: 'The Mountain',
       kayakOnly: true,
       map: [
-        "#####4#####",
-        "#oo.....oo#",
-        "#o..oo#..o#",
-        "#..#oo...##",
-        "#.....o#..#",
-        "##o.......#",
-        "#..oo#....#",
-        "#o...@..oo#",
-        "#####3#####"
+        "^^^^^^^^^^^",
+        "^^^^^4^^^^^",
+        "^o.......o^",
+        "^..^o.o.^.^",
+        "^.....^...^",
+        "^o.^.....o^",
+        "^...o.^...^",
+        "^^...@...^^",
+        "^^^^^3^^^^^"
       ],
       exits: {
-        '3': { to: 'island_shore', x: 5, y: 1 },
-        '4': { to: 'island_summit', x: 5, y: 7 }
+        '3': { to: 'island_shore', x: 5, y: 2 },
+        '4': { to: 'island_summit', x: 5, y: 7, stairs: 'up' }
       }
     },
     {
-      // Anybody — see talkToAnybody(). He has no name at first (the
-      // dialogue box shows "?"), until he tells Boy he was never given
-      // one and Boy can call him Anybody. His real role — teaching how
-      // everything Boy learns (math, music, art) is connected — is still
-      // to be designed; for now he only has his naming exchange.
+      // Anybody — see talkToAnybody(). The story's spiritual master: from
+      // the mountaintop he shows BOY how much of the world can be seen,
+      // and how everything BOY learns (math, music, art) is connected.
+      // A relationship built over many visits, not one conversation — he
+      // has no name at first (the dialogue box shows "?"), and only names
+      // himself Anybody once BOY has earned his respect.
       id: 'island_summit',
-      name: 'The Island',
+      name: 'The Summit',
       kayakOnly: true,
       map: [
-        "###########",
-        "#oo..o..oo#",
-        "#o.......o#",
-        "#....A....#",
-        "#..,...,..#",
-        "#.........#",
-        "#o.......o#",
-        "#oo..@..oo#",
-        "#####3#####"
+        "^^^^^^^^^^^",
+        "^^o**^**o^^",
+        "^o**...**o^",
+        "^*...A...*^",
+        "^*.......*^",
+        "^o.......o^",
+        "^^o.....o^^",
+        "^^^..@..^^^",
+        "^^^^^3^^^^^"
       ],
       npcs: {
         A: {
           id: 'anybody',
           name: 'Anybody',
           appearance: { top: 0x7d80d9, bottom: 0x2e2a35, hairStyle: 'short', hair: 0x000000, skin: 0xa17c5e, pieceType: 'pawn', pieceAccent: 0xf0a83c },
+          // Unnamed lines play in order, one per visit, with "?" as the
+          // speaker (the last one repeats); he names himself only once BOY
+          // has earned his respect (see ANYBODY_NAMING_RESPECT); then he's
+          // Anybody for good.
           lines: {
-            first: "Hm. A boy, in a kayak, all the way up here. Nobody climbs this far, BOY. What do you want?",
-            naming: "You came back. ...You asked my name last time. I was never given one — never knew my parents, either. So call me whatever you like. Call me Anybody.",
+            unnamed: ["Who am I? Who are you?", "I'm nobody, I have no name.", "Look out there, BOY. From the mountaintop, we can see many things in the world."],
+            naming: "I was never given a name. Never knew my parents, either. But if I can be nobody, I can be anybody. I'm Anybody — that's my name.",
             named: "Sit a while, BOY. The numbers, the music, the colors — everything you've been learning down there is one thing, if you look at it long enough. We'll get to that."
           }
         }
       },
-      exits: { '3': { to: 'island_slope', x: 5, y: 1 } }
+      exits: { '3': { to: 'island_slope', x: 5, y: 2 } }
     }
   ];
 
@@ -2200,7 +2216,7 @@
     var exits = levelDef.exits || {};
     var npcs = levelDef.npcs || {};
     var obstacles = new Set();
-    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null };
+    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null, cliffs: [] };
     var groundKinds = [];
     var playerStart = { x: 1, y: 1 };
     // On an `onWater` level (the lake) Boy is in his kayak: open water is
@@ -2214,7 +2230,7 @@
         var c = map[y][x];
         if (onWater && c !== '=' && c !== '#' && !exits[c]) groundKinds[y][x] = '~';
         if (exits[c]) {
-          features.portals.push({ x: x, y: y, to: exits[c].to, spawn: { x: exits[c].x, y: exits[c].y } });
+          features.portals.push({ x: x, y: y, to: exits[c].to, spawn: { x: exits[c].x, y: exits[c].y }, stairs: exits[c].stairs });
           continue;
         }
         if (npcs[c]) {
@@ -2226,6 +2242,7 @@
         }
         switch (c) {
           case '#': obstacles.add(key(x, y)); features.trees.push({ x: x, y: y }); break;
+          case '^': obstacles.add(key(x, y)); features.cliffs.push({ x: x, y: y }); break;
           case 'o': obstacles.add(key(x, y)); features.rocks.push({ x: x, y: y }); break;
           case 'b': obstacles.add(key(x, y)); features.bushes.push({ x: x, y: y }); break;
           case '~': if (!onWater) obstacles.add(key(x, y)); break;
@@ -2378,11 +2395,19 @@
     }
     if (c === '=') return new THREE.Color(0xC9A876).offsetHSL(rand(-0.01, 0.01), 0, rand(-0.03, 0.02));
     if (c === '~') return new THREE.Color(0x3aa0c9);
+    if (c === '*') return new THREE.Color(0xf1f4f6).offsetHSL(0, 0, rand(-0.03, 0.01));
+    if (c === '^') return new THREE.Color(0x7d7b74).offsetHSL(0, 0, rand(-0.03, 0.03));
     // grass base, with per-tile jitter for a hand-painted look — the
-    // island's upper two levels fade toward bare mountain rock as Boy climbs.
+    // mountain's upper two levels fade toward bare rock as BOY climbs.
     return new THREE.Color(OUTDOOR_GROUND[levelId] || 0x5fae4c).offsetHSL(rand(-0.02, 0.02), rand(-0.05, 0.05), rand(-0.04, 0.03));
   }
-  var OUTDOOR_GROUND = { island_slope: 0x76955a, island_summit: 0x8c9183 };
+  var OUTDOOR_GROUND = { island_slope: 0x86917a, island_summit: 0x9c9d95 };
+  // The mountain's mirror of Hell's darkening staircase: each level up has
+  // a paler, thinner sky and clouds sitting around (and below) its edges.
+  var MOUNTAIN_LEVELS = {
+    island_slope: { sky: 0xd3ebf0, clouds: 8 },
+    island_summit: { sky: 0xe8f5f8, clouds: 14, snowCaps: true }
+  };
   var PORTAL_TILE_COLOR = 0x554a66;
 
   // Boy is telling his own story: he and his family (Mom, Dad) are Indian
@@ -2847,6 +2872,68 @@
     paddle.position.y = paddleY || 0.22;
     paddle.rotation.z = paddleY ? 0.3 : 0;
     g.add(paddle);
+    return g;
+  }
+
+  // A column of flat-shaded rock — the mountain's walls ('^'), in place of
+  // the tree line every other outdoor level is ringed by.
+  function createCliff(snowCap) {
+    var g = new THREE.Group();
+    var rockMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x8d8b84).offsetHSL(0, 0, rand(-0.04, 0.04)), roughness: 0.95, flatShading: true });
+    var height = rand(1.5, 2.3);
+    var body = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), rockMat);
+    body.scale.set(rand(0.9, 1.05), height / 2, rand(0.9, 1.05));
+    body.position.y = height * 0.42;
+    body.rotation.y = rand(0, Math.PI * 2);
+    body.castShadow = true;
+    g.add(body);
+    var top = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0), rockMat);
+    top.position.set(rand(-0.25, 0.25), height * 0.85, rand(-0.25, 0.25));
+    top.castShadow = true;
+    g.add(top);
+    if (snowCap) {
+      var snow = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), new THREE.MeshStandardMaterial({ color: 0xf4f7f8, roughness: 0.9, flatShading: true }));
+      snow.scale.set(1.05, 0.45, 1.05);
+      snow.position.set(top.position.x, height * 0.85 + 0.32, top.position.z);
+      g.add(snow);
+    }
+    return g;
+  }
+
+  // Stone steps cut into the cliff — the mountain's way up. Same glowing
+  // orb as every other exit's marker (userData.bob, animated in update()),
+  // floating over the top step.
+  function createStoneSteps() {
+    var g = new THREE.Group();
+    var stoneMat = new THREE.MeshStandardMaterial({ color: 0xa8a49a, roughness: 0.9, flatShading: true });
+    [[0.2, 0.55], [0.45, 0], [0.7, -0.55]].forEach(function (s) {
+      var slab = new THREE.Mesh(new THREE.BoxGeometry(1.5, s[0], 0.6), stoneMat);
+      slab.position.set(0, s[0] / 2, s[1]);
+      slab.castShadow = true;
+      slab.receiveShadow = true;
+      g.add(slab);
+    });
+    var orb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), new THREE.MeshStandardMaterial({ color: 0xffcf6b, emissive: 0xffb238, emissiveIntensity: 1.1, roughness: 0.3 }));
+    orb.position.set(0, 1.0, -0.55);
+    g.add(orb);
+    var light = new THREE.PointLight(0xffb861, 1.0, 3, 2);
+    light.position.copy(orb.position);
+    g.add(light);
+    g.userData.bob = orb;
+    g.userData.bobBase = 1.0;
+    return g;
+  }
+
+  function createCloud() {
+    var g = new THREE.Group();
+    var mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, emissive: 0xffffff, emissiveIntensity: 0.15 });
+    var puffs = 3 + Math.floor(rand(0, 3));
+    for (var i = 0; i < puffs; i++) {
+      var puff = new THREE.Mesh(new THREE.SphereGeometry(rand(0.6, 1.0), 10, 8), mat);
+      puff.position.set(i * 0.8 - puffs * 0.4 + rand(-0.2, 0.2), rand(0, 0.3), rand(-0.3, 0.3));
+      puff.scale.y = 0.6;
+      g.add(puff);
+    }
     return g;
   }
 
@@ -3909,7 +3996,19 @@
     place(w.features.bushes, createBush);
     if (!interiorTheme) place(w.features.flowers, createFlower);
     place(w.features.signs, createSignPost);
-    place(w.features.portals, createPortalMarker);
+    place(w.features.portals, function (f) { return f.stairs === 'up' ? createStoneSteps() : createPortalMarker(); });
+    var mountain = MOUNTAIN_LEVELS[w.id];
+    place(w.features.cliffs, function () { return createCliff(mountain && mountain.snowCaps); });
+    if (mountain) {
+      // Clouds ring the level just outside its edges and a little below
+      // it, so the ground reads as high up rather than at sea level.
+      for (var ci = 0; ci < mountain.clouds; ci++) {
+        var ang = (ci / mountain.clouds) * Math.PI * 2 + rand(-0.2, 0.2);
+        var cloud = createCloud();
+        cloud.position.set(Math.cos(ang) * (w.W * TILE * 0.62 + rand(0, 2)), rand(-1.6, -0.4), Math.sin(ang) * (w.H * TILE * 0.62 + rand(0, 2)));
+        group.add(cloud);
+      }
+    }
 
     if (w.features.houseTiles.length) {
       var hMinX = Math.min.apply(null, w.features.houseTiles.map(function (t) { return t.x; }));
@@ -4229,7 +4328,7 @@
     // to this level's own interior tone, or back to SKY_COLOR outdoors.
     // The sky/fog desaturates right along with everything else in grief —
     // see applyWorldColor() below, called once world/player are in place.
-    var bgColor = (INTERIOR_THEMES[levelDef.id] || { bg: SKY_COLOR }).bg;
+    var bgColor = (INTERIOR_THEMES[levelDef.id] || { bg: (MOUNTAIN_LEVELS[levelDef.id] || {}).sky || SKY_COLOR }).bg;
     var bgFactor = worldColorFactor();
     if (bgFactor < 1) bgColor = new THREE.Color(bgColor).lerp(new THREE.Color(luminanceGrey(bgColor)), 1 - bgFactor).getHex();
     scene.background = new THREE.Color(bgColor);
@@ -5613,40 +5712,31 @@
   // whose individual respect actually matters a real `id`.
   function npcRespectKey(def) { return def.id || def.name.toLowerCase(); }
 
-  // Anybody has no name until he gives himself one: the dialogue box shows
-  // "?" on the first visit, he names himself on the second, and he's
-  // "Anybody" from then on (story.learned.anybodyNamed). No respect is
-  // granted here — his real mechanic is still to be designed.
+  // Anybody has no name until BOY earns one from him: the dialogue box
+  // shows "?" while he works through his `unnamed` lines (one per visit,
+  // the last repeating), and he names himself Anybody only once
+  // story.respect.anybody reaches ANYBODY_NAMING_RESPECT
+  // (story.learned.anybodyNamed), "Anybody" from then on. How BOY earns
+  // that respect isn't designed yet, so nothing in play grants it — the
+  // same "no free respect from talking" rule as everywhere else; a save
+  // link with respect.anybody set is the only way to reach the naming
+  // for now.
+  var ANYBODY_NAMING_RESPECT = 3;
   function talkToAnybody(npc) {
     var lines = npc.def.lines;
     if (story.learned.anybodyNamed) {
       openDialogue(lines.named, npc.def.name, null, npc.obj);
       return;
     }
-    var visits = story.chapterTalks.anybody || 0;
-    story.chapterTalks.anybody = visits + 1;
-    if (visits === 0) {
-      openDialogue(lines.first, '?', null, npc.obj);
+    if ((story.respect.anybody || 0) >= ANYBODY_NAMING_RESPECT) {
+      story.learned.anybodyNamed = true;
+      openDialogue(lines.naming, '?', null, npc.obj);
+      showToast('He has a name now: Anybody', 2400);
       return;
     }
-    story.learned.anybodyNamed = true;
-    openDialogue(lines.naming, '?', null, npc.obj);
-    showToast('He has a name now: Anybody', 2400);
-  }
-
-  // The first of this NPC's `musings` (see the doc above LEVELS) that
-  // belongs to the current chapter, has its `requires` met, and hasn't
-  // been heard yet — or null.
-  function pendingMusing(def) {
-    if (!def.musings) return null;
-    for (var i = 0; i < def.musings.length; i++) {
-      var m = def.musings[i];
-      if (m.chapter !== story.chapter) continue;
-      if (m.requires && !story.learned[m.requires]) continue;
-      if (story.learned['musing_' + def.id + '_' + m.key]) continue;
-      return m;
-    }
-    return null;
+    var visits = story.chapterTalks.anybody || 0;
+    openDialogue(lines.unnamed[Math.min(visits, lines.unnamed.length - 1)], '?', null, npc.obj);
+    if (visits < lines.unnamed.length) story.chapterTalks.anybody = visits + 1;
   }
 
   function talkToNpc(npc) {
@@ -6159,7 +6249,7 @@
       });
       world.features.portals.forEach(function (p) {
         if (!p.obj) return;
-        p.obj.userData.bob.position.y = 0.58 + Math.sin(t * 3 + p.x) * 0.06;
+        p.obj.userData.bob.position.y = (p.obj.userData.bobBase || 0.58) + Math.sin(t * 3 + p.x) * 0.06;
       });
       world.features.npcs.forEach(function (n) {
         if (n.obj) animateFigure(n.obj, t);
