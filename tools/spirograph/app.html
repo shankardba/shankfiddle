@@ -401,6 +401,7 @@
   .btn:hover{border-color:var(--warm);color:var(--warm);}
   .btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
   .btn-accent{border-color:var(--cool);color:var(--cool);}
+  #beginDrawingBtn.pending{background:var(--cool);color:var(--bg, #000);font-weight:600;}
   .btn-accent:hover{border-color:var(--warm);color:var(--warm);}
   .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .btn-row .btn{margin-top:0;}
@@ -570,6 +571,28 @@
   </div>
 
   <div class="panel" id="panel">
+    <div class="section">
+      <div class="label">Drawing</div>
+      <div class="btn-row">
+        <button class="btn btn-accent" id="beginDrawingBtn" title="Apply the gear values below and draw (or replay the current drawing). Enter in a gear field does the same.">▶ Begin Drawing</button>
+        <button class="btn" id="pauseBtn" title="Pause or resume the drawing mid-way" disabled>⏸ Pause</button>
+      </div>
+      <div class="slider-row" style="margin-top:10px;">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Speed</span><span class="val" id="speedVal">1.00x</span></div>
+          <input type="range" id="speedSlider" min="0.1" max="2.5" step="0.05" value="1">
+        </div>
+      </div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Reveal animation</div>
+        <div class="switch on" id="animateToggle"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="label" style="margin:0;">Loop continuously (live drawing)</div>
+        <div class="switch" id="loopToggle"></div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="label">Gears — outer ring (n0), wheel (n1)</div>
       <div class="grid2">
@@ -743,25 +766,6 @@
       </div>
       <button class="btn" id="clearLayersBtn">Clear canvas</button>
       <div class="layer-list" id="layerList"></div>
-    </div>
-
-    <div class="section">
-      <div class="label">Motion</div>
-      <div class="toggle-row">
-        <div class="label" style="margin:0;">Reveal animation</div>
-        <div class="switch on" id="animateToggle"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="label" style="margin:0;">Loop continuously (live drawing)</div>
-        <div class="switch" id="loopToggle"></div>
-      </div>
-      <div class="slider-row">
-        <div style="flex:1;">
-          <div class="slider-label"><span>Speed</span><span class="val" id="speedVal">1.0x</span></div>
-          <input type="range" id="speedSlider" min="0.1" max="2.5" step="0.05" value="1">
-        </div>
-      </div>
-      <button class="btn" id="replayBtn">Replay drawing</button>
     </div>
 
     <div class="section">
@@ -1729,28 +1733,44 @@
     if(state.showEquations) drawEquationCaption();
   }
 
+  let animPaused = false, animRunning = false;
+  const pauseBtn = document.getElementById('pauseBtn');
+  function updatePauseBtn(){
+    pauseBtn.disabled = !animRunning;
+    pauseBtn.textContent = animPaused ? '▶ Resume' : '⏸ Pause';
+  }
   function startAnimation(){
     cancelAnimationFrame(animFrame);
-    if(!state.animate && !state.loop){ animProgress = 1; render(); return; }
+    animPaused = false;
+    if(!state.animate && !state.loop){ animRunning = false; updatePauseBtn(); animProgress = 1; render(); return; }
+    animRunning = true; updatePauseBtn();
     const nStamps = stampVariants ? stampVariants.length : 1;
     const stampScale = nStamps > 1 ? Math.min(5, 1 + Math.sqrt(nStamps)/4) : 1;
-    const baseDur = 1400 * stampScale;
-    let t0 = performance.now();
+    // elapsed accumulates dt*speed, so the Speed slider takes effect live (one-shot and loop)
+    let elapsed = 0, last = performance.now();
+    const dur = () => (state.loop ? 6000 : 1400) * stampScale;
     function step(now){
-      const dur = state.loop ? Math.max(500, 6000/state.speedMult) * stampScale : baseDur;
-      const f = clamp((now - t0)/dur, 0, 1);
+      elapsed += (now - last) * state.speedMult; last = now;
+      if(state.loop && elapsed >= dur()) elapsed %= dur();
+      const f = clamp(elapsed/dur(), 0, 1);
       animProgress = state.loop ? f : 1 - Math.pow(1-f, 2); // ease-out for the one-shot reveal
       render();
-      if(f < 1){
-        animFrame = requestAnimationFrame(step);
-      } else if(state.loop){
-        t0 = now;
+      if(f < 1 || state.loop){
         animFrame = requestAnimationFrame(step);
       } else {
-        animProgress = 1; render();
+        animProgress = 1; animRunning = false; updatePauseBtn(); render();
       }
     }
+    resumeFn = () => { last = performance.now(); animFrame = requestAnimationFrame(step); };
     animFrame = requestAnimationFrame(step);
+  }
+  let resumeFn = null;
+  function togglePause(){
+    if(!animRunning) return;
+    animPaused = !animPaused;
+    if(animPaused) cancelAnimationFrame(animFrame);
+    else if(resumeFn) resumeFn();
+    updatePauseBtn();
   }
 
   // Every control redraws immediately — there is no "update" step. Slider drags and
@@ -1782,6 +1802,7 @@
       }
     }
     stampInfo = computeStampInfo(derived, state.stampF, state.stampB);
+    if(window.gearUIReady) updateBeginBtn();
     updateStampReadout();
     updateAdvisor();
     fitScale();
@@ -1790,7 +1811,7 @@
     updateFrequencyFields();
     updateMathPanel();
     if(animate || state.loop) startAnimation();
-    else { animProgress = 1; render(); }
+    else { if(!animPaused) animProgress = 1; render(); }
   }
 
   // Keeps the selected layer's stored snapshot (shape + style) live-updated as its
@@ -2196,29 +2217,40 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     link.click();
   });
 
+  // Gear teeth fields (n0-n5) only STAGE values while typing; nothing is redrawn until the
+  // user presses "Begin Drawing" (or Enter), so intermediate values like the "2" of "288"
+  // never trigger an expensive recompute.
+  const gearFields = [];
+  const beginBtn = document.getElementById('beginDrawingBtn');
+  function readGear(el, fallback){
+    return clamp(Math.round(Math.abs(parseFloat(el.value) || fallback)), 1, 600);
+  }
+  function updateBeginBtn(){
+    const pending = gearFields.some(f => {
+      const raw = parseFloat(f.el.value);
+      return !isFinite(raw) || Math.round(raw) !== state[f.key];
+    });
+    beginBtn.classList.toggle('pending', pending);
+  }
+  function commitGears(){
+    const hooks = new Set();
+    gearFields.forEach(f => {
+      const v = readGear(f.el, state[f.key]);
+      f.el.value = v;
+      if(state[f.key] !== v){ state[f.key] = v; if(f.onSet) hooks.add(f.onSet); }
+    });
+    hooks.forEach(fn => fn());
+    updateBeginBtn();
+    doRecompute(true);
+  }
   function bindNumber(id, key, onSet){
     const el = document.getElementById(id);
-    // 'input' fires on every keystroke / spinner click for true real-time feedback;
-    // invalid/empty intermediate text (e.g. clearing the field to retype) is ignored
-    // rather than forced to a value, so it doesn't fight the user mid-edit.
-    el.addEventListener('input', () => {
-      const raw = parseFloat(el.value);
-      if(!isFinite(raw) || raw < 1) return;
-      const v = Math.min(600, Math.round(raw));
-      if(state[key] === v) return;
-      state[key] = v;
-      if(onSet) onSet();
-      scheduleUpdate();
-    });
-    // on blur/enter, normalize whatever's left in the field into range
-    el.addEventListener('change', () => {
-      let v = Math.round(Math.abs(parseFloat(el.value) || state[key]));
-      v = clamp(v, 1, 600);
-      el.value = v;
-      if(state[key] !== v){ state[key] = v; if(onSet) onSet(); }
-      scheduleUpdate();
-    });
+    gearFields.push({el, key, onSet});
+    el.addEventListener('input', updateBeginBtn);
+    el.addEventListener('keydown', e => { if(e.key === 'Enter') commitGears(); });
   }
+  beginBtn.addEventListener('click', commitGears);
+  window.gearUIReady = true;
   function refreshHRange(){
     const hMax = 0.975 * (1 - state.n2/state.n1);
     const hSlider = document.getElementById('hSlider');
@@ -2642,7 +2674,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   wireSwitch('animateToggle','animate', () => {});
   wireSwitch('loopToggle','loop', startAnimation);
 
-  document.getElementById('replayBtn').addEventListener('click', startAnimation);
+  pauseBtn.addEventListener('click', togglePause);
 
   const speedSlider = document.getElementById('speedSlider');
   const speedVal = document.getElementById('speedVal');
