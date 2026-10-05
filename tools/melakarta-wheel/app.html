@@ -221,6 +221,8 @@
   }
   .chord-card .chord-name{font:700 14px/1.2 Fraunces,serif;color:var(--ink);margin-bottom:6px;min-height:2.2em;display:flex;align-items:center;justify-content:center;}
   .chord-card .fretboard{width:100%;max-width:88px;height:auto;display:block;margin:0 auto;}
+  .chord-card .chord-play-btn{display:block;margin:5px auto 0;border:none;background:none;cursor:pointer;font-size:12px;color:var(--ink-soft);opacity:0.75;padding:2px 8px;}
+  .chord-card .chord-play-btn:hover{opacity:1;}
   .chord-card .chord-deg{font:600 10.5px/1 'IBM Plex Mono',monospace;color:var(--muted);margin-top:6px;}
 
   footer{max-width:1040px;margin:0 auto;padding:10px 20px 50px;color:var(--muted);font-size:12.5px;text-align:center;}
@@ -961,6 +963,43 @@
     });
   }
 
+  // Plucked-string voice for the chord-chart play buttons: bright attack,
+  // upper harmonics dying quickly, fundamental ringing longest.
+  function playPluckNote(freq, startTime, duration, ctx, velocity){
+    const harm=[
+      {mult:1,gain:1.00,decay:duration*0.90},
+      {mult:2,gain:0.50,decay:duration*0.45},
+      {mult:3,gain:0.30,decay:duration*0.28},
+      {mult:4,gain:0.18,decay:duration*0.18},
+      {mult:5,gain:0.10,decay:duration*0.12}
+    ];
+    harm.forEach(h=>{
+      const osc=ctx.createOscillator(); osc.type='sine'; osc.frequency.value=freq*h.mult;
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(0,startTime);
+      g.gain.linearRampToValueAtTime(h.gain*0.2*velocity, startTime+0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, startTime+h.decay);
+      osc.connect(g); g.connect(masterFilter);
+      osc.start(startTime); osc.stop(startTime+h.decay+0.05);
+    });
+  }
+
+  // Strums exactly the fretting the chart shows (same guitarVoicing() the
+  // SVG uses), low string to high, skipping muted strings.
+  const OPEN_MIDI_GUITAR = [40,45,50,55,59,64]; // E2 A2 D3 G3 B3 E4
+  function playGuitarChord(pcs){
+    const ctx = getCtx();
+    const { frets } = guitarVoicing(pcs);
+    const sounding = [];
+    frets.forEach((f,s)=>{ if(f!==null) sounding.push(OPEN_MIDI_GUITAR[s]+f); });
+    const now = ctx.currentTime + 0.02;
+    const vel = Math.min(1, 4/Math.max(sounding.length,1));
+    sounding.forEach((m,i)=>{
+      playPluckNote(440*Math.pow(2,(m-69)/12), now+i*0.045, 2.2, ctx, vel);
+    });
+    checkAudioUnlocked();
+  }
+
   /* ---------------------------------------------------------------------
    * ROOT / TONIC + CLASSICAL NOTATION
    *
@@ -1502,6 +1541,11 @@
       name.textContent = rootName + quality;
       card.appendChild(name);
       card.insertAdjacentHTML('beforeend', fretboardSVG(pcs));
+      const playBtn = document.createElement('button');
+      playBtn.type='button'; playBtn.className='chord-play-btn';
+      playBtn.innerHTML='&#9658;'; playBtn.setAttribute('aria-label','Play '+rootName+quality); playBtn.title='Play this voicing';
+      playBtn.addEventListener('click', ()=>playGuitarChord(pcs));
+      card.appendChild(playBtn);
       const degCaption = document.createElement('div'); degCaption.className='chord-deg mono';
       degCaption.innerHTML = noteHtml([r.labels[deg]]);
       card.appendChild(degCaption);

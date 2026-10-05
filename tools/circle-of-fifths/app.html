@@ -1537,12 +1537,17 @@
         ${chart}
         <div class="cn">${name}</div>
         <div class="nn">${notes.map(n=>n.replace('b','\u266d')).join(' \u2013 ')}</div>
-        <button data-notes="${notes.join(',')}">&#9658;</button>
+        <button data-notes="${notes.join(',')}" aria-label="Play chord" title="Play this voicing">&#9658;</button>
       `;
       legend.appendChild(card);
     });
     legend.querySelectorAll('button').forEach(btn=>{
-      btn.addEventListener('click', ()=> { playChord(btn.dataset.notes.split(',')); checkAudioUnlocked(); });
+      btn.addEventListener('click', ()=> {
+        const chordNotes = btn.dataset.notes.split(',');
+        if(notationView === 'staff') playChord(chordNotes);
+        else playFrettedChord(chordNotes, notationView);
+        checkAudioUnlocked();
+      });
     });
   }
 
@@ -1719,6 +1724,65 @@
     freqs.forEach(f => playPianoNote(f, now, dur, ctx, balance));
     playPianoNote(bassRoot, now, dur, ctx, 0.75*balance);
     playPianoNote(subBass, now, dur, ctx, 0.5*balance);
+  }
+
+
+  // --- fretted-instrument playback ---
+  // Plays exactly the fretting the chord chart shows (same voicing
+  // functions the SVGs use), so what you hear matches what you see.
+  // Open-string MIDI pitches per instrument, low string first.
+  const OPEN_MIDI = {
+    guitar:   [40,45,50,55,59,64], // E2 A2 D3 G3 B3 E4
+    ukulele:  [67,60,64,69],       // G4 C4 E4 A4 (reentrant)
+    mandolin: [55,62,69,76]        // G3 D4 A4 E5
+  };
+  const midiFreq = m => 440 * Math.pow(2, (m-69)/12);
+
+  // Plucked-string voice: bright attack, harmonics dying fast, fundamental
+  // ringing longest. `courses` > 1 adds a slightly detuned twin (mandolin's
+  // doubled strings) for that characteristic shimmer.
+  function playPluckNote(freq, startTime, duration, ctx, velocity, courses){
+    const vel = velocity !== undefined ? velocity : 1;
+    const harm = [
+      {mult:1, gain:1.00, decay:duration*0.90},
+      {mult:2, gain:0.50, decay:duration*0.45},
+      {mult:3, gain:0.30, decay:duration*0.28},
+      {mult:4, gain:0.18, decay:duration*0.18},
+      {mult:5, gain:0.10, decay:duration*0.12}
+    ];
+    const detunes = courses > 1 ? [-3, 3] : [0];
+    detunes.forEach(cents=>{
+      harm.forEach(h=>{
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq*h.mult;
+        osc.detune.value = cents;
+        const g = ctx.createGain();
+        const peak = h.gain*0.2*vel/detunes.length;
+        g.gain.setValueAtTime(0, startTime);
+        g.gain.linearRampToValueAtTime(peak, startTime+0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, startTime + h.decay);
+        osc.connect(g); g.connect(masterFilter);
+        osc.start(startTime); osc.stop(startTime + h.decay + 0.05);
+      });
+    });
+  }
+
+  // Strum the chart's frets low string to high; null (muted) strings are skipped.
+  function playFrettedChord(notes, instrument){
+    const ctx = getCtx();
+    const voicing = instrument === 'guitar' ? guitarVoicing(notes)
+      : instrument === 'ukulele' ? ukuleleVoicing(notes)
+      : mandolinVoicing(notes);
+    const opens = OPEN_MIDI[instrument];
+    const sounding = [];
+    voicing.frets.forEach((f, s)=>{ if(f !== null) sounding.push(opens[s] + f); });
+    const now = ctx.currentTime + 0.02;
+    const strumGap = instrument === 'mandolin' ? 0.03 : 0.045;
+    const balance = Math.min(1, 4 / Math.max(sounding.length, 1));
+    sounding.forEach((m, i)=>{
+      playPluckNote(midiFreq(m), now + i*strumGap, 2.2, ctx, balance, instrument === 'mandolin' ? 2 : 1);
+    });
   }
 
   let isPlaying = false;
