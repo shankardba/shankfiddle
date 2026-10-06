@@ -403,6 +403,9 @@
   .btn-accent{border-color:var(--cool);color:var(--cool);}
   #beginDrawingBtn.pending{background:var(--cool);color:var(--bg, #000);font-weight:600;}
   .btn-accent:hover{border-color:var(--warm);color:var(--warm);}
+  .stepper{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:stretch;}
+  .stepper .btn{margin-top:0;padding:6px;font-size:16px;}
+  .stepper input{text-align:center;min-width:0;}
   .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .btn-row .btn{margin-top:0;}
 
@@ -664,11 +667,11 @@
         <div class="num-field"><label><span id="stampBLabel" title="Teeth to turn the pen gear in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Pen gear turn</span></label><input type="number" id="stampB" min="-600" max="600" value="0"></div>
       </div>
       <div class="stamp-hint">Teeth per stamp · + clockwise (F) · − counter-clockwise (B)</div>
-      <div class="slider-row" style="margin-top:10px;">
-        <div style="flex:1;">
-          <div class="slider-label"><span>Stamps</span><span class="val" id="stampCountVal">1</span></div>
-          <input type="range" id="stampCountSlider" min="1" max="400" step="1" value="1">
-        </div>
+      <div class="label" style="margin-top:12px;">Stamps</div>
+      <div class="stepper">
+        <button type="button" class="btn" id="stampMinus" aria-label="Fewer stamps">−</button>
+        <input type="number" id="stampCountInput" min="1" max="400" step="1" value="1" aria-label="Number of stamps">
+        <button type="button" class="btn" id="stampPlus" aria-label="More stamps">+</button>
       </div>
       <div class="stamp-info" id="stampInfo">
         <span id="stampInfoText"></span>
@@ -718,7 +721,7 @@
           <canvas id="colorWheel" width="140" height="140"></canvas>
           <div class="picker-cursor" id="wheelCursor"></div>
         </div>
-        <span class="hex-readout" id="hexReadout">#f2a65a</span>
+        <span class="hex-readout" id="hexReadout">#c9a24d</span>
       </div>
       <div class="slider-row" id="densityRow">
         <div style="flex:1;">
@@ -838,7 +841,7 @@
     extraWheel:false, n4:30, n5:18, h2:0.3,
     stampF:0, stampB:0, stampCount:1,
     showCircles:false, showSymm:false, showF0:false, showLabels:false, showEquations:false,
-    palette:0, solidColor:'#f2a65a', density:2.0, brightness:0.9, glow:true,
+    palette:0, solidColor:'#c9a24d', density:2.0, brightness:0.9, glow:true,
     lineWidth:1.6, glowIntensity:8, ptDens:512,
     animate:true, loop:false, speedMult:1,
     layers:[], selectedLayer:null, theme:'dark'
@@ -1765,6 +1768,10 @@
     animFrame = requestAnimationFrame(step);
   }
   let resumeFn = null;
+  function stopAnimation(){
+    cancelAnimationFrame(animFrame);
+    animPaused = false; animRunning = false; updatePauseBtn();
+  }
   function togglePause(){
     if(!animRunning) return;
     animPaused = !animPaused;
@@ -2034,8 +2041,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     state.stampCount = layer.stampCount !== undefined ? layer.stampCount : 1;
     document.getElementById('stampF').value = state.stampF;
     document.getElementById('stampB').value = state.stampB;
-    stampCountSlider.value = state.stampCount;
-    stampCountVal.textContent = state.stampCount;
+    stampCountInput.value = state.stampCount;
 
     state.density = layer.density;
     densitySlider.value = state.density; densityVal.textContent = state.density.toFixed(1);
@@ -2305,27 +2311,41 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
       const v = clamp(Math.round(raw), min, max);
       if(state[key] === v) return;
       state[key] = v;
-      scheduleUpdate();
+      showStampsNow();
     });
     el.addEventListener('change', () => {
       const v = clamp(Math.round(parseFloat(el.value) || 0), min, max);
       el.value = v;
       if(state[key] !== v){ state[key] = v; }
-      scheduleUpdate();
+      showStampsNow();
     });
   }
   bindSignedInt('stampF','stampF',-600,600);
   bindSignedInt('stampB','stampB',-600,600);
 
-  const stampCountSlider = document.getElementById('stampCountSlider');
-  const stampCountVal = document.getElementById('stampCountVal');
-  stampCountSlider.addEventListener('input', () => {
-    state.stampCount = parseInt(stampCountSlider.value,10);
-    stampCountVal.textContent = state.stampCount;
+  const stampCountInput = document.getElementById('stampCountInput');
+  // Stamp edits show the finished drawing at once (no re-animation); Begin Drawing replays it.
+  function showStampsNow(){
+    stopAnimation();
     scheduleUpdate();
+  }
+  function applyStampInput(){
+    const raw = parseFloat(stampCountInput.value);
+    if(!isFinite(raw)) return;
+    const v = clamp(Math.round(raw), 1, parseInt(stampCountInput.max, 10));
+    if(v === state.stampCount) return;
+    state.stampCount = v;
+    showStampsNow();
+  }
+  stampCountInput.addEventListener('input', applyStampInput);
+  stampCountInput.addEventListener('change', () => {
+    applyStampInput();
+    stampCountInput.value = state.stampCount;
   });
+  document.getElementById('stampMinus').addEventListener('click', () => { setStampCount(state.stampCount - 1); showStampsNow(); });
+  document.getElementById('stampPlus').addEventListener('click', () => { setStampCount(state.stampCount + 1); showStampsNow(); });
 
-  const STAMP_MAX = parseInt(stampCountSlider.max, 10);
+  const STAMP_MAX = parseInt(stampCountInput.max, 10);
   const stampInfoText = document.getElementById('stampInfoText');
   const stampUseBtn = document.getElementById('stampUseBtn');
   const stampRecipeEl = document.getElementById('stampRecipe');
@@ -2344,8 +2364,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   function currentRecipe(){ return recipeOf(currentGears(), state.stampF, state.stampB); }
   function setStampCount(n){
     state.stampCount = clamp(n, 1, STAMP_MAX);
-    stampCountSlider.value = state.stampCount;
-    stampCountVal.textContent = state.stampCount;
+    stampCountInput.value = state.stampCount;
   }
   function updateStampReadout(){
     if(document.activeElement !== stampRecipeEl) stampRecipeEl.value = currentRecipe();
@@ -2675,6 +2694,15 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   wireSwitch('loopToggle','loop', startAnimation);
 
   pauseBtn.addEventListener('click', togglePause);
+  // Space bar = pause/resume (not while typing in a text/number field)
+  document.addEventListener('keydown', e => {
+    if(e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if(t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return;
+    if(t.tagName === 'INPUT' && !['range','checkbox','button'].includes(t.type)) return;
+    e.preventDefault();
+    togglePause();
+  });
 
   const speedSlider = document.getElementById('speedSlider');
   const speedVal = document.getElementById('speedVal');
@@ -2884,6 +2912,10 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
       commitColor({syncBrightnessSlider:false});
     };
   })();
+
+  // Default pen: a single warm tan (blended palettes stay one click away via the Solid Color toggle)
+  lastBlendPalette = 0;
+  setSolidMode(true);
 
   const densitySlider = document.getElementById('densitySlider');
   const densityVal = document.getElementById('densityVal');
@@ -3194,8 +3226,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     state.stampF = DEFAULTS.stampF; state.stampB = DEFAULTS.stampB; state.stampCount = DEFAULTS.stampCount;
     document.getElementById('stampF').value = state.stampF;
     document.getElementById('stampB').value = state.stampB;
-    stampCountSlider.value = state.stampCount;
-    stampCountVal.textContent = state.stampCount;
+    stampCountInput.value = state.stampCount;
     applyState(DEFAULTS.n0, DEFAULTS.n1, DEFAULTS.n2, DEFAULTS.n3, DEFAULTS.h, DEFAULTS.p, DEFAULTS.phi, DEFAULTS.holeMm);
     refreshH2Range();
   });
