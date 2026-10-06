@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ethno-Musicology — melody, harmony and rhythm across cultures</title>
+<meta name="description" content="A deep, cross-linked study of melody, harmony and rhythm across fourteen musical traditions, with scale, interval and rhythm labs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Gentium+Plus:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="#/" class="brand" aria-label="Ethno-Musicology home">
+    <span class="brand-mark" aria-hidden="true">♫</span>
+    <span class="brand-word">Ethno-Musicology</span>
+  </a>
+  <nav class="nav" id="nav" aria-label="Main">
+    <a href="#/facet/melody" data-nav="facet/melody">Melody</a>
+    <a href="#/facet/harmony" data-nav="facet/harmony">Harmony</a>
+    <a href="#/facet/rhythm" data-nav="facet/rhythm">Rhythm</a>
+    <a href="#/cultures" data-nav="culture">Cultures</a>
+    <a href="#/threads" data-nav="thread">Threads</a>
+    <a href="#/connections" data-nav="connections">Connections</a>
+    <a href="#/lab/scales" data-nav="lab">Labs</a>
+  </nav>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search all entries…" aria-label="Search entries" autocomplete="off">
+    <div id="results" class="results" hidden></div>
+  </div>
+</header>
+
+<main id="view" tabindex="-1"></main>
+
+<footer class="foot">
+  Compiled and cross-checked with Claude from public sources. First-person notes in entries (“I computed”, “I verified”) mark what the compiler calculated or checked itself. Every comparison names its limits; where a source was thin, the entry says so. <span id="stats"></span>
+</footer>
+
+<script src="data/content.js"></script>
+<script src="js/labs.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

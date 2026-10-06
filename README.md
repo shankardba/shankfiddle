@@ -136,6 +136,31 @@ To pull in updates:
 cp ~/claude-applets/overtone-series/index.html sandbox/overtones/app.html
 ```
 
+## Tool: Ethno-Musicology
+
+`tools/musicology/` is a multi-file tool (wrapper + iframe, like the Stock
+Sonifier). It is a static, hash-routed atlas of melody, harmony and rhythm
+across 14 traditions, generated from the ClaudeHub music knowledge base.
+
+```
+tools/musicology/
+  index.html                  Wrapper (toolbar + iframe, "Open full page" link)
+  app.html                     Copy of claude-applets/musicology/index.html
+  css/styles.css                Copy of the same repo's css/styles.css
+  js/                          Copy of the same repo's js/*.js
+  data/content.js              Generated content (do not edit by hand)
+```
+
+To pull in updates (content is regenerated in the source repo with
+`python3 tools/build_content.py`):
+
+```bash
+cp ~/claude-applets/musicology/index.html tools/musicology/app.html
+rsync -a --delete ~/claude-applets/musicology/css/ tools/musicology/css/
+rsync -a --delete ~/claude-applets/musicology/js/ tools/musicology/js/
+cp ~/claude-applets/musicology/data/content.js tools/musicology/data/content.js
+```
+
 ## To do
 
 - [ ] Replace placeholder bio text in the About section with your real story
