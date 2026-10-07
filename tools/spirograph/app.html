@@ -299,6 +299,8 @@
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
+  .turn-row{display:flex;gap:10px;}
+  .turn-row .num-field{flex:1;min-width:0;}
   .num-field{display:flex;flex-direction:column;gap:4px;}
   .num-field label{font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;}
   .num-field input[type=number]{
@@ -662,14 +664,13 @@
         <input type="text" id="stampRecipe" placeholder="e.g. 126-126-56-14_F1B1" spellcheck="false" autocomplete="off" autocapitalize="characters">
       </div>
       <div class="stamp-error" id="stampRecipeError"></div>
-      <div class="grid2" style="margin-top:10px;">
-        <div class="num-field"><label><span title="Teeth to turn the outer gear (n1) in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Outer gear turn</span></label><input type="number" id="stampF" min="-600" max="600" value="0"></div>
-        <div class="num-field"><label><span id="stampBLabel" title="Teeth to turn the pen gear (the innermost: n3, or n5 with More squiggles) in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Pen gear turn</span></label><input type="number" id="stampB" min="-600" max="600" value="0"></div>
+      <div class="label" style="margin-top:10px;">Gear turn</div>
+      <div class="turn-row">
+        <div class="num-field"><label><span title="Teeth to turn the outer gear (n1) in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Outer</span></label><input type="number" id="stampF" min="-600" max="600" value="0"></div>
+        <div class="num-field" id="stampMField" style="display:none;"><label><span title="Teeth to turn the middle gear (n3) in place between stamps — available with More squiggles. Positive = clockwise (F), negative = counter-clockwise (B).">Middle</span></label><input type="number" id="stampM" min="-600" max="600" value="0"></div>
+        <div class="num-field"><label><span id="stampBLabel" title="Teeth to turn the pen gear (the innermost: n3, or n5 with More squiggles) in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Pen</span></label><input type="number" id="stampB" min="-600" max="600" value="0"></div>
       </div>
-      <div id="stampMField" style="display:none;margin-top:10px;">
-        <div class="num-field"><label><span title="Teeth to turn the middle gear (n3) in place between stamps — available with More squiggles. Positive = clockwise (F), negative = counter-clockwise (B).">Middle gear turn</span></label><input type="number" id="stampM" min="-600" max="600" value="0"></div>
-      </div>
-      <div class="stamp-hint">Teeth per stamp · + clockwise (F) · − counter-clockwise (B) · recipe order: outer, middle, pen</div>
+      <div class="stamp-hint">Teeth per stamp · + clockwise (F) · − counter-clockwise (B)</div>
       <div class="label" style="margin-top:12px;">Stamps</div>
       <div class="stepper">
         <button type="button" class="btn" id="stampMinus" aria-label="Fewer stamps">−</button>
