@@ -418,6 +418,7 @@
     font-size:10.5px;cursor:pointer;text-align:center;
   }
   .preset-btn:hover{border-color:var(--warm);color:var(--warm);}
+  #stampPresets .preset-btn{font-size:9.5px;overflow-wrap:anywhere;}
 
   .layer-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
   .layer-empty{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);}
@@ -797,6 +798,14 @@
       <details class="collapsible">
         <summary>Presets (34)</summary>
         <div class="presets" id="presets" style="margin-top:10px;"></div>
+      </details>
+    </div>
+
+    <div class="section">
+      <details class="collapsible">
+        <summary>Stamped presets (<span id="stampPresetCount">0</span>)</summary>
+        <p class="math-prose" style="margin-top:8px;">Gear sets with F/B turns between stamps — each closes into a symmetric figure. Notation: ring-wheel-hoop-pen[-hoop2-pen2]_turns (outer, [middle,] pen).</p>
+        <div class="presets" id="stampPresets" style="margin-top:10px;"></div>
       </details>
     </div>
 
@@ -3116,6 +3125,49 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     presetsEl.appendChild(b);
   });
 
+  // Curated stamped figures (recipe notation, outer/[middle]/pen turns). Each closes in a
+  // handful of stamps into a symmetric figure that stays open and legible — picked by eye from
+  // a search over gear sets with few loops per stamp, 2-12-fold symmetry and 10-40 stamps.
+  const STAMP_PRESETS = [
+    '168-168-84-84-32-16_F7F0F2',
+    '162-162-36-18_F6F2',
+    '180-120-30-30_F3F6',
+    '120-120-60-45_F6F9',
+    '180-120-40-20_F6B2',
+    '132-132-33-11_F8B7',
+    '140-140-84-56_F5F7',
+    '252-126-42-42_F6F6',
+    '192-128-32-32_F4F6',
+    '216-108-54-54_F3F6',
+    '135-135-45-30_F9B6',
+    '256-192-64-32_F4F4',
+    '120-120-64-48_F6F4',
+    '168-126-28-28_F3B6',
+    '240-180-60-40_F9B5',
+    '189-126-42-21_F6F3',
+    '216-144-48-24_F9F7',
+    '162-162-54-36-18-9_B6B8B9',
+    '120-120-60-40-20-10_B6B8B6',
+    '126-126-56-56-28-14_B9B8B8',
+    '162-162-54-36-18-9_B6B4B7'
+  ];
+  const stampPresetsEl = document.getElementById('stampPresets');
+  document.getElementById('stampPresetCount').textContent = STAMP_PRESETS.length;
+  STAMP_PRESETS.forEach(rec => {
+    const b = document.createElement('button');
+    b.className = 'preset-btn';
+    b.textContent = rec;
+    b.title = 'Load ' + rec + ' with its stamps';
+    b.addEventListener('click', () => {
+      const r = parseRecipe(rec);
+      if(r.error) return;
+      if(r.g.extraOn){ state.h2 = 0.3; }
+      state.h = 0.48; state.p = 0.8; state.phi = 0; state.holeMm = 3;
+      setCombo(r.g, r.F, r.B, computeStampInfo(r.g, r.F, r.B, r.M).closes, r.M);
+    });
+    stampPresetsEl.appendChild(b);
+  });
+
   function randInt(lo,hi){ return Math.floor(lo + Math.random()*(hi-lo+1)); }
   function randFloat(lo,hi){ return lo + Math.random()*(hi-lo); }
 
@@ -3133,32 +3185,82 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     return T;
   }
 
-  // Below, each randomizer generates a few dozen candidate gear sets and keeps the one
-  // with the smallest period — random n0..n5 chosen independently are coprime-ish (and
-  // hence high-period) far more often than not, which is what was making "Randomize"
-  // look cluttered. Rejection sampling against maxT is cheap (just gcd/lcm, no curve
-  // built) so this costs nothing perceptible and reliably lands in a "neat" range
-  // instead of leaving it to chance.
-
-  // ---- per-section randomizers (mirrors the fractal explorer's per-category buttons) ----
-  function randomizeGearsOnly(){
-    const maxT = 56;
+  // What makes a random gear set look good is the same thing that makes the curated ones
+  // look good: it closes after few loops (a small period T, not "a ton of lines") and the
+  // loops fall into a rotational symmetry (sym) instead of a lopsided scribble. Random
+  // n0..n5 chosen independently almost never do — only a few in 100 pass this test — so each
+  // randomizer draws gear sets until one passes (plain arithmetic, no curve built, so it's
+  // instant) and falls back to the best-looking set seen if none does.
+  function gearTraits(g){
+    const T = computePeriod(g.n0, g.n1, g.n2, g.n3, g.extraOn, g.n4, g.n5);
+    const T1 = Math.round(T*g.n0/g.n1), T3 = Math.round(T*g.n0*g.n2/(g.n1*g.n3));
+    let sym = gcd(T1, T3);
+    if(g.extraOn) sym = gcd(sym, Math.round(T*g.n0*g.n2*g.n4/(g.n1*g.n3*g.n5)));
+    return {T, sym};
+  }
+  function randomGearSet(wild, extraOn){
+    // Wild may be busier and a bit less symmetric — it's the "give me something complex"
+    // button — but both stay far from the thousands-of-loops territory.
+    const maxT = wild ? 60 : 24, minSym = wild ? 2 : 3;
     let best = null;
-    for(let attempt=0; attempt<400; attempt++){
-      const n1 = randInt(40, 220);
-      const n0 = n1 + randInt(8, 90);
-      const n2 = Math.max(4, Math.round(n1 * randFloat(0.22, 0.5)));
-      const n3 = Math.max(2, Math.round(n2 * randFloat(0.35, 0.85)));
-      let n4 = state.n4, n5 = state.n5;
-      if(state.extraWheel){
+    for(let attempt=0; attempt<4000; attempt++){
+      const n1 = wild ? randInt(60, 400) : randInt(40, 220);
+      const n0 = n1 + randInt(wild?4:8, wild?140:90);
+      const n2 = Math.max(4, Math.round(n1 * randFloat(wild?0.12:0.22, wild?0.6:0.5)));
+      const n3 = Math.max(2, Math.round(n2 * randFloat(wild?0.25:0.35, 0.9)));
+      let n4 = 0, n5 = 0;
+      if(extraOn){
         n5 = randInt(8, Math.max(9, Math.round(n3*0.6)));
         n4 = n5 + randInt(4, Math.max(5, Math.round(n3*0.5)));
       }
-      const T = computePeriod(n0,n1,n2,n3, state.extraWheel, n4, n5);
-      if(!best || T < best.T) best = {n0,n1,n2,n3,n4,n5,T};
-      if(T <= maxT) break;
+      const g = {n0, n1, n2, n3, n4, n5, extraOn};
+      if(gearProblem(g)) continue; // every gear has to nest inside the one before it
+      const t = gearTraits(g);
+      if(t.T <= maxT && t.sym >= minSym) return g;
+      const cost = t.T / Math.min(t.sym, 6);
+      if(!best || cost < best.cost) best = {g, cost};
     }
-    const {n0,n1,n2,n3,n4,n5} = best;
+    return best ? best.g : {n0:140, n1:128, n2:54, n3:45, n4:30, n5:18, extraOn};
+  }
+  // Turns that close into a symmetric stamped figure on these gears: both gears turned a few
+  // teeth (like the F1B1 notes, plus a middle turn with the second hoop), closing in a handful
+  // of stamps without piling up loops (stamps x laps). Smaller turns are likelier. Null if none.
+  function pickStamping(g, wild){
+    const maxN = wild ? 72 : 36, maxInk = wild ? 400 : 150;
+    const T = computePeriod(g.n0, g.n1, g.n2, g.n3, g.extraOn, g.n4, g.n5);
+    const gens = stampGens(g), L = latticeHNF(gens);
+    const penN = g.extraOn ? g.n5 : g.n3;
+    const Ms = g.extraOn ? [0, 1, -1, 2, -2, 3] : [0];
+    const found = [];
+    for(let f=-7; f<=7; f++) for(let b=-7; b<=7; b++){
+      if(!f || !b || 2*Math.abs(f) > g.n1 || 2*Math.abs(b) > penN) continue;
+      for(const M of Ms){
+        if(M && 2*Math.abs(M) > g.n3) continue;
+        const v = stampVec(g, f, b, M);
+        const N = stampOrder(L, v);
+        if(N < 4 || N > maxN || N*T > maxInk) continue;
+        if(stampSymmetry(gens, g.n0, v) < 3) continue;
+        found.push({F: f, B: b, M, N, w: 1/(1 + Math.abs(f) + Math.abs(b) + 2*Math.abs(M))});
+      }
+    }
+    if(!found.length) return null;
+    let r = Math.random() * found.reduce((t, c) => t + c.w, 0);
+    for(const c of found){ r -= c.w; if(r <= 0) return c; }
+    return found[found.length - 1];
+  }
+  // Puts stamping (or none) into state and the inputs; the caller redraws.
+  function setStamping(st){
+    state.stampF = st ? st.F : 0; state.stampB = st ? st.B : 0; state.stampM = st ? st.M : 0;
+    document.getElementById('stampF').value = state.stampF;
+    document.getElementById('stampB').value = state.stampB;
+    document.getElementById('stampM').value = state.stampM;
+    setStampCount(st ? st.N : 1);
+  }
+
+  // ---- per-section randomizers (mirrors the fractal explorer's per-category buttons) ----
+  function randomizeGearsOnly(){
+    const g = randomGearSet(false, state.extraWheel);
+    const {n0,n1,n2,n3,n4,n5} = g;
     state.n0=n0; state.n1=n1; state.n2=n2; state.n3=n3;
     document.getElementById('n0').value=n0;
     document.getElementById('n1').value=n1;
@@ -3169,6 +3271,8 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
       document.getElementById('n4').value=n4;
       document.getElementById('n5').value=n5;
     }
+    // already stamping? pick turns that close nicely on the new gears instead of keeping stale ones
+    if(state.stampF || state.stampB || curM()) setStamping(pickStamping(g, false));
     refreshHRange();
     if(state.extraWheel) refreshH2Range();
     resetView();
@@ -3214,30 +3318,11 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
 
   function doRandomize(wild){
     // Wild is allowed a busier ceiling (it's the "give me something complex" button) but
-    // both stay far below the pathological thousands-of-loops territory that made results
-    // feel cluttered — see computePeriod's comment for why this is the lever that matters.
-    const maxT = wild ? 130 : 56;
-    const extraChance = wild ? 0.55 : 0.2;
-
-    let best = null;
-    for(let attempt=0; attempt<400; attempt++){
-      const n1 = wild ? randInt(60, 400) : randInt(40, 220);
-      const n0 = n1 + randInt(wild?4:8, wild?140:90);
-      const n2 = Math.max(4, Math.round(n1 * randFloat(wild?0.12:0.22, wild?0.6:0.5)));
-      const n3 = Math.max(2, Math.round(n2 * randFloat(wild?0.25:0.35, 0.9)));
-
-      const extraOn = Math.random() < extraChance;
-      let n4=0, n5=0;
-      if(extraOn){
-        n5 = randInt(8, Math.max(9, Math.round(n3*0.6)));
-        n4 = n5 + randInt(4, Math.max(5, Math.round(n3*0.5)));
-      }
-
-      const T = computePeriod(n0,n1,n2,n3, extraOn, n4, n5);
-      if(!best || T < best.T) best = {n0,n1,n2,n3, extraOn,n4,n5, T};
-      if(T <= maxT) break;
-    }
-    const {n0,n1,n2,n3, extraOn,n4,n5} = best;
+    // both pick gear sets that close in few loops with real symmetry — see gearTraits.
+    const extraOn = Math.random() < (wild ? 0.55 : 0.2);
+    const gset = randomGearSet(wild, extraOn);
+    const {n0,n1,n2,n3,n4,n5} = gset;
+    setStamping(Math.random() < (wild ? 0.7 : 0.55) ? pickStamping(gset, wild) : null);
 
     const hMax = 0.975 * (1 - n2/n1);
     const h = randFloat(0.15, 0.95) * hMax; // biased positive so hoops land "on top" by default
