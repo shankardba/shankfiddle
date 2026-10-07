@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play it: jazz — Ethno-Musicology</title>
+<meta name="description" content="A playable course for jazz musicians: ragas, maqam, makam, pentatonics, gamelan, clave, bell patterns, tala and odd meters, with notation, playback, chord charts and practice plans.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Gentium+Plus:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/lessons.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="#/" class="brand" aria-label="Ethno-Musicology home">
+    <span class="brand-mark" aria-hidden="true">♫</span>
+    <span class="brand-word">Ethno-Musicology</span>
+  </a>
+  <div class="switch" role="navigation" aria-label="Sections">
+    <a data-sec="atlas" href="app.html#/">Musicology</a>
+    <a data-sec="lessons" href="lessons.html#/" class="on" aria-current="page">Play it: jazz</a>
+  </div>
+  <nav class="nav" id="nav" aria-label="Main">
+    <a href="#/courses" data-nav="courses">Courses</a>
+    <a href="#/skills" data-nav="skills">By skill</a>
+    <a href="#/course/cross" data-nav="cross">Practice paths</a>
+    <a href="#/lab/grooves" data-nav="lab">Groove Lab</a>
+  </nav>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search lessons…" aria-label="Search lessons" autocomplete="off">
+    <div id="results" class="results" hidden></div>
+  </div>
+</header>
+
+<main id="view" tabindex="-1"></main>
+
+<footer class="foot">
+  Lessons are built from the ClaudeHub music knowledge base and checked note by note. Phrases written for this site are labeled as exercises; nothing invented is presented as traditional repertoire. Where a tradition has to be learned from recordings or a teacher, the lesson says so. <span id="stats"></span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.4.4/abcjs-basic-min.js"></script>
+<script src="data/lessons.js"></script>
+<script src="js/lessons/labs.js"></script>
+<script src="js/lessons/play.js"></script>
+<script src="js/lessons/app.js"></script>
+</body>
+</html>

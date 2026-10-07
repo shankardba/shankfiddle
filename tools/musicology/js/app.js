@@ -8,6 +8,13 @@
   D.cultures.forEach(function (c) { CUL[c.id] = c; });
   D.facets.forEach(function (f) { FAC[f.id] = f; });
   var ids = Object.keys(ENT);
+  // the parallel "Play it: jazz" section (lessons.html), if its data is loaded
+  var LX = window.LESSONS || { lessons: [], courses: [] }, COURSE = {};
+  // cross-section links follow the top-bar switch, so a copy that renames the
+  // atlas page (shankfiddle: app.html) only changes the switch's hrefs
+  function secPage(which, fallback) { var a = document.querySelector('.switch a[data-sec="' + which + '"]'); return a ? a.getAttribute('href').split('#')[0] : fallback; }
+  var LESSONS_PAGE = secPage('lessons', 'lessons.html');
+  LX.courses.forEach(function (c) { COURSE[c.id] = c; });
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function col(id) { return (CUL[id] || {}).color || '#b8863b'; }
@@ -20,6 +27,24 @@
     var names = e.cultures.map(function (x) { return CUL[x].name; }).join(' · ');
     return '<a class="card" data-cultures="' + e.cultures.join(' ') + '" href="' + href(eid) + '" style="border-left-color:' + col(c) + '">' +
       '<div class="meta">' + cdot(c) + esc(names) + '</div><h3>' + esc(e.title) + '</h3><p>' + esc(e.summary) + '</p>' + (extra ? '<p style="margin-top:6px;color:#7a4f17"><em>' + esc(extra) + '</em></p>' : '') + '</a>';
+  }
+
+  function lessonCard(L) {
+    var c = COURSE[L.course] || {};
+    return '<a class="card lesson" data-cultures="' + L.cultures.join(' ') + '" href="' + LESSONS_PAGE + '#/lesson/' + L.id + '"><div class="meta"><b>Play it</b>' + esc(c.name || '') + '</div><h3>' + esc(L.title) + '</h3><p>' + esc(L.summary) + '</p></a>';
+  }
+  function lessonStrip(list, label) {
+    if (!list.length) return '';
+    return '<div class="lessons-strip"><h4>' + (label || 'Play it in jazz') + '</h4><div class="grid">' + list.map(lessonCard).join('') + '</div></div>';
+  }
+  function lessonsFor(facet, section, culture) {
+    return LX.lessons.filter(function (L) {
+      var f = L.facets[facet];
+      return f && (!section || f.indexOf(section) >= 0) && (!culture || L.cultures.indexOf(culture) >= 0);
+    });
+  }
+  function lessonsCiting(eids) {
+    return LX.lessons.filter(function (L) { return L.kb.some(function (k) { return eids.indexOf(k) >= 0; }); });
   }
 
   function entriesFor(facet, section) {
@@ -39,7 +64,8 @@
     Object.keys(D.pairs).forEach(function (k) { cross += D.pairs[k].length; });
     var html = '<div class="hero"><p class="eyebrow">An atlas of musical thought</p>' +
       '<h1>How the world builds <em>melody</em>, <em>harmony</em> and <em>rhythm</em></h1>' +
-      '<p class="lede">' + ids.length + ' deeply cross-linked entries across ' + (D.cultures.length - 1) + ' traditions. Follow one thread from culture to culture, or dive into a single tradition and read its scales, chords and cycles on their own terms. Every comparison says what is shared and what is not.</p></div>' +
+      '<p class="lede">' + ids.length + ' deeply cross-linked entries across ' + (D.cultures.length - 1) + ' traditions. Follow one thread from culture to culture, or dive into a single tradition and read its scales, chords and cycles on their own terms. Every comparison says what is shared and what is not.</p>' +
+      (LX.lessons.length ? '<p class="lede" style="margin-top:-12px">Want to play it? The parallel <a href="' + LESSONS_PAGE + '#/">Play it: jazz</a> section turns these traditions into ' + LX.lessons.length + ' lessons for jazz musicians, with notation, voicings and practice plans. Look for the red <em>Play it</em> cards on every page.</p>' : '') + '</div>' +
       '<div class="portals">' + D.facets.map(function (f) {
         var secs = D.sections[f.id].length;
         return '<a class="portal" href="#/facet/' + f.id + '" style="border-top-color:' + ({ melody: '#d1a437', harmony: '#6f93ab', rhythm: '#c9483a' })[f.id] + '"><h2>' + f.name + '</h2><p>' + esc(f.blurb) + '</p><span class="count">' + facetCount(f.id) + ' entries · ' + secs + ' themes →</span></a>';
@@ -58,7 +84,8 @@
       '<a class="card dark" href="#/lab/scales" style="border-left-color:#d1a437"><h3>Scale Lab</h3><p>Overlay scales from different traditions on one cents ruler and hear them against a drone.</p></a>' +
       '<a class="card dark" href="#/lab/atlas" style="border-left-color:#6f93ab"><h3>Interval Atlas</h3><p>Every named interval size across the entries, from the koma to the fifth.</p></a>' +
       '<a class="card dark" href="#/lab/cycles" style="border-left-color:#c9483a"><h3>Cycle Lab</h3><p>Rhythmic cycles as circles; play up to three at once on a shared cycle length.</p></a>' +
-      '<a class="card dark" href="#/connections" style="border-left-color:#4f9d8f"><h3>Connections map</h3><p>' + cross + ' links between entries of different cultures, by culture pair.</p></a></div></div>';
+      '<a class="card dark" href="#/connections" style="border-left-color:#4f9d8f"><h3>Connections map</h3><p>' + cross + ' links between entries of different cultures, by culture pair.</p></a>' +
+      (LX.lessons.length ? '<a class="card dark" href="' + LESSONS_PAGE + '#/" style="border-left-color:#c9483a"><h3>Play it: jazz</h3><p>' + LX.lessons.length + ' lessons that put these traditions under your fingers and onto jazz changes.</p></a>' : '') + '</div></div>';
     return { html: html, title: 'Ethno-Musicology' };
   }
 
@@ -72,7 +99,8 @@
     D.sections[fid].forEach(function (s) {
       var list = entriesFor(fid, s.id);
       html += '<section class="sec"><h2>' + esc(s.name) + '</h2><p class="intro">' + esc(s.intro) + '</p>' +
-        (list.length ? '<div class="grid">' + list.map(function (i) { return card(i); }).join('') + '</div>' : '<div class="empty">Nothing recorded here yet.</div>') + '</section>';
+        (list.length ? '<div class="grid">' + list.map(function (i) { return card(i); }).join('') + '</div>' : '<div class="empty">Nothing recorded here yet.</div>') +
+        lessonStrip(lessonsFor(fid, s.id)) + '</section>';
     });
     if (fid === 'harmony') html += '<section class="sec"><div class="empty">Harmony in the chord-and-progression sense is recorded here for Western classical and jazz. Other traditions in this atlas organize pitch with drones, modes and melody instead; where they touch harmony (the Sa-Pa drone, the root-fifth anchor) it is shown above. Polyphonic and heterophonic traditions are not covered yet.</div></section>';
     return { html: html, title: f.name + ' — Ethno-Musicology', after: function () {
@@ -101,7 +129,8 @@
     var html = '<div class="crumbs"><a href="#/cultures">Cultures</a> › ' + esc(c.name) + '</div><p class="eyebrow">' + esc(c.region) + '</p><h1 class="page">' + cdot(cid) + esc(c.name) + '</h1><p class="lede">' + esc(c.blurb) + '</p>';
     D.facets.forEach(function (f) {
       var list = ce.filter(function (i) { return ENT[i].facets[f.id]; });
-      html += '<section class="sec"><h2>' + f.name + '</h2>' + (list.length ? '<div class="grid">' + list.map(function (i) { return card(i); }).join('') + '</div>' : '<div class="empty">Not yet covered for this tradition. The atlas grows as new entries are added.</div>') + '</section>';
+      html += '<section class="sec"><h2>' + f.name + '</h2>' + (list.length ? '<div class="grid">' + list.map(function (i) { return card(i); }).join('') + '</div>' : '<div class="empty">Not yet covered for this tradition. The atlas grows as new entries are added.</div>') +
+        lessonStrip(lessonsFor(f.id, null, cid), 'Play ' + esc(c.name) + ' ' + f.name.toLowerCase() + ' in jazz') + '</section>';
     });
     // connections out
     var rows = [];
@@ -157,6 +186,7 @@
       e.cultures.map(function (x) { return '<span class="chip">' + cdot(x) + esc(CUL[x].name) + '</span>'; }).join('') +
       Object.keys(e.facets).map(function (f) { return '<a class="chip" href="#/facet/' + f + '">' + FAC[f].name + '</a>'; }).join('') +
       '<span>' + mins + ' min read</span></div></div>' +
+      lessonStrip(lessonsCiting([eid]), 'Play it in jazz: lessons built on this entry') +
       '<div class="layout"><div>' + (D.play && D.play[eid] ? '<section class="play" id="play"></section><h2 class="theory-h">The theory</h2>' : '') + '<article class="article" id="art">' + e.html + '</article>' + pager + '</div><aside class="side"><div class="sticky">' +
       sidebarConnections(eid) +
       (inThreads.length ? '<div class="box"><h3>Part of threads</h3><div class="chips">' + inThreads.map(function (t) { return '<a class="chip" href="#/thread/' + t.id + '">' + esc(t.title) + '</a>'; }).join('') + '</div></div>' : '') +
@@ -178,7 +208,8 @@
   function threadView(tid) {
     var t = D.threads.filter(function (x) { return x.id === tid; })[0]; if (!t) return notFound();
     var html = '<div class="crumbs"><a href="#/threads">Threads</a></div><p class="eyebrow">' + t.kind + ' · ' + t.steps.length + ' entries</p><h1 class="page">' + esc(t.title) + '</h1><p class="lede">' + esc(t.intro) + '</p><ol class="thread-steps">' +
-      t.steps.map(function (s) { return '<li><div>' + card(s.id, s.why) + '</div></li>'; }).join('') + '</ol>';
+      t.steps.map(function (s) { return '<li><div>' + card(s.id, s.why) + '</div></li>'; }).join('') + '</ol>' +
+      lessonStrip(lessonsCiting(t.steps.map(function (s) { return s.id; })), 'Play this thread in jazz');
     return { html: html, title: t.title + ' — Ethno-Musicology' };
   }
 

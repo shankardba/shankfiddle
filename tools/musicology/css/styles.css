@@ -214,3 +214,14 @@ input[type=range]{accent-color:var(--brass)}
 .abc-src{font-size:.8rem;white-space:pre-wrap}
 .theory-h{font-size:1.15rem;color:var(--brass-light);margin:4px 0 10px}
 .tiny{font-size:.78rem;color:var(--muted)}
+
+/* ---------- the two sections: Musicology atlas / Play it: jazz ---------- */
+.switch{display:inline-flex;border:1px solid var(--border-soft);border-radius:999px;padding:2px;background:var(--bg-2)}
+.switch a{font-size:.8rem;font-weight:600;padding:4px 12px;border-radius:999px;text-decoration:none;color:var(--panel-dim);white-space:nowrap}
+.switch a:hover{color:var(--gold)}
+.switch a.on{background:var(--brass);color:#1b150d}
+.lessons-strip{margin:12px 0 0;padding:12px 14px;border:1px dashed var(--select);border-radius:12px;background:rgba(201,72,58,.06)}
+.lessons-strip h4{margin:0 0 8px;font-family:Inter,sans-serif;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:#e3a093}
+.lessons-strip .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.card.lesson{border-left-color:var(--select)}
+.card.lesson .meta b{color:var(--select);font-weight:600}
