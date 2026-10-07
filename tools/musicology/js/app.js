@@ -157,11 +157,12 @@
       e.cultures.map(function (x) { return '<span class="chip">' + cdot(x) + esc(CUL[x].name) + '</span>'; }).join('') +
       Object.keys(e.facets).map(function (f) { return '<a class="chip" href="#/facet/' + f + '">' + FAC[f].name + '</a>'; }).join('') +
       '<span>' + mins + ' min read</span></div></div>' +
-      '<div class="layout"><div><article class="article" id="art">' + e.html + '</article>' + pager + '</div><aside class="side"><div class="sticky">' +
+      '<div class="layout"><div>' + (D.play && D.play[eid] ? '<section class="play" id="play"></section><h2 class="theory-h">The theory</h2>' : '') + '<article class="article" id="art">' + e.html + '</article>' + pager + '</div><aside class="side"><div class="sticky">' +
       sidebarConnections(eid) +
       (inThreads.length ? '<div class="box"><h3>Part of threads</h3><div class="chips">' + inThreads.map(function (t) { return '<a class="chip" href="#/thread/' + t.id + '">' + esc(t.title) + '</a>'; }).join('') + '</div></div>' : '') +
       '</div></aside></div>';
     return { html: html, title: e.title + ' — Ethno-Musicology', after: function () {
+      var pl = document.getElementById('play'); if (pl) window.Play.render(pl, D.play[eid]);
       view.querySelectorAll('#art a.xref').forEach(function (a) {
         var t = decodeURIComponent(a.getAttribute('href').slice(4));
         if (ENT[t]) { a.style.setProperty('--xc', col(prim(t))); a.title = CUL[prim(t)].name + ': ' + ENT[t].title; }

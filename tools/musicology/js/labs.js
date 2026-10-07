@@ -381,5 +381,64 @@
     }).join('');
   }
 
-  window.Labs = { scales: scalesView, atlas: atlasView, cycles: cyclesView, stop: stopAll };
+
+  /* ---- helpers used by the "Play it" panels (js/play.js) ---- */
+  var extraStops = [];
+  function stopEverything() { extraStops.forEach(function (f) { try { f(); } catch (e) {} }); extraStops = []; stopAll(); }
+  function playCents(list, opts) {
+    opts = opts || {};
+    stopEverything(); audio(); newBus();
+    var step = opts.step || 0.5, t0 = ctx.currentTime + 0.08, f0 = opts.f0 || 261.63;
+    var seq = list.slice();
+    if (opts.updown) seq = seq.concat(list.slice(0, -1).reverse());
+    var end = t0 + seq.length * step + 0.5;
+    if (opts.drone !== false) { tone(f0, t0, end - t0, 'sine', 0.1); tone(f0 * 1.5, t0, end - t0, 'sine', 0.04); }
+    seq.forEach(function (c, i) { tone(f0 * Math.pow(2, c / 1200), t0 + i * step, step * 1.3, 'triangle', 0.26); });
+    timers.push(setTimeout(stopAll, (end - ctx.currentTime) * 1000 + 300));
+  }
+  function playPattern(tokens, opts) {
+    opts = opts || {};
+    stopEverything(); audio(); newBus();
+    var dt = 60 / (opts.bpm || 120) / (opts.sub || 2), loops = opts.loops || 3, t0 = ctx.currentTime + 0.1;
+    for (var L = 0; L < loops; L++) {
+      tokens.forEach(function (tk, i) {
+        var t = t0 + (L * tokens.length + i) * dt;
+        if (opts.click && i % (opts.sub || 2) === 0) tone(i === 0 ? 1600 : 1100, t, 0.025, 'sine', 0.05);
+        if (tk === 'D') thump(t);
+        else if (tk === 'T' || tk === 'K') tone(tk === 'K' ? 700 : 900, t, 0.06, 'square', tk === 'K' ? 0.06 : 0.1);
+        else if (tk === 'B') tone(1400, t, 0.3, 'triangle', 0.22);
+        else if (tk === 'C') noiseBurst(t, 0.07, 0.4, 1700);
+        else if (tk === 'W') tone(620, t, 0.14, 'sine', 0.14);
+        else if (tk === 'x') tone(1000, t, 0.03, 'sine', 0.07);
+        else if (tk === 'X') tone(1500, t, 0.04, 'sine', 0.14);
+      });
+    }
+    var end = t0 + loops * tokens.length * dt;
+    timers.push(setTimeout(stopAll, (end - ctx.currentTime) * 1000 + 400));
+  }
+  function playContour(points, opts) {
+    opts = opts || {};
+    stopEverything(); audio(); newBus();
+    var f0 = opts.f0 || 261.63, t0 = ctx.currentTime + 0.08, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'triangle';
+    var last = points[points.length - 1][0];
+    o.frequency.setValueAtTime(f0 * Math.pow(2, points[0][1] / 1200), t0);
+    points.forEach(function (p) { o.frequency.linearRampToValueAtTime(f0 * Math.pow(2, p[1] / 1200), t0 + p[0]); });
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.04);
+    g.gain.setValueAtTime(0.25, t0 + last); g.gain.exponentialRampToValueAtTime(0.0001, t0 + last + 0.3);
+    o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + last + 0.4);
+    if (opts.drone !== false) tone(f0, t0, last + 0.4, 'sine', 0.08);
+    timers.push(setTimeout(stopAll, (last + 0.8) * 1000));
+  }
+  function strum(freqs, opts) {
+    opts = opts || {};
+    stopEverything(); audio(); newBus();
+    var t0 = ctx.currentTime + 0.05;
+    freqs.forEach(function (f, i) { tone(f, t0 + i * 0.035, 1.8, 'triangle', 0.16); });
+    timers.push(setTimeout(stopAll, 2400));
+  }
+
+  window.Labs = { scales: scalesView, atlas: atlasView, cycles: cyclesView, stop: stopEverything,
+    playCents: playCents, playPattern: playPattern, strum: strum, playContour: playContour, audio: audio,
+    onStop: function (f) { extraStops.push(f); } };
 })();

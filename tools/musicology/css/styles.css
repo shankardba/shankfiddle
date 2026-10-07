@@ -193,3 +193,24 @@ table.dt th{color:var(--ink-soft);font-weight:500}
 input[type=range]{accent-color:var(--brass)}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @media (max-width:700px){.topbar{position:static}.sticky{position:static}.sticky .box{max-height:none}}
+
+/* ---------- Play it panels ---------- */
+.play{background:#fbf6e8;color:var(--ink);border-radius:14px;padding:22px 26px;box-shadow:var(--shadow);border-top:6px solid var(--gold);margin-bottom:22px}
+.play-head h2{margin:0 0 6px;font-size:1.45rem}
+.play-head p{margin:0 0 10px;font-size:1rem;color:#3d3022}
+.pblock{margin:16px 0 0;padding-top:14px;border-top:1px solid var(--border-soft)}
+.pblock h4{margin:0 0 6px;font-family:Inter,sans-serif;font-size:.95rem;color:#3a2c1c}
+.psteps{margin:0;padding-left:1.3em;font-size:.97rem}
+.psteps li{margin:.35em 0}
+.pnote{margin:0;font-size:.9rem;color:#5b4c39;background:var(--panel-dim);padding:8px 12px;border-radius:8px}
+.pcap{margin:4px 0 0;font-size:.86rem;color:#5b4c39}
+.abc-score{background:#fff;border-radius:8px;padding:4px 6px;overflow-x:auto}
+.abc-score svg{max-width:100%}
+.pbtns{margin:8px 0 0}
+.chord-row{display:flex;flex-wrap:wrap;gap:8px}
+.chord-btn{background:#fff;border:1px solid var(--border-soft);border-radius:8px;padding:4px;cursor:pointer;width:100px}
+.chord-btn:hover{border-color:var(--brass)}
+.chord-svg{width:100%;display:block}
+.abc-src{font-size:.8rem;white-space:pre-wrap}
+.theory-h{font-size:1.15rem;color:var(--brass-light);margin:4px 0 10px}
+.tiny{font-size:.78rem;color:var(--muted)}
