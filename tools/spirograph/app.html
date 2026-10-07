@@ -1217,7 +1217,7 @@
   function gearProblem(g){
     if(g.n1 > g.n0) return 'The wheel (n1) has to fit inside the ring (n0).';
     if(g.n2 >= g.n1) return 'The hoop (n2) has to be smaller than the wheel (n1).';
-    if(g.n3 >= g.n2) return 'The pen gear (n3) has to be smaller than the hoop (n2).';
+    if(g.n3 > g.n2) return 'The pen gear (n3) can’t be bigger than the hoop (n2).';
     if(g.extraOn && g.n4 >= g.n3) return 'The second hoop (n4) has to be smaller than n3.';
     if(g.extraOn && g.n5 >= g.n4) return 'The pen gear (n5) has to be smaller than the second hoop (n4).';
     return null;
@@ -2454,7 +2454,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     const [n0, n1, n2, n3] = m.slice(1, 5).map(v => parseInt(v, 10));
     const extraOn = m[5] !== undefined;
     const n4 = extraOn ? parseInt(m[5], 10) : state.n4, n5 = extraOn ? parseInt(m[6], 10) : state.n5;
-    const fits = n1 <= n0 && n2 < n1 && n3 < n2 && (!extraOn || (n4 < n3 && n5 < n4)) && n0 <= 600 && n5 >= 1;
+    const fits = n1 <= n0 && n2 < n1 && n3 <= n2 && (!extraOn || (n4 < n3 && n5 < n4)) && n0 <= 600 && n5 >= 1;
     if(!fits) return {error: 'Each gear has to fit inside the one before it.'};
     const turn = (dir, teeth) => dir === undefined ? 0 : (dir.toUpperCase() === 'B' ? -1 : 1) * parseInt(teeth, 10);
     const t = [turn(m[7], m[8]), turn(m[9], m[10]), turn(m[11], m[12])].map(v => clamp(v, -600, 600));
