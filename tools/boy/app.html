@@ -1289,7 +1289,7 @@
           // his very first guitar lesson.
           musings: [
             { key: 'video_game', chapter: 'earning_respect', requires: 'guitar_wheel', line: "Dude, we should make a video game!" },
-            { key: 'simulation', chapter: 'diagnosis', line: "Do you ever think this is all just a simulation?" },
+            { key: 'simulation', chapter: 'diagnosis', line: "Do you ever think we're in a simulation, like a video game?" },
             { key: 'one_day', chapter: 'hospice', line: "Okay, real question. If you could keep just one day forever — replay it whenever you wanted — which one would you pick?" },
             { key: 'grey', chapter: 'grief', line: "Dude... do you think the world's actually different now? Or does it just look different?" },
             { key: 'the_game', chapter: 'duty', line: "Remember when I said we should make a video game? I think you kind of did. You just had to live it first." }
@@ -1809,19 +1809,24 @@
       // dark as Hell's original single-room version, so tails and horns
       // stay visible the whole way down). '3' is "up" (out) and '4' is
       // "down" on every one of the three levels, for readability, even
-      // though digits are otherwise just local map symbols.
+      // though digits are otherwise just local map symbols. The only way
+      // in is College's unmarked door — `walkInOnly` keeps all three out
+      // of the car's and Mom's ride menus, so BOY walks every level. Each
+      // 'd' is a spot a random demon may stand (re-rolled every visit, see
+      // randomDemonAppearance()); `demonChance` grows with depth.
       id: 'hell',
       name: 'Hell',
-      availableFrom: 'earning_respect',
+      walkInOnly: true,
+      demonChance: 0.35,
       map: [
         "###########",
-        "#.o.....o.#",
+        "#.odd.ddo.#",
         "#.........#",
-        "#....4....#",
+        "#d...4...d#",
         "#.........#",
-        "#....@....#",
-        "#.o.....o.#",
-        "#.........#",
+        "#.d..@..d.#",
+        "#do.....od#",
+        "#..d...d..#",
         "#####3#####"
       ],
       exits: {
@@ -1832,16 +1837,17 @@
     {
       id: 'hell_2',
       name: 'Hell',
-      availableFrom: 'earning_respect',
+      walkInOnly: true,
+      demonChance: 0.55,
       map: [
         "###########",
-        "#.o.....o.#",
+        "#.odd.ddo.#",
         "#.........#",
-        "#....4....#",
+        "#d...4...d#",
         "#.........#",
-        "#....@....#",
-        "#.o.....o.#",
-        "#.........#",
+        "#.d..@..d.#",
+        "#do.....od#",
+        "#..d...d..#",
         "#####3#####"
       ],
       exits: {
@@ -1858,16 +1864,17 @@
       // yet, so there's no crowd here — just the Devil.
       id: 'hell_3',
       name: 'Hell',
-      availableFrom: 'earning_respect',
+      walkInOnly: true,
+      demonChance: 0.75,
       map: [
         "###########",
-        "#.o.....o.#",
+        "#.odd.ddo.#",
         "#.........#",
-        "#....D....#",
+        "#d...D...d#",
         "#.........#",
-        "#....@....#",
-        "#.o.....o.#",
-        "#.........#",
+        "#.d..@..d.#",
+        "#do.....od#",
+        "#..d...d..#",
         "#####3#####"
       ],
       npcs: {
@@ -2266,6 +2273,11 @@
             // figure, so Boy walks around them rather than through them.
             obstacles.add(key(x, y)); features.crowd.push({ x: x, y: y }); break;
           case 'C': obstacles.add(key(x, y)); features.car = { x: x, y: y }; break;
+          case 'd':
+            if (Math.random() < (levelDef.demonChance == null ? 1 : levelDef.demonChance)) {
+              obstacles.add(key(x, y)); features.crowd.push({ x: x, y: y, demon: true });
+            }
+            break;
           case 'K': obstacles.add(key(x, y)); features.kayak = { x: x, y: y }; break;
           // Dad's bedside table — only there from his diagnosis on, when his
           // crown comes off and waits on it (see useCrown()).
@@ -3377,6 +3389,16 @@
   var CROWD_SKIN_COLORS = [SKIN_LIGHT, SKIN_BROWN, 0xf0d0a8, 0x8a5a3a];
   var CROWD_HAIR_STYLES = ['short', 'long', 'balding', 'full', 'tied_back'];
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  // Anonymous Hell residents: a random demon on every load — never a King
+  // or Queen (those stay reserved for named characters), always horns and
+  // a tail, in the dark-red demon palette.
+  var DEMON_PIECE_TYPES = ['pawn', 'pawn', 'bishop', 'rook'];
+  var DEMON_SKINS = [0x9a1c1c, 0x8a1818, 0xa82a1e, 0x7a1414, 0xb0321f];
+  var DEMON_TOPS = [0x2a0a0a, 0x3a0c10, 0x1a0808, 0x4a1010, 0x2a1414];
+  function randomDemonAppearance() {
+    return { pieceType: pick(DEMON_PIECE_TYPES), top: pick(DEMON_TOPS), bottom: 0x140808, skin: pick(DEMON_SKINS), hairStyle: 'bald', pieceAccent: 0x2a1414, horns: true, tail: true };
+  }
+
   function randomCrowdAppearance() {
     return {
       pieceType: pick(CROWD_PIECE_TYPES),
@@ -4046,11 +4068,13 @@
     // not a fixed size, since Boy himself grows across the story.
     w.features.crowd.forEach(function (spot) {
       var p = worldPos(w, spot.x, spot.y);
-      var obj = createHuman(randomCrowdAppearance());
+      spot.appearance = spot.demon ? randomDemonAppearance() : randomCrowdAppearance();
+      var obj = createHuman(spot.appearance);
       obj.position.set(p.x, 0, p.z);
-      obj.scale.setScalar(growthScaleForChapter(story.chapter));
+      obj.scale.setScalar(spot.demon ? rand(0.9, 1.1) : growthScaleForChapter(story.chapter));
       obj.rotation.y = pick([0, Math.PI / 2, Math.PI, -Math.PI / 2]);
       group.add(obj);
+      spot.obj = obj;
     });
 
     if (w.features.car) {
@@ -4156,6 +4180,9 @@
     applyColorFactor(world.group, factor);
     world.features.npcs.forEach(function (n) {
       if (keepsColor(n.def)) applyColorFactor(n.obj, 1);
+    });
+    world.features.crowd.forEach(function (c) {
+      if (c.demon && c.obj) applyColorFactor(c.obj, 1);
     });
     // Boy's own exception is a hard binary, not a ride on the shared dial —
     // "he's the LAST to return to color" means a distinct reveal the
@@ -5214,6 +5241,13 @@
       world.features.npcs.splice(world.features.npcs.indexOf(n), 1);
       runners.push(actorFromNpc(n));
     });
+    world.features.crowd.slice().forEach(function (c) {
+      if (!c.demon || !c.obj) return;
+      world.features.crowd.splice(world.features.crowd.indexOf(c), 1);
+      var actor = { obj: c.obj, x: c.x, y: c.y, path: [], step: null, appearance: c.appearance };
+      world.actors.push(actor);
+      runners.push(actor);
+    });
     var reserved = new Set();
     runners.forEach(function (a) {
       var best = fleeTarget(a, fromX, fromY, reserved);
@@ -5480,7 +5514,7 @@
     carMenuListEl.innerHTML = '';
     var curChapterIdx = CHAPTERS.indexOf(story.chapter);
     LEVELS.forEach(function (lvl, i) {
-      if (lvl.id === world.id || lvl.kayakOnly) return;
+      if (lvl.id === world.id || !drivable(lvl)) return;
       if (lvl.availableFrom) {
         var fromIdx = CHAPTERS.indexOf(lvl.availableFrom);
         if (fromIdx === -1 || curChapterIdx < fromIdx) return;
@@ -5666,13 +5700,20 @@
   // then the High School) — see momRideLink(), which hangs this off her own
   // dialogue rather than a whole separate NPC branch. Once hasCar, this
   // never fires — the car itself supersedes it, see momRideLink() below.
+  // A level the car (or Mom) can take BOY straight to. Kayak-only places
+  // are reached by water; walk-in-only ones (Hell) have one entrance BOY
+  // has to walk through.
+  function drivable(lvl) {
+    return !lvl.kayakOnly && !lvl.walkInOnly;
+  }
+
   function openMomRideMenu() {
     closeDialogue();
     carMenuTitleEl.textContent = 'Ride to…';
     carMenuListEl.innerHTML = '';
     var curChapterIdx = CHAPTERS.indexOf(story.chapter);
     LEVELS.forEach(function (lvl, i) {
-      if (lvl.id === world.id || !lvl.availableFrom) return;
+      if (lvl.id === world.id || !lvl.availableFrom || !drivable(lvl)) return;
       var fromIdx = CHAPTERS.indexOf(lvl.availableFrom);
       if (fromIdx === -1 || curChapterIdx < fromIdx) return;
       var btn = document.createElement('button');
@@ -5694,7 +5735,7 @@
     if (def.id !== 'mom' || world.id !== 'home' || story.hasCar) return undefined;
     var curChapterIdx = CHAPTERS.indexOf(story.chapter);
     var hasDestination = LEVELS.some(function (lvl) {
-      if (!lvl.availableFrom) return false;
+      if (!lvl.availableFrom || !drivable(lvl)) return false;
       var fromIdx = CHAPTERS.indexOf(lvl.availableFrom);
       return fromIdx !== -1 && curChapterIdx >= fromIdx;
     });
@@ -5737,6 +5778,21 @@
     var visits = story.chapterTalks.anybody || 0;
     openDialogue(lines.unnamed[Math.min(visits, lines.unnamed.length - 1)], '?', null, npc.obj);
     if (visits < lines.unnamed.length) story.chapterTalks.anybody = visits + 1;
+  }
+
+  // The first of this NPC's `musings` (see the doc above LEVELS) that
+  // belongs to the current chapter, has its `requires` met, and hasn't
+  // been heard yet — or null.
+  function pendingMusing(def) {
+    if (!def.musings) return null;
+    for (var i = 0; i < def.musings.length; i++) {
+      var m = def.musings[i];
+      if (m.chapter !== story.chapter) continue;
+      if (m.requires && !story.learned[m.requires]) continue;
+      if (story.learned['musing_' + def.id + '_' + m.key]) continue;
+      return m;
+    }
+    return null;
   }
 
   function talkToNpc(npc) {
@@ -6041,7 +6097,10 @@
     var famRespect = familyRespect();
     if (famRespect >= CAR_FAMILY_RESPECT_THRESHOLD) {
       story.hasCar = true;
-      openDialogue('Dad tosses you the keys. "Don\'t make us regret this." Mom just smiles.');
+      // One of three quiet beats of the "this isn't a game" motif: Dad
+      // here, Eric's simulation question at diagnosis, and the Devil's
+      // "This is where the game begins" in the finale. Keep it to these.
+      openDialogue('Dad tosses you the keys. "This isn\'t a game, BOY. Don\'t make us regret this." Mom just smiles.');
       showToast('You can drive now! 🚗 Visit the car anytime to travel between towns.', 2800);
     } else {
       openDialogue('"This old car won\'t start until Mom and Dad trust you behind the wheel." (' + famRespect + ' / ' + CAR_FAMILY_RESPECT_THRESHOLD + ' family respect)');
