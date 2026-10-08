@@ -824,7 +824,7 @@
         <a href="https://glagolj.github.io/gg-blog/roulette/2022/03/14/second-order-roulette.html" target="_blank" rel="noopener">glagolj</a>
         (the optional n4/n5 third level extends that same construction one level further).
         Live-drawing &amp; compositing workflow inspired by
-        <a href="https://htmlspirograph.com/" target="_blank" rel="noopener">Abel Vincze's HTML Spirograph</a>.
+        <a href="https://htmlspirograph.com/" target="_blank" rel="noopener">Abel Vincze</a>.
       </p>
       <p class="credit">
         Creative input and thorough testing by
@@ -2310,7 +2310,7 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
     const el = document.getElementById(id);
     gearFields.push({el, key, onSet});
     el.addEventListener('input', updateBeginBtn);
-    el.addEventListener('keydown', e => { if(e.key === 'Enter') commitGears(); });
+    el.addEventListener('keydown', e => { if(e.key === 'Enter'){ commitGears(); el.blur(); } }); // blur so Space controls playback right after
   }
   beginBtn.addEventListener('click', commitGears);
   window.gearUIReady = true;
@@ -2765,14 +2765,13 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   wireSwitch('loopToggle','loop', startAnimation);
 
   pauseBtn.addEventListener('click', togglePause);
-  // Space bar = pause/resume the drawing (or play it again once it has finished). Number
-  // fields and sliders don't take a space, so it works while they have focus (e.g. right after
-  // typing gears and pressing Enter); only real text boxes (recipe, advisor) keep their spaces.
+  // Space bar = pause/resume the drawing (or play it again once it has finished). It is ignored
+  // while any text or number box has focus; sliders, checkboxes and buttons let it through.
   function spaceIsShortcut(e){
     if(e.code !== 'Space' || e.ctrlKey || e.metaKey || e.altKey) return false;
     const t = e.target;
     if(t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return false;
-    if(t.tagName === 'INPUT' && !['range','checkbox','button','number'].includes(t.type)) return false;
+    if(t.tagName === 'INPUT' && !['range','checkbox','button'].includes(t.type)) return false;
     return true;
   }
   document.addEventListener('keydown', e => {
