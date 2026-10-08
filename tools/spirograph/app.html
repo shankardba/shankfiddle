@@ -2765,15 +2765,25 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
   wireSwitch('loopToggle','loop', startAnimation);
 
   pauseBtn.addEventListener('click', togglePause);
-  // Space bar = pause/resume (not while typing in a text/number field)
-  document.addEventListener('keydown', e => {
-    if(e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  // Space bar = pause/resume the drawing (or play it again once it has finished). Number
+  // fields and sliders don't take a space, so it works while they have focus (e.g. right after
+  // typing gears and pressing Enter); only real text boxes (recipe, advisor) keep their spaces.
+  function spaceIsShortcut(e){
+    if(e.code !== 'Space' || e.ctrlKey || e.metaKey || e.altKey) return false;
     const t = e.target;
-    if(t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return;
-    if(t.tagName === 'INPUT' && !['range','checkbox','button'].includes(t.type)) return;
+    if(t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return false;
+    if(t.tagName === 'INPUT' && !['range','checkbox','button','number'].includes(t.type)) return false;
+    return true;
+  }
+  document.addEventListener('keydown', e => {
+    if(!spaceIsShortcut(e)) return;
     e.preventDefault();
-    togglePause();
+    if(e.repeat) return;
+    if(animRunning) togglePause();
+    else { startAnimation(); }
   });
+  // buttons activate on space-up in some browsers; don't let a focused button also "click"
+  document.addEventListener('keyup', e => { if(spaceIsShortcut(e)) e.preventDefault(); });
 
   const speedSlider = document.getElementById('speedSlider');
   const speedVal = document.getElementById('speedVal');
