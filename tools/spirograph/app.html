@@ -611,7 +611,7 @@
         <div class="num-field"><label><span>n3</span></label><input type="number" id="n3" min="1" max="600" value="45"></div>
       </div>
       <div class="toggle-row" style="margin-top:14px;">
-        <div class="label" style="margin:0;" title="Adds a second nested hoop (n4) and pen-wheel (n5) — the same trick as n2/n3, one level deeper.">More squiggles</div>
+        <div class="label" style="margin:0;" title="Adds a second nested hoop (n4) and pen-wheel (n5) — the same trick as n2/n3, one level deeper.">More gears</div>
         <div class="switch" id="extraToggle"></div>
       </div>
       <div id="extraFields" style="display:none;">
@@ -668,8 +668,8 @@
       <div class="label" style="margin-top:10px;">Gear turn</div>
       <div class="turn-row">
         <div class="num-field"><label><span title="Teeth to turn the outer gear (n1) in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Outer</span></label><input type="number" id="stampF" min="-600" max="600" value="0"></div>
-        <div class="num-field" id="stampMField" style="display:none;"><label><span title="Teeth to turn the middle gear (n3) in place between stamps — available with More squiggles. Positive = clockwise (F), negative = counter-clockwise (B).">Middle</span></label><input type="number" id="stampM" min="-600" max="600" value="0"></div>
-        <div class="num-field"><label><span id="stampBLabel" title="Teeth to turn the pen gear (the innermost: n3, or n5 with More squiggles) in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Pen</span></label><input type="number" id="stampB" min="-600" max="600" value="0"></div>
+        <div class="num-field" id="stampMField" style="display:none;"><label><span title="Teeth to turn the middle gear (n3) in place between stamps — available with More gears. Positive = clockwise (F), negative = counter-clockwise (B).">Middle</span></label><input type="number" id="stampM" min="-600" max="600" value="0"></div>
+        <div class="num-field"><label><span id="stampBLabel" title="Teeth to turn the pen gear (the innermost: n3, or n5 with More gears) in place between stamps. Positive = clockwise (F), negative = counter-clockwise (B).">Pen</span></label><input type="number" id="stampB" min="-600" max="600" value="0"></div>
       </div>
       <div class="stamp-hint">Teeth per stamp · + clockwise (F) · − counter-clockwise (B)</div>
       <div class="label" style="margin-top:12px;">Stamps</div>
@@ -825,6 +825,11 @@
         (the optional n4/n5 third level extends that same construction one level further).
         Live-drawing &amp; compositing workflow inspired by
         <a href="https://htmlspirograph.com/" target="_blank" rel="noopener">Abel Vincze's HTML Spirograph</a>.
+      </p>
+      <p class="credit">
+        Creative input and thorough testing by
+        <a href="https://jokeadam.be/#/gallery/galerij_-_tekeningen" target="_blank" rel="noopener">J. Adam</a>
+        and Rossdabossman.
       </p>
     </div>
   </div>
