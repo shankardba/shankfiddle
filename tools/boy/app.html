@@ -915,7 +915,8 @@
               "Some nights I don't think I could do this without you here, BOY."
             ],
             grief: [
-              "Some days the house feels too quiet, BOY. But you're still here. That's not nothing.",
+              // Mom's beat of the "this isn't a game" motif — see the car keys.
+              "Some days the house feels too quiet, BOY. I keep waiting for someone to tell me none of it was real. Nobody does. But you're still here. That's not nothing.",
               "You've been getting up early, taking care of things before I even ask. I see it, BOY."
             ],
             // The grief -> duty trigger's reveal — see talkToNpc(). The
@@ -2004,7 +2005,12 @@
           lines: {
             unnamed: ["Who am I? Who are you?", "I'm nobody, I have no name.", "Look out there, BOY. From the mountaintop, we can see many things in the world."],
             naming: "I was never given a name. Never knew my parents, either. But if I can be nobody, I can be anybody. I'm Anybody — that's my name.",
-            named: "Sit a while, BOY. The numbers, the music, the colors — everything you've been learning down there is one thing, if you look at it long enough. We'll get to that."
+            // Played in order, one per visit, the last repeating. The second
+            // is Anybody's beat of the "this isn't a game" motif.
+            named: [
+              "Sit a while, BOY. The numbers, the music, the colors — everything you've been learning down there is one thing, if you look at it long enough. We'll get to that.",
+              "People down there call it a game when it's easy and a test when it's hard. It's neither, BOY. It's just your life, and it's the only one you get."
+            ]
           }
         }
       },
@@ -5766,7 +5772,9 @@
   function talkToAnybody(npc) {
     var lines = npc.def.lines;
     if (story.learned.anybodyNamed) {
-      openDialogue(lines.named, npc.def.name, null, npc.obj);
+      var namedVisit = story.chapterTalks.anybodyNamed || 0;
+      openDialogue(lines.named[Math.min(namedVisit, lines.named.length - 1)], npc.def.name, null, npc.obj);
+      if (namedVisit < lines.named.length) story.chapterTalks.anybodyNamed = namedVisit + 1;
       return;
     }
     if ((story.respect.anybody || 0) >= ANYBODY_NAMING_RESPECT) {
