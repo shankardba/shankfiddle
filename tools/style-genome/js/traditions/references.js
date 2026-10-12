@@ -7,7 +7,7 @@
    could not be verified (e.g. two culture-loom citations that now block or time out)
    were left out rather than shipped dead. Add new links only after checking them. */
 
-const SOURCES_CHECKED='11 October 2026';
+const SOURCES_CHECKED='12 October 2026';
 const WM=(label,slug)=>[label+' — Wikipedia','https://en.wikipedia.org/wiki/'+slug];
 const AB_CODE=['Indigenous Art Code — buying ethically','https://indigenousartcode.org/'];
 const W=a=>[a.replace(/_/g,' ').replace(/%C3%A8/g,'è').replace(/%C5%8D/g,'ō').replace(/%27/g,'’')+' — Wikipedia','https://en.wikipedia.org/wiki/'+a];
@@ -149,7 +149,12 @@ const SOURCES={
   'inca-tocapu':[W('Tocapu'),W('Andean_textiles'),W('Inca_Empire'),W('Chakana')],
   'paracas-embroidery':[W('Paracas_textile'),W('Paracas_culture'),W('Andean_textiles')],
   'nazca-lines':[W('Nazca_lines'),W('Nazca_culture'),W('Geoglyph')],
-  'chimu-textile':[WM('Chimú culture','Chim%C3%BA_culture'),W('Chan_Chan'),W('Chancay_culture'),W('Andean_textiles')]
+  'chimu-textile':[WM('Chimú culture','Chim%C3%BA_culture'),W('Chan_Chan'),W('Chancay_culture'),W('Andean_textiles')],
+  // Norse and Viking (checked 2026-10-12)
+  'urnes-carving':[W('Urnes_style'),W('Urnes_Stave_Church'),W('Viking_art'),W('Knot_theory')],
+  'runestone':[W('Runestone'),W('Younger_Futhark'),W('Runestone_styles'),W('Viking_art')],
+  'borre-metalwork':[W('Viking_art'),W('Borre_mound_cemetery')],
+  'gotland-picture-stone':[W('Picture_stone'),W('Gotland'),W('Viking_ship')]
 };
 
 for(const T of SG.traditions){
