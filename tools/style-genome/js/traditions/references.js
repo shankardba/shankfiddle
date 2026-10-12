@@ -166,7 +166,12 @@ const SOURCES={
   'petrykivka':[W('Petrykivka_painting'),W('Viburnum_opulus')],
   'khokhloma':[W('Khokhloma')],
   'wycinanki':[W('Wycinanki'),W('Kurpie'),W('Papercutting')],
-  'vyshyvka':[W('Ukrainian_embroidery'),W('Rushnyk'),W('Vyshyvanka'),W('Cross-stitch'),W('Tree_of_life')]
+  'vyshyvka':[W('Ukrainian_embroidery'),W('Rushnyk'),W('Vyshyvanka'),W('Cross-stitch'),W('Tree_of_life')],
+  // Persia (checked 2026-10-12)
+  'safavid-carpet':[W('Persian_carpet'),W('Arabesque'),W('Persian_art')],
+  'persian-tazhib':[W('Tazhib'),W('Shamsa'),W('Persian_miniature')],
+  'termeh':[W('Termeh'),W('Paisley')],
+  'gol-o-morgh':[W('Qajar_art'),W('Lacquer'),W('Common_nightingale'),W('Persian_art')]
 };
 
 for(const T of SG.traditions){
