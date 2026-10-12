@@ -154,7 +154,13 @@ const SOURCES={
   'urnes-carving':[W('Urnes_style'),W('Urnes_Stave_Church'),W('Viking_art'),W('Knot_theory')],
   'runestone':[W('Runestone'),W('Younger_Futhark'),W('Runestone_styles'),W('Viking_art')],
   'borre-metalwork':[W('Viking_art'),W('Borre_mound_cemetery')],
-  'gotland-picture-stone':[W('Picture_stone'),W('Gotland'),W('Viking_ship')]
+  'gotland-picture-stone':[W('Picture_stone'),W('Gotland'),W('Viking_ship')],
+  // Tibet and the Himalaya (checked 2026-10-12)
+  'menri-thangka':[W('Thangka'),W('Tibetan_art'),W('Ashtamangala'),W('Mudra'),W('Stupa')],
+  'sand-mandala':[W('Sand_mandala'),W('Mandala'),W('Kalachakra'),W('Vajra')],
+  'lungta-print':[W('Prayer_flag'),W('Wind_Horse'),W('Snow_Lion'),W('Woodblock_printing'),W('Tibetan_script')],
+  'tibetan-rug':[W('Tibetan_rug'),W('Endless_knot'),W('Ashtamangala')],
+  'bhutan-kushuthara':[W('Textiles_of_Bhutan'),WM('Kira (Bhutan)','Kira_(Bhutan)'),W('Bhutanese_art'),W('Backstrap_loom')]
 };
 
 for(const T of SG.traditions){

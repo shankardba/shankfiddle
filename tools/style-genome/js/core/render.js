@@ -210,7 +210,7 @@ class Renderer{
       // ---- region ----
       let mode=knock?'knock':figMode?figMode:p.forceFill||(r.next()<F.coverage?(makeRng(r.next()*1e9).weighted(F.modes)||'none'):'none');
       if(p.role==='detail'&&mode!=='none'&&mode!=='flat'&&mode!=='gold')mode='flat';
-      const ciOn=p.ci!=null&&!knock&&F.coverage>0.02; // positional colour, wherever the tradition fills at all
+      const ciOn=p.ci!=null&&!knock&&(F.coverage>0.02||p.dye); // positional colour, wherever the tradition fills at all (dyed cloth is coloured even where nothing is painted)
       const ciHatch=ciOn&&p.hatchOk&&(mode==='hatch'||mode==='crosshatch'); // engraved work: secondary forms hatched, not painted
       if(ciHatch){}else if(ciOn)mode='flat';else if(p.ci!=null&&!knock)mode='none';
       const d=dPath(pts,true);const bb0=G.bbox(pts);const isBig=bb0.w*bb0.h>26000;
