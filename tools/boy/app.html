@@ -2417,6 +2417,7 @@
     var obstacles = new Set();
     var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null, cliffs: [], goose: null };
     var groundKinds = [];
+    var spareDemonSpots = [], MIN_DEMONS = 3;
     var playerStart = { x: 1, y: 1 };
     // On an `onWater` level (the lake) Boy is in his kayak: open water is
     // the walkable surface and land (sand, grass, trees, cliff) is the
@@ -2487,6 +2488,8 @@
           case 'd':
             if (Math.random() < (levelDef.demonChance == null ? 1 : levelDef.demonChance)) {
               obstacles.add(key(x, y)); features.crowd.push({ x: x, y: y, demon: true });
+            } else {
+              spareDemonSpots.push({ x: x, y: y });
             }
             break;
           case 'K': obstacles.add(key(x, y)); features.kayak = { x: x, y: y }; break;
@@ -2501,6 +2504,16 @@
           case '@': playerStart = { x: x, y: y }; break;
         }
       }
+    }
+
+    // The dice never leave a level of Hell empty: there are always at
+    // least MIN_DEMONS of them down there.
+    var demonCount = features.crowd.filter(function (c) { return c.demon; }).length;
+    while (demonCount < MIN_DEMONS && spareDemonSpots.length) {
+      var spare = spareDemonSpots.splice(Math.floor(Math.random() * spareDemonSpots.length), 1)[0];
+      obstacles.add(key(spare.x, spare.y));
+      features.crowd.push({ x: spare.x, y: spare.y, demon: true });
+      demonCount++;
     }
 
     if (levelDef.id === 'lake' && gooseActive()) features.goose = { x: GOOSE_SPOTS[0].x, y: GOOSE_SPOTS[0].y, spot: 0 };
@@ -5637,48 +5650,66 @@
 
   // Scenes that play on their own the moment BOY arrives somewhere.
   function startLevelCutscene() {
-    if (world.id === 'hell_3' && CHAPTERS.indexOf(story.chapter) >= CHAPTERS.indexOf('grief') &&
-        story.learned.devilFriend && !story.learned.momInHell) {
+    if (world.id === 'hell_3' && CHAPTERS.indexOf(story.chapter) >= CHAPTERS.indexOf('grief') && !story.learned.momInHell) {
       playMomInHell();
     }
   }
 
-  // After Dad dies, with the Devil already BOY's friend: BOY comes down
-  // to find him with his demons, Mom storms in and the lights come on,
-  // the demons scatter, and Mom corners the Devil until he promises to
-  // leave her BOY alone. Plays once (story.learned.momInHell).
+  // The first time BOY comes all the way down to the Devil after Dad
+  // dies: he finds him among his demons, Mom storms in and the lights come
+  // on, the demons scatter and vanish, and she backs the Devil into a
+  // corner — checkmate — until he promises to take care of her BOY. The
+  // moment she's gone, the demons come back up out of the floor. Plays
+  // once (story.learned.momInHell).
   function playMomInHell() {
     var devilNpc = world.features.npcs.filter(function (n) { return n.def.id === 'devil'; })[0];
     if (!devilNpc) return;
-    var party = [
-      { id: 'd0', appearance: DEMON_BISHOP, x: 4, y: 2 }, { id: 'd1', appearance: DEMON_BISHOP, x: 6, y: 2 },
-      { id: 'd2', appearance: DEMON_PAWN, x: 3, y: 3 }, { id: 'd3', appearance: DEMON_PAWN, x: 7, y: 3 },
-      { id: 'd4', appearance: DEMON_PAWN, x: 4, y: 4 }, { id: 'd5', appearance: DEMON_PAWN, x: 6, y: 4 }
-    ].map(function (d) { d.facing = 'down'; d.enter = 'stand'; return d; });
+    var spots = [
+      { appearance: DEMON_BISHOP, x: 4, y: 2 }, { appearance: DEMON_BISHOP, x: 6, y: 2 },
+      { appearance: DEMON_PAWN, x: 3, y: 3 }, { appearance: DEMON_PAWN, x: 7, y: 3 },
+      { appearance: DEMON_PAWN, x: 4, y: 4 }, { appearance: DEMON_PAWN, x: 6, y: 4 }
+    ];
+    function demons(prefix, enter) {
+      return spots.map(function (d, i) {
+        return { id: prefix + i, appearance: d.appearance, x: d.x, y: d.y, facing: 'down', enter: enter };
+      });
+    }
+    function mom(line) { return { say: line, speaker: 'Mom', actor: 'mom' }; }
+    function devil(line) { return { say: line, speaker: 'The Devil', actor: 'devil' }; }
     playCutscene([
       { run: function () {
         story.learned.momInHell = true;
         cutscene.actors.devil = actorFromNpc(devilNpc);
-      }, spawn: party, camera: { x: 5, y: 4, zoom: 1.5 } },
+      }, spawn: demons('d', 'stand'), camera: { x: 5, y: 4, zoom: 1.5 } },
       { boyWalk: { x: 5, y: 5 }, wait: 1.2 },
-      { lights: 2.6, spawn: [{ id: 'mom', appearance: npcAppearance('home', 'mom'), x: 5, y: 8, facing: 'up', enter: 'stand' }], wait: 0.3 },
-      { say: 'What the hell are you doing to my son!?', speaker: 'Mom', actor: 'mom' },
+      // A queen arriving is what scatters them — see scatterDemons().
+      { lights: 2.6, spawn: [{ id: 'mom', appearance: npcAppearance('home', 'mom'), x: 5, y: 8, facing: 'up', enter: 'stand' }], wait: 0.9 },
+      mom('What are you doing to my BOY?'),
+      devil("I'm just trying to help...."),
       { walk: { actor: 'devil', to: { x: 1, y: 1 } }, camera: { x: 3, y: 3, zoom: 1.5 } },
       { walk: { actor: 'mom', to: { actor: 'devil' } } },
       { run: function () {
         var m = cutscene.actors.mom, d = cutscene.actors.devil;
         turnToward(m, d.x, d.y);
         turnToward(d, m.x, m.y);
-      }, wait: 0.3 },
-      { say: 'You leave my BOY alone. Promise me.', speaker: 'Mom', actor: 'mom' },
-      { say: "...Alright. I promise. I'll leave your BOY alone.", speaker: 'The Devil', actor: 'devil' },
-      { walk: { actor: 'mom', to: { x: 5, y: 8 } } },
+        showToast('♛ Checkmate.', 2200);
+      }, wait: 1.1 },
+      mom("I'll let you live today, but if you hurt him, you are done."),
+      devil('...'),
+      mom('Answer me, Goddammit!'),
+      devil("I promise I'll take care of your BOY."),
+      mom("After I'm gone!?!?"),
+      devil("Yes, Ma'am."),
+      mom("I don't know what you guys discuss down here, but I don't like it."),
+      { walk: { actor: 'mom', to: { x: 5, y: 8 } }, camera: { x: 5, y: 4, zoom: 1.5 } },
       { run: function () {
         var m = cutscene.actors.mom;
         m.obj.visible = false;
         m.gone = true;
         world.obstacles.delete(key(m.x, m.y));
-      }, lights: 1, camera: null, wait: 0.4 }
+      }, lights: 1, wait: 0.5 },
+      { spawn: demons('back', 'rise'), stagger: 0.12, wait: 1.4 },
+      { camera: null, wait: 0.3 }
     ]);
   }
 
