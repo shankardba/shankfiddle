@@ -133,7 +133,12 @@ const SOURCES={
   'chilkat-weaving':[W('Chilkat_weaving'),W('Formline_art'),W('Tlingit')],
   'kwakwakawakw-painting':[WM('Kwakwa̱ka̱ʼwakw art','Kwakwaka%CA%BCwakw_art'),W('Northwest_Coast_art'),W('Potlatch')],
   'engraved-silver':[W('Haida_argillite_carvings'),W('Formline_art'),W('Haida_people')],
-  'coast-salish':[W('Coast_Salish_art'),W('Spindle_whorl'),W('Coast_Salish')]
+  'coast-salish':[W('Coast_Salish_art'),W('Spindle_whorl'),W('Coast_Salish')],
+  // West Africa (checked 2026-10-11)
+  'kente':[W('Kente_cloth'),W('Bonwire'),W('Ashanti_Empire')],
+  'adinkra':[W('Adinkra_symbols'),W('Ntonso'),W('Akan_people')],
+  'bogolanfini':[WM('Bògòlanfini','B%C3%B2g%C3%B2lanfini'),W('Bambara_people')],
+  'adire':[WM('Adire (textile art)','Adire_(textile_art)'),W('Indigo_dye'),W('Resist_dyeing'),W('Yoruba_people')]
 };
 
 for(const T of SG.traditions){
