@@ -138,7 +138,13 @@ const SOURCES={
   'kente':[W('Kente_cloth'),W('Bonwire'),W('Ashanti_Empire')],
   'adinkra':[W('Adinkra_symbols'),W('Ntonso'),W('Akan_people')],
   'bogolanfini':[WM('Bògòlanfini','B%C3%B2g%C3%B2lanfini'),W('Bambara_people')],
-  'adire':[WM('Adire (textile art)','Adire_(textile_art)'),W('Indigo_dye'),W('Resist_dyeing'),W('Yoruba_people')]
+  'adire':[WM('Adire (textile art)','Adire_(textile_art)'),W('Indigo_dye'),W('Resist_dyeing'),W('Yoruba_people')],
+  // Ancient Greece (checked 2026-10-11)
+  'greek-geometric':[W('Geometric_art'),W('Dipylon_Amphora'),W('Meander_(art)'),W('Frieze_group')],
+  'black-figure':[W('Black-figure_pottery'),W('Pottery_of_ancient_Greece'),W('Hoplite'),W('Palmette')],
+  'red-figure':[W('Red-figure_pottery'),W('Pottery_of_ancient_Greece'),W('Three-phase_firing')],
+  'white-ground':[W('White_ground_technique'),W('Lekythos')],
+  'temple-ornament':[W('Egg-and-dart'),W('Anthemion'),W('Meander_(art)'),W('Ancient_Greek_architecture')]
 };
 
 for(const T of SG.traditions){
