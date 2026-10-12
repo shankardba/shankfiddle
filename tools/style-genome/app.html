@@ -365,6 +365,7 @@
       <div class="math-sub">On screen now</div>
       <p class="math-legend" id="mathRecipe"></p>
       <button class="text-link" id="mixInfoBtn" type="button" aria-haspopup="dialog">How two genomes mix &rarr;</button>
+      <a class="text-link" href="atlas.html" target="_top" style="display:block;text-decoration:none;">Browse every culture in the Atlas &rarr;</a>
     </div>
 
     <div id="mathParents"></div>
@@ -761,6 +762,7 @@
       if(T.reading && T.reading.length) h += (links.length ? '<br>' : '') + T.reading.map(esc).join('; ') + '.';
       h += `</p>`;
     }
+    h += `<a class="text-link" href="atlas.html#/style/${T.id}" target="_top" style="display:block;text-decoration:none;">Full page in the Atlas &rarr;</a>`;
     return blockCache[ck] = h + `</div>`;
   }
   let mathKey = '';

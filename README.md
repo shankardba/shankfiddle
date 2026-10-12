@@ -193,6 +193,12 @@ rsync -a --delete ~/claude-applets/style-genome/js/traditions/ tools/style-genom
 Never copy that repo's `local-refs/` folder: it holds reference images that
 are not to be published.
 
+**Atlas** (`tools/style-genome/atlas.html`): a reference on the same engine. Pages for
+every culture, style, motif, pattern ground, border and layout, each drawn live and
+explained. Linked from the Style Genome card on the Art page and from the tool page's
+bar; style pages open the mixer on that style through `./?a=<id>&b=<id>&t=0`, which
+the tool page passes on to `app.html`.
+
 ## To do
 
 - [ ] Replace placeholder bio text in the About section with your real story
