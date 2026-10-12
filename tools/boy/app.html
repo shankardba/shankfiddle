@@ -1868,22 +1868,48 @@
       // in is College's unmarked door — `walkInOnly` keeps all three out
       // of the car's and Mom's ride menus, so BOY walks every level. Each
       // 'd' is a spot a random demon may stand (re-rolled every visit, see
-      // randomDemonAppearance()); `demonChance` grows with depth.
+      // randomDemonAppearance()); they talk (talkToDemon(), `demonLines`),
+      // always coaxing BOY further down. The stairs down on the first two
+      // levels are each held by a gatekeeper demon ('R', a rook beside the
+      // stairs) who wants something real from the world above before he'll
+      // let BOY past — see `gate`, talkToGatekeeper() and checkPortal().
       id: 'hell',
       name: 'Hell',
       walkInOnly: true,
       demonChance: 0.35,
+      demonLines: [
+        "Psst, BOY. It's warmer further down.",
+        "Everybody up there wants something from you. Down here nobody expects a thing.",
+        "The stairs are right there. What's the harm in looking?",
+        "You came this far. Be a shame to turn around now."
+      ],
       map: [
         "###########",
         "#.odd.ddo.#",
         "#.........#",
-        "#d...4...d#",
+        "#d...4R..d#",
         "#.........#",
         "#.d..@..d.#",
         "#do.....od#",
         "#..d...d..#",
         "#####3#####"
       ],
+      npcs: {
+        R: {
+          id: 'hell_gate_1',
+          name: 'The Hungry One',
+          appearance: { pieceType: 'rook', top: 0x4a1010, bottom: 0x140808, skin: 0xa82a1e, hairStyle: 'bald', pieceAccent: 0xc9a227, horns: true, tail: true },
+          gate: {
+            flag: 'hellGate1', produce: 'vegetable', need: 3, unit: 'vegetables',
+            ask: "Going down, BOY? Everybody wants to go down. Nothing grows in this place. Bring me three things that grew in the sun, and the stairs are yours.",
+            short: "Three. Out of the dirt, up top. I can smell that you've got {have}.",
+            offer: "Is that sunlight I smell? Three of those, and you can pass.",
+            pay: 'Hand over 3 vegetables',
+            done: "Mmm. I'd forgotten what the sun tastes like. Go on, then. He's two floors down, and he's a very good listener.",
+            after: "Still here? Down is that way, BOY. It only gets easier from here."
+          }
+        }
+      },
       exits: {
         '3': { to: 'college', x: 5, y: 6 },
         '4': { to: 'hell_2', x: 5, y: 7 }
@@ -1894,17 +1920,39 @@
       name: 'Hell',
       walkInOnly: true,
       demonChance: 0.55,
+      demonLines: [
+        "One more flight, BOY. He's been asking about you.",
+        "Tired? Of course you're tired. He has a way of making things simple.",
+        "Nobody regrets the last staircase. Nobody comes back up to say so, anyway.",
+        "Almost there. Don't think about it. Just walk."
+      ],
       map: [
         "###########",
         "#.odd.ddo.#",
         "#.........#",
-        "#d...4...d#",
+        "#d...4R..d#",
         "#.........#",
         "#.d..@..d.#",
         "#do.....od#",
         "#..d...d..#",
         "#####3#####"
       ],
+      npcs: {
+        R: {
+          id: 'hell_gate_2',
+          name: 'The Collector',
+          appearance: { pieceType: 'rook', top: 0x2a0a0a, bottom: 0x140808, skin: 0x8a1818, hairStyle: 'bald', pieceAccent: 0xc9a227, horns: true, tail: true },
+          gate: {
+            flag: 'hellGate2', money: 10,
+            ask: "This far already. Nothing down here is free, BOY, not even the stairs. Ten dollars.",
+            short: "Ten. You've got ${have}. Go and earn it. We'll keep your place.",
+            offer: "Ten dollars, and the last staircase is yours.",
+            pay: 'Pay $10',
+            done: "A pleasure. He's right below us. Whatever is wrong up there, he has a way of making it simple.",
+            after: "Paid in full. Mind the last step."
+          }
+        }
+      },
       exits: {
         '3': { to: 'hell', x: 5, y: 4 },
         '4': { to: 'hell_3', x: 5, y: 7 }
@@ -1916,11 +1964,19 @@
       // just where he stands, at the very bottom of the staircase (see the
       // 'hell' entry's own comment above). "Weird crowns" on other Hell
       // residents are mentioned in the story but nobody's designed one
-      // yet, so there's no crowd here — just the Devil.
+      // yet. Only a few demons loiter down here day to day (`demonMin` /
+      // a low `demonChance`) — the crowd of them turns up for Mom's scene
+      // (playMomInHell()).
       id: 'hell_3',
       name: 'Hell',
       walkInOnly: true,
-      demonChance: 0.75,
+      demonChance: 0.12,
+      demonMin: 2,
+      demonLines: [
+        "Go on. He doesn't bite. Much.",
+        "He's right there, BOY. Ask him.",
+        "We all asked him, once."
+      ],
       map: [
         "###########",
         "#.odd.ddo.#",
@@ -2417,7 +2473,7 @@
     var obstacles = new Set();
     var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null, cliffs: [], goose: null };
     var groundKinds = [];
-    var spareDemonSpots = [], MIN_DEMONS = 3;
+    var spareDemonSpots = [], MIN_DEMONS = levelDef.demonMin || 3;
     var playerStart = { x: 1, y: 1 };
     // On an `onWater` level (the lake) Boy is in his kayak: open water is
     // the walkable surface and land (sand, grass, trees, cliff) is the
@@ -2507,7 +2563,7 @@
     }
 
     // The dice never leave a level of Hell empty: there are always at
-    // least MIN_DEMONS of them down there.
+    // least MIN_DEMONS of them down there (a level's own `demonMin`, or 3).
     var demonCount = features.crowd.filter(function (c) { return c.demon; }).length;
     while (demonCount < MIN_DEMONS && spareDemonSpots.length) {
       var spare = spareDemonSpots.splice(Math.floor(Math.random() * spareDemonSpots.length), 1)[0];
@@ -4356,6 +4412,7 @@
     w.features.crowd.forEach(function (spot) {
       var p = worldPos(w, spot.x, spot.y);
       spot.appearance = spot.demon ? randomDemonAppearance() : randomCrowdAppearance();
+      if (spot.demon) spot.line = pick(LEVELS[LEVEL_INDEX[w.id]].demonLines || ['...']);
       var obj = createHuman(spot.appearance);
       obj.position.set(p.x, 0, p.z);
       obj.scale.setScalar(spot.demon ? rand(0.9, 1.1) : growthScaleForChapter(story.chapter));
@@ -5161,6 +5218,7 @@
     var list = [];
     var f = world.features;
     f.npcs.forEach(function (n) { list.push({ kind: 'npc', feature: n }); });
+    f.crowd.forEach(function (c) { if (c.demon) list.push({ kind: 'demon', feature: c }); });
     if (f.car) list.push({ kind: 'car', feature: f.car });
     if (f.kayak) list.push({ kind: 'kayak', feature: f.kayak });
     if (f.crownTable) list.push({ kind: 'crown', feature: f.crownTable });
@@ -5345,6 +5403,52 @@
       if (dx + dy <= 1) return n;
     }
     return null;
+  }
+
+  function findNearbyDemon() {
+    var crowd = world.features.crowd;
+    for (var i = 0; i < crowd.length; i++) {
+      var c = crowd[i];
+      if (c.demon && Math.abs(c.x - player.tileX) + Math.abs(c.y - player.tileY) <= 1) return c;
+    }
+    return null;
+  }
+
+  // Hell's anonymous demons each have one thing to say per visit, and it
+  // always points the same way: down. Once the Devil has called BOY a
+  // friend, they've been told to leave him be.
+  function talkToDemon(demon) {
+    var line = story.learned.devilFriend ? "Oh. It's the boss's friend. We're not supposed to bother you anymore." : demon.line;
+    openDialogue(line, 'Demon', null, demon.obj);
+  }
+
+  // The two gatekeepers (see `gate` on their defs): each holds a staircase
+  // until BOY brings something real from the world above — vegetables
+  // picked in Jono's field for the first, money earned from jobs for the
+  // second. Paying sets the gate's flag, which checkPortal() reads.
+  var HELL_GATES = { hell_2: 'hellGate1', hell_3: 'hellGate2' };
+  function talkToGatekeeper(npc) {
+    var gate = npc.def.gate, name = npc.def.name;
+    if (story.learned[gate.flag]) { openDialogue(gate.after, name, null, npc.obj); return; }
+    var have = gate.produce ? (story.produce[gate.produce] || 0) : story.money;
+    var need = gate.produce ? gate.need : gate.money;
+    if (!story.learned[gate.flag + 'Asked']) {
+      story.learned[gate.flag + 'Asked'] = true;
+      openDialogue(gate.ask, name, null, npc.obj);
+      return;
+    }
+    if (have < need) { openDialogue(gate.short.replace('{have}', have), name, null, npc.obj); return; }
+    openChoice(gate.offer, name, [
+      { label: gate.pay, onSelect: function () {
+        if (gate.produce) story.produce[gate.produce] = have - need; else story.money -= need;
+        story.learned[gate.flag] = true;
+        renderStats();
+        sfxPickup();
+        openDialogue(gate.done, name, null, npc.obj);
+        showToast('🔓 The stairs down are open', 2600);
+      } },
+      { label: 'Not yet' }
+    ], npc.obj);
   }
 
   function findNearbyCar() {
@@ -6225,6 +6329,7 @@
     // other NPC uses. See talkToDevil() below for the fixed three-step text.
     if (def.id === 'devil') { talkToDevil(npc); return; }
     if (def.id === 'anybody') { talkToAnybody(npc); return; }
+    if (def.gate) { talkToGatekeeper(npc); return; }
 
     var musing = pendingMusing(def);
     if (musing) {
@@ -6507,6 +6612,8 @@
     if (crownTable) { useCrown(); return; }
     var npc = findNearbyNpc();
     if (npc) { talkToNpc(npc); return; }
+    var demon = findNearbyDemon();
+    if (demon) { talkToDemon(demon); return; }
     var practiceSpot = findNearbyPracticeSpot();
     if (practiceSpot) { practiceViolin(); return; }
     var sign = findNearbySign();
@@ -6536,6 +6643,7 @@
     else if (target.kind === 'kayak') useKayak();
     else if (target.kind === 'crown') useCrown();
     else if (target.kind === 'npc') talkToNpc(target.feature);
+    else if (target.kind === 'demon') talkToDemon(target.feature);
     else if (target.kind === 'practice') practiceViolin();
     else if (target.kind === 'sign') readSign(target.feature);
   }
@@ -6663,6 +6771,10 @@
         }
         if (world.id === 'home' && p.to !== 'home' && !homeUnlocked()) {
           showToast("You're not going anywhere until you've heard both of them out.", 2200);
+          return;
+        }
+        if (HELL_GATES[p.to] && LEVEL_INDEX[p.to] > LEVEL_INDEX[world.id] && !story.learned[HELL_GATES[p.to]]) {
+          showToast('The demon by the stairs steps in your way. He wants something first.', 2600);
           return;
         }
         var destIndex = LEVEL_INDEX[p.to];
