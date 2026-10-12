@@ -211,12 +211,13 @@ class Renderer{
       let mode=knock?'knock':figMode?figMode:p.forceFill||(r.next()<F.coverage?(makeRng(r.next()*1e9).weighted(F.modes)||'none'):'none');
       if(p.role==='detail'&&mode!=='none'&&mode!=='flat'&&mode!=='gold')mode='flat';
       const ciOn=p.ci!=null&&!knock&&F.coverage>0.02; // positional colour, wherever the tradition fills at all
-      if(ciOn)mode='flat';else if(p.ci!=null&&!knock)mode='none';
+      const ciHatch=ciOn&&p.hatchOk&&(mode==='hatch'||mode==='crosshatch'); // engraved work: secondary forms hatched, not painted
+      if(ciHatch){}else if(ciOn)mode='flat';else if(p.ci!=null&&!knock)mode='none';
       const d=dPath(pts,true);const bb0=G.bbox(pts);const isBig=bb0.w*bb0.h>26000;
       let base=this.ground,ov=null;
       if(mode==='flat'||mode==='dots'||mode==='dashes')base=this.fillColor(r,null,isBig);
       if(mode==='hatch'||mode==='crosshatch'){base=r.next()<0.35?this.fillColor(r):this.ground;}
-      if(ciOn)base=this.fillIdx(p.ci);
+      if(ciOn&&!ciHatch)base=this.fillIdx(p.ci);else if(ciHatch)base=this.ground;
       if(p.bg&&!knock){mode='none';base=this.ground;}
       if(p.solid&&!knock){mode='flat';base=inkSave;}
       // a woven strap: left in the ground colour, or in the palette's strap colour (gold where that is 'metal')

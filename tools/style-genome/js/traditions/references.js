@@ -126,7 +126,14 @@ const SOURCES={
   'timurid-mosaic':[W('Shah-i-Zinda'),W('Girih'),W('Muqarnas'),W('Islamic_geometric_patterns'),W('Euclidean_tilings_by_convex_regular_polygons')],
   'mamluk-illumination':[W('Islamic_geometric_patterns'),W('Islamic_ornament'),W('Mamluk_architecture'),W('Aniconism_in_Islam')],
   'mamluk-woodwork':[W('Minbar'),W('Mamluk_architecture'),W('Islamic_geometric_patterns')],
-  'seljuk-stone':[W('Seljuk_architecture'),WM('Divriği Great Mosque and Hospital','Divri%C4%9Fi_Great_Mosque_and_Hospital'),W('Islamic_interlace_patterns'),W('Euclidean_tilings_by_convex_regular_polygons')]
+  'seljuk-stone':[W('Seljuk_architecture'),WM('Divriği Great Mosque and Hospital','Divri%C4%9Fi_Great_Mosque_and_Hospital'),W('Islamic_interlace_patterns'),W('Euclidean_tilings_by_convex_regular_polygons')],
+  // Pacific Northwest Coast (checked 2026-10-11)
+  'northern-formline':[W('Formline_art'),W('Northwest_Coast_art'),W('Bentwood_box'),WM('Bill Holm (art historian)','Bill_Holm_(art_historian)'),W('Potlatch')],
+  'formline-print':[W('Formline_art'),W('Northwest_Coast_art'),W('Screen_printing')],
+  'chilkat-weaving':[W('Chilkat_weaving'),W('Formline_art'),W('Tlingit')],
+  'kwakwakawakw-painting':[WM('Kwakwa̱ka̱ʼwakw art','Kwakwaka%CA%BCwakw_art'),W('Northwest_Coast_art'),W('Potlatch')],
+  'engraved-silver':[W('Haida_argillite_carvings'),W('Formline_art'),W('Haida_people')],
+  'coast-salish':[W('Coast_Salish_art'),W('Spindle_whorl'),W('Coast_Salish')]
 };
 
 for(const T of SG.traditions){
