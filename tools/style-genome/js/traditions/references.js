@@ -160,7 +160,13 @@ const SOURCES={
   'sand-mandala':[W('Sand_mandala'),W('Mandala'),W('Kalachakra'),W('Vajra')],
   'lungta-print':[W('Prayer_flag'),W('Wind_Horse'),W('Snow_Lion'),W('Woodblock_printing'),W('Tibetan_script')],
   'tibetan-rug':[W('Tibetan_rug'),W('Endless_knot'),W('Ashtamangala')],
-  'bhutan-kushuthara':[W('Textiles_of_Bhutan'),WM('Kira (Bhutan)','Kira_(Bhutan)'),W('Bhutanese_art'),W('Backstrap_loom')]
+  'bhutan-kushuthara':[W('Textiles_of_Bhutan'),WM('Kira (Bhutan)','Kira_(Bhutan)'),W('Bhutanese_art'),W('Backstrap_loom')],
+  // Slavic folk (checked 2026-10-12)
+  'pysanka':[W('Pysanka'),W('Egg_decorating_in_Slavic_culture')],
+  'petrykivka':[W('Petrykivka_painting'),W('Viburnum_opulus')],
+  'khokhloma':[W('Khokhloma')],
+  'wycinanki':[W('Wycinanki'),W('Kurpie'),W('Papercutting')],
+  'vyshyvka':[W('Ukrainian_embroidery'),W('Rushnyk'),W('Vyshyvanka'),W('Cross-stitch'),W('Tree_of_life')]
 };
 
 for(const T of SG.traditions){
