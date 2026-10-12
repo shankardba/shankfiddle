@@ -149,8 +149,8 @@ function knotField(x0,y0,x1,y1,rng,{cell=60,breaks=0.25,hole=null,cordK=0.62,sym
 SG.tiles={};
 function defTile(key,o){SG.tiles[key]=Object.assign({key},o);}
 // fill rectangle r with tile `key` at unit u (all parts clipped to r)
-function tileParts(key,r,u,rng){const T=SG.tiles[key]||SG.tiles.seigaiha;const W=r.x1-r.x0,H=r.y1-r.y0;
-  const P=T.fn(W,H,u,rng).map(p=>p.kind==='dot'?Object.assign({},p,{x:p.x+r.x0,y:p.y+r.y0}):Object.assign({},p,{plain:true,pts:p.pts.map(([x,y])=>[x+r.x0,y+r.y0])}));
+function tileParts(key,r,u,rng,g){const T=SG.tiles[key]||SG.tiles.seigaiha;const W=r.x1-r.x0,H=r.y1-r.y0;
+  const P=T.fn(W,H,u,rng,g).map(p=>p.kind==='dot'?Object.assign({},p,{x:p.x+r.x0,y:p.y+r.y0}):Object.assign({},p,{plain:true,pts:p.pts.map(([x,y])=>[x+r.x0,y+r.y0])}));
   return clipPartsRect(P,r);}
 
 defTile('seigaiha',{name:'Blue-sea waves',term:'seigaiha 青海波',meaning:'Overlapping fans of concentric arcs: calm waves without end, a wish for peace and good fortune that never stops.',

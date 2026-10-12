@@ -11,7 +11,7 @@ function renderArtwork(g,{seed=1,structure=null,W=1000,H=1000}={}){
   SG.structures[skey].fn(ctx);
   // a tessellated ground (wagara, thunder pattern) laid under everything when the genome carries one
   if((g.ornament.groundTile||0)>0.02&&skey!=='wagara'){const tr=rng.fork('tile');const key=poolPick(g.motifs.tile,tr);
-    if(key&&SG.tiles[key]&&tr.next()<g.ornament.groundTile)ctx.items.unshift({type:'parts',parts:tileParts(key,{x0:0,y0:0,x1:W,y1:H},lerp(64,40,clamp(g.structure.density)),tr),role:'frame',variant:'gtile',under:true});}
+    if(key&&SG.tiles[key]&&tr.next()<g.ornament.groundTile)ctx.items.unshift({type:'parts',parts:tileParts(key,{x0:0,y0:0,x1:W,y1:H},lerp(64,40,clamp(g.structure.density)),tr,g),role:'frame',variant:'gtile',under:true});}
   const R=new Renderer(g,id,seed);
   const items=ctx.items.filter(i=>i.under).concat(ctx.items.filter(i=>!i.under));
   const geoCache={};
@@ -219,6 +219,8 @@ class Renderer{
       if(ciOn)base=this.fillIdx(p.ci);
       if(p.bg&&!knock){mode='none';base=this.ground;}
       if(p.solid&&!knock){mode='flat';base=inkSave;}
+      // a woven strap: left in the ground colour, or in the palette's strap colour (gold where that is 'metal')
+      if(p.strap&&!knock){const sc=g.palette.strap;if(sc==='metal'){mode='gold';base=`url(#${this.gold()})`;}else if(typeof sc==='string'&&sc[0]==='#'){mode='flat';base=sc;}else{mode='none';base=this.ground;}}
       // rarrk: the palest pigment laid first, then fine hatching in two others over it
       let rk=null;if(mode==='rarrk'){const fs=poolAll(g.palette.fills).filter(c=>C.dist(c,this.ground)>0.06).sort((a,b)=>C.L(b)-C.L(a));
         if(fs.length<2){mode='crosshatch';}else{base=fs[0];const o=fs.slice(1);rk=[o[Math.floor(r.next()*o.length)],o[Math.floor(r.next()*o.length)],C.L(inkSave)<C.L(base)?inkSave:o[o.length-1]];if(rk[0]===rk[1]&&o.length>1)rk[1]=o[(o.indexOf(rk[0])+1)%o.length];}}
@@ -366,6 +368,6 @@ function renderMotifSpecimen(g,key,seed=3,size=220){
 // one all-over repeat in a tradition's hand, filling its swatch
 function renderTileSpecimen(g,key,seed=3,size=220){
   const R=new Renderer(g,svgUid(),seed);
-  R.emitItem(tileParts(key,{x0:0,y0:0,x1:size,y1:size},size/5.2,makeRng(hashStr('t'+key+seed))),{role:'frame',variant:'spec'+key,type:'parts',size:100},0.8);
+  R.emitItem(tileParts(key,{x0:0,y0:0,x1:size,y1:size},size/5.2,makeRng(hashStr('t'+key+seed)),g),{role:'frame',variant:'spec'+key,type:'parts',size:100},0.8);
   return R.finish(size,size);
 }

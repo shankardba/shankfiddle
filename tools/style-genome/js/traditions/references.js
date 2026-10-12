@@ -77,6 +77,7 @@ const EGYPT_GLOSSARY=[
 ];
 for(const id of ['egypt-painted-relief','egypt-sunk-relief','egypt-gilded-relief','egypt-papyrus','egypt-souvenir-papyrus','egypt-tomb-painting','egypt-inlay-jewellery'])GLOSSARY_ADD[id]=EGYPT_GLOSSARY;
 
+const IS_KAPLAN=['Craig S. Kaplan — Islamic star patterns (University of Waterloo)','https://cs.uwaterloo.ca/~csk/other/starpatterns/'];
 const SOURCES={
   'deepavali-icon':[W('Diwali')],
   'devotional-line-art':[W('Saraswati'),W('Durga'),W('Kiritamukuta'),['Exotic India Art — Prabhavali: Meaning & Symbolism','https://www.exoticindiaart.com/article/prabhavali/'],W('Halo_(religious_iconography)'),W('Murti'),W('Ganesha'),W('Vishnu'),W('Shiva'),W('Rama'),W('Kali'),W('Lakshmi'),W('Hanuman'),W('Sudarshana_Chakra'),W('Talamana'),W('Hindu_iconography')],
@@ -117,7 +118,15 @@ const SOURCES={
   'desert-colour-fields':[W('Bush_tucker'),W('Indigenous_Australian_art'),W('The_Dreaming'),AB_CODE],
   'dot-halo-animal':[AB_CODE,W('Milpurrurru_v_Indofurn_Pty_Ltd'),W('Indigenous_Australian_art'),W('Distance_transform')],
   'saltwater-contemporary':[W('Indigenous_Australian_art'),AB_CODE],
-  'arnhem-bark':[W('Bark_painting'),W('Rarrk'),W('X-ray_style_art'),W('Arnhem_Land'),W('Wandjina'),AB_CODE]
+  'arnhem-bark':[W('Bark_painting'),W('Rarrk'),W('X-ray_style_art'),W('Arnhem_Land'),W('Wandjina'),AB_CODE],
+  // Islamic geometric (checked 2026-10-11)
+  'zellij':[W('Zellij'),W('Islamic_geometric_patterns'),IS_KAPLAN],
+  'nasrid-alicatado':[W('Alhambra'),W('Islamic_interlace_patterns'),W('Zellij'),W('Wallpaper_group')],
+  'persian-girih':[W('Girih'),W('Girih_tiles'),W('Darb-e_Imam'),WM('Topkapı Scroll','Topkap%C4%B1_Scroll'),WM('Abū al-Wafāʾ al-Būzjānī','Ab%C5%AB_al-Waf%C4%81%27_al-B%C5%ABzj%C4%81n%C4%AB'),IS_KAPLAN],
+  'timurid-mosaic':[W('Shah-i-Zinda'),W('Girih'),W('Muqarnas'),W('Islamic_geometric_patterns'),W('Euclidean_tilings_by_convex_regular_polygons')],
+  'mamluk-illumination':[W('Islamic_geometric_patterns'),W('Islamic_ornament'),W('Mamluk_architecture'),W('Aniconism_in_Islam')],
+  'mamluk-woodwork':[W('Minbar'),W('Mamluk_architecture'),W('Islamic_geometric_patterns')],
+  'seljuk-stone':[W('Seljuk_architecture'),WM('Divriği Great Mosque and Hospital','Divri%C4%9Fi_Great_Mosque_and_Hospital'),W('Islamic_interlace_patterns'),W('Euclidean_tilings_by_convex_regular_polygons')]
 };
 
 for(const T of SG.traditions){

@@ -524,10 +524,10 @@ fn(ctx){
   const pool=poolAll(g.motifs.tile).filter(k=>SG.tiles[k]);const tiles=pool.length?pool:['seigaiha'];
   const u=lerp(80,46,d);const two=rng.shuffle(tiles);const A=two[0],B=two[1]||two[0];
   const mode=rng.pick(['one','bands','blocks','one']);const seps=[];
-  if(mode==='one')ctx.items.push({type:'parts',parts:tileParts(A,{x0:0,y0:0,x1:W,y1:H},u,rng.fork('t0')),role:'frame',variant:'tile0'});
+  if(mode==='one')ctx.items.push({type:'parts',parts:tileParts(A,{x0:0,y0:0,x1:W,y1:H},u,rng.fork('t0'),g),role:'frame',variant:'tile0'});
   else if(mode==='bands'){const n=rng.int(2,4);const hs=Array.from({length:n},()=>rng.range(0.6,1.4));const tot=hs.reduce((a,b)=>a+b,0);let y=0;
-    hs.forEach((h,i)=>{const y1=i===n-1?H:y+h/tot*H;ctx.items.push({type:'parts',parts:tileParts(i%2?B:A,{x0:0,y0:y,x1:W,y1},u*(i%2?0.9:1),rng.fork('t'+i)),role:'frame',variant:'tile'+(i%2)});if(i)seps.push([[0,y],[W,y]]);y=y1;});}
-  else{const n=rng.pick([2,3]);const c=W/n;for(let j=0;j<n;j++)for(let i=0;i<n;i++)ctx.items.push({type:'parts',parts:tileParts((i+j)%2?B:A,{x0:i*c,y0:j*c,x1:(i+1)*c,y1:(j+1)*c},u*((i+j)%2?0.9:1),rng.fork('t'+((i+j)%2))),role:'frame',variant:'tile'+((i+j)%2)});
+    hs.forEach((h,i)=>{const y1=i===n-1?H:y+h/tot*H;ctx.items.push({type:'parts',parts:tileParts(i%2?B:A,{x0:0,y0:y,x1:W,y1},u*(i%2?0.9:1),rng.fork('t'+i),g),role:'frame',variant:'tile'+(i%2)});if(i)seps.push([[0,y],[W,y]]);y=y1;});}
+  else{const n=rng.pick([2,3]);const c=W/n;for(let j=0;j<n;j++)for(let i=0;i<n;i++)ctx.items.push({type:'parts',parts:tileParts((i+j)%2?B:A,{x0:i*c,y0:j*c,x1:(i+1)*c,y1:(j+1)*c},u*((i+j)%2?0.9:1),rng.fork('t'+((i+j)%2)),g),role:'frame',variant:'tile'+((i+j)%2)});
     for(let k=1;k<n;k++)seps.push([[k*c,0],[k*c,H]],[[0,k*c],[W,k*c]]);}
   if(seps.length)ctx.parts(seps.map(pts=>({kind:'line',role:'outer',pts})),'frame');
   const pool2=[...new Set([...poolAll(g.motifs.hero),...poolAll(g.motifs.ring)])].filter(k=>k!=='dot'&&SG.motifs[k]&&!SG.motifs[k].script);

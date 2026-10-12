@@ -435,6 +435,7 @@
 <script src="js/core/murti-art.js"></script>
 <script src="js/core/dots.js"></script>
 <script src="js/core/koru.js"></script>
+<script src="js/core/girih.js"></script>
 <script src="js/core/render.js"></script>
 <script src="js/traditions/india.js"></script>
 <script src="js/traditions/mongolia.js"></script>
@@ -445,6 +446,7 @@
 <script src="js/traditions/egypt.js"></script>
 <script src="js/traditions/maori.js"></script>
 <script src="js/traditions/aboriginal.js"></script>
+<script src="js/traditions/islamic.js"></script>
 <script src="js/traditions/references.js"></script>
 <script>
 (function(){
@@ -466,6 +468,12 @@
 
   const PAIRINGS = [
     ['madhubani','wagara',0.5,'Madhubani × Wagara'],
+    ['nasrid-alicatado','madhubani',0.5,'Alhambra × Madhubani'],
+    ['kerala-mural','timurid-mosaic',0.5,'Kerala mural × Timurid arch'],
+    ['mamluk-illumination','tanjore',0.5,'Mamluk gold × Tanjore'],
+    ['persian-girih','kolam',0.5,'Girih × Kolam'],
+    ['seljuk-stone','insular-knotwork',0.5,'Seljuk stone × Knotwork'],
+    ['mamluk-woodwork','whakairo',0.5,'Minbar × Whakairo'],
     ['kolam','kowhaiwhai',0.5,'Kolam × Kōwhaiwhai'],
     ['desert-sites-tracks','kolam',0.5,'Desert dots × Kolam'],
     ['kowhaiwhai','insular-knotwork',0.5,'Kōwhaiwhai × Knotwork'],
@@ -603,6 +611,7 @@
       if(O.scallops > .05) out.push('scallops ' + fmt(O.scallops));
       if(Math.abs(O.relief || 0) > .05) out.push((O.relief > 0 ? 'raised' : 'sunk') + ' relief ' + fmt(Math.abs(O.relief)));
       if((O.dotField || 0) > .05) out.push('dotted ground ' + fmt(O.dotField));
+      if((O.strap || 0) > .05) out.push(((O.weave || 0) >= .5 ? 'woven ' : '') + 'straps ' + fmt(O.strap));
       if((O.groundTile || 0) > .05) out.push('pattern ground ' + fmt(O.groundTile));
       return out.join(' · ') || 'plain';
     }

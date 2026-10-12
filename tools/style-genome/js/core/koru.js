@@ -335,7 +335,7 @@ fn(ctx){
   const tiles=rng.shuffle(poolAll(g.motifs.tile).filter(k=>SG.tiles[k]));let x=x0;
   for(let i=0;i<nP+nT;i++){
     if(i%2===0){const r={x0:x,y0:py0,x1:x+tw,y1:py1};
-      ctx.items.push({type:'parts',parts:tileParts(tiles.length?tiles[(i/2)%tiles.length]:'ichimatsu',r,tw*0.5,rng.fork('t'+i)).concat([{kind:'line',closed:true,role:'outer',pts:rect(r.x0,r.y0,r.x1,r.y1)}]),role:'frame',variant:'tk'+(i/2)%Math.max(1,tiles.length)});x+=tw+gap;}
+      ctx.items.push({type:'parts',parts:tileParts(tiles.length?tiles[(i/2)%tiles.length]:'ichimatsu',r,tw*0.5,rng.fork('t'+i),g).concat([{kind:'line',closed:true,role:'outer',pts:rect(r.x0,r.y0,r.x1,r.y1)}]),role:'frame',variant:'tk'+(i/2)%Math.max(1,tiles.length)});x+=tw+gap;}
     else{ // a post: a board with a stack of figures
       ctx.parts([{kind:'region',closed:true,role:'outer',plain:true,ci:0,pts:rect(x,py0,x+pw,py1)},{kind:'line',closed:false,role:'inner',pts:[[x+pw*0.08,py0],[x+pw*0.08,py1]]},{kind:'line',closed:false,role:'inner',pts:[[x+pw*0.92,py0],[x+pw*0.92,py1]]}],'ring');
       const k=Math.max(2,Math.round((py1-py0)/(pw*1.12))),ch=(py1-py0)/k,hk=ctx.pick('hero'),rk=ctx.pick('ring');
