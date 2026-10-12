@@ -161,6 +161,38 @@ rsync -a --delete ~/claude-applets/musicology/js/ tools/musicology/js/
 cp ~/claude-applets/musicology/data/content.js tools/musicology/data/content.js
 ```
 
+## Tool: Style Genome
+
+`tools/style-genome/` (in the Art section) follows the same wrapper+iframe
+pattern as the other tools, with the widget page plus the engine it drives:
+
+```
+tools/style-genome/
+  index.html                  Wrapper
+  app.html                     Unmodified copy of claude-applets/style-genome/widget.html
+  js/core/                     Unmodified copy of the same repo's js/core/*.js
+                                (without analyze.js and restyle.js, which only the
+                                full app's Lab uses)
+  js/traditions/               Unmodified copy of the same repo's js/traditions/*.js
+```
+
+`app.html` is the applet-framework face of the project: full-screen picture,
+gear panel (two parent traditions, blend, structure, subject, gene splicing),
+Σ panel (the genome behind the picture, each parent's rules, maths and care
+note), download, share link and theme buttons. The full app (Atlas, Mixer,
+Lab) stays in the private repo and is not published here.
+
+To pull in updates:
+
+```bash
+cp ~/claude-applets/style-genome/widget.html tools/style-genome/app.html
+rsync -a --delete --exclude analyze.js --exclude restyle.js ~/claude-applets/style-genome/js/core/ tools/style-genome/js/core/
+rsync -a --delete ~/claude-applets/style-genome/js/traditions/ tools/style-genome/js/traditions/
+```
+
+Never copy that repo's `local-refs/` folder: it holds reference images that
+are not to be published.
+
 ## To do
 
 - [ ] Replace placeholder bio text in the About section with your real story

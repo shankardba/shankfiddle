@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<!--
+  Style Genome — embeddable widget
+  --------------------------------
+  Copyright (c) 2026 Shankar Srinivasan. All rights reserved.
+  See LICENSE in the repository root.
+
+  Blends the drawing grammar of two art traditions into one composition. A
+  tradition is described by seven groups of "genes" — structure, motifs, line,
+  fill, ornament, palette and surface — and the geometry of a picture carries no
+  style of its own: the same shapes are drawn through whichever genes the blend
+  selects. Numeric genes interpolate, on/off genes cross over one at a time as
+  the blend slider moves, and colour and motif pools merge. Any gene group can
+  be spliced whole from one parent.
+
+  This file is the Shankfiddle applet-framework face of the project (full-screen
+  picture, gear panel, explain panel, download / link / theme buttons). The
+  engine it drives lives beside it in js/core/ and js/traditions/ and is shared
+  unchanged with the full Style Genome app (index.html: Atlas, Mixer, Lab).
+
+  A generated picture is a study of how a tradition draws. It is not a work of
+  that tradition and carries none of its stories or ownership; each tradition's
+  care note is shown in the explain panel.
+
+  No build step, no dependencies beyond two Google Fonts.
+  To embed: <iframe src="widget.html" style="width:100%;height:640px;border:0;"></iframe>
+  (keep the js/ folder beside this file).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style Genome</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E16;
+    --surface:#121822;
+    --surface-2:#1A2230;
+    --border:#232D3B;
+    --text:#E7ECF2;
+    --text-muted:#8A97A8;
+    --warm:#F2A65A;
+    --cool:#57D9C4;
+    --error:#FF8A8A;
+    --chip-bg:rgba(18,24,34,0.72);
+    --panel-bg:rgba(15,20,29,0.94);
+    --mathpanel-bg:rgba(10,14,22,0.97);
+    --hint-bg:rgba(10,14,22,0.6);
+    --art-shadow:0 18px 60px rgba(0,0,0,0.55);
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF;
+    --surface:#F1F3F6;
+    --surface-2:#E5E9EE;
+    --border:#D4D9E0;
+    --text:#14181F;
+    --text-muted:#5B6472;
+    --warm:#B45309;
+    --cool:#0F766E;
+    --error:#B3261E;
+    --chip-bg:rgba(255,255,255,0.82);
+    --panel-bg:rgba(255,255,255,0.96);
+    --mathpanel-bg:rgba(248,249,251,0.98);
+    --hint-bg:rgba(255,255,255,0.8);
+    --art-shadow:0 14px 44px rgba(20,24,31,0.22);
+    color-scheme:light;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'Space Grotesk',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    overflow:hidden;
+  }
+  #wrap{position:relative;width:100%;height:100vh;min-height:320px;background:var(--bg);overflow:hidden;}
+
+  /* the picture: a square sheet centred on the stage, panned and zoomed as one piece */
+  #stage{position:absolute;inset:0;touch-action:none;cursor:grab;overflow:hidden;}
+  #stage.dragging{cursor:grabbing;}
+  #art{
+    position:absolute;left:50%;top:50%;
+    transform-origin:50% 50%;
+    box-shadow:0 0 0 1px var(--border), var(--art-shadow);
+    background:var(--surface);
+  }
+  #art svg{display:block;width:100%;height:100%;pointer-events:none;}
+
+  .hud{
+    position:absolute;left:14px;bottom:14px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px);
+    background:var(--chip-bg);
+    border:1px solid var(--border);
+    padding:7px 12px;border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;color:var(--text-muted);
+    pointer-events:none;
+    backdrop-filter:blur(2px);
+  }
+  .hud span{color:var(--cool);}
+
+  .gear-btn, .download-btn, .explain-btn, .link-btn, .theme-btn{
+    position:absolute;top:14px;z-index:2;
+    width:36px;height:36px;border-radius:4px;
+    background:var(--chip-bg);
+    border:1px solid var(--border);
+    color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .gear-btn{right:14px;}
+  .download-btn{left:14px;}
+  .explain-btn{left:58px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
+  .link-btn{left:102px;}
+  .theme-btn{left:146px;}
+  .gear-btn:hover, .download-btn:hover, .explain-btn:hover, .link-btn:hover, .theme-btn:hover{background:var(--surface-2);border-color:var(--cool);}
+  .gear-btn:focus-visible, .download-btn:focus-visible, .explain-btn:focus-visible, .link-btn:focus-visible, .theme-btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .gear-btn.open, .explain-btn.open{border-color:var(--warm);color:var(--warm);}
+  .gear-btn svg, .download-btn svg, .link-btn svg, .theme-btn svg{width:17px;height:17px;stroke:var(--text);transition:transform 0.4s ease;}
+  .gear-btn.open svg{transform:rotate(75deg);}
+  .link-btn.copied{border-color:var(--cool);color:var(--cool);}
+
+  .zoom-controls{
+    position:absolute;right:14px;bottom:54px;z-index:2;
+    display:flex;flex-direction:column;
+  }
+  .zoom-controls button{
+    width:32px;height:28px;
+    background:var(--chip-bg);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:inherit;font-size:16px;line-height:1;
+    cursor:pointer;
+  }
+  .zoom-controls button:first-child{border-radius:4px 4px 0 0;border-bottom:none;}
+  .zoom-controls button:last-child{border-radius:0 0 4px 4px;}
+  .zoom-controls button:hover{background:var(--surface-2);border-color:var(--cool);}
+
+  .panel{
+    position:absolute;top:0;right:0;height:100%;width:300px;max-width:88vw;z-index:1;
+    background:var(--panel-bg);
+    border-left:1px solid var(--border);
+    padding:60px 18px 18px;
+    transform:translateX(100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .panel.open{transform:translateX(0);}
+
+  .math-panel{
+    position:absolute;top:0;left:0;height:100%;width:360px;max-width:88vw;z-index:1;
+    background:var(--mathpanel-bg);
+    border-right:1px solid var(--border);
+    padding:60px 22px 24px;
+    transform:translateX(-100%);
+    transition:transform 0.25s ease;
+    overflow-y:auto;
+  }
+  .math-panel.open{transform:translateX(0);}
+  .math-title{font-size:15px;font-weight:600;margin-bottom:4px;color:var(--text);}
+  .math-subtitle{font-size:11px;color:var(--text-muted);margin-bottom:20px;line-height:1.5;}
+  .math-section{margin-bottom:22px;}
+  .math-section + .math-section{border-top:1px solid var(--border);padding-top:18px;}
+  .math-sub{font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--cool);margin-bottom:10px;}
+  .math-prose{font-size:12.5px;line-height:1.75;color:var(--text-muted);margin:0 0 10px;}
+  .math-prose b{color:var(--text);font-weight:500;}
+  .math-block{
+    background:var(--surface);border:1px solid var(--border);border-radius:6px;
+    padding:12px 14px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;color:var(--text);line-height:1.8;word-break:break-word;
+  }
+  .math-block .rule-arrow{color:var(--text-muted);}
+  .math-block .rule-sym{color:var(--warm);}
+  .math-legend{font-size:11px;line-height:1.9;color:var(--text-muted);margin:0 0 4px;}
+  .math-legend b{color:var(--warm);font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .math-caption{
+    font-size:10px;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--text-muted);margin:14px 0 8px;
+  }
+  .math-list{margin:0 0 6px;padding-left:18px;font-size:12px;line-height:1.75;color:var(--text-muted);}
+  .math-list li{margin-bottom:3px;}
+  /* a tradition's care note: always shown with its parent */
+  .care{
+    border-left:2px solid var(--warm);background:var(--surface);
+    padding:10px 12px;border-radius:0 6px 6px 0;margin:0 0 6px;
+    font-size:11.5px;line-height:1.7;color:var(--text-muted);
+  }
+  .pal{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0 2px;}
+  .pal i{width:18px;height:18px;border-radius:3px;border:1px solid var(--border);display:block;}
+
+  .section{margin-bottom:22px;}
+  .section + .section{border-top:1px solid var(--border);padding-top:20px;}
+  .label{
+    font-size:11px;letter-spacing:0.02em;color:var(--text-muted);
+    margin-bottom:9px;
+  }
+  .sublabel{font-size:10px;color:var(--text-muted);margin:12px 0 4px;}
+
+  select{
+    width:100%;padding:9px 10px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:13px;cursor:pointer;
+  }
+  select:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+
+  .slider-row{display:flex;align-items:center;gap:10px;}
+  .slider-row + .slider-row{margin-top:12px;}
+  .slider-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+  input[type=range]{
+    flex:1;width:100%;accent-color:var(--warm);height:4px;
+  }
+  .val{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--cool);
+    min-width:44px;text-align:right;
+  }
+
+  .btn{
+    width:100%;padding:9px;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:4px;font-family:inherit;
+    font-size:12px;cursor:pointer;margin-top:8px;
+  }
+  .btn:hover{border-color:var(--warm);color:var(--warm);}
+  .btn:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .btn-accent{border-color:var(--cool);color:var(--cool);}
+  .btn-accent:hover{border-color:var(--warm);color:var(--warm);}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+  .btn-row .btn{margin-top:0;}
+
+  /* gene splicing: one row per gene group, A / blend / B */
+  .gene-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .gene-row .gname{font-size:12px;color:var(--text);}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;flex-shrink:0;}
+  .seg button{
+    background:var(--surface);color:var(--text-muted);border:0;border-left:1px solid var(--border);
+    padding:5px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;
+  }
+  .seg button:first-child{border-left:0;}
+  .seg button:hover{color:var(--warm);}
+  .seg button.on{color:var(--cool);background:var(--surface-2);}
+  .seg button:focus-visible{outline:2px solid var(--cool);outline-offset:-2px;}
+  .gene-desc{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);
+    margin:4px 0 13px;line-height:1.55;
+  }
+  .gene-desc .from{color:var(--cool);}
+  .gene-desc .pal{margin:5px 0 0;}
+  .gene-desc .pal i{width:13px;height:13px;}
+
+  .cap-note{font-size:10.5px;color:var(--warm);margin-top:8px;line-height:1.5;}
+
+  .credit{
+    font-size:10px;line-height:1.6;color:var(--text-muted);opacity:0.75;margin:0;
+  }
+  .credit a{color:var(--cool);}
+
+  .hint{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:13px;color:var(--text);
+    background:var(--hint-bg);padding:10px 16px;border-radius:4px;
+    pointer-events:none;transition:opacity 0.6s ease;
+    text-align:center;line-height:1.5;z-index:1;
+    backdrop-filter:blur(3px);
+  }
+  @media (prefers-reduced-motion:reduce){
+    .hint{transition:none;}
+    .panel,.math-panel{transition:none;}
+    .gear-btn svg{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><div id="art" role="img" aria-label="Generated composition"></div></div>
+
+  <div class="hud" id="hud">
+    <span id="hA">Madhubani</span> &times; <span id="hB">Wagara</span> ·
+    blend=<span id="hT">50%</span> ·
+    <span id="hS">structure</span> ·
+    seed=<span id="hSeed">7</span>
+  </div>
+
+  <button class="download-btn" id="downloadBtn" aria-label="Download image" title="Download image (PNG)">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v12"></path>
+      <path d="M7 10l5 5 5-5"></path>
+      <path d="M5 21h14"></path>
+    </svg>
+  </button>
+
+  <button class="explain-btn" id="explainBtn" aria-label="Explain the genome" aria-expanded="false" title="Explain the genome">&Sigma;</button>
+
+  <button class="link-btn" id="linkBtn" aria-label="Copy link to this picture" title="Copy link to this picture">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+    </svg>
+  </button>
+
+  <button class="theme-btn" id="themeBtn" aria-label="Switch to light mode" aria-pressed="false" title="Switch to light mode">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2"></path><path d="M12 20v2"></path>
+      <path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path>
+      <path d="M2 12h2"></path><path d="M20 12h2"></path>
+      <path d="M6.34 17.66l-1.41 1.41"></path><path d="M19.07 4.93l-1.41 1.41"></path>
+    </svg>
+  </button>
+
+  <button class="gear-btn" id="gearBtn" aria-label="Toggle controls" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+
+  <div class="zoom-controls">
+    <button id="zoomInBtn" aria-label="Zoom in">+</button>
+    <button id="zoomOutBtn" aria-label="Zoom out">&minus;</button>
+  </div>
+
+  <div class="math-panel" id="mathPanel">
+    <div class="math-title">The Genome Behind This Picture</div>
+    <p class="math-subtitle">Everything below updates live as you change the blend, so it always describes exactly what's on screen.</p>
+
+    <div class="math-section">
+      <div class="math-sub">What a style genome is</div>
+      <p class="math-prose">A tradition is described here by seven groups of <b>genes</b>: how the surface is organised (<b>structure</b>), the vocabulary of shapes (<b>motifs</b>), how a contour is made (<b>line</b>), how regions are coloured (<b>fill</b>), the secondary decoration (<b>ornament</b>), the colours (<b>palette</b>) and the material (<b>surface</b>).</p>
+      <p class="math-prose">The geometry of a picture carries no style of its own. A lotus, a knot or a seated figure is only a set of curves; it is drawn through whichever genes are active. That is why one composition can take its layout from one culture and its hand from another.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">How two genomes blend</div>
+      <p class="math-legend">
+        <b>numbers</b> — line weight, wobble, density: interpolated<br>
+        <b>switches</b> — double outline, stitch, structure: each flips at its own point along the slider, so they cross over one at a time<br>
+        <b>pools</b> — colours and motifs: merged, each shape drawing from parent B with the blend's probability<br>
+        <b>splice</b> — any whole group can be taken from one parent
+      </p>
+      <p class="math-prose" style="margin-top:10px;">A gene only one parent has fades in from nothing. Rows of dots closing the ground, a carved edge, a brush's dry streak: each spreads through the picture as the slider moves toward the parent that owns it.</p>
+    </div>
+
+    <div class="math-section">
+      <div class="math-sub">This picture</div>
+      <div class="math-block" id="mathGenes"></div>
+      <div class="pal" id="mathPal"></div>
+      <p class="math-legend" id="mathRecipe" style="margin-top:10px;"></p>
+    </div>
+
+    <div id="mathParents"></div>
+
+    <div class="math-section">
+      <div class="math-sub">What a generated picture is</div>
+      <p class="math-prose">A study of how a tradition draws: its line, its spacing, its way of filling a surface. It is not a work of that tradition. It tells none of its stories and carries none of the rights that go with them, and it should not be presented as one. Where a tradition asks for particular care, its note appears with it above.</p>
+      <p class="credit">
+        Line weights, spacing and colours were measured from reference images, which are not stored or shown here, or set from the published sources listed with each tradition.
+        The dotted ground is a distance field
+        (<a href="https://en.wikipedia.org/wiki/Distance_transform" target="_blank" rel="noopener">distance transform</a>);
+        rafter scrolls use the seven
+        <a href="https://en.wikipedia.org/wiki/Frieze_group" target="_blank" rel="noopener">frieze groups</a>;
+        hieroglyphs are standard signs by Gardiner number.
+      </p>
+    </div>
+  </div>
+
+  <div class="panel" id="panel">
+    <div class="section">
+      <div class="label">Cultures</div>
+      <div class="sublabel" style="margin-top:0;">Parent A</div>
+      <select id="selA" aria-label="Parent A"></select>
+      <div class="sublabel">Parent B</div>
+      <select id="selB" aria-label="Parent B"></select>
+      <div class="slider-row" style="margin-top:14px;">
+        <div style="flex:1;">
+          <div class="slider-label"><span>Blend</span><span class="val" id="blendVal">50% B</span></div>
+          <input type="range" id="blendSlider" min="0" max="1" step="0.01" value="0.5" aria-label="Blend amount">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="swapBtn">&#8644; Swap</button>
+        <button class="btn btn-accent" id="randomPairBtn">🎲 Random pair</button>
+      </div>
+      <div class="sublabel">Try a pairing</div>
+      <select id="presetSelect" aria-label="Try a pairing"></select>
+    </div>
+
+    <div class="section">
+      <div class="label">Composition</div>
+      <div class="sublabel" style="margin-top:0;">Structure</div>
+      <select id="structSelect" aria-label="Structure"></select>
+      <div class="sublabel">Subject</div>
+      <select id="subjectSelect" aria-label="Subject"></select>
+      <div class="sublabel">Figure regalia</div>
+      <select id="regaliaSelect" aria-label="Figure regalia">
+        <option value="">Follows the blend</option>
+        <option value="0">Canonical</option>
+        <option value="0.5">Half re-mixed</option>
+        <option value="1">Fully re-mixed</option>
+      </select>
+      <button class="btn btn-accent" id="variationBtn">🎲 New variation</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Gene splicing — blend each group, or take it whole from one parent</div>
+      <div id="geneRows"></div>
+      <button class="btn" id="resetSpliceBtn">Reset splices</button>
+    </div>
+
+    <div class="section">
+      <div class="label">Explore</div>
+      <button class="btn" id="resetViewBtn">Reset view</button>
+      <button class="btn" id="downloadSvgBtn">Download as SVG (vector)</button>
+      <div class="cap-note" id="errNote" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Drag to pan · Scroll to zoom · Double-click to reset view<br>Gear = choose two cultures · &Sigma; = explain the genome</div>
+</div>
+
+<!-- the engine: shared unchanged with the full Style Genome app -->
+<script src="js/core/util.js"></script>
+<script src="js/core/genome.js"></script>
+<script src="js/core/weave.js"></script>
+<script src="js/core/motifs.js"></script>
+<script src="js/core/figures.js"></script>
+<script src="js/core/structures.js"></script>
+<script src="js/core/hiero.js"></script>
+<script src="js/core/murti.js"></script>
+<script src="js/core/murti-art.js"></script>
+<script src="js/core/dots.js"></script>
+<script src="js/core/koru.js"></script>
+<script src="js/core/render.js"></script>
+<script src="js/traditions/india.js"></script>
+<script src="js/traditions/mongolia.js"></script>
+<script src="js/traditions/mesoamerica.js"></script>
+<script src="js/traditions/celtic.js"></script>
+<script src="js/traditions/japan.js"></script>
+<script src="js/traditions/china.js"></script>
+<script src="js/traditions/egypt.js"></script>
+<script src="js/traditions/maori.js"></script>
+<script src="js/traditions/aboriginal.js"></script>
+<script src="js/traditions/references.js"></script>
+<script>
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const fmt = v => (+v).toFixed(2).replace(/^0/, '');
+
+  // ---------- state ----------
+  const state = {
+    a:'madhubani', b:'wagara', t:0.5, seed:7,
+    s:'',      // structure key, '' = whatever the blend chooses
+    h:'',      // subject (a motif key), '' = whatever the blend chooses
+    rx:'',     // figure regalia: '' follows the blend, else 0..1
+    pins:{},   // gene group -> 'A' | 'B'
+    theme:'dark'
+  };
+  const view = {k:1, x:0, y:0};
+  let last = null; // {svg, structure, g, A, B}
+
+  const PAIRINGS = [
+    ['madhubani','wagara',0.5,'Madhubani × Wagara'],
+    ['kolam','kowhaiwhai',0.5,'Kolam × Kōwhaiwhai'],
+    ['desert-sites-tracks','kolam',0.5,'Desert dots × Kolam'],
+    ['kowhaiwhai','insular-knotwork',0.5,'Kōwhaiwhai × Knotwork'],
+    ['kirituhi-line','mehndi',0.5,'Kirituhi × Mehndi'],
+    ['egypt-painted-relief','desert-sites-tracks',0.5,'Hieroglyphs × Desert dots'],
+    ['tukutuku','sashiko',0.5,'Tukutuku × Sashiko'],
+    ['whakairo','egypt-sunk-relief',0.5,'Whakairo × Sunk relief'],
+    ['arnhem-bark','madhubani',0.5,'Bark painting × Madhubani'],
+    ['egypt-painted-relief','kolam',0.5,'Hieroglyphs × Kolam'],
+    ['egypt-inlay-jewellery','insular-knotwork',0.5,'Broad collar × Knotwork'],
+    ['insular-knotwork','kolam',0.5,'Knotwork × Kolam'],
+    ['sashiko','kantha',0.5,'Sashiko × Kantha'],
+    ['bronze-leiwen','sun-stone',0.5,'Bronze × Sun Stone'],
+    ['ice-ray','mehndi',0.45,'Ice-ray × Mehndi'],
+    ['jianzhi','aztec-stamp',0.5,'Paper-cut × Stamp'],
+    ['shufa','mongol-calligraphy',0.5,'Shufa × Mongol calligraphy'],
+    ['zen-ink','gond',0.4,'Zen ink × Gond'],
+    ['la-tene','mongol-khee',0.5,'La Tène × Khee'],
+    ['blue-white','kalamkari',0.5,'Blue-and-white × Kalamkari'],
+    ['mitla-fretwork','kantha',0.5,'Mitla × Kantha'],
+    ['sun-stone','rangoli',0.5,'Sun Stone × Rangoli'],
+    ['warli','ajrakh',0.5,'Warli × Ajrakh'],
+    ['tanjore','kalamkari',0.5,'Tanjore × Kalamkari']
+  ].filter(p => SG.byId[p[0]] && SG.byId[p[1]]);
+
+  // ---------- controls: build the selects ----------
+  const selA = $('selA'), selB = $('selB');
+  function fillTraditions(sel){
+    SG.families.forEach(f => {
+      const ts = SG.traditions.filter(t => t.family === f.id);
+      if(!ts.length) return;
+      const og = document.createElement('optgroup');
+      og.label = f.name;
+      ts.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.id; o.textContent = t.name;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+  }
+  fillTraditions(selA); fillTraditions(selB);
+
+  const presetSelect = $('presetSelect');
+  (function(){
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = 'Choose…';
+    presetSelect.appendChild(o);
+    PAIRINGS.forEach((p, i) => {
+      const op = document.createElement('option');
+      op.value = i; op.textContent = p[3];
+      presetSelect.appendChild(op);
+    });
+  })();
+
+  const structSelect = $('structSelect');
+  (function(){
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = 'Auto — from the blend';
+    structSelect.appendChild(o);
+    Object.values(SG.structures).sort((p, q) => p.name.localeCompare(q.name)).forEach(s => {
+      const op = document.createElement('option');
+      op.value = s.key; op.textContent = s.name; op.title = s.blurb || '';
+      structSelect.appendChild(op);
+    });
+  })();
+
+  const subjectSelect = $('subjectSelect');
+  (function(){
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = 'Auto — from the blend';
+    subjectSelect.appendChild(o);
+    const group = (label, list) => {
+      if(!list.length) return;
+      const og = document.createElement('optgroup');
+      og.label = label;
+      list.sort((p, q) => p.name.localeCompare(q.name)).forEach(m => {
+        const op = document.createElement('option');
+        op.value = m.key; op.textContent = m.name;
+        og.appendChild(op);
+      });
+      subjectSelect.appendChild(og);
+    };
+    const all = Object.values(SG.motifs);
+    group('Figures and animals', all.filter(m => m.figure && !m.part));
+    group('Regalia and attributes', all.filter(m => m.part));
+  })();
+  const regaliaSelect = $('regaliaSelect');
+
+  // gene splicing rows
+  const geneRows = $('geneRows');
+  GENE_GROUPS.forEach(grp => {
+    const row = document.createElement('div');
+    row.innerHTML =
+      `<div class="gene-row"><span class="gname">${grp.label}</span>` +
+      `<span class="seg" role="group" aria-label="${grp.label} source">` +
+      ['A','mix','B'].map(v => `<button type="button" data-g="${grp.id}" data-v="${v}">${v === 'mix' ? 'blend' : v}</button>`).join('') +
+      `</span></div><div class="gene-desc" id="gd-${grp.id}"></div>`;
+    geneRows.appendChild(row);
+  });
+  geneRows.addEventListener('click', e => {
+    const b = e.target.closest('button[data-g]');
+    if(!b) return;
+    if(b.dataset.v === 'mix') delete state.pins[b.dataset.g];
+    else state.pins[b.dataset.g] = b.dataset.v;
+    compose();
+  });
+
+  // ---------- describing a genome in words ----------
+  function geneText(id, g, skey){
+    if(id === 'structure'){
+      const n = Math.round(g.structure.borderBands);
+      return `${(SG.structures[skey] || {name:skey}).name} · density ${fmt(g.structure.density)} · ${n} border${n === 1 ? '' : 's'}`;
+    }
+    if(id === 'motifs'){
+      const pool = poolAll(g.motifs.hero).concat(poolAll(g.motifs.ring)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 5);
+      return pool.map(k => (SG.motifs[k] || {name:k}).name).join(', ') + (g.motifs.hero && g.motifs.hero.pool ? ' — vocabularies merged' : '');
+    }
+    if(id === 'line'){
+      const L = g.line;
+      return `weight ${L.weight.toFixed(1)}` + (L.brush > .05 ? ' · brush ' + fmt(L.brush) : '') + (L.double ? ' · double outline' : '') +
+        (L.wobble > .1 ? ' · wobble ' + fmt(L.wobble) : '') + (L.taper > .1 ? ' · taper ' + fmt(L.taper) : '') +
+        (L.dash ? ' · ' + L.dash : '') + (L.dotted > .05 ? ' · set as dots ' + fmt(L.dotted) : '');
+    }
+    if(id === 'fill'){
+      const m = Object.entries(g.fill.modes).filter(([, v]) => v > 0.01).sort((p, q) => q[1] - p[1]);
+      const s = m.reduce((acc, [, v]) => acc + v, 0) || 1;
+      return m.slice(0, 3).map(([k, v]) => `${k} ${Math.round(v / s * 100)}%`).join(' · ') + ` · coverage ${fmt(g.fill.coverage)}` +
+        (g.fill.knockout > .05 ? ` · figure and ground reversed ${fmt(g.fill.knockout)}` : '');
+    }
+    if(id === 'ornament'){
+      const O = g.ornament, out = [];
+      if(O.dotRows > .05) out.push('dot rows ' + fmt(O.dotRows));
+      if(O.echo > .05) out.push('echo lines ' + fmt(O.echo));
+      if(O.scallops > .05) out.push('scallops ' + fmt(O.scallops));
+      if(Math.abs(O.relief || 0) > .05) out.push((O.relief > 0 ? 'raised' : 'sunk') + ' relief ' + fmt(Math.abs(O.relief)));
+      if((O.dotField || 0) > .05) out.push('dotted ground ' + fmt(O.dotField));
+      if((O.groundTile || 0) > .05) out.push('pattern ground ' + fmt(O.groundTile));
+      return out.join(' · ') || 'plain';
+    }
+    if(id === 'ground') return `${g.ground.kind} ${fmt(g.ground.amount)}`;
+    return '';
+  }
+  const paletteOf = g => [g.palette.ground, g.palette.ink].concat(poolAll(g.palette.fills).slice(0, 8)).filter((c, i, a) => typeof c === 'string' && c[0] === '#' && a.indexOf(c) === i);
+  const palHtml = g => `<div class="pal">${paletteOf(g).map(c => `<i style="background:${c}" title="${c}"></i>`).join('')}</div>`;
+  function sourceTag(grp, g){
+    const src = g._src[grp], tg = g._tg[grp];
+    if(src === 'A') return 'A';
+    if(src === 'B') return 'B';
+    return Math.round((1 - tg) * 100) + '/' + Math.round(tg * 100);
+  }
+
+  // ---------- compose & draw ----------
+  const art = $('art');
+  function compose(){
+    const A = SG.byId[state.a], B = SG.byId[state.b];
+    const errNote = $('errNote');
+    try{
+      const g = blendGenes(A, B, state.t, state.pins);
+      if(state.h && SG.motifs[state.h]) g.motifs.hero = [state.h];
+      if(state.rx !== '') g.motifs.remix = +state.rx;
+      const r = renderArtwork(g, {seed:state.seed, structure:state.s || null});
+      last = {svg:r.svg, structure:r.structure, g, A, B};
+      art.innerHTML = r.svg;
+      errNote.style.display = 'none';
+    } catch(err){
+      errNote.textContent = 'That combination could not be drawn — showing the last picture.';
+      errNote.style.display = 'block';
+      if(!last) return;
+    }
+    updateReadouts();
+    if(mathPanel.classList.contains('open')) updateMathPanel();
+  }
+  let raf = 0;
+  const composeSoon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(compose); };
+
+  function updateReadouts(){
+    const {g, A, B} = last;
+    $('hA').textContent = A.name;
+    $('hB').textContent = B.name;
+    $('hT').textContent = Math.round(state.t * 100) + '%';
+    $('hS').textContent = (SG.structures[last.structure] || {name:last.structure}).name.toLowerCase();
+    $('hSeed').textContent = state.seed;
+    $('blendVal').textContent = Math.round(state.t * 100) + '% B';
+    GENE_GROUPS.forEach(grp => {
+      const pin = state.pins[grp.id] || 'mix';
+      geneRows.querySelectorAll(`button[data-g="${grp.id}"]`).forEach(b => {
+        const on = b.dataset.v === pin;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on);
+      });
+      const tag = `<span class="from">${sourceTag(grp.id, g)}</span> `;
+      $('gd-' + grp.id).innerHTML = grp.id === 'palette' ? tag + palHtml(g) : tag + esc(geneText(grp.id, g, last.structure));
+    });
+  }
+
+  // ---------- the explain panel ----------
+  function parentBlock(T, tag){
+    const fam = SG.families.find(f => f.id === T.family) || {name:''};
+    const basis = T.provenance === 'analyzed' ? 'measured from reference images' : 'set from published sources';
+    let h = `<div class="math-section"><div class="math-sub">Parent ${tag} · ${esc(T.name)}</div>`;
+    h += `<p class="math-prose">${esc(T.summary || '')}</p>`;
+    h += `<p class="math-legend"><b>family</b> — ${esc(fam.name)}<br><b>where</b> — ${esc(T.region || '')}<br><b>medium</b> — ${esc(T.medium || '')}<br><b>when</b> — ${esc(T.period || '')}<br><b>basis</b> — ${basis}</p>`;
+    if(T.rules && T.rules.length) h += `<div class="math-caption">How it is drawn</div><ol class="math-list">${T.rules.map(r => `<li>${esc(r)}</li>`).join('')}</ol>`;
+    if(T.maths) h += `<div class="math-caption">The mathematics</div><p class="math-prose">${esc(T.maths)}</p>`;
+    if(T.symbolism) h += `<div class="math-caption">Meaning</div><p class="math-prose">${esc(T.symbolism)}</p>`;
+    if(T.care) h += `<div class="math-caption">Care</div><div class="care">${esc(T.care)}</div>`;
+    const links = (T.sources || []).filter(s => /^https:\/\//.test(s[1]));
+    if(links.length || (T.reading && T.reading.length)){
+      h += `<div class="math-caption">Read further</div><p class="credit">`;
+      h += links.map(([l, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(' · ');
+      if(T.reading && T.reading.length) h += (links.length ? '<br>' : '') + T.reading.map(esc).join('; ') + '.';
+      h += `</p>`;
+    }
+    return h + `</div>`;
+  }
+  function updateMathPanel(){
+    if(!last) return;
+    const {g, A, B} = last;
+    $('mathGenes').innerHTML = GENE_GROUPS.filter(grp => grp.id !== 'palette').map(grp =>
+      `<span class="rule-sym">${grp.label.toLowerCase()}</span> <span class="rule-arrow">&larr; ${sourceTag(grp.id, g)}</span><br>${esc(geneText(grp.id, g, last.structure))}`
+    ).join('<br>') + `<br><span class="rule-sym">palette</span> <span class="rule-arrow">&larr; ${sourceTag('palette', g)}</span>`;
+    $('mathPal').innerHTML = paletteOf(g).map(c => `<i style="background:${c}" title="${c}"></i>`).join('');
+    const same = A.id === B.id;
+    $('mathRecipe').innerHTML = same
+      ? `<b>pure</b> — both parents are ${esc(A.name)}; choose a different Parent B to blend.`
+      : `<b>A</b> — ${esc(A.name)}<br><b>B</b> — ${esc(B.name)}<br><b>blend</b> — ${Math.round((1 - state.t) * 100)}% A, ${Math.round(state.t * 100)}% B` +
+        (Object.keys(state.pins).length ? `<br><b>spliced</b> — ${Object.entries(state.pins).map(([k, v]) => `${k} from ${v}`).join(', ')}` : '') +
+        (state.h && SG.motifs[state.h] ? `<br><b>subject</b> — ${esc(SG.motifs[state.h].name)}` : '');
+    $('mathParents').innerHTML = parentBlock(A, 'A') + (same ? '' : parentBlock(B, 'B'));
+  }
+
+  // ---------- view: fit, pan, zoom ----------
+  const stage = $('stage'), wrap = $('wrap');
+  let side = 600;
+  function applyView(){ art.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`; }
+  function resize(){
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    side = Math.max(160, Math.min(w, h) - 28);
+    art.style.width = art.style.height = side + 'px';
+    art.style.marginLeft = art.style.marginTop = (-side / 2) + 'px';
+    applyView();
+  }
+  function resetView(){ view.k = 1; view.x = 0; view.y = 0; applyView(); }
+  // zoom about a point given in stage coordinates
+  function zoomAt(px, py, f){
+    const k2 = clamp(view.k * f, 0.5, 14), cx = stage.clientWidth / 2, cy = stage.clientHeight / 2;
+    const ux = (px - cx - view.x) / view.k, uy = (py - cy - view.y) / view.k;
+    view.x = px - cx - ux * k2; view.y = py - cy - uy * k2; view.k = k2;
+    applyView();
+  }
+  stage.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = stage.getBoundingClientRect();
+    zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0016));
+  }, {passive:false});
+  const pointers = new Map();
+  let pinch = 0;
+  stage.addEventListener('pointerdown', e => {
+    stage.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    stage.classList.add('dragging');
+    if(pointers.size === 2){ const p = [...pointers.values()]; pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); }
+  });
+  stage.addEventListener('pointermove', e => {
+    if(!pointers.has(e.pointerId)) return;
+    const prev = pointers.get(e.pointerId);
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if(pointers.size === 1){
+      view.x += e.clientX - prev[0]; view.y += e.clientY - prev[1];
+      applyView();
+    } else if(pointers.size === 2){
+      const p = [...pointers.values()], d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]), r = stage.getBoundingClientRect();
+      if(pinch > 0) zoomAt((p[0][0] + p[1][0]) / 2 - r.left, (p[0][1] + p[1][1]) / 2 - r.top, d / pinch);
+      pinch = d;
+    }
+  });
+  const endPointer = e => { pointers.delete(e.pointerId); pinch = 0; if(!pointers.size) stage.classList.remove('dragging'); };
+  stage.addEventListener('pointerup', endPointer);
+  stage.addEventListener('pointercancel', endPointer);
+  stage.addEventListener('dblclick', resetView);
+  $('zoomInBtn').addEventListener('click', () => zoomAt(stage.clientWidth / 2, stage.clientHeight / 2, 1.3));
+  $('zoomOutBtn').addEventListener('click', () => zoomAt(stage.clientWidth / 2, stage.clientHeight / 2, 1 / 1.3));
+  $('resetViewBtn').addEventListener('click', resetView);
+  window.addEventListener('resize', resize);
+
+  // ---------- panel toggles ----------
+  const panel = $('panel'), gearBtn = $('gearBtn');
+  gearBtn.addEventListener('click', () => {
+    const open = panel.classList.toggle('open');
+    gearBtn.classList.toggle('open', open);
+    gearBtn.setAttribute('aria-expanded', open);
+  });
+  const mathPanel = $('mathPanel'), explainBtn = $('explainBtn');
+  explainBtn.addEventListener('click', () => {
+    const open = mathPanel.classList.toggle('open');
+    explainBtn.classList.toggle('open', open);
+    explainBtn.setAttribute('aria-expanded', open);
+    if(open) updateMathPanel();
+  });
+
+  // ---------- theme ----------
+  const themeBtn = $('themeBtn');
+  const iconMoon = themeBtn.querySelector('.icon-moon');
+  const iconSun = themeBtn.querySelector('.icon-sun');
+  function setTheme(theme){
+    state.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    iconMoon.style.display = theme === 'dark' ? '' : 'none';
+    iconSun.style.display = theme === 'light' ? '' : 'none';
+    themeBtn.setAttribute('aria-pressed', theme === 'light');
+    const nextLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    themeBtn.setAttribute('aria-label', nextLabel);
+    themeBtn.title = nextLabel;
+  }
+  themeBtn.addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+  // ---------- download ----------
+  const fileStem = () => `style-genome-${state.a}-x-${state.b}-${state.seed}`;
+  function saveBlob(blob, name){
+    const link = document.createElement('a');
+    link.download = name;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+  }
+  $('downloadBtn').addEventListener('click', () => {
+    if(!last) return;
+    const size = 2000, img = new Image();
+    const url = URL.createObjectURL(new Blob([last.svg], {type:'image/svg+xml'}));
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      c.getContext('2d').drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => { if(b) saveBlob(b, fileStem() + '.png'); }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); saveBlob(new Blob([last.svg], {type:'image/svg+xml'}), fileStem() + '.svg'); };
+    img.src = url;
+  });
+  $('downloadSvgBtn').addEventListener('click', () => {
+    if(last) saveBlob(new Blob([last.svg], {type:'image/svg+xml'}), fileStem() + '.svg');
+  });
+
+  // ---------- controls ----------
+  function syncControls(){
+    selA.value = state.a; selB.value = state.b;
+    $('blendSlider').value = state.t;
+    structSelect.value = SG.structures[state.s] ? state.s : '';
+    subjectSelect.value = SG.motifs[state.h] ? state.h : '';
+    regaliaSelect.value = state.rx;
+    presetSelect.value = '';
+  }
+  selA.addEventListener('change', () => { state.a = selA.value; presetSelect.value = ''; compose(); });
+  selB.addEventListener('change', () => { state.b = selB.value; presetSelect.value = ''; compose(); });
+  $('blendSlider').addEventListener('input', e => { state.t = +e.target.value; $('blendVal').textContent = Math.round(state.t * 100) + '% B'; composeSoon(); });
+  $('swapBtn').addEventListener('click', () => {
+    [state.a, state.b] = [state.b, state.a];
+    state.t = +(1 - state.t).toFixed(2);
+    for(const k in state.pins) state.pins[k] = state.pins[k] === 'A' ? 'B' : 'A';
+    syncControls(); compose();
+  });
+  $('randomPairBtn').addEventListener('click', () => {
+    const ts = SG.traditions, A = ts[Math.floor(Math.random() * ts.length)];
+    const others = ts.filter(t => t.family !== A.family);
+    const B = others[Math.floor(Math.random() * others.length)] || A;
+    state.a = A.id; state.b = B.id;
+    state.t = +(0.35 + Math.random() * 0.3).toFixed(2);
+    state.pins = {}; state.s = ''; state.h = ''; state.rx = '';
+    state.seed = Math.floor(Math.random() * 1e6);
+    syncControls(); resetView(); compose();
+  });
+  presetSelect.addEventListener('change', () => {
+    const p = PAIRINGS[+presetSelect.value];
+    if(presetSelect.value === '' || !p) return;
+    state.a = p[0]; state.b = p[1]; state.t = p[2];
+    state.pins = {}; state.s = ''; state.h = ''; state.rx = '';
+    const keep = presetSelect.value;
+    syncControls(); presetSelect.value = keep; resetView(); compose();
+  });
+  structSelect.addEventListener('change', () => { state.s = structSelect.value; compose(); });
+  subjectSelect.addEventListener('change', () => { state.h = subjectSelect.value; compose(); });
+  regaliaSelect.addEventListener('change', () => { state.rx = regaliaSelect.value; compose(); });
+  $('variationBtn').addEventListener('click', () => { state.seed = Math.floor(Math.random() * 1e6); compose(); });
+  $('resetSpliceBtn').addEventListener('click', () => { state.pins = {}; compose(); });
+
+  // ---------- share link ----------
+  function buildShareUrl(){
+    const u = new URL(window.location.href);
+    u.search = '';
+    const p = u.searchParams;
+    p.set('a', state.a);
+    p.set('b', state.b);
+    p.set('t', state.t.toFixed(2));
+    p.set('seed', state.seed);
+    if(state.s) p.set('s', state.s);
+    if(state.h) p.set('h', state.h);
+    if(state.rx !== '') p.set('rx', state.rx);
+    const pins = Object.entries(state.pins).map(([k, v]) => k + ':' + v).join(',');
+    if(pins) p.set('p', pins);
+    p.set('theme', state.theme);
+    return u.toString();
+  }
+  const linkBtn = $('linkBtn');
+  linkBtn.addEventListener('click', async () => {
+    const url = buildShareUrl();
+    history.replaceState(null, '', url);
+    try{
+      await navigator.clipboard.writeText(url);
+      linkBtn.classList.add('copied');
+      setTimeout(() => linkBtn.classList.remove('copied'), 1400);
+    } catch(err){ /* clipboard unavailable — URL bar was still updated above */ }
+  });
+  function loadFromUrl(){
+    const q = new URLSearchParams(window.location.search);
+    if(SG.byId[q.get('a')]) state.a = q.get('a');
+    if(SG.byId[q.get('b')]) state.b = q.get('b');
+    if(q.has('t') && isFinite(parseFloat(q.get('t')))) state.t = clamp(parseFloat(q.get('t')), 0, 1);
+    if(q.has('seed') && isFinite(parseInt(q.get('seed'), 10))) state.seed = Math.abs(parseInt(q.get('seed'), 10)) % 1e9;
+    if(SG.structures[q.get('s')]) state.s = q.get('s');
+    if(SG.motifs[q.get('h')]) state.h = q.get('h');
+    if(['0','0.5','1'].includes(q.get('rx'))) state.rx = q.get('rx');
+    (q.get('p') || '').split(',').forEach(x => {
+      const [k, v] = x.split(':');
+      if(GENE_GROUPS.some(grp => grp.id === k) && (v === 'A' || v === 'B')) state.pins[k] = v;
+    });
+    if(q.get('theme') === 'light' || q.get('theme') === 'dark') state.theme = q.get('theme');
+  }
+
+  // ---------- init ----------
+  loadFromUrl();
+  syncControls();
+  setTheme(state.theme);
+  resize();
+  compose();
+
+  const hint = $('hint');
+  if(window.matchMedia('(pointer: coarse)').matches){
+    hint.innerHTML = 'Drag to pan · Pinch to zoom · Double-tap to reset view<br>Gear = choose two cultures · &Sigma; = explain the genome';
+  }
+  const fadeHint = () => { hint.style.opacity = '0'; setTimeout(() => hint.remove(), 700); };
+  setTimeout(fadeHint, 4000);
+  stage.addEventListener('pointerdown', fadeHint, {once:true});
+})();
+</script>
+</body>
+</html>
