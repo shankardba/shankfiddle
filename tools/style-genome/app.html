@@ -262,6 +262,28 @@
   .btn-row .btn{margin-top:0;}
 
   /* gene splicing: one row per gene group, A / blend / B */
+  .nav-row{display:flex;align-items:center;gap:10px;text-align:left;}
+  .nav-row span:first-child{flex:0 0 auto;}
+  .nav-row .nav-meta{flex:1;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .nav-row.back{margin-top:0;font-weight:600;font-size:13px;}
+  .nav-row.back span:first-child{color:var(--warm);font-size:16px;line-height:1;}
+  .sub-note{font-size:11.5px;line-height:1.6;color:var(--text-muted);margin:10px 0 0;}
+  .mgroup{border-top:1px solid var(--border);}
+  .mgroup:first-child{border-top:0;}
+  .mgroup summary{display:flex;align-items:center;gap:8px;cursor:pointer;padding:11px 0;font-size:12.5px;color:var(--text);list-style:none;}
+  .mgroup summary::-webkit-details-marker{display:none;}
+  .mgroup summary::before{content:'›';color:var(--text-muted);transition:transform .15s ease;display:inline-block;width:8px;}
+  .mgroup[open] summary::before{transform:rotate(90deg);}
+  .mgroup summary .n{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);}
+  .mgroup summary .n.on{color:var(--warm);}
+  .mgroup summary .tag{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--cool);border:1px solid var(--border);border-radius:3px;padding:1px 5px;}
+  .mgroup summary:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:0 0 12px;}
+  .mtile{position:relative;aspect-ratio:1/1;padding:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--surface);cursor:pointer;opacity:.6;filter:saturate(.35);}
+  .mtile svg{display:block;width:100%;height:100%;pointer-events:none;}
+  .mtile:hover{opacity:.85;border-color:var(--cool);}
+  .mtile[aria-pressed="true"]{opacity:1;filter:none;border-color:var(--warm);box-shadow:inset 0 0 0 1px var(--warm);}
+  .mtile:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
   .gene-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
   .gene-row .gname{font-size:12px;color:var(--text);}
   .seg{display:inline-flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;flex-shrink:0;}
@@ -385,6 +407,7 @@
   </div>
 
   <div class="panel" id="panel">
+   <div id="panelMain">
     <div class="section">
       <div class="label">Cultures</div>
       <div class="sublabel" style="margin-top:0;">Parent A</div>
@@ -409,15 +432,7 @@
       <div class="label">Composition</div>
       <div class="sublabel" style="margin-top:0;">Structure</div>
       <select id="structSelect" aria-label="Structure"></select>
-      <div class="sublabel">Subject</div>
-      <select id="subjectSelect" aria-label="Subject"></select>
-      <div class="sublabel">Figure regalia</div>
-      <select id="regaliaSelect" aria-label="Figure regalia">
-        <option value="">Follows the blend</option>
-        <option value="0">Canonical</option>
-        <option value="0.5">Half re-mixed</option>
-        <option value="1">Fully re-mixed</option>
-      </select>
+      <button class="btn nav-row" id="motifsBtn" type="button" aria-haspopup="true"><span>Motifs</span><span class="nav-meta" id="motifsMeta">from the blend</span><span aria-hidden="true">&rsaquo;</span></button>
       <button class="btn btn-accent" id="variationBtn">🎲 New variation</button>
     </div>
 
@@ -433,6 +448,29 @@
       <button class="btn" id="downloadSvgBtn">Download as SVG (vector)</button>
       <div class="cap-note" id="errNote" style="display:none;"></div>
     </div>
+   </div>
+
+   <div id="panelMotifs" hidden>
+    <button class="btn nav-row back" id="motifsBack" type="button"><span aria-hidden="true">&lsaquo;</span><span>Motifs</span></button>
+    <p class="sub-note">Tap a motif to put it in the picture or take it out. Open any culture to borrow from it.</p>
+    <div class="section" style="margin-top:14px;">
+      <div class="sublabel" style="margin-top:0;">Main subject</div>
+      <select id="subjectSelect" aria-label="Main subject"></select>
+      <div id="regaliaWrap">
+        <div class="sublabel">Figure regalia</div>
+        <select id="regaliaSelect" aria-label="Figure regalia">
+          <option value="">Follows the blend</option>
+          <option value="0">Canonical</option>
+          <option value="0.5">Half re-mixed</option>
+          <option value="1">Fully re-mixed</option>
+        </select>
+      </div>
+    </div>
+    <div class="section">
+      <div id="motifGroups"></div>
+      <button class="btn" id="motifsReset" type="button">Reset motifs</button>
+    </div>
+   </div>
   </div>
 
   <div class="info-box" id="mixInfo" role="dialog" aria-modal="false" aria-labelledby="mixInfoTitle" hidden>
@@ -497,6 +535,7 @@
     a:'madhubani', b:'wagara', t:0.5, seed:7,
     s:'',      // structure key, '' = whatever the blend chooses
     h:'',      // subject (a motif key), '' = whatever the blend chooses
+    m:{},      // motif overrides: key -> 1 (added) or -1 (taken out)
     rx:'',     // figure regalia: '' follows the blend, else 0..1
     pins:{},   // gene group -> 'A' | 'B'
     theme:'dark'
@@ -669,6 +708,28 @@
     return Math.round((1 - tg) * 100) + '/' + Math.round(tg * 100);
   }
 
+  // ---------- motif overrides ----------
+  const SLOTS = ['hero', 'ring', 'filler'];
+  const poolSides = v => !v ? [] : Array.isArray(v) ? [v] : v.pool;
+  // which motifs the blend would use with no overrides
+  function defaultMotifs(){
+    const out = new Set();
+    for(const T of [SG.byId[state.a], SG.byId[state.b]]) for(const sl of SLOTS) for(const k of (T.genes.motifs[sl] || [])) if(SG.motifs[k]) out.add(k);
+    return out;
+  }
+  const motifOn = (k, def) => state.m[k] === 1 || (def.has(k) && state.m[k] !== -1);
+  function applyMotifs(g){
+    const add = Object.keys(state.m).filter(k => state.m[k] === 1 && SG.motifs[k]), cut = new Set(Object.keys(state.m).filter(k => state.m[k] === -1));
+    if(!add.length && !cut.size) return;
+    for(const sl of SLOTS){
+      const v = g.motifs[sl]; if(!v) continue;
+      // a figure can only be a subject; anything else may also ring it or fill the ground
+      const plus = add.filter(k => sl === 'hero' || !SG.motifs[k].figure);
+      const fix = arr => arr.filter(k => !cut.has(k)).concat(plus.filter(k => !arr.includes(k)));
+      if(Array.isArray(v)) g.motifs[sl] = fix(v); else v.pool = v.pool.map(fix);
+    }
+  }
+
   // ---------- compose & draw ----------
   const art = $('art');
   function compose(){
@@ -676,6 +737,7 @@
     const errNote = $('errNote');
     try{
       const g = blendGenes(A, B, state.t, state.pins);
+      applyMotifs(g);
       if(state.h && SG.motifs[state.h]) g.motifs.hero = [state.h];
       if(state.rx !== '') g.motifs.remix = +state.rx;
       const r = renderArtwork(g, {seed:state.seed, structure:state.s || null});
@@ -687,7 +749,7 @@
       errNote.style.display = 'block';
       if(!last) return;
     }
-    updateReadouts();
+    updateReadouts(); motifMeta();
     if(mathPanel.classList.contains('open')) updateMathPanel();
   }
   let raf = 0;
@@ -925,7 +987,7 @@
     const B = others[Math.floor(Math.random() * others.length)] || A;
     state.a = A.id; state.b = B.id;
     state.t = +(0.35 + Math.random() * 0.3).toFixed(2);
-    state.pins = {}; state.s = ''; state.h = ''; state.rx = '';
+    state.pins = {}; state.s = ''; state.h = ''; state.rx = ''; state.m = {};
     state.seed = Math.floor(Math.random() * 1e6);
     syncControls(); resetView(); compose();
   });
@@ -933,7 +995,7 @@
     const p = PAIRINGS[+presetSelect.value];
     if(presetSelect.value === '' || !p) return;
     state.a = p[0]; state.b = p[1]; state.t = p[2];
-    state.pins = {}; state.s = ''; state.h = ''; state.rx = '';
+    state.pins = {}; state.s = ''; state.h = ''; state.rx = ''; state.m = {};
     const keep = presetSelect.value;
     syncControls(); presetSelect.value = keep; resetView(); compose();
   });
@@ -942,6 +1004,51 @@
   regaliaSelect.addEventListener('change', () => { state.rx = regaliaSelect.value; compose(); });
   $('variationBtn').addEventListener('click', () => { state.seed = Math.floor(Math.random() * 1e6); compose(); });
   $('resetSpliceBtn').addEventListener('click', () => { state.pins = {}; compose(); });
+
+  // ---------- the motif sub-menu ----------
+  const panelMain = $('panelMain'), panelMotifs = $('panelMotifs'), motifGroups = $('motifGroups');
+  const motifFam = {}, famMotifs = {};
+  for(const T of SG.traditions) for(const sl of SLOTS) for(const k of (T.genes.motifs[sl] || [])){
+    if(!SG.motifs[k] || k === 'dot' || motifFam[k]) continue;
+    motifFam[k] = T; (famMotifs[T.family] = famMotifs[T.family] || []).push(k);
+  }
+  const thumbCache = {};
+  const motifThumb = k => { if(!(k in thumbCache)){ try{ thumbCache[k] = renderMotifSpecimen(pureGenes(motifFam[k]), k, 3, 96); }catch(e){ thumbCache[k] = ''; } } return thumbCache[k]; };
+  function fillGroup(d){
+    const grid = d.querySelector('.mgrid'); if(grid.dataset.done) return; grid.dataset.done = '1';
+    const def = defaultMotifs();
+    grid.innerHTML = famMotifs[d.dataset.fam].map(k => { const m = SG.motifs[k];
+      return `<button class="mtile" type="button" data-k="${esc(k)}" aria-pressed="${motifOn(k, def)}" aria-label="${esc(m.name)}" title="${esc(m.name)}">${motifThumb(k)}</button>`; }).join('');
+  }
+  function buildMotifMenu(){
+    const fa = SG.byId[state.a].family, fb = SG.byId[state.b].family, def = defaultMotifs();
+    const order = SG.families.filter(f => famMotifs[f.id]).sort((p, q) => (q.id === fa) * 2 + (q.id === fb) - (p.id === fa) * 2 - (p.id === fb));
+    motifGroups.innerHTML = order.map(f => { const ks = famMotifs[f.id], on = ks.filter(k => motifOn(k, def)).length, par = f.id === fa || f.id === fb;
+      return `<details class="mgroup" data-fam="${f.id}"${par ? ' open' : ''}><summary>${esc(f.name)}${par ? '<span class="tag">in the blend</span>' : ''}<span class="n${on ? ' on' : ''}">${on}/${ks.length}</span></summary><div class="mgrid"></div></details>`; }).join('');
+    motifGroups.querySelectorAll('.mgroup').forEach(d => { if(d.open) fillGroup(d); d.addEventListener('toggle', () => { if(d.open) fillGroup(d); }); });
+  }
+  function motifMeta(){
+    const n = Object.keys(state.m).length + (state.h ? 1 : 0);
+    $('motifsMeta').textContent = n ? n + ' changed' : 'from the blend';
+    const subj = SG.motifs[state.h], fig = subj ? subj.figure : poolAll((last ? last.g : {motifs:{}}).motifs.hero).some(k => SG.motifs[k] && SG.motifs[k].fine);
+    $('regaliaWrap').hidden = !(state.rx !== '' || fig);
+  }
+  function showMotifs(on){
+    panelMotifs.hidden = !on; panelMain.hidden = on; panel.scrollTop = 0;
+    if(on){ buildMotifMenu(); $('motifsBack').focus(); } else $('motifsBtn').focus();
+  }
+  $('motifsBtn').addEventListener('click', () => showMotifs(true));
+  $('motifsBack').addEventListener('click', () => showMotifs(false));
+  motifGroups.addEventListener('click', e => {
+    const b = e.target.closest('.mtile'); if(!b) return;
+    const k = b.dataset.k, def = defaultMotifs(), now = !motifOn(k, def);
+    if(now === def.has(k)) delete state.m[k]; else state.m[k] = now ? 1 : -1;
+    b.setAttribute('aria-pressed', now);
+    const d = b.closest('.mgroup'), ks = famMotifs[d.dataset.fam], on = ks.filter(x => motifOn(x, def)).length, n = d.querySelector('.n');
+    n.textContent = on + '/' + ks.length; n.classList.toggle('on', on > 0);
+    compose();
+  });
+  $('motifsReset').addEventListener('click', () => { state.m = {}; state.h = ''; state.rx = ''; syncControls(); buildMotifMenu(); compose(); });
 
   // ---------- share link ----------
   function buildShareUrl(){
@@ -955,6 +1062,8 @@
     if(state.s) p.set('s', state.s);
     if(state.h) p.set('h', state.h);
     if(state.rx !== '') p.set('rx', state.rx);
+    const mo = Object.entries(state.m).map(([k, v]) => (v > 0 ? '+' : '-') + k).join(',');
+    if(mo) p.set('m', mo);
     const pins = Object.entries(state.pins).map(([k, v]) => k + ':' + v).join(',');
     if(pins) p.set('p', pins);
     p.set('theme', state.theme);
@@ -979,6 +1088,7 @@
     if(SG.structures[q.get('s')]) state.s = q.get('s');
     if(SG.motifs[q.get('h')]) state.h = q.get('h');
     if(['0','0.5','1'].includes(q.get('rx'))) state.rx = q.get('rx');
+    (q.get('m') || '').split(',').forEach(x => { const k = x.slice(1); if(SG.motifs[k] && (x[0] === '+' || x[0] === '-' || x[0] === ' ')) state.m[k] = x[0] === '-' ? -1 : 1; });
     (q.get('p') || '').split(',').forEach(x => {
       const [k, v] = x.split(':');
       if(GENE_GROUPS.some(grp => grp.id === k) && (v === 'A' || v === 'B')) state.pins[k] = v;
