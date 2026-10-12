@@ -986,7 +986,12 @@
           // Once the community knows about Dad, the same word that used to be
           // a put-down ("What do you want, BOY?") comes back as care. Plays
           // once, the first time BOY talks to them from the diagnosis on.
-          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. I heard about your father. How are you holding up?" }],
+          // Strange sounds from the island: the village's rumor, heard once
+          // from each of them until BOY has actually met who's up there.
+          musings: [
+            { key: 'care', from: 'diagnosis', line: "Come here, BOY. I heard about your father. How are you holding up?" },
+            { key: 'island_sounds', unless: 'anybodyMet', line: "You hear that racket last night, BOY? Out past the river, off that island in the lake. No animal I know makes a sound like that. Don't look at me — I've got a field to run." }
+          ],
           name: 'Farmer Jono',
           appearance: { top: 0x6f7d4a, bottom: 0x4a3a28, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'rook', belt: true },
           job: {
@@ -1049,7 +1054,10 @@
           // Once the community knows about Dad, the same word that used to be
           // a put-down ("What do you want, BOY?") comes back as care. Plays
           // once, the first time BOY talks to them from the diagnosis on.
-          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. How are you? You don't need to buy a thing today." }],
+          musings: [
+            { key: 'care', from: 'diagnosis', line: "Come here, BOY. How are you? You don't need to buy a thing today." },
+            { key: 'island_sounds', unless: 'anybodyMet', line: "Strange sounds off the lake again. My mother swore nobody lives on that island. My mother swore a lot of things. Don't stand there gawking, BOY." }
+          ],
           name: 'Elsie',
           appearance: { top: 0x3f6b6b, bottom: 0x2a2a30, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'bishop', earrings: true },
           job: {
@@ -1102,7 +1110,10 @@
           // Once the community knows about Dad, the same word that used to be
           // a put-down ("What do you want, BOY?") comes back as care. Plays
           // once, the first time BOY talks to them from the diagnosis on.
-          musings: [{ key: 'care', from: 'diagnosis', line: "Hey, BOY... I heard about your dad. Are you okay?" }],
+          musings: [
+            { key: 'care', from: 'diagnosis', line: "Hey, BOY... I heard about your dad. Are you okay?" },
+            { key: 'island_sounds', unless: 'anybodyMet', line: "Sometimes at night there's a sound from the island in the lake. Like somebody laughing at nothing. I'm not scared. ...Are you?" }
+          ],
           name: 'Milo',
           appearance: { top: 0x8a6a4a, bottom: 0x5a4a35, hairStyle: 'short', hair: 0x3a2a20, pieceType: 'pawn', necklace: true },
           kindness: {
@@ -1121,7 +1132,7 @@
       exits: {
         '1': { to: 'hollow', x: 9, y: 4 },
         '2': { to: 'home', x: 1, y: 7 },
-        '3': { to: 'riverside', x: 5, y: 7 },
+        '3': { to: 'riverside', x: 6, y: 9 },
         '5': { to: 'schoolhouse', x: 5, y: 7 },
         // Coffee's Studio and Sir Earth's Conservatory used to be reached
         // from here (old digits '6'/'7') — relocated to College, reached
@@ -1232,18 +1243,25 @@
       exits: { '1': { to: 'clearing', x: 1, y: 8 } }
     },
     {
+      // A real waterside: the whole north half of the map is the river,
+      // running off the edge toward the lake (`openWater` carries it to the
+      // horizon). The kayak sits on the sand where the bank meets the water
+      // — see useKayak() and the 'lake' level.
       id: 'riverside',
       name: 'The Riverside',
+      openWater: ['n'],
       map: [
-        "###########",
-        "#.........#",
-        "#..~~~....#",
-        "#K~~~~~.G.#",
-        "#..~~~....#",
-        "#....@....#",
-        "#,.......,#",
-        "#.........#",
-        "#####1#####"
+        "~~~~~~~~~~~~~",
+        "~~~~~~~~o~~~~",
+        "~~b~~~~~~~~~~",
+        "~~~~~~~~~~~~~",
+        "~~~~~~~~~~b~~",
+        "~~~~~~~~~~~~~",
+        "==~~~~~~~~===",
+        "#==K====.G..#",
+        "#,....@....,#",
+        "#...........#",
+        "######1######"
       ],
       npcs: {
         G: {
@@ -1307,6 +1325,7 @@
           // found their first key together, so it never cuts in ahead of
           // his very first guitar lesson.
           musings: [
+            { key: 'island_sounds', unless: 'anybodyMet', line: "Dude, shh. Hear that? Way out across the water. That's not a bird. Somebody's on that island, I swear. If we had a boat I'd go look." },
             { key: 'video_game', chapter: 'earning_respect', requires: 'guitar_wheel', line: "Dude, we should make a video game!" },
             { key: 'simulation', chapter: 'diagnosis', line: "Brother, do you ever think we're in a simulation, like a video game?" },
             { key: 'one_day', chapter: 'hospice', line: "Okay, dude, real question. If you could keep just one day forever — replay it whenever you wanted — which one would you pick?" },
@@ -1326,6 +1345,7 @@
       id: 'meadow',
       name: 'The Meadow',
       kayakOnly: true,
+      openWater: ['w'],
       map: [
         "###########",
         "~=.,.....,#",
@@ -1397,7 +1417,7 @@
           instrumentSting: 'flute'
         }
       },
-      exits: { '2': { to: 'lake', x: 9, y: 6 } }
+      exits: { '2': { to: 'lake', x: 17, y: 8 } }
     },
     {
       id: 'schoolhouse',
@@ -1924,39 +1944,97 @@
       exits: { '3': { to: 'hell_2', x: 5, y: 4 } }
     },
     {
-      // The lake is the only way to the island, and the kayak (the 'K' at
-      // the Riverside, bought with real money — see useKayak()) is the
-      // only way onto the lake. `onWater` flips what's walkable: open
-      // water ('~') is where Boy paddles, sand ('=') and the tree line
-      // are the shore he can't paddle into, and rocks/reeds ('o'/'b')
-      // are obstacles out on the water. Three landings: south back to the
-      // Riverside, north to Anybody's island, east to Sora's meadow on the
-      // far shore. `kayakOnly` keeps it, and everything past it, out of
-      // the car's drive-to menu.
+      // The waterway. The kayak (the 'K' at the Riverside, bought with real
+      // money — see useKayak()) is the only way onto it. BOY starts in the
+      // river beside the Riverside's bank, follows it north through the
+      // trees, and it opens into the lake — a place to explore, with
+      // several shores to land on rather than one crossing:
+      //   '1' the Riverside (south, back down the river)
+      //   '2' Anybody's island, the mountain standing in the north water
+      //   '3' Sora's meadow on the east shore
+      //   '4' the Cove on the west shore
+      //   '5' the Sandbar, a scrap of sand out in the open lake
+      // `onWater` flips what's walkable: open water ('~') is where BOY
+      // paddles; sand, grass, trees and cliff are land he can't paddle
+      // into, and rocks/reeds ('o'/'b') are obstacles out on the water.
+      // `kayakOnly` keeps it, and everything past it, out of the car's
+      // drive-to menu.
       id: 'lake',
       name: 'The Lake',
       onWater: true,
       kayakOnly: true,
       map: [
-        "####=2=####",
-        "#==~~~~~==#",
-        "#=~~~o~~~=#",
-        "#~~b~~~~~~#",
-        "#~~~~~~o~~#",
-        "#~o~~b~~~~#",
-        "#~~~~~~~~~3",
-        "#=~~~o~~~~#",
-        "#~~~~~~b~~#",
-        "#~b~~~~~~~#",
-        "#=~~~@~~~=#",
-        "#==~~~~~==#",
-        "####=1=####"
+        "###################",
+        "#~~~~~~~~~~~~~~~~~#",
+        "#~~~~~~~^^^~~~~~~~#",
+        "#~~b~~~^^^^^~~~~o~#",
+        "#~~~~~=^^^^^=~~~~~#",
+        "#~~~~~==.2.==~~~~~#",
+        "#==~~~~~~~~~~~~~~=#",
+        "#=~~~~~~~~~~~~~~~=#",
+        "4~~~~o~~~~~~~b~~~~3",
+        "#=~~~~~~~~~~~~~~~=#",
+        "#==~~~~~~~o~~~~~~=#",
+        "#~~~~b~~~~~~~===~~#",
+        "#~~~~~~~~~~~~=5=~~#",
+        "#~o~~~~~~~~~~~~~~~#",
+        "##~~~~~~~~~~~~~b~##",
+        "####~~~~~~~~~~~####",
+        "######~~~~~~~######",
+        "########~~~~#######",
+        "#######~~~~########",
+        "######~~~~#########",
+        "######~~~~~########",
+        "#######~~@~~#######",
+        "########=1=########"
       ],
       exits: {
-        '1': { to: 'riverside', x: 1, y: 4 },
+        '1': { to: 'riverside', x: 3, y: 8 },
         '2': { to: 'island_shore', x: 5, y: 5 },
-        '3': { to: 'meadow', x: 1, y: 4 }
+        '3': { to: 'meadow', x: 1, y: 4 },
+        '4': { to: 'cove', x: 6, y: 4 },
+        '5': { to: 'sandbar', x: 4, y: 4 }
       }
+    },
+    {
+      // Two more shores to paddle to, besides the island and the meadow.
+      // Nobody lives at either yet — they're places to find, each with its
+      // kayak beached where BOY landed (`kayakLaunch` is where using it
+      // puts him back on the lake).
+      id: 'cove',
+      name: 'The Cove',
+      kayakOnly: true,
+      kayakLaunch: { x: 1, y: 8 },
+      openWater: ['e'],
+      map: [
+        "###########",
+        "#,..o...==~",
+        "#......==~~",
+        "#..S...=~~~",
+        "#....@.K~~~",
+        "#......=~~~",
+        "#,.....==~~",
+        "#..o.b..==~",
+        "###########"
+      ],
+      signs: ["Carved into a driftwood log: \"Still water. Sit a while.\""]
+    },
+    {
+      id: 'sandbar',
+      name: 'The Sandbar',
+      kayakOnly: true,
+      kayakLaunch: { x: 14, y: 13 },
+      openWater: ['n', 'e', 's', 'w'],
+      map: [
+        "~~~~~~~~~",
+        "~~=====~~",
+        "~==.,.==~",
+        "~=.S.@.=~",
+        "~==...==~",
+        "~~==K==~~",
+        "~~~~~~~~~"
+      ],
+      signs: ["A stick stuck upright in the sand, a faded rag tied to the top. Somebody else made it this far once."]
     },
     {
       // Anybody's island is a mountain: three levels climbing UP to him,
@@ -1972,7 +2050,8 @@
       id: 'island_shore',
       name: 'The Island',
       kayakOnly: true,
-      kayakLaunch: { x: 5, y: 1 },
+      kayakLaunch: { x: 9, y: 6 },
+      openWater: ['s'],
       map: [
         "^^^^^^^^^^^",
         "^^^^^4^^^^^",
@@ -2032,12 +2111,27 @@
           id: 'anybody',
           name: 'Anybody',
           appearance: { top: 0x7d80d9, bottom: 0x2e2a35, hairStyle: 'short', hair: 0x000000, skin: 0xa17c5e, pieceType: 'pawn', pieceAccent: 0xf0a83c },
-          // Unnamed lines play in order, one per visit, with "?" as the
-          // speaker (the last one repeats); he names himself only once BOY
-          // has earned his respect (see ANYBODY_NAMING_RESPECT); then he's
-          // Anybody for good.
+          // His arc, in order (see talkToAnybody()): he refuses to teach,
+          // then sets three ridiculous trials to see what BOY is made of,
+          // and only then gives his name. He's blind — it's in what he
+          // says, not how he's drawn. "?" is the speaker until he's named.
           lines: {
-            unnamed: ["Who am I? Who are you?", "I'm nobody, I have no name.", "Look out there, BOY. From the mountaintop, we can see many things in the world."],
+            refusal: [
+              "Come closer, BOY.",
+              "Closer. My eyes quit on me a long time ago. No, I don't need glasses. Glasses are for people who still expect something from their eyes.",
+              "Who am I? Who are you?",
+              "You paddled all this way to be taught something. I can hear it in how you breathe.",
+              "No. I don't teach. Go home, BOY."
+            ],
+            returned: [
+              "You came back. Hm.",
+              "I'm nobody, I have no name. And I still don't teach.",
+              "But I do get bored. Do something for me first, and we'll see."
+            ],
+            beforeNaming: [
+              "Look out there, BOY. From the mountaintop, we can see many things in the world.",
+              "Yes, I said \"we\". You look, I'll listen. Between the two of us we'll catch most of it."
+            ],
             naming: "I was never given a name. Never knew my parents, either. But if I can be nobody, I can be anybody. I'm Anybody — that's my name.",
             // Played in order, one per visit, the last repeating. The second
             // is Anybody's beat of the "this isn't a game" motif.
@@ -2045,7 +2139,44 @@
               "Sit a while, BOY. The numbers, the music, the colors — everything you've been learning down there is one thing, if you look at it long enough. We'll get to that.",
               "People down there call it a game when it's easy and a test when it's hard. It's neither, BOY. It's just your life, and it's the only one you get."
             ]
-          }
+          },
+          // Three wild goose chases — the first one literally. Each has a
+          // real thing BOY must go and do out on the lake (`ask` sends him,
+          // `waiting` repeats until it's done, `report` is the payoff when
+          // he comes back), and each one reported is +1 of Anybody's respect.
+          // Order matters to the code: 1 is the goose (gooseActive()), 2 the
+          // Sandbar's stick and 3 the Cove's log (readSign()).
+          trials: [
+            {
+              ask: "There's a goose on the lake. Bring it to me. Don't hurt it, don't bribe it. Just bring it.",
+              toast: '🪿 Trial: bring him the goose from the lake',
+              waiting: "I don't hear a goose, BOY.",
+              report: [
+                "No goose.",
+                "Ha! Hahaha! Nobody has ever caught that goose, BOY. I've been sending people after it for years.",
+                "You chased a bird around a lake because a stranger on a mountain told you to. Oh, that's good. That's very good."
+              ]
+            },
+            {
+              ask: "Next. There's a sandbar out on the lake with a stick standing in it. Go and ask the stick what it's waiting for. Bring me its answer, word for word.",
+              toast: '🪵 Trial: ask the stick on the Sandbar what it\'s waiting for',
+              waiting: "The stick, BOY. I'm not getting any younger, and neither is the stick.",
+              report: [
+                "It said nothing? Word for word?",
+                "Good. Most people come back with a whole speech. You came back with what was actually there."
+              ]
+            },
+            {
+              ask: "Last one. Somebody carved a message into a log at the Cove, on the west shore. I can't read it, for obvious reasons. Go read it and come tell me what it says.",
+              toast: '📜 Trial: read the log at the Cove',
+              waiting: "West shore. A log. It isn't going anywhere, but you should be.",
+              report: [
+                "\"Still water. Sit a while.\" ...Hm. Yes. I carved that.",
+                "I wanted to know if you'd paddle across a lake to read a blind man his own handwriting. You would.",
+                "A goose, a stick and a log, and you never once asked me why. Now I know what you're made of."
+              ]
+            }
+          ]
         }
       },
       exits: { '3': { to: 'island_slope', x: 5, y: 2 } }
@@ -2284,19 +2415,37 @@
     var exits = levelDef.exits || {};
     var npcs = levelDef.npcs || {};
     var obstacles = new Set();
-    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null, cliffs: [] };
+    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null, cliffs: [], goose: null };
     var groundKinds = [];
     var playerStart = { x: 1, y: 1 };
     // On an `onWater` level (the lake) Boy is in his kayak: open water is
-    // the walkable surface and sand is the shore he bumps into, and every
-    // tile that isn't explicitly land or a landing sits on water.
+    // the walkable surface and land (sand, grass, trees, cliff) is the
+    // shore he bumps into; everything else (rocks, reeds, his start tile)
+    // sits on water.
     var onWater = !!levelDef.onWater;
+    var WATER_LAND = '=#^.,';
+    // On a land level, a rock or reed bed drawn out in the water sits ON
+    // the water rather than on its own little square of grass.
+    function inWater(tx, ty) {
+      var wet = 0, n = 0;
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var row = map[ty + d[1]];
+        var ch = row && row[tx + d[0]];
+        if (ch === undefined) return;
+        n++;
+        if (ch === '~') wet++;
+      });
+      return n > 0 && wet === n;
+    }
 
     for (var y = 0; y < h; y++) {
       groundKinds.push(map[y].split(''));
       for (var x = 0; x < w; x++) {
         var c = map[y][x];
-        if (onWater && c !== '=' && c !== '#' && !exits[c]) groundKinds[y][x] = '~';
+        if (onWater && WATER_LAND.indexOf(c) === -1 && !exits[c]) groundKinds[y][x] = '~';
+        if (!onWater && (c === 'o' || c === 'b') && inWater(x, y)) groundKinds[y][x] = '~';
+        // A kayak is always pulled up on sand.
+        if (c === 'K' && !npcs[c]) groundKinds[y][x] = '=';
         if (exits[c]) {
           features.portals.push({ x: x, y: y, to: exits[c].to, spawn: { x: exits[c].x, y: exits[c].y }, stairs: exits[c].stairs });
           continue;
@@ -2315,9 +2464,10 @@
           case 'b': obstacles.add(key(x, y)); features.bushes.push({ x: x, y: y }); break;
           case '~': if (!onWater) obstacles.add(key(x, y)); break;
           case '=': if (onWater) obstacles.add(key(x, y)); break;
+          case '.': if (onWater) obstacles.add(key(x, y)); break;
           case 'H': obstacles.add(key(x, y)); features.houseTiles.push({ x: x, y: y }); break;
           case 'S': obstacles.add(key(x, y)); features.signs.push({ x: x, y: y, message: (levelDef.signs || [])[features.signs.length] || 'A weathered sign, worn smooth by rain.' }); break;
-          case ',': features.flowers.push({ x: x, y: y }); break;
+          case ',': if (onWater) obstacles.add(key(x, y)); features.flowers.push({ x: x, y: y }); break;
           case '$': features.shards.push({ x: x, y: y, collected: false }); break;
           case 'c': features.crops.push({ x: x, y: y, collected: false, item: 'vegetable', kind: 'carrot' }); break;
           case 't': features.crops.push({ x: x, y: y, collected: false, item: 'vegetable', kind: 'potato' }); break;
@@ -2353,10 +2503,13 @@
       }
     }
 
+    if (levelDef.id === 'lake' && gooseActive()) features.goose = { x: GOOSE_SPOTS[0].x, y: GOOSE_SPOTS[0].y, spot: 0 };
+
     return {
       id: levelDef.id,
       name: levelDef.name,
       onWater: onWater,
+      openWater: levelDef.openWater || [],
       W: w, H: h,
       ORIGIN_X: (w - 1) / 2, ORIGIN_Z: (h - 1) / 2,
       exitChars: new Set(Object.keys(exits)),
@@ -2594,6 +2747,45 @@
     var panel = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25), new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 1.6, roughness: 0.25 }));
     panel.position.set(0, 0.3, 0.045);
     g.add(panel);
+    return g;
+  }
+
+  // Anybody's goose (see checkGoose()): white, long-necked, orange-billed,
+  // sitting low on the water.
+  function createGoose() {
+    var g = new THREE.Group();
+    var white = new THREE.MeshStandardMaterial({ color: 0xf4f1e8, roughness: 0.8 });
+    var orange = new THREE.MeshStandardMaterial({ color: 0xf08a24, roughness: 0.6 });
+    var body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), white);
+    body.scale.set(0.8, 0.7, 1.25);
+    body.position.y = 0.22;
+    g.add(body);
+    var tail = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 6), white);
+    tail.position.set(0, 0.32, -0.42);
+    tail.rotation.x = -1.0;
+    g.add(tail);
+    var neck = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.5, 8), white);
+    neck.position.set(0, 0.55, 0.3);
+    neck.rotation.x = 0.25;
+    g.add(neck);
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), white);
+    head.position.set(0, 0.82, 0.38);
+    g.add(head);
+    var bill = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 6), orange);
+    bill.position.set(0, 0.8, 0.53);
+    bill.rotation.x = Math.PI / 2;
+    g.add(bill);
+    var wings = new THREE.Group();
+    [-1, 1].forEach(function (side) {
+      var wing = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), white);
+      wing.scale.set(0.25, 0.5, 1);
+      wing.position.set(side * 0.27, 0.27, -0.03);
+      wings.add(wing);
+    });
+    g.add(wings);
+    g.userData.wings = wings;
+    g.traverse(function (o) { if (o.isMesh) o.castShadow = true; });
+    g.position.y = 0.05;
     return g;
   }
 
@@ -4047,6 +4239,26 @@
       }
     }
 
+    // `openWater` sides: the water doesn't stop at the map's edge there —
+    // a flat sheet carries it out to the fog, so a shore reads as the edge
+    // of a real lake or river instead of a pond that ends with the tiles.
+    var halfW = w.W * TILE / 2, halfH = w.H * TILE / 2, FAR = 90;
+    w.openWater.forEach(function (side) {
+      var alongX = side === 'n' || side === 's';
+      var sheet = new THREE.Mesh(
+        new THREE.PlaneGeometry(alongX ? FAR * 2 : FAR, alongX ? FAR : FAR * 2),
+        new THREE.MeshStandardMaterial({ color: 0x3aa0c9, roughness: 0.9, metalness: 0.02 })
+      );
+      sheet.rotation.x = -Math.PI / 2;
+      sheet.position.set(
+        side === 'e' ? halfW + FAR / 2 : side === 'w' ? -halfW - FAR / 2 : 0,
+        -0.03,
+        side === 's' ? halfH + FAR / 2 : side === 'n' ? -halfH - FAR / 2 : 0
+      );
+      sheet.receiveShadow = true;
+      group.add(sheet);
+    });
+
     function place(list, builder) {
       list.forEach(function (f) {
         var p = worldPos(w, f.x, f.y);
@@ -4079,6 +4291,7 @@
     place(w.features.bushes, createBush);
     if (!interiorTheme) place(w.features.flowers, createFlower);
     place(w.features.signs, createSignPost);
+    if (w.features.goose) place([w.features.goose], createGoose);
     place(w.features.portals, function (f) { return f.stairs === 'up' ? createStoneSteps() : createPortalMarker(); });
     var mountain = MOUNTAIN_LEVELS[w.id];
     place(w.features.cliffs, function () { return createCliff(mountain && mountain.snowCaps); });
@@ -4812,6 +5025,18 @@
   function closeDialogue() {
     dialogueEl.classList.remove('open');
     dialogueOpen = false;
+    var next = dialogueQueue.shift();
+    if (next) next();
+  }
+  // Several lines in a row from one speaker, each waiting to be read like
+  // any other line; `onDone` runs once the last one is dismissed.
+  var dialogueQueue = [];
+  function sayLines(lines, speaker, speakerObj, onDone) {
+    dialogueQueue = lines.slice(1).map(function (line) {
+      return function () { openDialogue(line, speaker, null, speakerObj); };
+    });
+    if (onDone) dialogueQueue.push(onDone);
+    openDialogue(lines[0], speaker, null, speakerObj);
   }
 
   var toolFrameOverlayEl = document.getElementById('tool-frame-overlay');
@@ -5141,7 +5366,7 @@
           story.hasKayak = true;
           renderStats();
           sfxPickup();
-          openDialogue("It's yours. Somewhere past the reeds, the lake opens up — people say there's an island out there.");
+          openDialogue("It's yours. Follow the river north and it opens into the lake — people say there's an island out there, and more shores than anyone's bothered to name.");
           showToast('🛶 You bought a kayak!', 2400);
         } },
         { label: 'Not yet' }
@@ -5149,7 +5374,7 @@
       return;
     }
     var launch = LEVELS[LEVEL_INDEX[world.id]].kayakLaunch;
-    openChoice('Paddle out onto the lake?', null, [
+    openChoice(world.id === 'riverside' ? 'Paddle out onto the river?' : 'Paddle out onto the lake?', null, [
       { label: 'Paddle out', onSelect: function () { sfxPortal(); loadLevel(LEVEL_INDEX.lake, launch); } },
       { label: 'Not now' }
     ]);
@@ -5821,18 +6046,19 @@
   // whose individual respect actually matters a real `id`.
   function npcRespectKey(def) { return def.id || def.name.toLowerCase(); }
 
-  // Anybody has no name until BOY earns one from him: the dialogue box
-  // shows "?" while he works through his `unnamed` lines (one per visit,
-  // the last repeating), and he names himself Anybody only once
-  // story.respect.anybody reaches ANYBODY_NAMING_RESPECT
-  // (story.learned.anybodyNamed), "Anybody" from then on. How BOY earns
-  // that respect isn't designed yet, so nothing in play grants it — the
-  // same "no free respect from talking" rule as everywhere else; a save
-  // link with respect.anybody set is the only way to reach the naming
-  // for now.
+  // Anybody has no name until BOY earns one from him — the dialogue box
+  // shows "?" until then. The arc: the first visit he refuses to teach;
+  // when BOY comes back anyway he sets the first of three trials (see
+  // `trials` on his def); each is a real errand out on the lake (the stick
+  // on the Sandbar and the log at the Cove via readSign(), the goose via
+  // checkGoose()), and reporting one back is +1 story.respect.anybody —
+  // respect from the errand, never from the talking. At
+  // ANYBODY_NAMING_RESPECT he names himself (story.learned.anybodyNamed).
+  // story.learned.anybodyTrial is the trial BOY is currently on (1-3; 4
+  // once all are reported) and anybodyTrialDone whether its errand is done.
   var ANYBODY_NAMING_RESPECT = 3;
   function talkToAnybody(npc) {
-    var lines = npc.def.lines;
+    var lines = npc.def.lines, trials = npc.def.trials;
     if (story.learned.anybodyNamed) {
       var namedVisit = story.chapterTalks.anybodyNamed || 0;
       openDialogue(lines.named[Math.min(namedVisit, lines.named.length - 1)], npc.def.name, null, npc.obj);
@@ -5840,14 +6066,106 @@
       return;
     }
     if ((story.respect.anybody || 0) >= ANYBODY_NAMING_RESPECT) {
-      story.learned.anybodyNamed = true;
-      openDialogue(lines.naming, '?', null, npc.obj);
-      showToast('He has a name now: Anybody', 2400);
+      story.learned.anybodyMet = true;
+      sayLines(lines.beforeNaming.concat([lines.naming]), '?', npc.obj, function () {
+        story.learned.anybodyNamed = true;
+        showToast('He has a name now: Anybody', 2400);
+      });
       return;
     }
-    var visits = story.chapterTalks.anybody || 0;
-    openDialogue(lines.unnamed[Math.min(visits, lines.unnamed.length - 1)], '?', null, npc.obj);
-    if (visits < lines.unnamed.length) story.chapterTalks.anybody = visits + 1;
+    if (!story.learned.anybodyMet) {
+      story.learned.anybodyMet = true;
+      sayLines(lines.refusal, '?', npc.obj);
+      return;
+    }
+    var on = story.learned.anybodyTrial || 0;
+    function assign(index, lead) {
+      story.learned.anybodyTrial = index + 1;
+      story.learned.anybodyTrialDone = false;
+      sayLines(lead.concat([trials[index].ask]), '?', npc.obj, function () { showToast(trials[index].toast, 3200); });
+    }
+    if (on === 0) { assign(0, lines.returned); return; }
+    var trial = trials[on - 1];
+    if (!story.learned.anybodyTrialDone) { openDialogue(trial.waiting, '?', null, npc.obj); return; }
+    story.respect.anybody = (story.respect.anybody || 0) + 1;
+    if (on < trials.length) { assign(on, trial.report); return; }
+    story.learned.anybodyTrial = on + 1;
+    story.learned.anybodyTrialDone = false;
+    sayLines(trial.report, '?', npc.obj);
+  }
+
+  // A sign's text — and, for the two signs Anybody sends BOY to, the
+  // errand itself: reading it while that trial is the current one is what
+  // completes it.
+  function readSign(sign) {
+    var on = story.learned.anybodyTrial, done = story.learned.anybodyTrialDone;
+    if (on === 2 && !done && world.id === 'sandbar') {
+      story.learned.anybodyTrialDone = true;
+      sayLines([sign.message, "You ask the stick what it's waiting for.", "..."], null, null, function () { showToast('The stick has nothing to say. Word for word.', 2800); });
+      return;
+    }
+    if (on === 3 && !done && world.id === 'cove') {
+      story.learned.anybodyTrialDone = true;
+      sayLines([sign.message], null, null, function () { showToast('You have the message. Take it back up the mountain.', 2800); });
+      return;
+    }
+    openDialogue(sign.message);
+  }
+
+  // The wild goose of Anybody's first trial: it only exists on the lake
+  // while that trial is running. Every time BOY paddles up beside it, it
+  // skims off to the next of GOOSE_SPOTS; from the last one it takes off
+  // for good — it can't be caught, and that it can't is the point. Seeing
+  // the chase through is what completes the trial.
+  var GOOSE_SPOTS = [{ x: 9, y: 14 }, { x: 3, y: 10 }, { x: 15, y: 7 }, { x: 4, y: 1 }];
+  function gooseActive() {
+    return story.learned.anybodyTrial === 1 && !story.learned.anybodyTrialDone;
+  }
+  function checkGoose() {
+    var goose = world.features.goose;
+    if (!goose || goose.gone || goose.moving) return;
+    if (Math.max(Math.abs(goose.x - player.tileX), Math.abs(goose.y - player.tileY)) > 1) return;
+    goose.spot++;
+    goose.moving = true;
+    sfxPickup();
+    if (goose.spot < GOOSE_SPOTS.length) {
+      goose.x = GOOSE_SPOTS[goose.spot].x;
+      goose.y = GOOSE_SPOTS[goose.spot].y;
+      showToast(['Honk! The goose skims away across the water.', 'HONK. It\'s off again.', 'The goose looks back at you, then leaves.'][goose.spot - 1], 2200);
+    } else {
+      goose.gone = true;
+      story.learned.anybodyTrialDone = true;
+      showToast('The goose takes off and doesn\'t come back. Of course it doesn\'t.', 3200);
+    }
+  }
+  function updateGoose(t, dt) {
+    var goose = world.features.goose;
+    if (!goose || !goose.obj) return;
+    var obj = goose.obj;
+    if (goose.gone) {
+      obj.position.y += dt * 3.2;
+      obj.position.x -= dt * 5;
+      obj.position.z -= dt * 5;
+      obj.userData.wings.rotation.z = Math.sin(t * 22) * 0.7;
+      if (obj.position.y > 14) obj.visible = false;
+      return;
+    }
+    var target = tileToWorld(goose.x, goose.y);
+    var dx = target.x - obj.position.x, dz = target.z - obj.position.z;
+    var dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist > 0.05) {
+      var step = Math.min(dist, dt * 13);
+      obj.position.x += dx / dist * step;
+      obj.position.z += dz / dist * step;
+      obj.rotation.y = Math.atan2(dx, dz);
+      obj.position.y = 0.16;
+      obj.userData.wings.rotation.z = Math.sin(t * 26) * 0.6;
+    } else {
+      // Arriving: check again in case BOY is already beside the new spot.
+      if (goose.moving) { goose.moving = false; checkGoose(); }
+      obj.position.y = 0.05 + Math.sin(t * 1.8) * 0.03;
+      obj.userData.wings.rotation.z = 0;
+    }
   }
 
   // The first of this NPC's `musings` (see the doc above LEVELS) that
@@ -5860,6 +6178,7 @@
       if (m.chapter && m.chapter !== story.chapter) continue;
       if (m.from && CHAPTERS.indexOf(story.chapter) < CHAPTERS.indexOf(m.from)) continue;
       if (m.requires && !story.learned[m.requires]) continue;
+      if (m.unless && story.learned[m.unless]) continue;
       if (story.learned['musing_' + def.id + '_' + m.key]) continue;
       return m;
     }
@@ -6160,7 +6479,7 @@
     var practiceSpot = findNearbyPracticeSpot();
     if (practiceSpot) { practiceViolin(); return; }
     var sign = findNearbySign();
-    if (sign) openDialogue(sign.message);
+    if (sign) readSign(sign);
   }
 
   function useCar() {
@@ -6187,7 +6506,7 @@
     else if (target.kind === 'crown') useCrown();
     else if (target.kind === 'npc') talkToNpc(target.feature);
     else if (target.kind === 'practice') practiceViolin();
-    else if (target.kind === 'sign') openDialogue(target.feature.message);
+    else if (target.kind === 'sign') readSign(target.feature);
   }
 
   // ----------------------------------------------------------------------
@@ -6352,6 +6671,7 @@
           }
           checkShardPickup();
           checkCropPickup(t);
+          checkGoose();
           checkPortal();
         }
       } else if (cutscene || gameEnded) {
@@ -6369,6 +6689,7 @@
       if (cutscene && !cutscene.waiting && t >= cutscene.resumeAt) nextCutsceneStep(t);
 
       updateCropRespawns(t);
+      updateGoose(t, dt);
       world.waterTiles.forEach(function (wt) {
         wt.mesh.position.y = wt.baseY + Math.sin(t * 1.6 + wt.phase) * 0.03;
       });
