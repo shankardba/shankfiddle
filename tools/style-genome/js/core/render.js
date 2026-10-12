@@ -191,7 +191,7 @@ class Renderer{
       }
       let pts=p.pts;const closed=!!p.closed;
       // seals are stamped, not drawn: accent fill and carved knock-out marks, whatever the genes
-      if(p.ci!=null&&!knock&&p.kind==='line')this.ink=this.fillIdx(p.ci);
+      if(p.ci!=null&&!knock&&p.kind==='line')this.ink=this.fillIdx(p.ci+(it.ciShift||0));
       if(p.paint==='ink'){out.push(`<path d="${dPath(pts,true)}" fill="${knock?this.ground:inkSave}"/>`);return;}
       if(p.paint==='accent'){out.push(`<path d="${dPath(pts,true)}" fill="${g.palette.accent||'#c0392b'}" opacity=".93"/>`);return;}
       if(p.paint==='knock'){out.push(`<path d="${dPath(pts,closed)}" fill="none" stroke="${this.ground}" stroke-width="${((p.kw||3)*(it.size||100)/100).toFixed(2)}" stroke-linecap="square"/>`);return;}
@@ -217,7 +217,7 @@ class Renderer{
       let base=this.ground,ov=null;
       if(mode==='flat'||mode==='dots'||mode==='dashes')base=this.fillColor(r,null,isBig);
       if(mode==='hatch'||mode==='crosshatch'){base=r.next()<0.35?this.fillColor(r):this.ground;}
-      if(ciOn&&!ciHatch)base=this.fillIdx(p.ci);else if(ciHatch)base=this.ground;
+      if(ciOn&&!ciHatch)base=this.fillIdx(p.ci+(it.ciShift||0));else if(ciHatch)base=this.ground;
       if(p.bg&&!knock){mode='none';base=this.ground;}
       if(p.solid&&!knock){mode='flat';base=inkSave;}
       // a woven strap: left in the ground colour, or in the palette's strap colour (gold where that is 'metal')

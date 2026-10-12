@@ -144,7 +144,12 @@ const SOURCES={
   'black-figure':[W('Black-figure_pottery'),W('Pottery_of_ancient_Greece'),W('Hoplite'),W('Palmette')],
   'red-figure':[W('Red-figure_pottery'),W('Pottery_of_ancient_Greece'),W('Three-phase_firing')],
   'white-ground':[W('White_ground_technique'),W('Lekythos')],
-  'temple-ornament':[W('Egg-and-dart'),W('Anthemion'),W('Meander_(art)'),W('Ancient_Greek_architecture')]
+  'temple-ornament':[W('Egg-and-dart'),W('Anthemion'),W('Meander_(art)'),W('Ancient_Greek_architecture')],
+  // Andes (checked 2026-10-11)
+  'inca-tocapu':[W('Tocapu'),W('Andean_textiles'),W('Inca_Empire'),W('Chakana')],
+  'paracas-embroidery':[W('Paracas_textile'),W('Paracas_culture'),W('Andean_textiles')],
+  'nazca-lines':[W('Nazca_lines'),W('Nazca_culture'),W('Geoglyph')],
+  'chimu-textile':[WM('Chimú culture','Chim%C3%BA_culture'),W('Chan_Chan'),W('Chancay_culture'),W('Andean_textiles')]
 };
 
 for(const T of SG.traditions){
