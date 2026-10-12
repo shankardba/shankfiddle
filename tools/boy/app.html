@@ -659,6 +659,7 @@
   //             musings: [              // optional — one-time "big
   //               { key: 'sim',         // question" lines a friend springs
   //                 chapter: 'diagnosis', // on Boy at different points in
+  //                 // (or `from: 'diagnosis'` — that chapter or any later)
   //                 requires: '...',    // the story, separate from whatever
   //                 line: '...' }       // else they do. Each plays once,
   //             ]                       // the first talk in its `chapter`
@@ -982,6 +983,10 @@
         },
         F: {
           id: 'farmer_jono',
+          // Once the community knows about Dad, the same word that used to be
+          // a put-down ("What do you want, BOY?") comes back as care. Plays
+          // once, the first time BOY talks to them from the diagnosis on.
+          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. I heard about your father. How are you holding up?" }],
           name: 'Farmer Jono',
           appearance: { top: 0x6f7d4a, bottom: 0x4a3a28, hairStyle: 'short', hair: 0x8a6a3a, pieceType: 'rook', belt: true },
           job: {
@@ -1041,6 +1046,10 @@
         },
         K: {
           id: 'elsie',
+          // Once the community knows about Dad, the same word that used to be
+          // a put-down ("What do you want, BOY?") comes back as care. Plays
+          // once, the first time BOY talks to them from the diagnosis on.
+          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. How are you? You don't need to buy a thing today." }],
           name: 'Elsie',
           appearance: { top: 0x3f6b6b, bottom: 0x2a2a30, hairStyle: 'long', hair: 0xd8d0b0, pieceType: 'bishop', earrings: true },
           job: {
@@ -1090,6 +1099,10 @@
         },
         Y: {
           id: 'hungry_kid',
+          // Once the community knows about Dad, the same word that used to be
+          // a put-down ("What do you want, BOY?") comes back as care. Plays
+          // once, the first time BOY talks to them from the diagnosis on.
+          musings: [{ key: 'care', from: 'diagnosis', line: "Hey, BOY... I heard about your dad. Are you okay?" }],
           name: 'Milo',
           appearance: { top: 0x8a6a4a, bottom: 0x5a4a35, hairStyle: 'short', hair: 0x3a2a20, pieceType: 'pawn', necklace: true },
           kindness: {
@@ -1166,6 +1179,10 @@
       npcs: {
         P: {
           id: 'whitfield',
+          // Once the community knows about Dad, the same word that used to be
+          // a put-down ("What do you want, BOY?") comes back as care. Plays
+          // once, the first time BOY talks to them from the diagnosis on.
+          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. No lesson today unless you want one. How are you?" }],
           name: 'Ms. Whitfield',
           appearance: { top: 0x2a4a3a, bottom: 0x1f2a2a, hairStyle: 'long', hair: 0xb8b8b8, pieceType: 'queen', crownStyle: 'tiara' },
           // Same Circle of Fifths app as Eric/Sir Earth, set to Piano — see
@@ -1322,6 +1339,10 @@
       npcs: {
         F: {
           id: 'sora',
+          // Once the community knows about Dad, the same word that used to be
+          // a put-down ("What do you want, BOY?") comes back as care. Plays
+          // once, the first time BOY talks to them from the diagnosis on.
+          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. Breathe with me a moment. How are you?" }],
           name: 'Sora',
           appearance: { top: 0xc9a84a, bottom: 0x5a4a3a, hairStyle: 'long', hair: 0x4a2f22, pieceType: 'queen', crownStyle: 'reed' },
           // Verified inside the actual Flute Circle of Fifths app, the same
@@ -1394,6 +1415,10 @@
       npcs: {
         W: {
           id: 'wainwright',
+          // Once the community knows about Dad, the same word that used to be
+          // a put-down ("What do you want, BOY?") comes back as care. Plays
+          // once, the first time BOY talks to them from the diagnosis on.
+          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. Forget the homework. How are you, really?" }],
           name: 'Mr. Lester',
           appearance: { top: 0x5a4a35, bottom: 0x2a2a30, hairStyle: 'short', hair: 0xb8b8b8, pieceType: 'rook', glasses: true },
           missions: [
@@ -1452,6 +1477,10 @@
       npcs: {
         C: {
           id: 'coffee',
+          // Once the community knows about Dad, the same word that used to be
+          // a put-down ("What do you want, BOY?") comes back as care. Plays
+          // once, the first time BOY talks to them from the diagnosis on.
+          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. Sit. The coffee's on me. How are you holding up?" }],
           name: 'Professor Coffee',
           appearance: { top: 0x3a6b52, bottom: 0x2a2a30, hairStyle: 'short', hair: 0x2a2018, pieceType: 'bishop', bishopTopperStyle: 'antenna' },
           missions: [
@@ -1526,6 +1555,10 @@
       npcs: {
         E: {
           id: 'sir_earth',
+          // Once the community knows about Dad, the same word that used to be
+          // a put-down ("What do you want, BOY?") comes back as care. Plays
+          // once, the first time BOY talks to them from the diagnosis on.
+          musings: [{ key: 'care', from: 'diagnosis', line: "Come here, BOY. How are you? The wheel can wait." }],
           name: 'Sir Earth',
           // Director's note: Sir Earth doesn't appear at the Conservatory
           // at all until Boy has earned Liz's respect (her songwriting
@@ -2097,6 +2130,27 @@
     if (CHAPTERS.indexOf(story.chapter) < CHAPTERS.indexOf('grief')) return 1;
     var n = GREYSCALE_ROSTER.filter(function (id) { return story.colorRestored[id]; }).length;
     return n / GREYSCALE_ROSTER.length;
+  }
+  // Color doesn't come back to the whole world at once. Each place warms
+  // with its OWN people: a level's color is the share of the roster
+  // members who live there that BOY has reconnected with, so he walks out
+  // of somewhere warm straight back into the cold until he's rebuilt it
+  // all. A place with no roster member of its own (Home, the Hospital,
+  // College...) follows the whole world's share instead. The Field is
+  // Jono's, though he stands in the Clearing.
+  var REGION_OWNERS = { field: ['farmer_jono'] };
+  function regionRoster(levelId) {
+    if (REGION_OWNERS[levelId]) return REGION_OWNERS[levelId];
+    var npcs = LEVELS[LEVEL_INDEX[levelId]].npcs || {};
+    var ids = [];
+    for (var c in npcs) if (GREYSCALE_ROSTER.indexOf(npcs[c].id) !== -1) ids.push(npcs[c].id);
+    return ids;
+  }
+  function regionColorFactor(levelId) {
+    if (CHAPTERS.indexOf(story.chapter) < CHAPTERS.indexOf('grief')) return 1;
+    var ids = regionRoster(levelId);
+    if (!ids.length) return worldColorFactor();
+    return ids.filter(function (id) { return story.colorRestored[id]; }).length / ids.length;
   }
   // Idempotent and safe to call for anyone, not just roster members — see
   // the three call sites in talkToNpc(). Silently a no-op before grief, or
@@ -4181,11 +4235,15 @@
   }
   function applyWorldColor() {
     if (!world) return;
-    var factor = worldColorFactor();
+    var factor = regionColorFactor(world.id);
+    var inGrief = CHAPTERS.indexOf(story.chapter) >= CHAPTERS.indexOf('grief');
     tagBaseColors(world.group);
     applyColorFactor(world.group, factor);
     world.features.npcs.forEach(function (n) {
       if (keepsColor(n.def)) applyColorFactor(n.obj, 1);
+      // A roster member is all-or-nothing: grey until BOY has reconnected
+      // with them personally, whatever the rest of their region is doing.
+      else if (inGrief && GREYSCALE_ROSTER.indexOf(n.def.id) !== -1) applyColorFactor(n.obj, story.colorRestored[n.def.id] ? 1 : 0);
     });
     world.features.crowd.forEach(function (c) {
       if (c.demon && c.obj) applyColorFactor(c.obj, 1);
@@ -4195,9 +4253,11 @@
     // instant 'duty' begins, not whatever the world's factor happens to be
     // at that moment (which could coincidentally already be 1 if every
     // roster member was reconnected with before Mom's own arc finished).
-    // Before grief he's in full color like everything else.
+    // Before grief he's in full color like everything else — and once the
+    // whole world is back in color he is too, which is when he can take
+    // Dad's crown (see crownUnlocked()).
     tagBaseColors(player.obj);
-    applyColorFactor(player.obj, story.chapter === 'grief' ? 0 : 1);
+    applyColorFactor(player.obj, (story.chapter === 'grief' && worldColorFactor() < 1) ? 0 : 1);
     // His kayak is a thing in the world, not Boy himself — it follows the
     // shared dial even while it's riding along under him.
     applyColorFactor(playerKayak, factor);
@@ -4362,7 +4422,7 @@
     // The sky/fog desaturates right along with everything else in grief —
     // see applyWorldColor() below, called once world/player are in place.
     var bgColor = (INTERIOR_THEMES[levelDef.id] || { bg: (MOUNTAIN_LEVELS[levelDef.id] || {}).sky || SKY_COLOR }).bg;
-    var bgFactor = worldColorFactor();
+    var bgFactor = regionColorFactor(levelDef.id);
     if (bgFactor < 1) bgColor = new THREE.Color(bgColor).lerp(new THREE.Color(luminanceGrey(bgColor)), 1 - bgFactor).getHex();
     scene.background = new THREE.Color(bgColor);
     scene.fog.color.set(bgColor);
@@ -4635,7 +4695,7 @@
   function effectiveMusicTheme(levelId) {
     var base = MUSIC_THEMES[levelId];
     if (!base) return null;
-    var factor = worldColorFactor();
+    var factor = regionColorFactor(levelId);
     if (factor >= 1) return base;
     return {
       tempo: GRIEF_THEME.tempo + (base.tempo - GRIEF_THEME.tempo) * factor,
@@ -5196,7 +5256,7 @@
     // Same grief greyscale as everyone else, unless keepsColor() would
     // exempt this character (Mom, Anybody, any demon).
     tagBaseColors(obj);
-    applyColorFactor(obj, keepsColor({ id: spec.id, appearance: spec.appearance }) ? 1 : worldColorFactor());
+    applyColorFactor(obj, keepsColor({ id: spec.id, appearance: spec.appearance }) ? 1 : regionColorFactor(world.id));
     var p = tileToWorld(spec.x, spec.y);
     obj.position.set(p.x, 0, p.z);
     obj.rotation.y = DIR_ROT[spec.facing || 'down'];
@@ -5404,18 +5464,19 @@
 
   // ----------------------------------------------------------------------
   // The finale. Dad's crown waits on his bedside table from his diagnosis
-  // on; picking it up is the end of the game. Who can pick it up — what
-  // "enough confidence" means — isn't decided yet, so crownUnlocked() is
-  // a placeholder: the final chapter ('duty') opens it.
+  // on; picking it up is the end of the game. BOY can only take it after
+  // Dad's death, once he has rebuilt the whole world back into color —
+  // reconnected with every roster member (worldColorFactor() === 1).
   // ----------------------------------------------------------------------
   function crownUnlocked() {
-    return story.chapter === 'duty';
+    return CHAPTERS.indexOf(story.chapter) >= CHAPTERS.indexOf('grief') && worldColorFactor() >= 1;
   }
 
   function useCrown() {
     if (story.learned.crownTaken) return;
     if (!crownUnlocked()) {
-      openDialogue("Dad's crown, waiting on his bedside table. You're not ready to carry it yet.");
+      openDialogue("Dad's crown, waiting on his bedside table. You're not ready to carry it yet." +
+        (CHAPTERS.indexOf(story.chapter) >= CHAPTERS.indexOf('grief') ? " The world is still cold out there." : ""));
       return;
     }
     playFinale();
@@ -5795,7 +5856,8 @@
     if (!def.musings) return null;
     for (var i = 0; i < def.musings.length; i++) {
       var m = def.musings[i];
-      if (m.chapter !== story.chapter) continue;
+      if (m.chapter && m.chapter !== story.chapter) continue;
+      if (m.from && CHAPTERS.indexOf(story.chapter) < CHAPTERS.indexOf(m.from)) continue;
       if (m.requires && !story.learned[m.requires]) continue;
       if (story.learned['musing_' + def.id + '_' + m.key]) continue;
       return m;
