@@ -14,13 +14,13 @@
   be spliced whole from one parent.
 
   This file is the Shankfiddle applet-framework face of the project (full-screen
-  picture, gear panel, explain panel, download / link / theme buttons). The
+  picture, gear panel, cultures panel, download / link / theme buttons). The
   engine it drives lives beside it in js/core/ and js/traditions/ and is shared
   unchanged with the full Style Genome app (index.html: Atlas, Mixer, Lab).
 
   A generated picture is a study of how a tradition draws. It is not a work of
   that tradition and carries none of its stories or ownership; each tradition's
-  care note is shown in the explain panel.
+  care note is shown in the cultures panel.
 
   No build step, no dependencies beyond two Google Fonts.
   To embed: <iframe src="widget.html" style="width:100%;height:640px;border:0;"></iframe>
@@ -155,12 +155,14 @@
     position:absolute;top:0;left:0;height:100%;width:360px;max-width:88vw;z-index:1;
     background:var(--mathpanel-bg);
     border-right:1px solid var(--border);
-    padding:60px 22px 24px;
+    padding:0 22px 24px;
     transform:translateX(-100%);
     transition:transform 0.25s ease;
     overflow-y:auto;
   }
   .math-panel.open{transform:translateX(0);}
+  /* keeps scrolled text clear of the buttons that sit over the panel's top edge */
+  .math-head{position:sticky;top:0;height:60px;margin:0 -22px;background:var(--bg);z-index:1;}
   .math-title{font-size:15px;font-weight:600;margin-bottom:4px;color:var(--text);}
   .math-subtitle{font-size:11px;color:var(--text-muted);margin-bottom:20px;line-height:1.5;}
   .math-section{margin-bottom:22px;}
@@ -189,6 +191,35 @@
     padding:10px 12px;border-radius:0 6px 6px 0;margin:0 0 6px;
     font-size:11.5px;line-height:1.7;color:var(--text-muted);
   }
+  .text-link{background:none;border:0;padding:0;margin-top:10px;font-family:inherit;font-size:12px;color:var(--cool);cursor:pointer;text-align:left;}
+  .text-link:hover{color:var(--warm);}
+  .text-link:focus-visible{outline:2px solid var(--cool);outline-offset:3px;border-radius:2px;}
+  .info-box{
+    position:absolute;z-index:3;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:440px;max-width:calc(100vw - 32px);max-height:calc(100% - 40px);overflow-y:auto;
+    background:var(--mathpanel-bg);border:1px solid var(--border);border-radius:10px;
+    padding:22px 22px 8px;box-shadow:0 18px 60px rgba(0,0,0,.45);
+  }
+  .info-box[hidden]{display:none;}
+  .info-close{position:absolute;top:10px;right:12px;width:30px;height:30px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-size:18px;line-height:1;cursor:pointer;}
+  .info-close:hover{border-color:var(--warm);color:var(--warm);}
+  .info-close:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
+  .fam-name{font-size:13px;font-weight:600;color:var(--text);margin:0 0 2px;}
+  .fam-native{font-size:11px;color:var(--text-muted);margin:0 0 8px;font-style:italic;}
+  .motif-list{list-style:none;margin:0 0 6px;padding:0;}
+  .motif-list li{display:grid;grid-template-columns:54px 1fr;gap:11px;align-items:start;margin-bottom:11px;}
+  .motif-list .thumb{width:54px;height:54px;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:var(--surface);}
+  .motif-list .thumb svg{width:100%;height:100%;display:block;}
+  .motif-list .mname{font-size:12.5px;color:var(--text);font-weight:500;line-height:1.35;}
+  .motif-list .mterm{font-size:11px;color:var(--cool);font-style:italic;}
+  .motif-list .mmean{font-size:11.5px;line-height:1.6;color:var(--text-muted);margin-top:2px;}
+  .conv{margin:0 0 6px;}
+  .conv dt{font-size:12px;color:var(--text);font-weight:500;margin-top:8px;}
+  .conv dd{margin:2px 0 0;font-size:11.5px;line-height:1.65;color:var(--text-muted);}
+  .math-panel details{margin:10px 0 0;}
+  .math-panel summary{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);cursor:pointer;padding:4px 0;}
+  .math-panel summary:hover{color:var(--warm);}
+  .math-panel summary:focus-visible{outline:2px solid var(--cool);outline-offset:2px;}
   .pal{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0 2px;}
   .pal i{width:18px;height:18px;border-radius:3px;border:1px solid var(--border);display:block;}
 
@@ -291,7 +322,7 @@
     </svg>
   </button>
 
-  <button class="explain-btn" id="explainBtn" aria-label="Explain the genome" aria-expanded="false" title="Explain the genome">&Sigma;</button>
+  <button class="explain-btn" id="explainBtn" aria-label="About these cultures" aria-expanded="false" title="About these cultures">&Sigma;</button>
 
   <button class="link-btn" id="linkBtn" aria-label="Copy link to this picture" title="Copy link to this picture">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -326,31 +357,14 @@
   </div>
 
   <div class="math-panel" id="mathPanel">
-    <div class="math-title">The Genome Behind This Picture</div>
-    <p class="math-subtitle">Everything below updates live as you change the blend, so it always describes exactly what's on screen.</p>
+    <div class="math-head" aria-hidden="true"></div>
+    <div class="math-title">The Cultures in This Picture</div>
+    <p class="math-subtitle">Where each style comes from, what its shapes are called and what they mean. Updates as you change the parents.</p>
 
     <div class="math-section">
-      <div class="math-sub">What a style genome is</div>
-      <p class="math-prose">A tradition is described here by seven groups of <b>genes</b>: how the surface is organised (<b>structure</b>), the vocabulary of shapes (<b>motifs</b>), how a contour is made (<b>line</b>), how regions are coloured (<b>fill</b>), the secondary decoration (<b>ornament</b>), the colours (<b>palette</b>) and the material (<b>surface</b>).</p>
-      <p class="math-prose">The geometry of a picture carries no style of its own. A lotus, a knot or a seated figure is only a set of curves; it is drawn through whichever genes are active. That is why one composition can take its layout from one culture and its hand from another.</p>
-    </div>
-
-    <div class="math-section">
-      <div class="math-sub">How two genomes blend</div>
-      <p class="math-legend">
-        <b>numbers</b> — line weight, wobble, density: interpolated<br>
-        <b>switches</b> — double outline, stitch, structure: each flips at its own point along the slider, so they cross over one at a time<br>
-        <b>pools</b> — colours and motifs: merged, each shape drawing from parent B with the blend's probability<br>
-        <b>splice</b> — any whole group can be taken from one parent
-      </p>
-      <p class="math-prose" style="margin-top:10px;">A gene only one parent has fades in from nothing. Rows of dots closing the ground, a carved edge, a brush's dry streak: each spreads through the picture as the slider moves toward the parent that owns it.</p>
-    </div>
-
-    <div class="math-section">
-      <div class="math-sub">This picture</div>
-      <div class="math-block" id="mathGenes"></div>
-      <div class="pal" id="mathPal"></div>
-      <p class="math-legend" id="mathRecipe" style="margin-top:10px;"></p>
+      <div class="math-sub">On screen now</div>
+      <p class="math-legend" id="mathRecipe"></p>
+      <button class="text-link" id="mixInfoBtn" type="button" aria-haspopup="dialog">How two genomes mix &rarr;</button>
     </div>
 
     <div id="mathParents"></div>
@@ -420,7 +434,28 @@
     </div>
   </div>
 
-  <div class="hint" id="hint">Drag to pan · Scroll to zoom · Double-click to reset view<br>Gear = choose two cultures · &Sigma; = explain the genome</div>
+  <div class="info-box" id="mixInfo" role="dialog" aria-modal="false" aria-labelledby="mixInfoTitle" hidden>
+    <button class="info-close" id="mixInfoClose" type="button" aria-label="Close">&times;</button>
+    <div class="math-title" id="mixInfoTitle">How Two Genomes Mix</div>
+    <div class="math-section" style="margin-top:14px;">
+      <div class="math-sub">What a style genome is</div>
+      <p class="math-prose">A tradition is described here by seven groups of <b>genes</b>: how the surface is organised (<b>structure</b>), the vocabulary of shapes (<b>motifs</b>), how a contour is made (<b>line</b>), how regions are coloured (<b>fill</b>), the secondary decoration (<b>ornament</b>), the colours (<b>palette</b>) and the material (<b>surface</b>).</p>
+      <p class="math-prose">The geometry of a picture carries no style of its own. A lotus, a knot or a seated figure is only a set of curves; it is drawn through whichever genes are active. That is why one composition can take its layout from one culture and its hand from another.</p>
+    </div>
+    <div class="math-section">
+      <div class="math-sub">How two genomes blend</div>
+      <p class="math-legend">
+        <b>numbers</b> — line weight, wobble, density: interpolated<br>
+        <b>switches</b> — double outline, stitch, structure: each flips at its own point along the slider, so they cross over one at a time<br>
+        <b>pools</b> — colours and motifs: merged, each shape drawing from parent B with the blend's probability<br>
+        <b>splice</b> — any whole group can be taken from one parent
+      </p>
+      <p class="math-prose" style="margin-top:10px;">A gene only one parent has fades in from nothing. Rows of dots closing the ground, a carved edge, a brush's dry streak: each spreads through the picture as the slider moves toward the parent that owns it.</p>
+      <p class="math-prose">The gear panel on the right shows the current value of every gene group and which parent it came from.</p>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Drag to pan · Scroll to zoom · Double-click to reset view<br>Gear = choose two cultures · &Sigma; = about these cultures</div>
 </div>
 
 <!-- the engine: shared unchanged with the full Style Genome app -->
@@ -672,16 +707,53 @@
   }
 
   // ---------- the explain panel ----------
+  const thumb = (svg) => `<div class="thumb" aria-hidden="true">${svg}</div>`;
+  const blockCache = {};
+  function motifItems(T){
+    const M = T.genes.motifs, g = pureGenes(T), seen = new Set(), out = [];
+    for(const k of (M.hero || []).concat(M.ring || [], M.filler || [])){
+      const m = SG.motifs[k];
+      if(!m || seen.has(k) || k === 'dot' || !m.meaning) continue;
+      seen.add(k);
+      let svg = '';
+      try{ svg = renderMotifSpecimen(g, k, 3, 120); }catch(e){}
+      out.push(`<li>${thumb(svg)}<div><div class="mname">${esc(m.name)}${m.term && m.term !== '—' ? ` <span class="mterm">${esc(m.term)}</span>` : ''}</div><div class="mmean">${esc(m.meaning)}</div></div></li>`);
+      if(out.length >= 7) break;
+    }
+    return out.join('');
+  }
+  function tileItems(T){
+    const g = pureGenes(T), out = [];
+    for(const k of (T.genes.motifs.tile || [])){
+      const t = SG.tiles[k];
+      if(!t || !t.meaning) continue;
+      let svg = '';
+      try{ svg = renderTileSpecimen(g, k, 3, 120); }catch(e){}
+      out.push(`<li>${thumb(svg)}<div><div class="mname">${esc(t.name)}${t.term && t.term !== '—' ? ` <span class="mterm">${esc(t.term)}</span>` : ''}</div><div class="mmean">${esc(t.meaning)}</div></div></li>`);
+      if(out.length >= 4) break;
+    }
+    return out.join('');
+  }
   function parentBlock(T, tag){
+    const ck = T.id + '|' + tag;
+    if(blockCache[ck]) return blockCache[ck];
     const fam = SG.families.find(f => f.id === T.family) || {name:''};
-    const basis = T.provenance === 'analyzed' ? 'measured from reference images' : 'set from published sources';
     let h = `<div class="math-section"><div class="math-sub">Parent ${tag} · ${esc(T.name)}</div>`;
+    h += `<p class="fam-name">${esc(fam.name)}</p>` + (fam.native ? `<p class="fam-native">${esc(fam.native)}</p>` : '');
+    if(fam.blurb) h += `<p class="math-prose">${esc(fam.blurb)}</p>`;
+    h += `<div class="math-caption">This style${T.sub ? ' — ' + esc(T.sub) : ''}</div>`;
     h += `<p class="math-prose">${esc(T.summary || '')}</p>`;
-    h += `<p class="math-legend"><b>family</b> — ${esc(fam.name)}<br><b>where</b> — ${esc(T.region || '')}<br><b>medium</b> — ${esc(T.medium || '')}<br><b>when</b> — ${esc(T.period || '')}<br><b>basis</b> — ${basis}</p>`;
-    if(T.rules && T.rules.length) h += `<div class="math-caption">How it is drawn</div><ol class="math-list">${T.rules.map(r => `<li>${esc(r)}</li>`).join('')}</ol>`;
-    if(T.maths) h += `<div class="math-caption">The mathematics</div><p class="math-prose">${esc(T.maths)}</p>`;
+    h += `<p class="math-legend"><b>where</b> — ${esc(T.region || '')}<br><b>made with</b> — ${esc(T.medium || '')}<br><b>when</b> — ${esc(T.period || '')}</p>`;
+    const mi = motifItems(T);
+    if(mi) h += `<div class="math-caption">Motifs and what they mean</div><ul class="motif-list">${mi}</ul>`;
+    const ti = tileItems(T);
+    if(ti) h += `<div class="math-caption">Pattern grounds</div><ul class="motif-list">${ti}</ul>`;
     if(T.symbolism) h += `<div class="math-caption">Meaning</div><p class="math-prose">${esc(T.symbolism)}</p>`;
+    if(T.conventions && T.conventions.length) h += `<div class="math-caption">Conventions of the style</div><dl class="conv">${T.conventions.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl>`;
+    if(T.rules && T.rules.length) h += `<div class="math-caption">How an artist builds it</div><ol class="math-list">${T.rules.map(r => `<li>${esc(r)}</li>`).join('')}</ol>`;
     if(T.care) h += `<div class="math-caption">Care</div><div class="care">${esc(T.care)}</div>`;
+    if(T.glossary && T.glossary.length) h += `<details><summary>Words used</summary><dl class="conv">${T.glossary.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>`;
+    if(T.maths) h += `<details><summary>The geometry behind it</summary><p class="math-prose" style="margin-top:8px;">${esc(T.maths)}</p></details>`;
     const links = (T.sources || []).filter(s => /^https:\/\//.test(s[1]));
     if(links.length || (T.reading && T.reading.length)){
       h += `<div class="math-caption">Read further</div><p class="credit">`;
@@ -689,23 +761,25 @@
       if(T.reading && T.reading.length) h += (links.length ? '<br>' : '') + T.reading.map(esc).join('; ') + '.';
       h += `</p>`;
     }
-    return h + `</div>`;
+    return blockCache[ck] = h + `</div>`;
   }
+  let mathKey = '';
   function updateMathPanel(){
     if(!last) return;
-    const {g, A, B} = last;
-    $('mathGenes').innerHTML = GENE_GROUPS.filter(grp => grp.id !== 'palette').map(grp =>
-      `<span class="rule-sym">${grp.label.toLowerCase()}</span> <span class="rule-arrow">&larr; ${sourceTag(grp.id, g)}</span><br>${esc(geneText(grp.id, g, last.structure))}`
-    ).join('<br>') + `<br><span class="rule-sym">palette</span> <span class="rule-arrow">&larr; ${sourceTag('palette', g)}</span>`;
-    $('mathPal').innerHTML = paletteOf(g).map(c => `<i style="background:${c}" title="${c}"></i>`).join('');
-    const same = A.id === B.id;
-    $('mathRecipe').innerHTML = same
-      ? `<b>pure</b> — both parents are ${esc(A.name)}; choose a different Parent B to blend.`
-      : `<b>A</b> — ${esc(A.name)}<br><b>B</b> — ${esc(B.name)}<br><b>blend</b> — ${Math.round((1 - state.t) * 100)}% A, ${Math.round(state.t * 100)}% B` +
-        (Object.keys(state.pins).length ? `<br><b>spliced</b> — ${Object.entries(state.pins).map(([k, v]) => `${k} from ${v}`).join(', ')}` : '') +
-        (state.h && SG.motifs[state.h] ? `<br><b>subject</b> — ${esc(SG.motifs[state.h].name)}` : '');
-    $('mathParents').innerHTML = parentBlock(A, 'A') + (same ? '' : parentBlock(B, 'B'));
+    const {A, B} = last, same = A.id === B.id, St = SG.structures[last.structure];
+    const subj = state.h && SG.motifs[state.h] ? SG.motifs[state.h] : null;
+    $('mathRecipe').innerHTML =
+      (same ? `<b>style</b> — ${esc(A.name)}, unmixed` : `<b>A</b> — ${esc(A.name)}<br><b>B</b> — ${esc(B.name)}`) +
+      (St ? `<br><b>layout</b> — ${esc(St.name)}: ${esc(St.blurb || '')}` : '') +
+      (subj ? `<br><b>subject</b> — ${esc(subj.name)}${subj.meaning ? ': ' + esc(subj.meaning) : ''}` : '');
+    const key = A.id + '|' + B.id;
+    if(key !== mathKey){ mathKey = key; $('mathParents').innerHTML = parentBlock(A, 'A') + (same ? '' : parentBlock(B, 'B')); }
   }
+  const mixInfo = $('mixInfo'), mixInfoBtn = $('mixInfoBtn');
+  const closeMix = () => { if(mixInfo.hidden) return; mixInfo.hidden = true; mixInfoBtn.focus(); };
+  mixInfoBtn.addEventListener('click', () => { mixInfo.hidden = !mixInfo.hidden; if(!mixInfo.hidden) $('mixInfoClose').focus(); });
+  $('mixInfoClose').addEventListener('click', closeMix);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') closeMix(); });
 
   // ---------- view: fit, pan, zoom ----------
   const stage = $('stage'), wrap = $('wrap');
@@ -773,7 +847,7 @@
     const open = mathPanel.classList.toggle('open');
     explainBtn.classList.toggle('open', open);
     explainBtn.setAttribute('aria-expanded', open);
-    if(open) updateMathPanel();
+    if(open) updateMathPanel(); else mixInfo.hidden = true;
   });
 
   // ---------- theme ----------
@@ -913,7 +987,7 @@
 
   const hint = $('hint');
   if(window.matchMedia('(pointer: coarse)').matches){
-    hint.innerHTML = 'Drag to pan · Pinch to zoom · Double-tap to reset view<br>Gear = choose two cultures · &Sigma; = explain the genome';
+    hint.innerHTML = 'Drag to pan · Pinch to zoom · Double-tap to reset view<br>Gear = choose two cultures · &Sigma; = about these cultures';
   }
   const fadeHint = () => { hint.style.opacity = '0'; setTimeout(() => hint.remove(), 700); };
   setTimeout(fadeHint, 4000);
