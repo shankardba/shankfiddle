@@ -197,29 +197,67 @@ TB.horse=()=>{const P=[];
 defMotif('windHorse',{name:'Wind horse',term:'rlung rta',figure:true,mirrorOk:true,meaning:'A horse in full stride with the flaming jewel on its saddle. It gives its name to the prayer flag it is printed on: lungta, wind horse, is a person’s fortune and vigour, which rises or sinks, and the wind carries the horse and the words around it across the country.',
 fn(){return tbFit(TB.horse(),96);}});
 
-TB.paw=(x,y,z)=>[tbR(G.chaikin([[x-5.4,y+2.6],[x-5.6,y-0.4],[x-2.6,y-2.6],[x+2.6,y-2.6],[x+4.4,y],[x+4,y+2.6]],true,2),tbWH,z),tbL([[x-2.6,y+2.4],[x-2.4,y+0.2]],z+0.1),tbL([[x-0.2,y+2.4],[x,y+0.2]],z+0.1),tbL([[x+2,y+2.4],[x+2.2,y+0.4]],z+0.1)];
-TB.lion=()=>{const P=[],sp=(x,y,r,a0=40)=>{const s=[];for(let i=0;i<=24;i++){const t=i/24,a=(a0+t*560)*DEG,rr=lerp(r,0.5,t);s.push([x+Math.cos(a)*rr,y+Math.sin(a)*rr]);}return tbL(s,2);};
-  // tail plume and legs under the body
-  for(const [r,l,tn] of [[-34,25,-1],[-8,29,-1],[18,27,1],[44,22,1]])P.push(tbR(TB.lock(26.6,-7,l,r,4.2,tn),tbGR,-4));
-  for(const [cp,ws,pw] of [[[[-11,5],[-10,16],[-12.6,26],[-11.6,36]],[11,8.4,6.6,6.8],[-12.6,38.4]],[[[17,3],[11,12],[16,21],[18,27],[14,33],[12,36.6]],[13,11,7.6,6,6,6.4],[11,38.8]],
-    [[[21,3],[17,11],[24,20],[27,27],[23.6,33],[22,36.6]],[13,12.6,8.6,6.6,6.6,7],[21,38.8]]]){P.push(TB.limb(cp,ws,tbWH,-3),...TB.paw(pw[0],pw[1],-2.9));}
-  P.push(tbR(TB.lock(27.6,25,8,120,2,-1),tbGR,-2.5),tbR(TB.lock(-7.6,15,7,150,1.9,-1),tbGR,-2.5));
-  P.push(tbR(G.chaikin([[-22,-6],[-18,-16],[-6,-15],[5,-11.6],[15,-13],[23,-12],[29,-5],[30,5],[25,11],[14,8],[2,7],[-8,10],[-17,10],[-21,3]],true,3),tbWH,0));
-  P.push(sp(-11,-3,5.2),sp(20,-2,5.8,200));
-  // the raised forepaw comes in front of the chest
-  P.push(TB.limb([[-16,2],[-25,8],[-33,12.6],[-39,11.6]],[11,8.4,7,7],tbWH,1),...tbPut(TB.paw(0,0,1.2),{x:-41.6,y:11,rot:-20}),tbR(TB.lock(-22,11,7,215,1.9,1),tbGR,1.5));
-  // mane round the head, then the head
-  for(const [a,l,tn] of [[-20,15,-1],[8,17,-1],[34,18,1],[60,19,1],[86,19,1],[112,18,1],[138,17,-1],[162,15,-1],[188,13,-1],[214,11,-1]]){const c=Math.sin(a*DEG),s=-Math.cos(a*DEG);P.push(tbR(TB.lock(-27+c*10,-22+s*10,l,a,3.6,tn),tbGR,2));}
-  P.push(tbR(G.chaikin([[-41,-30],[-35,-37.6],[-24,-38.6],[-15.6,-33],[-12.6,-24],[-14.6,-14],[-21.6,-8],[-32,-7.6],[-39.6,-12.6],[-43,-21]],true,3),tbWH,3));
-  for(const [x,s] of [[-38.6,-1],[-18,1]])P.push(tbR(G.chaikin([[x-3.4,-33],[x+s*1.6,-41.6],[x+3.4,-34]],true,1),tbWH,2.6),tbL([[x-0.6,-34.6],[x+s*0.8,-38.6]],2.7));
-  // brows, eyes, nose, the open mouth with its teeth and tongue
-  for(const [x,tn] of [[-35.4,1],[-24.4,-1]]){P.push(tbR(TB.lock(x+tn*2.4,-29.6,7.6,tn>0?-74:74,1.7,tn),tbGR,4),tbR(G.circle(x,-25.6,2.7,16),tbYL,4),tbN(G.circle(x+0.3,-25.4,1.15,10),tbBL,5));}
-  P.push(tbR(G.chaikin([[-33.6,-21.6],[-30,-23],[-26.4,-21.6],[-27.6,-18.6],[-30,-17.6],[-32.4,-18.6]],true,2),tbBL,5),tbL(G.bez([-30,-23],[-30,-26],[-30.4,-28],[-30,-30.6],6),5));
-  P.push(tbR(G.chaikin([[-40,-15.6],[-34,-17],[-30,-15.6],[-26,-17],[-19.6,-15.6],[-21.6,-10.6],[-30,-9],[-38,-10.6]],true,2),tbRD,4));
-  for(const x of [-37,-33.6,-26.4,-23])P.push(tbR([[x-1.3,-16.2],[x+1.3,-16.2],[x,-12.6]],tbWH,5));
-  P.push(tbR(G.chaikin([[-33,-11.6],[-30,-13.4],[-27,-11.6],[-28.6,-9.6],[-31.4,-9.6]],true,2),tbOR,5));
-  for(const [x,r,l] of [[-35,196,7],[-30,180,8],[-25,164,7]])P.push(tbR(TB.lock(x,-8.6,l,r,1.8,r>180?1:-1),tbGR,2.8));return P;};
-defMotif('snowLion',{name:'Snow lion',term:'gangs seng ge',figure:true,mirrorOk:true,meaning:'The white lion of the snow mountains with a turquoise mane and tail, leaping from peak to peak without tiring. It is fearless good cheer, the emblem of Tibet, and eight of them hold up a Buddha’s throne.',
+/* Snow lion, second redraw 2026-10-13. The first attempts assembled the animal from tubes and
+   read as a child's drawing. The references are built differently: ONE flowing contour for body
+   and legs together; fur as bands of green laid on that contour and worked over with fine hair
+   strokes; mane and tail as long locks each carrying its own hair lines; paws with separate toes
+   and claws. Coordinates below are in a 108 × 81 study grid, mapped to the motif box by tbU. */
+const tbU=p=>p.map(([x,y])=>[(x-54)*0.95,(y-40)*0.95]);
+// a band of fur along a path: green, then hair strokes raked across it and past its outer edge
+TB.fur=(cp,w,z,rake=1)=>{const sp=G.resample(G.chaikin(tbU(cp),false,3),false,0.9),n=sp.length,P=[tbN(G.ribbon(sp,t=>w*0.5*Math.pow(Math.sin(Math.PI*clamp(0.03+0.94*t)),0.45)),tbGR,z)];
+  for(let i=1;i<n-1;i++){const a=sp[i-1],b=sp[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,t=[(b[0]-a[0])/l,(b[1]-a[1])/l],nn=[-t[1],t[0]],q=sp[i],k=0.5*Math.pow(Math.sin(Math.PI*clamp(0.03+0.94*i/n)),0.45);
+    P.push(tbL([[q[0]-nn[0]*w*k*0.9*rake,q[1]-nn[1]*w*k*0.9*rake],[q[0]+t[0]*w*0.18,q[1]+t[1]*w*0.18],[q[0]+nn[0]*w*k*1.25*rake+t[0]*w*0.5,q[1]+nn[1]*w*k*1.25*rake+t[1]*w*0.5]],z+0.05));}
+  return P;};
+// a long lock: a tapering leaf with three hair lines running its length
+TB.flock=(cp,w,z)=>{const sp=G.resample(G.chaikin(tbU(cp),false,3),false,1),n=sp.length,hw=t=>Math.max(0.12,w*0.5*Math.pow(Math.sin(Math.PI*clamp(0.16+0.84*t)),0.8)),P=[tbR(G.ribbon(sp,hw),tbGR,z)];
+  for(const o of [-0.5,0,0.5])P.push(tbL(sp.slice(1,Math.round(n*0.9)).map((q,i)=>{const k=i+1,a=sp[k-1],b=sp[Math.min(n-1,k+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[q[0]-(b[1]-a[1])/l*hw(k/n)*o,q[1]+(b[0]-a[0])/l*hw(k/n)*o];}),z+0.05));return P;};
+// a curl seen end on: a disc with a spiral wound into it
+TB.curl=(x,y,r,z,dir=1)=>{const [c]=tbU([[x,y]]),R=r*0.95,sp=[];for(let i=0;i<=40;i++){const t=i/40,a=(dir*t*900)*DEG,rr=R*(1-0.9*t);sp.push([c[0]+Math.cos(a)*rr,c[1]+Math.sin(a)*rr]);}
+  return[tbR(G.circle(c[0],c[1],R,24),tbGR,z),tbL(sp,z+0.05),tbL(G.circle(c[0],c[1],R*0.72,18).slice(0,12),z+0.05)];};
+// a paw: ankle at (x,y), toes toward `rot` (degrees, 0 = down)
+TB.paw=(x,y,rot,s,z)=>{const [c]=tbU([[x,y]]),T=p=>G.xform(p,{x:c[0],y:c[1],rot,s:s*0.95}),P=[tbR(T(G.chaikin([[-5,-2.6],[5,-2.6],[6.6,1.4],[5,4.6],[-5,4.6],[-6.6,1.4]],true,2)),tbWH,z)];
+  for(const [a,b,r] of [[-4.6,5,-14],[-1.6,6.2,-5],[1.6,6.2,5],[4.6,5,14]]){P.push(tbR(T(G.xform(G.chaikin([[-1.7,-2.4],[1.7,-2.4],[2.1,1],[0,3],[-2.1,1]],true,2),{x:a,y:b,rot:r})),tbWH,z+0.1));
+    P.push(tbR(T(G.xform([[-0.7,2.4],[0.7,2.4],[0.5,5.4]],{x:a,y:b,rot:r})),tbWH,z+0.2));}return P;};
+TB.lion=()=>{const P=[];
+  // tail: long locks behind a knot of three curls
+  for(const cp of [[[32,17],[36,10],[37,4],[35,0]],[[31,16],[31,8],[27,2],[22,-1]],[[30,16],[25,10],[19,7],[14,7]],[[30,17],[23,14],[16,13],[10,10]],[[30,18],[23,18],[17,19],[12,17]],[[31,19],[25,22],[20,22],[17,20]]])P.push(...TB.flock(cp.map(([x,y])=>[31+(x-31)*1.25,18+(y-18)*1.25]),7.6,-5));
+  P.push(...TB.curl(29.6,17.6,5,-4),...TB.curl(36,16.6,4.4,-4,-1),...TB.curl(32.6,22,4,-3.9));
+  // one contour for body and all four legs, as far as the ankles
+  const S=[[34,25],[44,25],[54,28],[63,32],[71,33.5],[80,36],[87,41],[89.4,49],[87.4,56],[84.6,59],[89,58.6],[94.6,60.6],[94,66],[87,66.4],[80,64.6],[75.4,64.6],[76.4,69],[78.6,73],[75,76.4],[69.6,77.4],[63,73.6],[57.4,65],[53,58.4],[47.4,58.4],[43.6,52.6],[43.4,58.6],[39.6,59.6],[35.6,58.4],[33.4,52],[31,46.4],[26,42.6],[20,41.4],[14.4,44],[11,47.6],[7.6,48.4],[4.6,46],[4.8,38],[9,30],[16,26.4],[25,25.4]];
+  P.push(tbR(G.chaikin(tbU(S),true,3),tbWH,0));
+  // paws over the ankles
+  P.push(...TB.paw(7.4,49,24,1.12,1),...TB.paw(39.6,60.6,-6,1.06,1),...TB.paw(75.4,77.6,-22,1.16,1),...TB.paw(96,64.6,-62,1.1,1));
+  // fur: down the back of the hind leg, cuffs, the long fringe behind the foreleg
+  P.push(...TB.fur([[21,26.4],[13.4,28.6],[8,34],[6,41],[7.6,46.4]],6.4,2,-1));
+  P.push(...TB.fur([[32.6,49.6],[37,53],[43,54.6]],5.2,2));
+  P.push(...TB.fur([[54.4,57],[57,65],[62.6,72.6],[69.6,76],[76.6,73]],7,2));
+  P.push(...TB.fur([[79.6,65.4],[86,65.6],[93.6,62]],5.6,2,-1));
+  // comma tufts on chest and haunch
+  for(const [x,y,r,ro] of [[73,47.6,3.6,10],[72,54.4,3.3,0],[70,61,3,-10],[26.4,42,2.6,150],[37.4,44.4,2.6,170],[43.6,43.4,3,180]]){const [c]=tbU([[x,y]]),sp=[];for(let i=0;i<=16;i++){const a=(-80+i*10)*DEG;sp.push([Math.cos(a)*r*0.95,Math.sin(a)*r*0.95]);}
+    P.push(tbR(G.xform(G.ribbon(sp,t=>Math.max(0.15,r*0.36*Math.sin(Math.PI*clamp(0.05+0.9*t)))),{x:c[0],y:c[1],rot:ro}),tbGR,2));}
+  // muscle lines
+  P.push(tbL(G.chaikin(tbU([[47,57],[50,50],[49,43]]),false,2),2),tbL(G.chaikin(tbU([[84,59],[80,60],[76,63]]),false,2),2),tbL(G.chaikin(tbU([[31,46],[30,40],[33,34]]),false,2),2));
+  // the head and mane are drawn about the neck and enlarged: the head is big for the body
+  const B=P.length;
+  // mane: locks streaming back from the skull, then the collar under the jaw
+  for(const cp of [[[80,20],[73,17],[68,18],[65,21]],[[79,23],[71,22],[65,25],[60,28]],[[79,27],[71,27],[65,31],[60,35.6]],[[80,31],[73,32],[68,36],[63.6,39.6]],[[81,34],[76,36],[72,40],[68.6,43]]])P.push(...TB.flock(cp,5.2,3));
+  P.push(...TB.fur([[78,41.4],[83,40.6],[88,38.6],[92.6,39.6]],4.4,3),...TB.flock([[92,38.6],[95.6,39],[95,42.6],[92.6,44]],3.4,3));
+  // curls at the back of the head
+  for(const [x,y,r] of [[78.4,29.4,2.9],[77.6,24,2.9],[80.4,19.6,2.6]])P.push(tbR(G.circle(...tbU([[x,y]])[0],r*0.95,18),tbWH,3.5));
+  // mouth, then the head over it
+  P.push(tbR(G.chaikin(tbU([[88,31],[91.4,29.6],[96,27.6],[99,29],[100.4,34.6],[97,33.6],[92,33]]),true,1),tbRD,4));
+  P.push(tbR(G.chaikin(tbU([[79.4,33],[77.6,27],[79.6,21],[84,17.6],[90,18],[95,17.4],[98,19.6],[98.6,24.6],[96.4,27.6],[91.6,29.6],[88,31],[92,33],[97,33.6],[100.6,35],[99.6,38],[94,37.6],[88,36.4],[83,35.4]]),true,2),tbWH,4.2));
+  P.push(tbR(G.ribbon(G.resample(G.chaikin(tbU([[91,31.6],[95,31.6],[99,30],[101.6,28],[100,26.6]]),false,3),false,0.8),t=>1.5-0.9*t),tbRD,5));
+  for(const [x,y,d] of [[93.4,29,1],[96,28,1],[94.6,33.4,-1],[98,33.8,-1]]){const [c]=tbU([[x,y]]);P.push(tbR([[c[0]-0.7,c[1]],[c[0]+0.7,c[1]],[c[0]+0.2,c[1]+d*2.3]],tbWH,5));}
+  // nose, eyes under green brows, ear, and the lines of muzzle and cheek
+  for(const [x,y,r] of [[93,18.6,1.5],[95,17.6,1.4],[94.6,19.8,1.3]])P.push(tbR(G.circle(...tbU([[x,y]])[0],r,10),tbRD,5));
+  for(const [x,y,r] of [[89.4,24.4,2],[88.4,19.8,1.7]]){const [c]=tbU([[x,y]]);P.push(tbR(G.ellipse(c[0],c[1],r*1.25,r,16,-20),tbWH,5),tbR(G.circle(c[0]+0.2,c[1],r*0.74,14),tbOR,5.1),tbN(G.circle(c[0]+0.3,c[1],r*0.34,8),tbBL,5.2));}
+  P.push(...TB.fur([[84.6,23.4],[86.4,21.6],[88.6,22]],2.4,5),...TB.fur([[84,19.6],[85.6,18],[87.4,17.8]],2,5),...TB.fur([[84.4,27],[85.6,31],[88.6,33.6]],2.6,5,-1));
+  P.push(tbR(G.chaikin(tbU([[80,31],[77.4,35],[79.6,39.4],[82.6,35.6],[82.4,32]]),true,2),tbWH,5),tbL(G.chaikin(tbU([[80.6,32.6],[79.6,35.6],[80.4,37.6]]),false,2),5.1));
+  P.push(tbL(G.chaikin(tbU([[91,21],[93.6,22],[96.6,21.6]]),false,2),5.1),tbL(G.chaikin(tbU([[92,26],[94.6,25.4],[97.6,24.6]]),false,2),5.1));
+  const k=1.3,[pv]=tbU([[80,38]]);for(let i=B;i<P.length;i++)P[i]=Object.assign({},P[i],{pts:P[i].pts.map(([x,y])=>[pv[0]+(x-pv[0])*k,pv[1]+(y-pv[1])*k])});
+  return P;};
+defMotif('snowLion',{name:'Snow lion',term:'gangs seng ge',figure:true,mirrorOk:true,meaning:'The white lion of the snow mountains, bounding with its head thrown up: a mane and tail of green or turquoise flying behind, a fringe of the same down each leg. It leaps from peak to peak without tiring. It is fearless good cheer, the emblem of Tibet, and eight of them hold up a Buddha’s throne.',
 fn(){return tbFit(TB.lion(),96);}});
 
 /* ---------- the Buddha ---------- */

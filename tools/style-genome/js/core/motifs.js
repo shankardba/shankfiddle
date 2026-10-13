@@ -91,39 +91,42 @@ fn(rng,g){
   return fitParts(P);
 }});
 
-/* Peacock, redrawn 2026-10-13 against three reference paintings supplied by the user (two in the
-   Madhubani manner). What they share: the bird in profile on thin legs; a small head with a fan of
-   stalked crest feathers; a long neck in an S; a plump body with the wing laid on it as rows of
-   scales; and the train, which carries the picture — rank on rank of eye feathers, each a drop
-   with rings inside it, the nearer ranks lying over the roots of the farther ones.
-   Parts of one kind share a tone, so a tradition colours all the eyes alike, all the vanes alike. */
-function peacockEye(P,bx,by,ang,len,z){const d=[Math.sin(ang*DEG),-Math.cos(ang*DEG)],k=0.3,tx=bx+d[0]*len*(1-k),ty=by+d[1]*len*(1-k);
-  P.push(reg(G.xform(G.teardrop(len*k,len*(1-k),10),{x:tx,y:ty,rot:ang+180}),'inner',{tone:2,z}));
-  const ex=bx+d[0]*len*0.66,ey=by+d[1]*len*0.66;
-  P.push(reg(G.ellipse(ex,ey,len*0.2,len*0.25,16,ang),'inner',{tone:3,z:z+0.1}),reg(G.ellipse(ex+d[0]*len*0.02,ey+d[1]*len*0.02,len*0.12,len*0.16,12,ang),'detail',{tone:0,z:z+0.2}));
-  P.push(Object.assign(dt(ex+d[0]*len*0.03,ey+d[1]*len*0.03,len*0.05),{z:z+0.3}),Object.assign(ln([[bx,by],[bx+d[0]*len*0.4,by+d[1]*len*0.4]],'detail'),{z:z+0.1}));}
+/* Peacock, second redraw 2026-10-13, by the method that worked for the snow lion: head, neck and
+   body are ONE contour; plumage is texture laid on it (rows of scale arcs, shingled wing coverts);
+   every train feather has its shaft, its barbs and its eye. Drawn on a 100-unit study grid against
+   three reference paintings supplied by the user. Parts of one kind share a tone. */
+const pkU=p=>p.map(([x,y])=>[x-50,y-50]),pkZ=(p,z)=>Object.assign(p,{z});
+function pkScales(P,poly,pitch,z,skip){const b=G.bbox(poly);let row=0;for(let y=b.y0+pitch*0.4;y<b.y1;y+=pitch*0.78,row++)for(let x=b.x0+(row%2?pitch/2:0);x<b.x1;x+=pitch){
+    if(!G.inside(x,y,poly)||!G.inside(x-pitch*0.45,y,poly)||!G.inside(x+pitch*0.45,y,poly)||!G.inside(x,y+pitch*0.5,poly)||(skip&&skip(x,y)))continue;P.push(pkZ(ln(G.arc(x,y,pitch*0.5,8,172,6),'detail'),z));}}
+function pkFeather(P,bx,by,ang,len,z){const d=[Math.sin(ang*DEG),-Math.cos(ang*DEG)],n=[d[1],-d[0]],k=0.32,at=t=>[bx+d[0]*len*t,by+d[1]*len*t];
+  P.push(reg(G.xform(G.teardrop(len*k,len*(1-k),12),{x:bx+d[0]*len*(1-k),y:by+d[1]*len*(1-k),rot:ang+180}),'inner',{tone:2,z}));
+  // barbs raked off the shaft toward the tip, longer where the vane is broad
+  for(let i=0;i<9;i++){const t=0.14+i*0.06,q=at(t),w=len*0.3*Math.pow(t/0.68,1.2);for(const s of [-1,1])P.push(pkZ(ln([q,[q[0]+s*n[0]*w+d[0]*w*0.7,q[1]+s*n[1]*w+d[1]*w*0.7]],'detail'),z+0.05));}
+  P.push(pkZ(ln([[bx,by],at(0.6)],'detail'),z+0.05));
+  const e=at(0.7);P.push(reg(G.ellipse(e[0],e[1],len*0.23,len*0.27,18,ang),'inner',{tone:3,z:z+0.1}),reg(G.ellipse(e[0]+d[0]*len*0.02,e[1]+d[1]*len*0.02,len*0.15,len*0.19,14,ang),'inner',{tone:0,z:z+0.2}));
+  P.push(reg(G.xform(G.teardrop(len*0.07,len*0.13,8),{x:e[0]+d[0]*len*0.03,y:e[1]+d[1]*len*0.03,rot:ang+180}),'detail',{tone:2,z:z+0.3}));}
 defMotif('bird',{name:'Peacock',term:'mayūra',mirrorOk:true,meaning:'Beauty, monsoon rains and courtship; vehicle of Kārttikeya. India\'s national bird and a constant in textiles, mehndi and folk painting.',
-fn(rng,g){
-  const P=[],o=[9,1];
-  // the train: five ranks fanning down and back from the rump, farthest first
-  [[64,7,97,172],[52,6,100,169],[40,5,104,166],[28,4,108,162],[17,3,114,156]].forEach(([dist,n,a0,a1],r)=>{for(let i=0;i<n;i++){const a=lerp(a0,a1,n>1?i/(n-1):0.5),len=16-r*0.5,d=[Math.sin(a*DEG),-Math.cos(a*DEG)];
-    peacockEye(P,o[0]+d[0]*(dist-len),o[1]+d[1]*(dist-len),a,len,r);}});
-  // legs and feet
-  for(const [x,l] of [[-9,0],[-3,1]]){P.push(Object.assign(reg(G.xform(G.teardrop(2.6,7,8),{x:x+0.6,y:17,rot:8}),'outer',{tone:0}),{z:4}),Object.assign(ln([[x+0.4,18],[x+1,23],[x-1.5,29+l]],'outer'),{z:4}));for(const a of [-62,-88,-30])P.push(Object.assign(ln([[x-1.5,29+l],[x-1.5+Math.cos(a*DEG)*-5.2,29+l+2.2+Math.sin(a*DEG)*-1.6*(a===-88?0:1)]],'inner'),{z:4}));}
-  // body, then the neck rising from the breast in an S, then the head
-  P.push(reg(G.chaikin([[-24,-3],[-19,-11],[-7,-13],[5,-9],[13,0],[9,9],[-3,13.5],[-15,12],[-23,5]],true,3),'outer',{tone:0,z:5}));
-  const neck=G.resample(G.chaikin([[-13,2],[-21,-5],[-28,-13],[-30.5,-22],[-28,-30],[-25.4,-34.4]],false,4),false,1.2);
-  P.push(reg(G.ribbon(neck,t=>6.2*Math.pow(1-t,0.7)+2.5),'outer',{tone:0,z:5}));
-  for(const t of [0.34,0.45,0.56,0.67,0.78,0.88]){const q=neck[Math.round(t*(neck.length-1))],q2=neck[Math.min(neck.length-1,Math.round(t*(neck.length-1))+2)],a=Math.atan2(q2[1]-q[1],q2[0]-q[0]),w=(6.2*Math.pow(1-t,0.7)+2.5)*0.84,n=[-Math.sin(a),Math.cos(a)];
-    P.push(Object.assign(ln(G.quad([q[0]+n[0]*w,q[1]+n[1]*w],[q[0]+Math.cos(a)*2.2,q[1]+Math.sin(a)*2.2],[q[0]-n[0]*w,q[1]-n[1]*w],6),'detail'),{z:6}));}
-  P.push(reg(G.circle(-25.4,-35.4,5,22),'outer',{tone:0,z:6}),reg([[-29.6,-37.6],[-38.6,-34.6],[-29.8,-33]],'outer',{tone:3,z:6}));
-  P.push(reg(G.ellipse(-26.6,-36.2,2.1,1.7,12),'inner',{bg:true,z:7}),Object.assign(dt(-26.8,-36.2,0.9),{z:8}));
-  // crest: a fan of stalks, each tipped with a drop
-  for(const a of [-34,-14,6,26,46]){const e=[-24.6+Math.sin(a*DEG)*11.5,-39.6-Math.cos(a*DEG)*11.5];P.push(Object.assign(ln([[-24.6,-39.8],e],'detail'),{z:6}),reg(G.xform(G.teardrop(1.5,3.6,8),{x:e[0],y:e[1],rot:a+180}),'inner',{tone:3,z:6}));}
-  // wing: a leaf laid on the body, covered in three rows of scales with long quills behind
-  const wing=G.chaikin([[-17,-7],[-7,-11],[5,-6],[14,3],[4,7],[-8,6]],true,3);P.push(reg(wing,'inner',{tone:1,z:7}));
-  [[-12,-5,3],[-9,-1,4],[-5,2.6,3]].forEach(([x0,y0,n])=>{for(let i=0;i<n;i++){const x=x0+i*4.6,y=y0+i*1.5;P.push(Object.assign(ln(G.quad([x,y-2.2],[x+3.6,y],[x,y+2.2],6),'detail'),{z:8}));}});
-  for(const y of [-2.4,0.6,3.6])P.push(Object.assign(ln([[3,y+0.6],[12.4,y+1.9]],'detail'),{z:8}));
+fn(rng,g){const P=[],R=[57,59.4];
+  // the train: six ranks hanging down and back from the rump, farthest first
+  [[62,7,112,184],[51,6,115,181],[40,5,119,177],[29,4,124,172],[17.6,3,132,164]].forEach(([dist,n,a0,a1],r)=>{for(let i=0;i<n;i++){const a=lerp(a0,a1,i/(n-1)),len=18-r*0.4,d=[Math.sin(a*DEG),-Math.cos(a*DEG)];
+    pkFeather(P,R[0]-50+d[0]*(dist-len),R[1]-50+d[1]*(dist-len),a,len,r);}});
+  // legs behind the body: a feathered thigh, the shank bent at the heel, three toes forward and one back
+  for(const x of [39.6,46.4]){P.push(reg(pkU(G.chaikin([[x-2.6,62],[x+2.6,62],[x+1.2,71],[x-1,71]],true,2)),'outer',{tone:0,z:6}));
+    P.push(reg(G.ribbon(G.resample(G.chaikin(pkU([[x,70],[x-0.8,75],[x+1.6,79],[x,84.6]]),false,2),false,1),()=>0.75),'outer',{tone:3,z:6}));
+    for(const [dx,dy] of [[-6.4,2.2],[-3.6,3.6],[0.2,4],[3.4,1.2]])P.push(reg(G.ribbon([[x-50,84.4-50],[x-50+dx*0.55,84.4-50+dy*0.7],[x-50+dx,84.4-50+dy]],t=>0.62-0.4*t),'outer',{tone:3,z:6}));}
+  // one contour: crown, nape, the S of the neck, back, rump, belly, breast, throat
+  const B=G.chaikin(pkU([[22,16],[26,12],[31,14],[32.6,20],[30,28],[28.6,36],[32,43],[42,47],[52,52],[59.4,58.4],[55,63.6],[45,66],[34,63],[25.6,55.6],[21,46],[20,38],[21.4,30],[19.4,24],[18,21],[19.6,18.4]]),true,3);
+  P.push(reg(B,'outer',{tone:0,z:7}));
+  const W=G.chaikin(pkU([[30.6,45],[40,45.4],[52,51.4],[59.6,58.6],[49,60.8],[37,57.4]]),true,2);
+  // plumage: small scales down the neck and breast, larger coverts on the wing, quills behind them
+  pkScales(P,B,2.5,7.1,(x,y)=>y<-29||G.inside(x,y,W)||G.inside(x,y+1.4,W)||G.inside(x,y-1.4,W));
+  P.push(reg(W,'inner',{tone:1,z:7.2}));pkScales(P,W,4.2,7.3,(x,y)=>x>1+y*0.2&&x>3);
+  for(const k of [0,1,2,3])P.push(pkZ(ln(pkU([[45-k*0.6,50.4+k*2],[59-k*1.4,58.2+k*0.6]]),'detail'),7.3));
+  // head: beak, eye in its pale patch, a fan of crest stalks tipped with spots
+  P.push(reg(pkU([[20.8,15.4],[11.4,18.8],[20,19.8]]),'outer',{tone:3,z:7.4}),pkZ(ln(pkU([[12.6,18.6],[20,17.8]]),'detail'),7.5));
+  P.push(reg(pkU(G.chaikin([[21.4,15.4],[24.6,13.6],[28.4,15],[28,18.4],[24,19.4],[21.4,18]],true,2)),'inner',{bg:true,z:7.4}),pkZ(ln(pkU(G.chaikin([[21.4,15.4],[24.6,13.6],[28.4,15],[28,18.4],[24,19.4],[21.4,18]],true,2)),'detail',true),7.5));
+  P.push(reg(pkU(G.chain(G.quad([22.2,16.8],[25,14.4],[27.6,16.8],8),G.quad([27.6,16.8],[25,18.6],[22.2,16.8],8)).slice(0,-1)),'detail',{tone:3,z:7.6}),pkZ(dt(25-50,16.7-50,0.95),7.7));
+  for(const a of [-36,-22,-8,6,20,34,48]){const e=[27-50+Math.sin(a*DEG)*10.5,12.6-50-Math.cos(a*DEG)*10.5];P.push(pkZ(ln([[27-50,12.6-50],e],'detail'),7.4),reg(G.xform(G.teardrop(1.25,3,8),{x:e[0],y:e[1],rot:a+180}),'inner',{tone:3,z:7.4}),pkZ(dt(e[0],e[1],0.45),7.5));}
   return fitParts(P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]));
 }});
 
@@ -401,41 +404,67 @@ fn(rng,g){const P=[];const roundEyes=rng.chance(.6),tongue=rng.chance(.45);
   for(const s of [-1,1])P.push(ln([[s*30,-14],[s*24,-18],[s*30,-22]],'detail'));
   return fitParts(P);}});
 
-defMotif('eagle',{name:'Eagle',term:'cuauhtli',mirrorOk:true,meaning:'Day sign of the eagle, drawn as a head in profile: a heavy hooked beak, a fierce ringed eye, and a ruff of dark-tipped feathers standing out behind. Emblem of the sun and of the eagle warriors; the eagle on a cactus marks where the Mexica founded Tenochtitlan.',
-fn(rng,g){const P=[],fe=(x,y,len,w,rot,tone)=>{P.push(reg(G.xform(G.petal(len,w,'pointed'),{x,y,rot}),'outer',{tone}));P.push(ln(G.xform([[0,-len*0.2],[0,-len*0.82]],{x,y,rot}),'detail'));};
-  for(const r of [196,216,236,256,276,296,316,336])fe(-2,2,44,7.4,r,1);
-  for(const r of [206,226,246,266,286,306,326])fe(0,1,32,6.6,r,0);
-  for(const r of [160,178,196])fe(4,8,26,6,r,0);
-  P.push(reg(G.chaikin([[-10,-20],[4,-25],[18,-20],[25,-8],[22,6],[10,15],[-6,13],[-15,2],[-16,-10]],true,3),'outer',{tone:0}));
-  for(const [x,y,r] of [[-9,-12,250],[-10,-2,262],[-6,8,236],[-1,-18,300]])P.push(ln(G.xform(G.quad([-3,0],[0,-5],[3,0],6),{x,y,rot:r}),'detail'));
-  P.push(reg(G.chaikin([[15,-17],[28,-18],[40,-12],[46,-2],[45,9],[40,15],[37,7],[30,1],[16,-1]],true,3),'outer',{tone:2}));
-  P.push(reg(G.chaikin([[14,4],[27,4],[35,9],[31,15],[20,15],[13,11]],true,2),'outer',{tone:2}),reg(G.chaikin([[18,0.6],[30,2.6],[35,7.4],[24,5.4]],true,2),'inner',{tone:3}));
-  P.push(ln(G.bez([16,-9],[24,-10],[32,-8],[38,-3],8),'detail'),dt(27,-11.6,1));
-  P.push(reg(G.circle(8,-10,6.6,22),'inner',{tone:2}));azEye(P,8,-10,4.4);P.push(ln(G.bez([-1,-15],[5,-20],[13,-19],[17,-13],8),'outer'));
-  return fitParts(P);}});
-defMotif('serpent',{name:'Serpent',term:'coatl',mirrorOk:true,meaning:'The serpent, day sign coatl: coiled, scaled, the mouth open on its fangs and forked tongue, rattles at the tail. Plumed, it is Quetzalcoatl, lord of wind, learning and the morning star; its banded body becomes step-frets and its coils frame temples.',
-fn(rng,g){const P=[],cp=[[22,-22],[4,-31],[-20,-29],[-38,-13],[-39,9],[-24,24],[0,27],[20,20],[32,24]],sp=G.resample(G.chaikin(cp,false,3),false,1.4),W=t=>t>0.86?Math.max(1.6,9*(1-(t-0.86)/0.14*0.7)):9;
-  // rattles, then the body over their root
-  for(let i=0;i<4;i++)P.push(reg(G.ellipse(35+i*4.6,24.6+i*1.2,3.6-i*0.5,4.4-i*0.6,12,14),'outer',{tone:2}));
+defMotif('eagle',{name:'Eagle',term:'cuauhtli',mirrorOk:true,meaning:'Day sign of the eagle, drawn as a head in profile: a heavy hooked beak, a fierce eye under a jutting brow, and feathers lying over one another down the neck, each tipped dark. Emblem of the sun and of the eagle warriors; the eagle on a cactus marks where the Mexica founded Tenochtitlan.',
+fn(rng,g){const P=[],Z=(p,z)=>Object.assign(p,{z});
+  /* Second redraw: the plumage is shingled, not a sunburst. Feathers lie in rows that sweep back
+     and down from the face; each row is drawn over the roots of the row behind it. */
+  const fe=(x,y,len,w,rot,z)=>{const T=q=>G.xform(q,{x,y,rot});P.push(reg(T(G.chain(G.bez([0,0],[-w*1.5,-len*0.3],[-w*0.9,-len*0.78],[0,-len],10),G.bez([0,-len],[w*0.9,-len*0.78],[w*1.5,-len*0.3],[0,0],10)).slice(0,-1)),'outer',{tone:0,z}));
+    P.push(reg(T([[0,-len],[-w*0.56,-len*0.74],[0,-len*0.62],[w*0.56,-len*0.74]]),'inner',{tone:1,z:z+0.01}),Z(ln(T([[0,-len*0.08],[0,-len*0.6]]),'detail'),z+0.02));};
+  // rows from the back of the neck forward: [distance from the eye, feathers, first and last direction]
+  [[44,9,188,304],[34,8,192,306],[24,7,198,308],[14,5,208,300]].forEach(([dist,n,a0,a1],r)=>{for(let i=0;i<n;i++){const a=lerp(a0,a1,i/(n-1)),d=[Math.sin(a*DEG),-Math.cos(a*DEG)],len=22-r*1.6;fe(4+d[0]*(dist-len),-6+d[1]*(dist-len),len,4.4-r*0.3,a,r);}});
+  // crown feathers lying back over the skull
+  for(const [x,y,a] of [[3,-20,284],[9,-23,290],[-4,-15,278]])fe(x,y,17,3.6,a,3.5);
+  // skull and face: one contour from the crown round the cheek to the throat
+  P.push(reg(G.chaikin([[3,-21],[11,-24],[18,-21],[21,-13],[19,-3],[14,4],[6,7],[-2,4],[-5,-4],[-4,-14]],true,3),'outer',{tone:0,z:4}));
+  for(const [x,y,a] of [[0,0,238],[-2,-9,250],[4,6,222],[9,0,230]])P.push(Z(ln(G.xform(G.quad([-2.6,0],[0,-4.4],[2.6,0],6),{x,y,rot:a}),'detail'),4.1));
+  // beak: the upper mandible hooks over the lower; cere, nostril, gape, tongue
+  P.push(reg(G.chaikin([[13,-1],[24,-1],[32,2.4],[31,5.6],[22,6.4],[13,4.4]],true,2),'outer',{tone:2,z:4.5}),reg(G.chaikin([[17,-2.6],[27,-2],[33,1.4],[24,0.6]],true,2),'inner',{tone:3,z:4.6}));
+  P.push(reg(G.chaikin([[15,-18],[26,-19],[36,-14.6],[41.6,-7],[42,1],[39.6,7.6],[37.6,2],[34,-2.6],[27,-4.6],[15,-4.6]],true,2),'outer',{tone:2,z:5}));
+  P.push(Z(ln(G.bez([21,-18.4],[19.4,-14],[19.4,-9],[21,-4.8],8),'inner'),5.1),Z(dt(26.6,-13,1.1),5.2));
+  // the eye under its brow
+  P.push(reg(G.chaikin([[2,-16],[10,-19.6],[19,-16],[20,-12.6],[11,-14],[3,-12.6]],true,2),'inner',{tone:1,z:5.5}));
+  P.push(reg(G.ellipse(11.4,-10,4.6,3.4,18,8),'inner',{tone:2,z:5.4}),reg(G.ellipse(11.8,-10,3,2.5,14,8),'inner',{bg:true,z:5.5}),Z(dt(12.2,-10.2,1.25),5.6));
+  return fitParts(P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]));}});
+defMotif('serpent',{name:'Serpent',term:'coatl',mirrorOk:true,meaning:'The serpent, day sign coatl: coiled, covered in scales, the mouth open on its fangs and forked tongue, rattles at the tail. Plumed, it is Quetzalcoatl, lord of wind, learning and the morning star; its banded body becomes step-frets and its coils frame temples.',
+fn(rng,g){const P=[],cp=[[20,-21],[2,-31],[-22,-30],[-40,-14],[-41,9],[-26,25],[-2,28],[18,20],[30,24]],sp=G.resample(G.chaikin(cp,false,3),false,1.2),n=sp.length,W=t=>t>0.84?Math.max(2,11.6*(1-(t-0.84)/0.16*0.72)):t<0.1?8+t/0.1*3.6:11.6;
+  const fr=k=>{const a=sp[Math.max(0,k-1)],b=sp[Math.min(n-1,k+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return{q:sp[k],t:[(b[0]-a[0])/l,(b[1]-a[1])/l],n:[-(b[1]-a[1])/l,(b[0]-a[0])/l],w:W(k/(n-1))};};
+  // rattles: tapering segments, each lapped by the one before
+  for(let i=4;i>=0;i--)P.push(reg(G.ellipse(33+i*4.4,25+i*1.5,4.2-i*0.55,5.2-i*0.7,14,16),'outer',{tone:2}));
   P.push(reg(G.ribbon(sp,W),'outer',{tone:0}));
-  const n=sp.length;P.push(ln(sp.slice(4,n-6).map((q,i)=>{const k=i+4,a=sp[Math.max(0,k-1)],b=sp[Math.min(n-1,k+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,w=W(k/(n-1))*0.42;return[q[0]+(b[1]-a[1])/l*w,q[1]-(b[0]-a[0])/l*w];}),'detail'));
-  for(let k=6;k<n-10;k+=5){const q=sp[k],a=sp[k-1],b=sp[k+1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,t=[(b[0]-a[0])/l,(b[1]-a[1])/l],nn=[-t[1],t[0]],w=W(k/(n-1));
-    for(const o of [-0.62,-0.18])P.push(ln(G.quad([q[0]+nn[0]*w*(o-0.2),q[1]+nn[1]*w*(o-0.2)],[q[0]+nn[0]*w*o+t[0]*3,q[1]+nn[1]*w*o+t[1]*3],[q[0]+nn[0]*w*(o+0.2),q[1]+nn[1]*w*(o+0.2)],5),'detail'));}
-  // head: brow, upper and lower jaw, fangs, forked tongue
-  P.push(reg(G.chaikin([[16,-30],[26,-36],[40,-36],[50,-30],[52,-23],[38,-22],[24,-17],[15,-18]],true,2),'outer',{tone:0}));
-  P.push(reg(G.chaikin([[18,-19],[30,-19],[44,-15],[46,-11],[32,-10],[19,-13]],true,2),'outer',{tone:0}));
-  P.push(reg([[40,-22.4],[42,-17],[44,-22.4]],'inner',{bg:true}),reg([[33,-21.6],[34.6,-17.4],[36.4,-21.6]],'inner',{bg:true}));
-  P.push(reg(azTube([[36,-16.6],[48,-17],[56,-13]],t=>1.6-0.8*t),'inner',{tone:3}),reg(azTube([[49,-16.6],[55,-20],[58,-25]],t=>1.1-0.6*t),'inner',{tone:3}));
-  P.push(reg(G.circle(30,-28.6,4.6,18),'inner',{tone:2}));azEye(P,30,-28.6,3);P.push(dt(47,-29,0.9));
+  // belly: a band down the inside of the coil, cut into plates
+  const side=1,bel=[];for(let k=3;k<n-4;k++){const f=fr(k);bel.push([f.q[0]+f.n[0]*f.w*0.5*side,f.q[1]+f.n[1]*f.w*0.5*side]);}
+  P.push(reg(G.ribbon(sp.slice(3,n-4),t=>W(0.05+0.9*t)).filter((q,i,A)=>true).slice(0,0).concat(bel,sp.slice(3,n-4).map((q,i)=>{const f=fr(i+3);return[f.q[0]+f.n[0]*f.w*side,f.q[1]+f.n[1]*f.w*side];}).reverse()),'inner',{tone:2}));
+  for(let k=5;k<n-5;k+=3){const f=fr(k);P.push(ln([[f.q[0]+f.n[0]*f.w*0.5,f.q[1]+f.n[1]*f.w*0.5],[f.q[0]+f.n[0]*f.w,f.q[1]+f.n[1]*f.w]],'detail'));}
+  // scales: three lapped rows of crescents along the back and flank
+  for(let k=5;k<n-6;k+=3){const f=fr(k);[-0.8,-0.36,0.08].forEach((o,j)=>{const c=[f.q[0]+f.n[0]*f.w*(o+ (k%2?0.11:0))+f.t[0]*(j%2?1.4:0),f.q[1]+f.n[1]*f.w*(o+(k%2?0.11:0))+f.t[1]*(j%2?1.4:0)],h=f.w*0.21;
+      P.push(ln(G.quad([c[0]-f.n[0]*h,c[1]-f.n[1]*h],[c[0]+f.t[0]*h*1.9,c[1]+f.t[1]*h*1.9],[c[0]+f.n[0]*h,c[1]+f.n[1]*h],6),'detail'));});}
+  // head: one contour for skull and both jaws, the mouth a notch in it; drawn, then enlarged about the neck
+  const H0=P.length;
+  P.push(reg(G.chaikin([[36,-20],[46,-21],[52,-17.6],[51,-12.6],[37,-12]],true,2),'inner',{tone:3}));
+  P.push(reg(G.chaikin([[13,-27],[20,-35],[32,-39],[44,-37],[52,-31],[55,-24.6],[51,-22],[42,-21.6],[31,-19],[42,-14.6],[49,-13],[50,-9],[40,-7],[27,-8.6],[17,-14],[12,-20]],true,2),'outer',{tone:0}));
+  for(const x of [41,46.4])P.push(reg([[x-1.2,-21.4],[x+1.2,-21.4],[x+0.4,-16.6]],'inner',{bg:true}),ln([[x-1.2,-21.4],[x+0.4,-16.6],[x+1.2,-21.4]],'detail'));
+  P.push(reg(azTube([[39,-16.6],[50,-17.6],[58,-15],[63,-9]],t=>1.5-0.8*t),'inner',{tone:3}),reg(azTube([[55,-16.6],[61,-18.6],[65,-23]],t=>1-0.6*t),'inner',{tone:3}));
+  P.push(reg(G.chaikin([[24,-33.6],[32,-36.6],[40,-33],[39,-30],[31,-31.6],[25,-30]],true,2),'inner',{tone:2}),reg(G.circle(32.4,-28,3.6,16),'inner',{bg:true}),dt(32.8,-28,1.5),dt(50.6,-29.6,0.9));
+  P.push(ln(G.bez([16,-17],[22,-13],[30,-11.6],[38,-11],8),'detail'));
+  for(let i=H0;i<P.length;i++){if(P[i].kind==='dot'){P[i]=Object.assign({},P[i],{x:20+(P[i].x-20)*1.3,y:-22+(P[i].y+22)*1.3,r:P[i].r*1.3});}else P[i]=Object.assign({},P[i],{pts:P[i].pts.map(([x,y])=>[20+(x-20)*1.3,-22+(y+22)*1.3])});}
   return fitParts(P);}});
-defMotif('lizard',{name:'Lizard',term:'cuetzpalin',mirrorOk:true,meaning:'Day sign of the lizard: seen from above and a little to the side, four legs splayed with long toes, the tail sweeping round. It stands for abundance and quick life; spotted lizards are common on clay stamps.',
-fn(rng,g){const P=[],leg=(cp)=>{P.push(reg(azTube(cp,t=>3.6-1.5*t),'outer',{tone:0}));const e=cp[cp.length-1],q=cp[cp.length-2],a=Math.atan2(e[1]-q[1],e[0]-q[0]);for(const d of [-0.75,-0.25,0.25,0.75])P.push(ln([e,[e[0]+Math.cos(a+d)*7,e[1]+Math.sin(a+d)*7]],'outer'));};
-  leg([[-13,-10],[-18,-24],[-29,-30]]);leg([[-11,-2],[-19,9],[-31,11]]);leg([[13,-8],[20,-21],[31,-24]]);leg([[14,1],[13,14],[24,21]]);
-  const sp=G.resample(G.chaikin([[-46,-9],[-36,-10],[-22,-8],[-4,-7],[12,-4],[26,6],[38,20],[42,34],[34,43],[24,40]],false,3),false,1.3);
-  P.push(reg(G.ribbon(sp,t=>t<0.08?2.6+t/0.08*4.2:t<0.2?6.8-(t-0.08)/0.12*1.6:t<0.5?5.2+4.4*Math.sin(Math.PI*(t-0.2)/0.3):Math.max(0.7,5.2*(1-(t-0.5)/0.5*0.9))),'outer',{tone:0}));
-  for(let k=14;k<sp.length*0.62;k+=6)P.push(reg(G.circle(sp[k][0],sp[k][1]-1.4,1.7,10),'inner',{tone:2}));
-  P.push(ln(sp.slice(Math.round(sp.length*0.5),sp.length-4).filter((q,i)=>i%1===0).map(([x,y])=>[x,y]),'detail'));
-  azEye(P,-37.6,-11.4,2.2);P.push(ln([[-46,-8],[-39,-6.6]],'detail'),reg(azTube([[-46,-8.6],[-52,-7],[-56,-10]],t=>1-0.5*t),'inner',{tone:3}));
+defMotif('lizard',{name:'Lizard',term:'cuetzpalin',mirrorOk:true,meaning:'Day sign of the lizard: seen from above and a little to the side, four legs splayed with long toes, a crest down the back, the tail sweeping round. It stands for abundance and quick life; spotted lizards are common on clay stamps.',
+fn(rng,g){const P=[],leg=(cp,ws)=>{const sp=G.resample(G.chaikin(cp,false,2),false,1.2);P.push(reg(G.ribbon(sp,t=>{const k=t*(ws.length-1),i=Math.min(ws.length-2,Math.floor(k));return lerp(ws[i],ws[i+1],k-i);}),'outer',{tone:0}));
+    const e=cp[cp.length-1],q=cp[cp.length-2],a=Math.atan2(e[1]-q[1],e[0]-q[0]);for(const d of [-0.9,-0.45,0,0.45,0.9])P.push(reg(G.ribbon([e,[e[0]+Math.cos(a+d)*4.6,e[1]+Math.sin(a+d)*4.6],[e[0]+Math.cos(a+d*1.25)*9,e[1]+Math.sin(a+d*1.25)*9]],t=>0.8-0.6*t),'outer',{tone:0}));};
+  // limbs first, so the body covers their roots: thigh, a bend, a thin shank, five long toes
+  leg([[-13,-8],[-20,-17],[-19,-27],[-27,-32]],[5,4.2,2.6,2]);leg([[-11,-3],[-20,4],[-19,12],[-28,16]],[5,4.2,2.6,2]);
+  leg([[13,-6],[21,-14],[20,-24],[28,-29]],[5.4,4.6,2.8,2.1]);leg([[15,2],[23,8],[21,17],[29,23]],[5.4,4.6,2.8,2.1]);
+  const sp=G.resample(G.chaikin([[-47,-10],[-38,-11.4],[-24,-9],[-6,-7.6],[12,-4],[27,6],[39,20],[43,33],[36,43],[25,41],[22,34]],false,3),false,1.2),n=sp.length,W=t=>t<0.07?2.4+t/0.07*4.6:t<0.19?7-(t-0.07)/0.12*1.8:t<0.5?5.2+5*Math.sin(Math.PI*(t-0.19)/0.31):Math.max(0.6,5.2*(1-(t-0.5)/0.5*0.92));
+  const fr=k=>{const a=sp[Math.max(0,k-1)],b=sp[Math.min(n-1,k+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return{q:sp[k],t:[(b[0]-a[0])/l,(b[1]-a[1])/l],n:[-(b[1]-a[1])/l,(b[0]-a[0])/l],w:W(k/(n-1))};};
+  // crest: a row of small teeth along the spine side, under the body's edge
+  for(let k=Math.round(n*0.2);k<n*0.74;k+=3){const f=fr(k),o=-1;P.push(reg([[f.q[0]+f.n[0]*f.w*o-f.t[0]*1.5,f.q[1]+f.n[1]*f.w*o-f.t[1]*1.5],[f.q[0]+f.n[0]*(f.w+2.6)*o,f.q[1]+f.n[1]*(f.w+2.6)*o],[f.q[0]+f.n[0]*f.w*o+f.t[0]*1.5,f.q[1]+f.n[1]*f.w*o+f.t[1]*1.5]],'outer',{tone:2}));}
+  P.push(reg(G.ribbon(sp,W),'outer',{tone:0}));
+  // scales: lapped crescents over the back, bands across the tail, a line for the belly
+  for(let k=Math.round(n*0.17);k<n*0.52;k+=3){const f=fr(k);[-0.56,-0.12,0.32].forEach((o,j)=>{const c=[f.q[0]+f.n[0]*f.w*o+f.t[0]*(j%2?1.4:0),f.q[1]+f.n[1]*f.w*o+f.t[1]*(j%2?1.4:0)],h=f.w*0.2;P.push(ln(G.quad([c[0]-f.n[0]*h,c[1]-f.n[1]*h],[c[0]+f.t[0]*h*2,c[1]+f.t[1]*h*2],[c[0]+f.n[0]*h,c[1]+f.n[1]*h],6),'detail'));});}
+  for(let k=Math.round(n*0.55);k<n-6;k+=4){const f=fr(k);P.push(ln([[f.q[0]-f.n[0]*f.w*0.9,f.q[1]-f.n[1]*f.w*0.9],[f.q[0]+f.n[0]*f.w*0.9,f.q[1]+f.n[1]*f.w*0.9]],'detail'));}
+  // head: eye, the line of the jaw, nostril, forked tongue
+  P.push(reg(G.circle(-37.4,-12.6,2.5,14),'inner',{tone:2}),reg(G.circle(-37.4,-12.6,1.6,10),'inner',{bg:true}),dt(-37.4,-12.6,0.75),ln(G.bez([-47,-9],[-42,-7.6],[-37,-7.6],[-32,-9],8),'detail'),dt(-44.6,-11.6,0.5));
+  P.push(reg(azTube([[-47,-9.6],[-53,-8.6],[-57,-11.6]],t=>0.9-0.5*t),'inner',{tone:3}),reg(azTube([[-52,-8.8],[-56,-6.6],[-59,-6.4]],t=>0.7-0.4*t),'inner',{tone:3}));
   return fitParts(P);}});
 defMotif('turtle',{name:'Turtle',term:'ayotl',meaning:'The turtle carries the earth on its back in Mesoamerican cosmology; its plated shell is a ready-made pattern field.',
 fn(rng,g){const P=[];
