@@ -206,3 +206,17 @@ the tool page passes on to `app.html`.
 - [ ] Consider adding Music and Writing sections once there's content for them
 - [ ] Swap the About portrait image for something more deliberate than the light-painting photo, if desired
 - [ ] When ready, create a GitHub repo (e.g. `shankardba/shankfiddle-site`) and push
+
+## Search basics (added 2026-10-13, from the Search Audit)
+
+- `assets/images/logo-320.png` is the logo every page loads (77 KB). `logo.png` (487 KB, 1000×1000)
+  is kept as the original; don't link pages to it.
+- Wrapper pages (`tools/*/index.html`, `sandbox/*/index.html`) carry a `<meta name="description">`
+  of 50–160 characters, worded from the tool cards. Add one whenever a tool is added. The copied
+  `app.html` files are not edited here: descriptions for those belong in each tool's own repo.
+- `index.html` has share tags (`og:*`) and a JSON-LD block (WebSite + Person). Four URLs in that
+  block use `https://shankardba.github.io/shankfiddle/`; change them when shankfiddle.com is connected.
+- `404.html` is self-contained (inline styles) because it is served at any wrong address. Its home
+  link switches between `/shankfiddle/` (GitHub Pages) and `/` (own domain) by script.
+- Still to do once the domain works: `sitemap.xml`, `robots.txt`, canonical links, Search Console.
+  And a heading plus a short paragraph on each wrapper page.

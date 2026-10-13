@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page not found — shankFiddle</title>
+<meta name="robots" content="noindex">
+<style>
+  /* Self-contained: this page is served at any wrong address, so it can't rely on relative paths. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #0b0508; color: #f2e6d8; }
+  body { display: grid; place-items: center; padding: 24px; font-family: Georgia, 'Times New Roman', serif; text-align: center; }
+  h1 { font-size: clamp(28px, 6vw, 44px); font-weight: 600; letter-spacing: 0.04em; color: #f0a83c; }
+  p { margin-top: 14px; font-size: 18px; line-height: 1.6; max-width: 34em; }
+  a { display: inline-block; margin-top: 26px; padding: 12px 22px; border: 1px solid rgba(240, 168, 60, 0.6); border-radius: 999px; color: #f0a83c; text-decoration: none; font-family: system-ui, sans-serif; font-size: 15px; }
+  a:hover, a:focus-visible { background: rgba(240, 168, 60, 0.12); }
+</style>
+</head>
+<body>
+<main>
+  <h1>That page isn't here.</h1>
+  <p>The link may be old, or the address may have a typo. The music and art tools are all on the home page.</p>
+  <a id="home" href="/">Back to shankFiddle</a>
+</main>
+<script>
+  // On GitHub Pages the site lives under /shankfiddle/; on its own domain it will live at /.
+  if (location.pathname.indexOf('/shankfiddle/') === 0) document.getElementById('home').href = '/shankfiddle/';
+</script>
+</body>
+</html>
