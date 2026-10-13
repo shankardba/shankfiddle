@@ -180,7 +180,7 @@ fn(W,H,u){const s=u*1.5,h=s*Math.sqrt(3)/2,P=[];
     P.push({kind:'region',closed:true,role:'inner',tone:0,pts:[[ox,oy+h],[ox+s/2,oy],[ox+s,oy+h]]});}
   return P;}});
 defTile('ichimatsu',{name:'Checkerboard',term:'ichimatsu 市松',meaning:'Alternating squares, named after the Edo kabuki actor Sanogawa Ichimatsu, whose hakama carried it; the unbroken repeat reads as prosperity continuing.',
-fn(W,H,u){const s=u*1.2,P=[];for(let j=0;j<=Math.ceil(H/s);j++)for(let i=0;i<=Math.ceil(W/s);i++)if((i+j)%2===0)P.push({kind:'region',closed:true,role:'inner',tone:0,pts:[[i*s,j*s],[i*s+s,j*s],[i*s+s,j*s+s],[i*s,j*s+s]]});return P;}});
+fn(W,H,u){const s=u*1.2,P=[];for(let j=0;j<=Math.ceil(H/s);j++)for(let i=0;i<=Math.ceil(W/s);i++)if((i+j)%2===0)P.push({kind:'region',closed:true,role:'inner',ci:0,ns:SG.cov!==false,pts:[[i*s,j*s],[i*s+s,j*s],[i*s+s,j*s+s],[i*s,j*s+s]]});return P;}});
 /* Hitomezashi ("one-stitch") sashiko: every grid line is stitched on/off/on…, and each line
    only chooses whether it starts on or off. Those single bits make the closed shapes. */
 defTile('hitomezashi',{name:'One-stitch grid',term:'hitomezashi 一目刺し',meaning:'Running stitches on a grid where each row and column only chooses whether to start "on" or "off" — closed crosses, steps and stars emerge from those single choices.',

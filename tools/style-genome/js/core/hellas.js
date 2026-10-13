@@ -106,8 +106,8 @@ defBorder('grMeander',{name:'Meander',fn(L,t){const k=t*0.8/5,n=Math.max(1,Math.
 defBorder('grMeanderHatched',{name:'Hatched meander',fn(L,t){const k=t*0.72/4,n=Math.max(1,Math.round(L/(4*k))),kx=L/(4*n),y0=t*0.14,pts=[];
   for(let i=0;i<n;i++)for(const [x,y] of [[0,4],[0,0],[2,0],[2,4]])pts.push([i*4*kx+x*kx+kx,y0+y*k]);
   return[{kind:'region',closed:true,role:'outer',plain:true,forceFill:'hatch',pts:G.band(pts,Math.min(k,kx)*0.9)},heLn([[0,t*0.03],[L,t*0.03]],'outer'),heLn([[0,t*0.97],[L,t*0.97]],'outer')];}});
-defBorder('grPalmetteLotus',{name:'Palmette and lotus chain',fn(L,t){const n=Math.max(2,Math.round(L/(t*0.78))),w=L/n,s=t/104,P=[];
-  for(let i=0;i<n;i++){const x=(i+0.5)*w;P.push(...FL.put(i%2?HE.lotus(40):HE.palmette(7,40),{x,y:t*0.52,s:s*0.98}));
+defBorder('grPalmetteLotus',{name:'Palmette and lotus chain',fn(L,t){const n=Math.max(2,Math.round(L/(t*0.92))),w=L/n,s=t/56,P=[];
+  for(let i=0;i<n;i++){const x=(i+0.5)*w;P.push(...FL.put(i%2?HE.lotus(40):HE.palmette(7,40),{x,y:t*0.58,s:s*0.98}));
     P.push(flP(G.ribbon(G.resample(G.bez([x+w*0.14,t*0.9],[x+w*0.35,t*1.02],[x+w*0.65,t*1.02],[x+w*0.86,t*0.9],12),false,1.2),()=>Math.max(0.7,t*0.02)),0));}
   return P.map(p=>Object.assign({},p,{pts:p.pts.map(([x,y])=>[clamp(x,0,L),clamp(y,0,t)])}));}});
 defBorder('grTongues',{name:'Tongues',fn(L,t){const n=Math.max(3,Math.round(L/(t*0.42))),w=L/n,P=[heLn([[0,t*0.04],[L,t*0.04]],'outer')];
@@ -127,8 +127,8 @@ defBorder('grWave',{name:'Running wave',fn(L,t){const n=Math.max(2,Math.round(L/
   return P.map(p=>Object.assign({},p,{pts:p.pts.map(([x,y])=>[clamp(x,0,L),clamp(y,0,t)])}));}});
 defBorder('grIvy',{name:'Ivy',fn(L,t){const n=Math.max(2,Math.round(L/(t*0.9))),w=L/n,st=[],P=[];for(let i=0;i<=n*16;i++){const x=i/(n*16)*L;st.push([x,t/2+t*0.1*Math.sin(x/w*Math.PI*2)]);}
   P.push(flP(G.ribbon(st,()=>Math.max(0.7,t*0.022)),0));
-  const leaf=s=>G.chain(G.bez([0,0],[-s*0.9,-s*0.5],[-s*0.7,-s*1.3],[0,-s*1.5],8),G.bez([0,-s*1.5],[s*0.7,-s*1.3],[s*0.9,-s*0.5],[0,0],8)).slice(0,-1);
-  for(let i=0;i<n*2;i++){const x=(i+0.5)*w/2,up=i%2===0;P.push(flP(G.xform(leaf(t*0.22),{x,y:t/2+(up?-t*0.08:t*0.08),rot:up?(i%4?-18:18):180+(i%4?18:-18)}),0));
+  const leaf=s=>G.chaikin([[0,-0.25],[-0.35,0.05],[-0.75,-0.15],[-0.82,-0.6],[-0.46,-1.05],[0,-1.5],[0.46,-1.05],[0.82,-0.6],[0.75,-0.15],[0.35,0.05]].map(([a,b])=>[a*s,b*s]),true,2);
+  for(let i=0;i<n*2;i++){const x=(i+0.5)*w/2,up=i%2===0;P.push(flP(G.xform(leaf(t*0.27),{x,y:t/2+(up?-t*0.06:t*0.06),rot:up?(i%4?-16:16):180+(i%4?16:-16)}),0));
     P.push({kind:'dot',x:x+w*0.2,y:t/2+(up?t*0.26:-t*0.26),r:Math.max(1,t*0.035),role:'inner'});}
   return P;}});
 defBorder('grCircles',{name:'Linked circles',fn(L,t){const n=Math.max(2,Math.round(L/(t*0.92))),w=L/n,P=[heLn([[0,t*0.04],[L,t*0.04]],'outer'),heLn([[0,t*0.96],[L,t*0.96]],'outer')];

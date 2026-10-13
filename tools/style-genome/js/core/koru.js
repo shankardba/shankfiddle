@@ -70,8 +70,8 @@ upright:true,figure:true,mirrorOk:true,fn(){const P=[];const c=[];for(let i=0;i<
   for(let i=22;i<46;i+=4){const s=DS.at(c,i/70),h=hw(i/70);P.push(ln([[s.x-s.ty*h*0.95,s.y+s.tx*h*0.95],[s.x-s.ty*h*0.5,s.y+s.tx*h*0.5]],'detail'));}
   return fitParts(P,96);}});
 defMotif('pikorua',{name:'Twist',term:'pikorua',meaning:'Two strands crossing and returning: the joining of two people or two peoples, and paths that part and meet again. A carving form of recent centuries, named for the pikopiko fern.',
-upright:true,fn(){const loop=[];for(let i=0;i<120;i++){const t=i/120*2*Math.PI;loop.push([15*Math.sin(2*t),-34*Math.cos(t)]);}
-  return fitParts(weaveLoops([loop],{cord:10.5,gap:2.8}),96);}});
+upright:true,fn(){const loop=[];for(let i=0;i<121;i++){const t=i/121*2*Math.PI;loop.push([15*Math.sin(2*t),-34*Math.cos(t)]);}
+  return fitParts(weaveCurves([{pts:loop,closed:true}],10.5,SG.knock?3:1.3),96);}});
 defMotif('fernFrond',{name:'Fern frond',term:'rau ponga',meaning:'The silver fern: a frond laid pale side up marks a path at night. The national emblem, and the grown form of the koru.',
 fn(){const P=[];const sp=FK.spline([[-30,42],[-16,18],[-2,-6],[14,-28],[25,-40]],false,12);P.push(reg(DS.tube(sp,t=>1.9-1.4*t),'outer'));
   const n=13;for(let i=1;i<=n;i++){const f=0.08+i/n*0.8,s=DS.at(sp,f),l=24*Math.pow(1-f,0.7)+3.5;for(const sd of [-1,1]){const a=Math.atan2(s.ty,s.tx)/DEG+sd*(62-f*14);

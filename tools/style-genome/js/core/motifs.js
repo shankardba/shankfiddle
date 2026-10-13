@@ -91,25 +91,40 @@ fn(rng,g){
   return fitParts(P);
 }});
 
-defMotif('bird',{name:'Peacock',term:'mayūra',meaning:'Beauty, monsoon rains and courtship; vehicle of Kārttikeya. India\'s national bird and a constant in textiles, mehndi and folk painting.',
+/* Peacock, redrawn 2026-10-13 against three reference paintings supplied by the user (two in the
+   Madhubani manner). What they share: the bird in profile on thin legs; a small head with a fan of
+   stalked crest feathers; a long neck in an S; a plump body with the wing laid on it as rows of
+   scales; and the train, which carries the picture — rank on rank of eye feathers, each a drop
+   with rings inside it, the nearer ranks lying over the roots of the farther ones.
+   Parts of one kind share a tone, so a tradition colours all the eyes alike, all the vanes alike. */
+function peacockEye(P,bx,by,ang,len,z){const d=[Math.sin(ang*DEG),-Math.cos(ang*DEG)],k=0.3,tx=bx+d[0]*len*(1-k),ty=by+d[1]*len*(1-k);
+  P.push(reg(G.xform(G.teardrop(len*k,len*(1-k),10),{x:tx,y:ty,rot:ang+180}),'inner',{tone:2,z}));
+  const ex=bx+d[0]*len*0.66,ey=by+d[1]*len*0.66;
+  P.push(reg(G.ellipse(ex,ey,len*0.2,len*0.25,16,ang),'inner',{tone:3,z:z+0.1}),reg(G.ellipse(ex+d[0]*len*0.02,ey+d[1]*len*0.02,len*0.12,len*0.16,12,ang),'detail',{tone:0,z:z+0.2}));
+  P.push(Object.assign(dt(ex+d[0]*len*0.03,ey+d[1]*len*0.03,len*0.05),{z:z+0.3}),Object.assign(ln([[bx,by],[bx+d[0]*len*0.4,by+d[1]*len*0.4]],'detail'),{z:z+0.1}));}
+defMotif('bird',{name:'Peacock',term:'mayūra',mirrorOk:true,meaning:'Beauty, monsoon rains and courtship; vehicle of Kārttikeya. India\'s national bird and a constant in textiles, mehndi and folk painting.',
 fn(rng,g){
-  const P=[];
-  const feathers=[{r:96,l:50},{r:118,l:56},{r:140,l:48}];
-  for(const f of feathers){
-    P.push(reg(G.xform(G.petal(f.l,10,'drop'),{x:12,y:8,rot:f.r}),'outer'));
-    const tip=G.xform([[0,-f.l*0.74]],{x:12,y:8,rot:f.r})[0];
-    P.push(reg(G.circle(tip[0],tip[1],5.4,18),'inner'));P.push(dt(tip[0],tip[1],2.2));
-    P.push(ln(G.xform([[0,-6],[0,-f.l*0.6]],{x:12,y:8,rot:f.r}),'detail'));
-  }
-  P.push(ln([[-4,20],[-6,38]],'outer'),ln([[-12,38],[-6,38],[0,40]],'outer'),ln([[6,20],[6,38]],'outer'),ln([[0,38],[6,38],[12,40]],'outer'));
-  P.push(reg(G.ellipse(2,9,18,13,40,-18),'outer'));
-  P.push(reg(G.chain(G.bez([-11,4],[-19,-6],[-20,-18],[-17,-28]),G.bez([-8,-29],[-10,-16],[-2,-6],[7,-1])),'outer'));
-  P.push(reg(G.circle(-12.5,-32,6.6,20),'outer'));
-  P.push(reg([[-18,-34],[-27,-30],[-18,-28.5]],'outer'));
-  P.push(dt(-13.5,-33,1.4));
-  for(const [ex,ey] of [[-17,-47],[-12,-50],[-7,-47]]){P.push(ln([[-12,-38],[ex,ey]],'detail'));P.push(dt(ex,ey,1.8));}
-  P.push(reg(G.xform(G.petal(24,7,'drop'),{x:-3,y:6,rot:108}),'inner'));
-  return fitParts(P);
+  const P=[],o=[9,1];
+  // the train: five ranks fanning down and back from the rump, farthest first
+  [[64,7,97,172],[52,6,100,169],[40,5,104,166],[28,4,108,162],[17,3,114,156]].forEach(([dist,n,a0,a1],r)=>{for(let i=0;i<n;i++){const a=lerp(a0,a1,n>1?i/(n-1):0.5),len=16-r*0.5,d=[Math.sin(a*DEG),-Math.cos(a*DEG)];
+    peacockEye(P,o[0]+d[0]*(dist-len),o[1]+d[1]*(dist-len),a,len,r);}});
+  // legs and feet
+  for(const [x,l] of [[-9,0],[-3,1]]){P.push(Object.assign(reg(G.xform(G.teardrop(2.6,7,8),{x:x+0.6,y:17,rot:8}),'outer',{tone:0}),{z:4}),Object.assign(ln([[x+0.4,18],[x+1,23],[x-1.5,29+l]],'outer'),{z:4}));for(const a of [-62,-88,-30])P.push(Object.assign(ln([[x-1.5,29+l],[x-1.5+Math.cos(a*DEG)*-5.2,29+l+2.2+Math.sin(a*DEG)*-1.6*(a===-88?0:1)]],'inner'),{z:4}));}
+  // body, then the neck rising from the breast in an S, then the head
+  P.push(reg(G.chaikin([[-24,-3],[-19,-11],[-7,-13],[5,-9],[13,0],[9,9],[-3,13.5],[-15,12],[-23,5]],true,3),'outer',{tone:0,z:5}));
+  const neck=G.resample(G.chaikin([[-13,2],[-21,-5],[-28,-13],[-30.5,-22],[-28,-30],[-25.4,-34.4]],false,4),false,1.2);
+  P.push(reg(G.ribbon(neck,t=>6.2*Math.pow(1-t,0.7)+2.5),'outer',{tone:0,z:5}));
+  for(const t of [0.34,0.45,0.56,0.67,0.78,0.88]){const q=neck[Math.round(t*(neck.length-1))],q2=neck[Math.min(neck.length-1,Math.round(t*(neck.length-1))+2)],a=Math.atan2(q2[1]-q[1],q2[0]-q[0]),w=(6.2*Math.pow(1-t,0.7)+2.5)*0.84,n=[-Math.sin(a),Math.cos(a)];
+    P.push(Object.assign(ln(G.quad([q[0]+n[0]*w,q[1]+n[1]*w],[q[0]+Math.cos(a)*2.2,q[1]+Math.sin(a)*2.2],[q[0]-n[0]*w,q[1]-n[1]*w],6),'detail'),{z:6}));}
+  P.push(reg(G.circle(-25.4,-35.4,5,22),'outer',{tone:0,z:6}),reg([[-29.6,-37.6],[-38.6,-34.6],[-29.8,-33]],'outer',{tone:3,z:6}));
+  P.push(reg(G.ellipse(-26.6,-36.2,2.1,1.7,12),'inner',{bg:true,z:7}),Object.assign(dt(-26.8,-36.2,0.9),{z:8}));
+  // crest: a fan of stalks, each tipped with a drop
+  for(const a of [-34,-14,6,26,46]){const e=[-24.6+Math.sin(a*DEG)*11.5,-39.6-Math.cos(a*DEG)*11.5];P.push(Object.assign(ln([[-24.6,-39.8],e],'detail'),{z:6}),reg(G.xform(G.teardrop(1.5,3.6,8),{x:e[0],y:e[1],rot:a+180}),'inner',{tone:3,z:6}));}
+  // wing: a leaf laid on the body, covered in three rows of scales with long quills behind
+  const wing=G.chaikin([[-17,-7],[-7,-11],[5,-6],[14,3],[4,7],[-8,6]],true,3);P.push(reg(wing,'inner',{tone:1,z:7}));
+  [[-12,-5,3],[-9,-1,4],[-5,2.6,3]].forEach(([x0,y0,n])=>{for(let i=0;i<n;i++){const x=x0+i*4.6,y=y0+i*1.5;P.push(Object.assign(ln(G.quad([x,y-2.2],[x+3.6,y],[x,y+2.2],6),'detail'),{z:8}));}});
+  for(const y of [-2.4,0.6,3.6])P.push(Object.assign(ln([[3,y+0.6],[12.4,y+1.9]],'detail'),{z:8}));
+  return fitParts(P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]));
 }});
 
 defMotif('diya',{name:'Oil lamp',term:'dīpa / diyā',meaning:'Light over darkness, knowledge over ignorance — the central image of Dīpāvalī, lit at thresholds and shrines.',
@@ -322,12 +337,20 @@ fn(rng,g){
       if(cr>best){best=cr;ULZII_LOOP=L[0];}}
   }
   const loop=G.chaikin(G.xform((ULZII_LOOP||[[0,0],[2,2],[4,0],[2,-2]]).map(([x,y])=>[x-3,y-3]),{rot:45,s:15}),true,3);
-  return fitParts([{kind:'line',closed:true,role:'outer',pts:G.offset(loop,4,true)},{kind:'line',closed:true,role:'outer',pts:G.offset(loop,-4,true)}]);
+  return fitParts(weaveCurves([{pts:loop,closed:true}],8,SG.knock?2.4:0));
 }});
-defBorder('alkhan',{name:'Hammer fret (alkhan)',fn(L,t){const u=t*1.15,n=Math.max(2,Math.round(L/u)),w=L/n,P=[ln([[0,t/2],[L,t/2]],'outer')];
-  for(let i=0;i<n;i++){const x=(i+.5)*w,up=i%2===0,ye=up?t*0.16:t*0.84;P.push(ln([[x,t/2],[x,ye]],'outer'),ln([[x-w*0.3,ye],[x+w*0.3,ye]],'outer'));}return P;}});
-defBorder('scrollBand',{name:'Running scroll',fn(L,t){const u=t*1.7,n=Math.max(2,Math.round(L/u)),w=L/n,P=[];const s=[];for(let i=0;i<=n*28;i++){const x=i/(n*28)*L;s.push([x,t/2+t*0.2*Math.sin(x/w*Math.PI*2)]);}P.push(ln(s,'outer'));
-  for(let i=0;i<n;i++){for(const [ph,sgn] of [[0.25,-1],[0.75,1]]){const cx=(i+ph)*w,cy=t/2+sgn*t*0.02;const sp=[];for(let k=0;k<=24;k++){const u2=k/24,a=(sgn<0?Math.PI/2:-Math.PI/2)+sgn*u2*Math.PI*2.2,r=t*0.2*(1-0.75*u2);sp.push([cx+Math.cos(a)*r,cy-sgn*t*0.2+Math.sin(a)*r]);}P.push(ln(sp,'inner'));}}return P;}});
+defBorder('alkhan',{name:'Hammer fret (alkhan)',fn(L,t){
+  // the meander as a solid band of one width between two rails: each unit turns in on itself and hands on to the next along the foot
+  const k=t*0.7/5,n=Math.max(1,Math.round(L/(6*k))),kx=L/(6*n),y0=t*0.15,bw=Math.min(k,kx)*0.46,pts=[];
+  for(let i=0;i<n;i++)for(const [x,y] of KEY_UNIT)pts.push([i*6*kx+x*kx+kx*0.5,y0+y*k]);pts.push([L,y0+5*k]);pts.unshift([0,y0+5*k]);
+  return[pathBand(pts,bw),ln([[0,t*0.04],[L,t*0.04]],'outer'),ln([[0,t*0.96],[L,t*0.96]],'outer')].map(p=>Object.assign(p,{pts:p.pts.map(([x,y])=>[clamp(x,0,L),clamp(y,0,t)])}));}});
+defBorder('scrollBand',{name:'Running scroll',fn(L,t){
+  // a wave that curls over: each unit rises from the foot line and winds in one and a quarter turns, tapering as it goes
+  const n=Math.max(2,Math.round(L/(t*1.25))),w=L/n,P=[reg(G.band([[0,t*0.86],[L,t*0.86]],t*0.07),'outer')];
+  for(let i=0;i<n;i++){const cx=(i+0.56)*w,cy=t*0.47,r0=t*0.31,sp=G.bez([i*w,t*0.86],[i*w+w*0.22,t*0.86],[cx-r0*1.25,cy+r0*0.9],[cx-r0,cy],8);
+    for(let k=1;k<=34;k++){const u=k/34,a=(180+u*450)*DEG,r=r0*(1-0.74*u);sp.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);}
+    P.push(reg(G.ribbon(G.resample(sp,false,Math.max(1,t*0.03)),u=>Math.max(0.4,t*0.06*(1-0.72*u))),'outer'));P.push(dt(cx,cy,Math.max(0.8,t*0.03)));}
+  return P.map(p=>p.kind==='dot'?p:Object.assign(p,{pts:p.pts.map(([x,y])=>[clamp(x,0,L),clamp(y,0,t)])}));}});
 
 /* ---------- Mesoamerican vocabulary ----------
    Rectilinear and banded: the step-fret is built as a mitred band around an orthogonal
@@ -343,13 +366,20 @@ const FRET=[[-45,40],[-45,25],[-25,25],[-25,5],[-5,5],[-5,-40],[40,-40],[40,10],
 defMotif('stepFret',{name:'Step-fret',term:'xicalcoliuhqui',meaning:'"Twisted gourd" in Nahuatl: stairs that turn into a square spiral, cousin of the Greek key. Found on jewellery, masks, pottery, featherwork, codices and buildings, and still in use. No single meaning is agreed — readings include water, clouds, lightning, wind, the serpent\'s body and the cycle between sun and earth. The single most repeated unit of Mesoamerican ornament (greca in Spanish).',
 fn(rng,g){const P=[pathBand(FRET,10,'outer')];if(rng.chance(.5))P.push(dt(29,-8,3,'detail'));return fitParts(P);}});
 
-defMotif('ollin',{name:'Movement sign',term:'ollin',meaning:'The day sign of motion and earthquake: two crossed bands around a central eye. The present world, the Fifth Sun, is named 4 Ollin and was expected to end in earthquakes.',
-fn(rng,g){const P=[];
-  for(const a of [-38,38]){P.push(reg(G.xform(G.roundRect(-46,-10,46,10,9),{rot:a}),'outer'));}
-  for(const [x,y,s] of [[-34,-30,1],[34,-30,-1],[-34,30,-1],[34,30,1]]){const sp=[];for(let k=0;k<=18;k++){const u=k/18,a=u*Math.PI*1.6*s,r=9*(1-0.6*u);sp.push([x+Math.cos(a)*r*(x<0?1:-1),y+Math.sin(a)*r]);}P.push(ln(sp,'detail'));}
-  P.push(reg(G.circle(0,0,15,32),'inner'));P.push(reg(G.circle(0,0,7,24),'inner'));P.push(dt(0,0,2.6));
+/* Aztec day signs, redrawn 2026-10-13 against four reference sheets supplied by the user (two
+   modern charts of the twenty signs, a set of black silhouettes, and a redrawn codex page).
+   A day sign is a compact emblem: heads in profile with a ringed eye, bodies as bands of one
+   width, everything outlined, colour flat. Parts of one kind share a tone. */
+const azTube=(cp,w,step=1.4)=>G.ribbon(G.resample(G.chaikin(cp,false,3),false,step),w);
+const azEye=(P,x,y,r)=>{P.push(reg(G.circle(x,y,r,18),'inner',{bg:true}),dt(x,y,r*0.42));};
+defMotif('ollin',{name:'Movement sign',term:'ollin',meaning:'The day sign of motion and earthquake: two bands crossed about a central eye, a dart above. The present world, the Fifth Sun, is named 4 Ollin and was expected to end in earthquakes.',
+fn(rng,g){const P=[],arm=[[-6,-10],[6,-10],[15,-32],[15,-44],[10,-49],[-10,-49],[-15,-44],[-15,-32]];
+  P.push(reg([[-5,-12],[0,-50],[5,-12]],'outer',{tone:2}));P.push(reg(G.circle(0,47,3,12),'inner',{tone:2}));
+  for(let i=0;i<4;i++){const r=45+i*90;P.push(reg(G.xform(arm,{rot:r}),'outer',{tone:i%2}));P.push(ln(G.xform([[-3.4,-15],[3.4,-15],[10.6,-33],[10.6,-42.4],[8,-45],[-8,-45],[-10.6,-42.4],[-10.6,-33]],{rot:r}),'detail',true));
+    P.push(reg(G.xform(G.circle(0,-37,3.6,14),{rot:r}),'inner',{bg:true}),ln(G.xform(G.circle(0,-37,3.6,14),{rot:r}),'detail',true));}
+  P.push(reg(G.circle(0,0,15,36),'outer',{tone:2}),reg(G.circle(0,0,11.4,30),'inner',{bg:true}));
+  P.push(reg(G.chain(G.quad([-9,0],[0,-8],[9,0],8),G.quad([9,0],[0,6],[-9,0],8)).slice(0,-1),'inner',{tone:0}),dt(0,-0.6,2.6),ln(G.quad([-9,0],[0,-8],[9,0],8),'outer'));
   return fitParts(P);}});
-
 defMotif('sunStone',{name:'Calendar disc',term:'—',meaning:'After the Piedra del Sol: concentric rings — eight great rays, a band of twenty day-sign cells, and the movement sign at the centre — time drawn as a target.',
 fn(rng,g){const P=[reg(G.circle(0,0,50,72),'outer')];
   for(let i=0;i<8;i++){const a=i*45;P.push(reg(G.xform([[-8,-29],[0,-49],[8,-29]],{rot:a}),'outer'));P.push(reg(G.xform([[-4.5,-29],[0,-40],[4.5,-29]],{rot:a+22.5}),'inner'));}
@@ -371,50 +401,64 @@ fn(rng,g){const P=[];const roundEyes=rng.chance(.6),tongue=rng.chance(.45);
   for(const s of [-1,1])P.push(ln([[s*30,-14],[s*24,-18],[s*30,-22]],'detail'));
   return fitParts(P);}});
 
-defMotif('eagle',{name:'Eagle',term:'cuauhtli',meaning:'Day sign of the eagle, emblem of the sun and of the eagle warriors. The eagle on a cactus devouring a serpent marks where the Mexica founded Tenochtitlan.',
-fn(rng,g){const side=[];
-  const lens=[30,34,36,34,28];[-118,-98,-78,-58,-38].forEach((a,i)=>side.push(reg(G.xform(G.petal(lens[i],5.2,'round'),{x:-10,y:-2,rot:a}),'outer')));
-  [-60,-90,-120].forEach(a=>side.push(ln(G.xform([[0,-6],[0,-22]],{x:-10,y:-2,rot:a}),'detail')));
-  const tail=[160,170,180,190,200].map(a=>reg(G.xform(G.petal(22,4.4,'round'),{x:0,y:18,rot:a}),'outer'));
-  const P=[...side,...mirParts(side),...tail];
-  P.push(reg(G.ellipse(0,6,11,18,32),'outer'));
-  for(let k=0;k<3;k++)P.push(ln([[-6,k*7],[0,k*7+4],[6,k*7]],'detail'));
-  P.push(reg(G.circle(0,-20,8,24),'outer'));P.push(reg([[-5,-23],[-15,-20],[-11,-15],[-6,-17]],'outer'));P.push(dt(-2,-22,1.6));
-  for(const x of [-3,0,3])P.push(ln([[x,-28],[x*1.6,-35]],'detail'));
-  for(const s of [-1,1])P.push(ln([[s*5,23],[s*7,30],[s*11,31]],'outer'));
+defMotif('eagle',{name:'Eagle',term:'cuauhtli',mirrorOk:true,meaning:'Day sign of the eagle, drawn as a head in profile: a heavy hooked beak, a fierce ringed eye, and a ruff of dark-tipped feathers standing out behind. Emblem of the sun and of the eagle warriors; the eagle on a cactus marks where the Mexica founded Tenochtitlan.',
+fn(rng,g){const P=[],fe=(x,y,len,w,rot,tone)=>{P.push(reg(G.xform(G.petal(len,w,'pointed'),{x,y,rot}),'outer',{tone}));P.push(ln(G.xform([[0,-len*0.2],[0,-len*0.82]],{x,y,rot}),'detail'));};
+  for(const r of [196,216,236,256,276,296,316,336])fe(-2,2,44,7.4,r,1);
+  for(const r of [206,226,246,266,286,306,326])fe(0,1,32,6.6,r,0);
+  for(const r of [160,178,196])fe(4,8,26,6,r,0);
+  P.push(reg(G.chaikin([[-10,-20],[4,-25],[18,-20],[25,-8],[22,6],[10,15],[-6,13],[-15,2],[-16,-10]],true,3),'outer',{tone:0}));
+  for(const [x,y,r] of [[-9,-12,250],[-10,-2,262],[-6,8,236],[-1,-18,300]])P.push(ln(G.xform(G.quad([-3,0],[0,-5],[3,0],6),{x,y,rot:r}),'detail'));
+  P.push(reg(G.chaikin([[15,-17],[28,-18],[40,-12],[46,-2],[45,9],[40,15],[37,7],[30,1],[16,-1]],true,3),'outer',{tone:2}));
+  P.push(reg(G.chaikin([[14,4],[27,4],[35,9],[31,15],[20,15],[13,11]],true,2),'outer',{tone:2}),reg(G.chaikin([[18,0.6],[30,2.6],[35,7.4],[24,5.4]],true,2),'inner',{tone:3}));
+  P.push(ln(G.bez([16,-9],[24,-10],[32,-8],[38,-3],8),'detail'),dt(27,-11.6,1));
+  P.push(reg(G.circle(8,-10,6.6,22),'inner',{tone:2}));azEye(P,8,-10,4.4);P.push(ln(G.bez([-1,-15],[5,-20],[13,-19],[17,-13],8),'outer'));
   return fitParts(P);}});
-
-defMotif('serpent',{name:'Feathered serpent',term:'coatl',meaning:'The serpent — day sign coatl — and, plumed, Quetzalcoatl\'s emblem of wind, learning and the morning star. Its banded body becomes step-frets and its coils frame temples.',
-fn(rng,g){const c=[];for(let i=0;i<=60;i++){const a=(-50-i/60*262)*DEG;c.push([Math.cos(a)*30,Math.sin(a)*30]);}
-  const P=[reg(G.ribbon(c,t=>t<0.85?8:8*(1-(t-0.85)/0.15)*0.85+1.2),'outer')];
-  for(let i=4;i<c.length-6;i+=4){const a=c[i],b=c[i+1];let tx=b[0]-a[0],ty=b[1]-a[1];const l=Math.hypot(tx,ty);tx/=l;ty/=l;P.push(ln([[a[0]-ty*7,a[1]+tx*7],[a[0]+ty*7,a[1]-tx*7]],'detail'));}
-  P.push(reg([[14,-24],[24,-38],[46,-36],[48,-28],[30,-25]],'outer'));
-  P.push(reg([[18,-20],[30,-22],[46,-18],[44,-11],[24,-13]],'outer'));
-  for(let x=30;x<=44;x+=5)P.push(reg([[x,-25.5],[x+2.5,-25.5],[x+1.2,-22.5]],'detail'));
-  P.push(reg(G.circle(24,-31,3.4,14),'inner'));P.push(dt(24,-31,1.4));
-  P.push(ln([[47,-21],[54,-24],[57,-20]],'detail'));P.push(ln([[47,-21],[55,-18]],'detail'));
-  for(const a of [-20,-45,-70])P.push(reg(G.xform(G.petal(16,3.5,'drop'),{x:16,y:-36,rot:a-60}),'outer'));
-  for(const a of [100,125,150])P.push(reg(G.xform(G.petal(12,3,'drop'),{x:c[c.length-1][0],y:c[c.length-1][1],rot:a}),'outer'));
+defMotif('serpent',{name:'Serpent',term:'coatl',mirrorOk:true,meaning:'The serpent, day sign coatl: coiled, scaled, the mouth open on its fangs and forked tongue, rattles at the tail. Plumed, it is Quetzalcoatl, lord of wind, learning and the morning star; its banded body becomes step-frets and its coils frame temples.',
+fn(rng,g){const P=[],cp=[[22,-22],[4,-31],[-20,-29],[-38,-13],[-39,9],[-24,24],[0,27],[20,20],[32,24]],sp=G.resample(G.chaikin(cp,false,3),false,1.4),W=t=>t>0.86?Math.max(1.6,9*(1-(t-0.86)/0.14*0.7)):9;
+  // rattles, then the body over their root
+  for(let i=0;i<4;i++)P.push(reg(G.ellipse(35+i*4.6,24.6+i*1.2,3.6-i*0.5,4.4-i*0.6,12,14),'outer',{tone:2}));
+  P.push(reg(G.ribbon(sp,W),'outer',{tone:0}));
+  const n=sp.length;P.push(ln(sp.slice(4,n-6).map((q,i)=>{const k=i+4,a=sp[Math.max(0,k-1)],b=sp[Math.min(n-1,k+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,w=W(k/(n-1))*0.42;return[q[0]+(b[1]-a[1])/l*w,q[1]-(b[0]-a[0])/l*w];}),'detail'));
+  for(let k=6;k<n-10;k+=5){const q=sp[k],a=sp[k-1],b=sp[k+1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,t=[(b[0]-a[0])/l,(b[1]-a[1])/l],nn=[-t[1],t[0]],w=W(k/(n-1));
+    for(const o of [-0.62,-0.18])P.push(ln(G.quad([q[0]+nn[0]*w*(o-0.2),q[1]+nn[1]*w*(o-0.2)],[q[0]+nn[0]*w*o+t[0]*3,q[1]+nn[1]*w*o+t[1]*3],[q[0]+nn[0]*w*(o+0.2),q[1]+nn[1]*w*(o+0.2)],5),'detail'));}
+  // head: brow, upper and lower jaw, fangs, forked tongue
+  P.push(reg(G.chaikin([[16,-30],[26,-36],[40,-36],[50,-30],[52,-23],[38,-22],[24,-17],[15,-18]],true,2),'outer',{tone:0}));
+  P.push(reg(G.chaikin([[18,-19],[30,-19],[44,-15],[46,-11],[32,-10],[19,-13]],true,2),'outer',{tone:0}));
+  P.push(reg([[40,-22.4],[42,-17],[44,-22.4]],'inner',{bg:true}),reg([[33,-21.6],[34.6,-17.4],[36.4,-21.6]],'inner',{bg:true}));
+  P.push(reg(azTube([[36,-16.6],[48,-17],[56,-13]],t=>1.6-0.8*t),'inner',{tone:3}),reg(azTube([[49,-16.6],[55,-20],[58,-25]],t=>1.1-0.6*t),'inner',{tone:3}));
+  P.push(reg(G.circle(30,-28.6,4.6,18),'inner',{tone:2}));azEye(P,30,-28.6,3);P.push(dt(47,-29,0.9));
   return fitParts(P);}});
-
-defMotif('lizard',{name:'Lizard',term:'cuetzpalin',meaning:'Day sign of the lizard, abundance and quick vitality; spotted lizards are common on clay stamps.',
+defMotif('lizard',{name:'Lizard',term:'cuetzpalin',mirrorOk:true,meaning:'Day sign of the lizard: seen from above and a little to the side, four legs splayed with long toes, the tail sweeping round. It stands for abundance and quick life; spotted lizards are common on clay stamps.',
+fn(rng,g){const P=[],leg=(cp)=>{P.push(reg(azTube(cp,t=>3.6-1.5*t),'outer',{tone:0}));const e=cp[cp.length-1],q=cp[cp.length-2],a=Math.atan2(e[1]-q[1],e[0]-q[0]);for(const d of [-0.75,-0.25,0.25,0.75])P.push(ln([e,[e[0]+Math.cos(a+d)*7,e[1]+Math.sin(a+d)*7]],'outer'));};
+  leg([[-13,-10],[-18,-24],[-29,-30]]);leg([[-11,-2],[-19,9],[-31,11]]);leg([[13,-8],[20,-21],[31,-24]]);leg([[14,1],[13,14],[24,21]]);
+  const sp=G.resample(G.chaikin([[-46,-9],[-36,-10],[-22,-8],[-4,-7],[12,-4],[26,6],[38,20],[42,34],[34,43],[24,40]],false,3),false,1.3);
+  P.push(reg(G.ribbon(sp,t=>t<0.08?2.6+t/0.08*4.2:t<0.2?6.8-(t-0.08)/0.12*1.6:t<0.5?5.2+4.4*Math.sin(Math.PI*(t-0.2)/0.3):Math.max(0.7,5.2*(1-(t-0.5)/0.5*0.9))),'outer',{tone:0}));
+  for(let k=14;k<sp.length*0.62;k+=6)P.push(reg(G.circle(sp[k][0],sp[k][1]-1.4,1.7,10),'inner',{tone:2}));
+  P.push(ln(sp.slice(Math.round(sp.length*0.5),sp.length-4).filter((q,i)=>i%1===0).map(([x,y])=>[x,y]),'detail'));
+  azEye(P,-37.6,-11.4,2.2);P.push(ln([[-46,-8],[-39,-6.6]],'detail'),reg(azTube([[-46,-8.6],[-52,-7],[-56,-10]],t=>1-0.5*t),'inner',{tone:3}));
+  return fitParts(P);}});
+defMotif('turtle',{name:'Turtle',term:'ayotl',meaning:'The turtle carries the earth on its back in Mesoamerican cosmology; its plated shell is a ready-made pattern field.',
 fn(rng,g){const P=[];
-  P.push(reg(G.ribbon(G.bez([0,16],[0,30],[14,36],[10,50],18),t=>5.5*(1-t)+0.6),'outer'));
-  for(const [s,y,dir] of [[-1,-8,-1],[1,-8,-1],[-1,10,1],[1,10,1]])P.push(ln([[s*5,y],[s*15,y+dir*3],[s*17,y+dir*10]],'outer'),ln([[s*17,y+dir*10],[s*13,y+dir*13]],'outer'),ln([[s*17,y+dir*10],[s*21,y+dir*12]],'outer'));
-  P.push(reg(G.ellipse(0,0,7.5,20,32),'outer'));P.push(reg(G.ellipse(0,-25,6,8,24),'outer'));
-  for(const s of [-1,1])P.push(dt(s*3,-27,1.2));
-  for(const y of [-12,-5,2,9,16])P.push(dt(0,y,1.8));
+  for(const [x,y,r] of [[-27,-24,-48],[27,-24,48],[-25,24,-132],[25,24,132]])P.push(reg(G.xform(G.chaikin([[-5,2],[-8,-13],[-2,-24],[5,-22],[7,-10],[5,2]],true,2),{x,y,rot:r}),'outer',{tone:1}));
+  P.push(reg([[-4,34],[4,34],[0,47]],'outer',{tone:1}),reg(G.chaikin([[-7,-33],[-6,-44],[0,-49],[6,-44],[7,-33]],true,2),'outer',{tone:1}));azEye(P,-3.2,-42,1.5);azEye(P,3.2,-42,1.5);
+  P.push(reg(G.ellipse(0,0,29,36,48),'outer',{tone:0}),ln(G.ellipse(0,0,24.6,31.4,44),'inner',true));
+  const hex=(cx,cy,w,h)=>[[cx-w,cy],[cx-w/2,cy-h],[cx+w/2,cy-h],[cx+w,cy],[cx+w/2,cy+h],[cx-w/2,cy+h]];
+  for(const cy of [-19,0,19])P.push(reg(hex(0,cy,10,9),'inner',{tone:2}));
+  for(const s of [-1,1])for(const cy of [-9.5,9.5]){P.push(ln([[s*10,cy-9.5],[s*17,cy],[s*10,cy+9.5]],'detail'),ln([[s*17,cy],[s*23.6,cy]],'detail'));}
+  for(const s of [-1,1]){P.push(ln([[s*5,-28],[s*9,-30.6]],'detail'),ln([[s*5,28],[s*9,30.6]],'detail'));}
   return fitParts(P);}});
-
-defMotif('turtle',{name:'Turtle',term:'ayotl',meaning:'The turtle carries the earth on its back in Mesoamerican cosmology; its gridded shell is a ready-made pattern field.',
-fn(rng,g){const P=[];
-  for(const [x,y,r] of [[-20,-16,-50],[20,-16,50],[-18,18,-130],[18,18,130]])P.push(reg(G.xform(G.petal(16,6,'round'),{x,y,rot:r}),'outer'));
-  P.push(reg([[-3,24],[3,24],[0,33]],'outer'));P.push(reg(G.ellipse(0,-30,7,8,24),'outer'));
-  P.push(reg(G.ellipse(0,0,24,27,48),'outer'));P.push(ln(G.ellipse(0,0,17,20,40),'inner',true));
-  for(const x of [-8,8])P.push(ln([[x,-Math.sqrt(1-(x/17)**2)*20],[x,Math.sqrt(1-(x/17)**2)*20]],'detail'));
-  for(const y of [-7,7])P.push(ln([[-Math.sqrt(1-(y/20)**2)*17,y],[Math.sqrt(1-(y/20)**2)*17,y]],'detail'));
-  return fitParts(P);}});
-
+defMotif('calli',{name:'House',term:'calli',upright:true,meaning:'Day sign of the house: a wall with a T-shaped doorway on a platform, under a roof with stepped battlements. It is the temple as much as the dwelling, and stands for rest, the west and the enclosed dark.',
+fn(){const R=(a,b,c,d)=>[[a,b],[c,b],[c,d],[a,d]],P=[reg(R(-38,30,38,42),'outer',{tone:2}),reg(R(-28,-14,28,30),'outer',{bg:true}),reg(R(-16,-6,16,3),'inner',{tone:1}),reg(R(-6,3,6,30),'inner',{tone:1}),reg(R(-34,-23,34,-14),'outer',{tone:0})];
+  for(const x of [-22,0,22])P.push(reg([[x-9,-23],[x-9,-31],[x-4.6,-31],[x-4.6,-38],[x+4.6,-38],[x+4.6,-31],[x+9,-31],[x+9,-23]],'outer',{tone:0}));
+  P.push(ln(R(-28,-14,28,30),'outer',true),ln([[-38,36],[38,36]],'detail'),ln([[-34,-18.5],[34,-18.5]],'detail'));return fitParts(P);}});
+defMotif('xochitl',{name:'Flower',term:'xochitl',upright:true,meaning:'Day sign of the flower, the twentieth and last: a blossom in section, petals curling out either side of a tall centre, stamens above. Flowers are beauty, pleasure and song; “flower and song” is the Nahuatl phrase for poetry.',
+fn(){const P=[];for(const s of [-1,1]){P.push(reg(azTube([[s*7,30],[s*34,27],[s*45,6],[s*38,-12],[s*27,-9],[s*30,2]],t=>6.4-3.4*t),'outer',{tone:0}));P.push(reg(azTube([[s*5,22],[s*21,13],[s*24,-10],[s*15,-25],[s*8,-21],[s*10,-13]],t=>5.6-3*t),'outer',{tone:1}));}
+  P.push(reg(G.chaikin([[-5.6,24],[-6.6,-24],[-4,-33],[4,-33],[6.6,-24],[5.6,24]],true,2),'outer',{tone:0}),ln([[0,18],[0,-27]],'detail'));
+  for(const [x,y] of [[-10,-42],[0,-46],[10,-42]]){P.push(ln([[x*0.3,-33],[x,y+3]],'detail'),reg(G.circle(x,y,3.2,12),'inner',{tone:2}));}
+  P.push(reg(G.circle(0,27,8.6,22),'outer',{tone:2}),reg(G.circle(0,27,4,14),'inner',{bg:true}),reg([[-20,36],[20,36],[16,44],[-16,44]],'outer',{tone:1}),ln([[-18,40],[18,40]],'detail'));return fitParts(P);}});
+defMotif('tecpatl',{name:'Flint knife',term:'tecpatl',upright:true,meaning:'Day sign of the flint: a leaf-shaped blade, half red and half white, with an eye and a row of teeth where the two colours meet, because the knife is alive and hungry. It is the sacrificial knife and the north.',
+fn(){const L=G.bez([0,-48],[-26,-22],[-26,22],[0,48],22),Rr=G.bez([0,48],[26,22],[26,-22],[0,-48],22),P=[reg(L.concat([[0,-48]]),'outer',{bg:true}),reg(Rr.concat([[0,48]]),'outer',{tone:1}),ln(L.concat(Rr.slice(1,-1)),'outer',true),ln([[0,-48],[0,48]],'inner')];
+  P.push(reg(G.circle(-8,-12,6,18),'inner',{tone:2}));azEye(P,-8,-12,3.8);P.push(reg([[-17,6],[17,6],[15,15],[-15,15]],'inner',{bg:true}));for(let i=-2;i<=2;i++)P.push(ln([[i*6,6],[i*5.6,15]],'detail'));P.push(ln([[-16,10.5],[16,10.5]],'detail'));return fitParts(P);}});
 defMotif('pyramid',{name:'Stepped pyramid',term:'teocalli',meaning:'The temple platform: stacked tiers, one great stair, a shrine on top. A mountain made by people, and a common shorthand for all of Mesoamerica.',
 fn(rng,g){const P=[];const n=5;
   for(let i=0;i<n;i++){const y1=44-i*12,y0=y1-12,w1=48-i*7.5,w0=w1-3.5;P.push(reg([[-w1,y1],[w1,y1],[w0,y0],[-w0,y0]],'outer'));}
@@ -441,8 +485,13 @@ fn(rng,g){const P=[reg(G.roundRect(-42,-34,42,34,12),'outer')];
   half(-28,-2);half(2,28);P.push(ln([[-36,0],[36,0]],'detail'));
   return fitParts(P);}});
 
-defBorder('greca',{name:'Running step-fret',fn(L,t){const u=t*1.7,n=Math.max(1,Math.round(L/u)),w=L/n,bw=Math.max(2,t*0.11),P=[pathBand([[0,t*0.86],[L,t*0.86]],bw)];
-  for(let i=0;i<n;i++){const x=i*w;P.push(pathBand([[x+w*0.08,t*0.86],[x+w*0.08,t*0.62],[x+w*0.3,t*0.62],[x+w*0.3,t*0.14],[x+w*0.9,t*0.14],[x+w*0.9,t*0.62],[x+w*0.55,t*0.62],[x+w*0.55,t*0.38],[x+w*0.7,t*0.38]],bw));}return P;}});
+defBorder('greca',{name:'Running step-fret',fn(L,t){
+  // xicalcoliuhqui: a solid stepped triangle climbing to a squared hook that turns back on itself
+  const n=Math.max(1,Math.round(L/(t*1.5))),w=L/n,bw=Math.max(2,t*0.1),P=[pathBand([[0,t*0.9],[L,t*0.9]],bw)];
+  for(let i=0;i<n;i++){const X=a=>i*w+a*w,Y=b=>b*t;
+    P.push(reg([[0.04,0.9],[0.04,0.72],[0.14,0.72],[0.14,0.56],[0.24,0.56],[0.24,0.4],[0.34,0.4],[0.34,0.9]].map(([a,b])=>[X(a),Y(b)]),'outer'));
+    P.push(pathBand([[0.34,0.45],[0.34,0.12],[0.92,0.12],[0.92,0.66],[0.58,0.66],[0.58,0.38],[0.76,0.38]].map(([a,b])=>[X(a),Y(b)]),bw));}
+  return P;}});
 defBorder('stepDiamond',{name:'Stepped lozenges',fn(L,t){const n=Math.max(1,Math.round(L/(t*1.2))),w=L/n,P=[ln([[0,t*0.08],[L,t*0.08]],'inner'),ln([[0,t*0.92],[L,t*0.92]],'inner')];
   for(let i=0;i<n;i++){const cx=(i+.5)*w;P.push(reg(steppedDiamond(cx,t/2,w*0.44,t*0.38,3),'outer'));P.push(reg(steppedDiamond(cx,t/2,w*0.18,t*0.16,2),'inner'));}return P;}});
 
@@ -634,24 +683,26 @@ defMotif('sakura',{name:'Cherry blossom',term:'sakura 桜',
 meaning:'Five petals, each with a notch at its tip. Blossom that falls at its peak — beauty and the shortness of life; a spring motif on kimono, crests and lacquer.',
 fn(rng,g){const P=[];const L=G.chain(G.bez([0,-7],[-12,-14],[-19,-34],[-10,-46],14),G.quad([-10,-46],[-5,-50],[0,-41],8));
   const petal=L.concat(L.slice(0,-1).reverse().map(([x,y])=>[-x,y])).slice(0,-1);
-  const rot=rng.range(0,72);for(let i=0;i<5;i++)P.push(reg(G.xform(petal,{rot:rot+i*72}),'outer'));
+  const rot=rng.range(0,72);for(let i=0;i<5;i++)P.push(reg(G.xform(petal,{rot:rot+i*72}),'outer',{tone:0}));
   for(let i=0;i<5;i++){const a=(rot+i*72+36)*DEG;P.push(ln([[Math.cos(a-Math.PI/2)*6,Math.sin(a-Math.PI/2)*6],[Math.cos(a-Math.PI/2)*16,Math.sin(a-Math.PI/2)*16]],'detail'));P.push(dt(Math.cos(a-Math.PI/2)*17.5,Math.sin(a-Math.PI/2)*17.5,1.8));}
   P.push(reg(G.circle(0,0,6.5,20),'inner'));
   return P;}});
 defMotif('kikuMon',{name:'Chrysanthemum crest',term:'kiku-mon 菊紋',
 meaning:'Round-tipped petals radiating from a disc. The chrysanthemum stands for long life; a sixteen-petal, double-rowed form is the imperial seal, so the crests generated here use other petal counts.',
 fn(rng,g){const n=rng.pick([12,12,14]);const P=[];const w=Math.PI*34/n*0.9;
-  if(rng.chance(.45))for(let i=0;i<n;i++)P.push(reg(polarPetal(9,39,w*0.95,(i+0.5)/n*360,'round'),'inner'));
-  for(let i=0;i<n;i++)P.push(reg(polarPetal(9,41,w,i/n*360,'round'),'outer'));
+  if(rng.chance(.45))for(let i=0;i<n;i++)P.push(reg(polarPetal(9,39,w*0.95,(i+0.5)/n*360,'round'),'inner',{tone:1}));
+  for(let i=0;i<n;i++)P.push(reg(polarPetal(9,41,w,i/n*360,'round'),'outer',{tone:0}));
   P.push(reg(G.circle(0,0,11,32),'outer'));
   if(rng.chance(.5))P.push(ln(G.circle(0,0,56,110),'outer',true));
   return fitParts(P);}});
 defMotif('tomoe',{name:'Swirling commas',term:'mitsudomoe 三つ巴',
 meaning:'Two or three comma shapes chasing each other round a circle: water swirling, or thunder. A crest of shrines (Hachiman) and of many families, and painted on taiko drums.',
-fn(rng,g){const P=[];const R=46,d=0.4*R,a=0.33*R;const n=rng.pick([3,3,3,2]);
+fn(rng,g){const P=[];const R=46,n=rng.pick([3,3,3,2]),h=n===3?0.42*R:0.5*R,sweep=n===3?118:176,pw=n===3?1.2:1.05;
+  /* each comma is a band whose outer edge stays on the circle: its centre line sits half a width
+     inside the rim, the width falling from the round head to nothing at the tail */
   for(let k=0;k<n;k++){const th0=k*360/n-90;const pts=[];
-    for(let i=0;i<=46;i++){const u=i/46,ang=(th0+u*200)*DEG,rr=d+(R-d)*Math.sqrt(u);pts.push([Math.cos(ang)*rr,Math.sin(ang)*rr]);}
-    P.push(reg(capRibbon(pts,t=>a*Math.pow(1-t,1.2)+0.35),'outer'));}
+    for(let i=0;i<=60;i++){const u=i/60,ang=(th0+u*sweep)*DEG,w=h*Math.pow(1-u,pw),rr=R-w;pts.push([Math.cos(ang)*rr,Math.sin(ang)*rr]);}
+    P.push(reg(capRibbon(pts,t=>h*Math.pow(1-t,pw)+0.05),'outer',{tone:0}));}
   if(rng.chance(.55))P.push(ln(G.circle(0,0,R+8,110),'outer',true));
   return fitParts(P);}});
 defMotif('sensu',{name:'Folding fan',term:'sensu / ōgi 扇',upright:true,
@@ -715,9 +766,9 @@ fn(rng,g){const half=[];
 defMotif('plum',{name:'Plum blossom',term:'méihuā 梅花',
 meaning:'Five round petals: the plum flowers on bare branches in late winter, so it stands for endurance and renewal. Scattered on cracked ice it is the "ice and plum" pattern.',
 fn(rng,g){const P=[];const rot=rng.range(0,72);
-  for(let i=0;i<5;i++){const a=(rot+i*72-90)*DEG;P.push(reg(G.circle(Math.cos(a)*24,Math.sin(a)*24,15,36),'outer'));}
-  P.push(reg(G.circle(0,0,10,28),'inner'));
-  for(let i=0;i<8;i++){const a=(rot+i*45)*DEG;P.push(ln([[Math.cos(a)*4,Math.sin(a)*4],[Math.cos(a)*13,Math.sin(a)*13]],'detail'),dt(Math.cos(a)*14.5,Math.sin(a)*14.5,1.5));}
+  for(let i=0;i<5;i++){const a=(rot+i*72-90)*DEG;P.push(reg(G.circle(Math.cos(a)*23.6,Math.sin(a)*23.6,13.7,36),'outer',{tone:0}));}
+  P.push(reg(G.circle(0,0,6.4,24),'inner'));
+  for(let i=0;i<8;i++){const a=(rot+i*45)*DEG;P.push(ln([[Math.cos(a)*6.4,Math.sin(a)*6.4],[Math.cos(a)*14,Math.sin(a)*14]],'detail'),dt(Math.cos(a)*15.4,Math.sin(a)*15.4,1.4));}
   return fitParts(P);}});
 defMotif('taotie',{name:'Bronze mask',term:'tāotiè 饕餮',upright:true,
 meaning:'A frontal mask resolved from two profile creatures meeting on a central ridge: staring eyes, curled horns, jaws, bodies running out to the sides. It dominates Shang and early Zhou ritual bronzes; what it meant is still argued. A generic mask, not a copy of any vessel.',

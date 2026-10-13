@@ -323,28 +323,7 @@ meaning:'Hanumān leaping across the sky with his mace raised — the flight to 
 fn(rng,g){return FK.hanuman(rng,g);}});
 
 /* ---------- richer shared motifs (same names: every tradition using them gains the detail) ---------- */
-// peacock: scaled neck, crest of fanned plumes, layered wing feathers, a long train of eyed feathers
-SG.motifs.bird.fn=(rng,g)=>{const P=[];
-  // the train: one fan of plumes behind, then quills with fine barbs and an eye at each tip
-  const tail=[[152,44],[142,52],[132,57],[122,58],[112,56],[102,50]];const base=[12,6];
-  const tips=tail.map(([a,len])=>[base[0]+Math.sin(a*DEG)*len,base[1]-Math.cos(a*DEG)*len]);
-  P.push(reg(FK.spline([base,[16,-2],...tips.slice().reverse().map(([x,y],i)=>[x+2,y-2]),[4,14]],true,6),'outer'));
-  for(let k=0;k<tail.length;k++){const [a,len]=tail[k];const tip=tips[k];const quill=FK.spline([base,[(base[0]+tip[0])/2+Math.cos(a*DEG)*2,(base[1]+tip[1])/2+Math.sin(a*DEG)*2],tip],false,8);
-    P.push(ln(quill,'inner'));
-    for(const q of G.samples(quill,false,2.6).slice(2,-3)){for(const sd of [-1,1])P.push(ln([[q.x,q.y],[q.x+(q.tx*1.6-sd*q.ty*3.2),q.y+(q.ty*1.6+sd*q.tx*3.2)]],'detail'));}
-    const e=[base[0]+Math.sin(a*DEG)*len*0.9,base[1]-Math.cos(a*DEG)*len*0.9];
-    P.push(reg(G.xform(G.ellipse(0,0,3.8,5,22),{x:e[0],y:e[1],rot:a}),'inner'));P.push(reg(G.xform(G.ellipse(0,0,2.3,3,18),{x:e[0],y:e[1],rot:a}),'inner'));P.push(reg(G.xform(G.teardrop(1,2.4),{x:e[0],y:e[1]+0.6,rot:a}),'detail'));}
-  P.push(ln(FK.spline([[-2,12],[-3,22],[-6,30]],false,5),'outer'),ln(FK.spline([[5,12],[5,22],[3,30]],false,5),'outer'));
-  for(const [x,y] of [[-6,30],[3,30]])for(const d of [-1,0,1])P.push(ln([[x,y],[x-3+d*3,y+2.4-Math.abs(d)]],'outer'));
-  P.push(reg(FK.spline([[-10,-2],[-8,8],[-1,13.6],[9,12],[16,6],[12,-2],[2,-6]],true,7),'outer'));
-  P.push(reg(FK.spline([[-4,0],[2,-3],[11,-1],[15,5],[9,9.6],[0,8]],true,7),'inner'));
-  for(let r=0;r<3;r++)for(let i=0;i<4-r;i++){const x=-1+i*3.6+r*1.8,y=2+r*2.4;P.push(ln(G.arc(x,y,1.8,20,160,6),'detail'));}
-  P.push(reg(FK.tube(FK.spline([[-6,-3],[-11,-12],[-13,-21],[-11,-28]],false,7),t=>3.4-1.1*t),'outer'));
-  for(let i=0;i<7;i++){const y=-6-i*3.1,x=-7.4-Math.sin(i*0.5)*3;P.push(ln(G.arc(x,y,1.2,20,160,5),'detail'));}
-  P.push(reg(FK.spline([[-14.6,-30],[-12,-33],[-8.6,-31],[-8.4,-27.4],[-11.6,-26.4]],true,6),'outer'));
-  P.push(reg([[-14.4,-30],[-19.4,-28.6],[-14.2,-28]],'outer'));P.push(reg(G.ellipse(-11.6,-30,1.6,1.1,12),'inner'));P.push(dt(-11.8,-30,0.5));
-  for(const a of [-30,-12,6,22]){const t=G.xform([[0,-7]],{x:-11.6,y:-32.6,rot:a})[0];P.push(ln([[-11.6,-32.6],t],'detail'));P.push(reg(G.xform(G.teardrop(0.9,2.4),{x:t[0],y:t[1],rot:a}),'outer'));}
-  return fitParts(P);};
+// (the peacock is drawn in motifs.js: it was redrawn there against reference paintings)
 
 // fish: curved body, rayed fins, staggered scale rows, lateral line, lidded eye
 SG.motifs.fish.fn=(rng,g)=>{const P=[];

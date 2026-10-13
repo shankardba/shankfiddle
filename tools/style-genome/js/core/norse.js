@@ -74,11 +74,12 @@ fn(){const sp=NO.spine([[-8,-6],[-30,-34],[-44,-10],[-24,10],[0,0],[24,-10],[44,
   return noFit(NO.weave([{pts:sp,w:NO.snakeW(3),z:0}],{gap:1.6}).concat(NO.head(sp,3.4)),90);}});
 // closed knots as woven straps of even width
 defMotif('norseKnot',{name:'Ring knot',term:'—',meaning:'A looped band tied through a ring. Closed knots like this fill the lobes of trefoil brooches and the fields of Borre-style mounts.',
-fn(rng,g){const loop=[];for(let i=0;i<120;i++){const a=i/120*Math.PI*2,r=27+15*Math.cos(3*a);loop.push([Math.cos(a)*r,Math.sin(a)*r]);}
-  return fitParts(GH.compose([{closed:true,pts:loop},{closed:true,pts:G.circle(0,0,23,72)}],6.4,true),88);}});
+fn(rng,g){const loop=[];for(let i=0;i<121;i++){const a=i/121*Math.PI*2,r=27+15*Math.cos(3*a);loop.push([Math.cos(a)*r,Math.sin(a)*r]);}
+  return fitParts(weaveCurves([{closed:true,pts:loop},{closed:true,pts:G.circle(0,0,23,90)}],6.4,SG.knock?2:0).map(p=>Object.assign(p,{strap:true,role:'inner'})),88);}});
+const noC=(pts,z=0)=>({kind:'region',closed:true,role:'outer',ci:0,plain:true,ns:true,z,pts});
 defMotif('whirlDisc',{name:'Whirl disc',term:'—',meaning:'A roundel of curved spokes turning about a centre: the sun or the turning sky, on the earliest painted stones of Gotland, four centuries before the Viking Age.',
-fn(){const P=[flP(G.circle(0,0,44,96),0),flC(G.circle(0,0,39.5,88),1),flP(G.circle(0,0,6,24),2)];
-  for(let i=0;i<8;i++){const sp=[];for(let k=0;k<=22;k++){const t=k/22,a=(i*45+t*118)*DEG,r=lerp(6,38.6,t);sp.push([Math.cos(a)*r,Math.sin(a)*r]);}P.push(flP(G.ribbon(sp,t=>0.8+3.4*Math.sin(Math.PI*clamp(t,0.02,0.98))),2));}
+fn(){const P=[noC(G.circle(0,0,44,96),0),flC(G.circle(0,0,39.5,88),1),noC(G.circle(0,0,6,24),2)];
+  for(let i=0;i<8;i++){const sp=[];for(let k=0;k<=22;k++){const t=k/22,a=(i*45+t*118)*DEG,r=lerp(6,38.6,t);sp.push([Math.cos(a)*r,Math.sin(a)*r]);}P.push(noC(G.ribbon(sp,t=>0.8+3.4*Math.sin(Math.PI*clamp(t,0.02,0.98))),2));}
   return noFit(P,92);}});
 defMotif('ringCross',{name:'Ring cross',term:'—',upright:true,meaning:'An equal-armed cross with flaring arms inside a ring. Most eleventh-century runestones carry one: they were raised by Christian families, in the generations when Sweden converted.',
 fn(){const arm=G.chain([[-4,-6]],G.bez([-4,-6],[-5,-22],[-9,-34],[-13,-42],8),[[13,-42]],G.bez([13,-42],[9,-34],[5,-22],[4,-6],8)),P=[];
@@ -136,16 +137,17 @@ fn(ctx){
   const {W,H,g,rng}=ctx;FL.use(g);const cx=W/2,cy=H/2+6,sw=W*rng.range(0.66,0.76),sh=H*0.9,stone=noStone(cx,cy,sw,sh,rng);
   ctx.parts([{kind:'region',closed:true,role:'outer',plain:true,ci:3,pts:stone},{kind:'line',closed:true,role:'outer',pts:stone}],'frame');
   // the band: up the left side, over the top, down the right
-  const bw=sw*0.085,inset=G.resample(G.offset(stone,-(bw*0.5+sw*0.035),true),true,3),n=inset.length;
+  const bw=sw*0.085,kI=1-(bw*0.5+sw*0.035)/(sw*0.47),inset=G.resample(stone.map(([x,y])=>[cx+(x-cx)*kI,cy+(y-cy)*(1-(1-kI)*sw/sh)]),true,3),n=inset.length; // scaled toward the centre, not offset: an offset folds over itself in a hollow of the outline
   // start at the bottom, a little left of centre, and run clockwise round to a little right of centre
   let ib=0;for(let i=0;i<n;i++)if(inset[i][1]>inset[ib][1])ib=i;
   const dir=inset[(ib+3)%n][0]<inset[ib][0]?1:-1,loop=[];for(let k=Math.round(n*0.045);k<n-Math.round(n*0.045);k++)loop.push(inset[((ib+dir*k)%n+n)%n]);
   const a=loop[0],b=loop[loop.length-1];
   // the two ends turn inward and cross each other
   const sA=a[0]<cx?-1:1;
-  const spine=G.resample(G.chaikin([[cx-sA*bw*2.6,a[1]-bw*4.6],[cx-sA*bw*0.9,a[1]-bw*2.2]].concat(loop,[[cx+sA*bw*0.9,b[1]-bw*2.2],[cx+sA*bw*2.8,b[1]-bw*5]]),false,2),false,2.5);
-  const L=G.length(spine,false),tw=u=>u<0.035?lerp(0.45,1,u/0.035):u>0.9?lerp(1,0.12,(u-0.9)/0.1):1;
-  const band=KO.bandParts('runeBand',G.sub(spine,false,0.07,0.9),()=>-bw/2,()=>bw,bw).parts;
+  // each end crosses the other at the foot, rises, and hooks back toward the middle
+  const spine=G.resample(G.chaikin([[cx-sA*bw*0.7,a[1]-bw*2.9],[cx-sA*bw*1.9,a[1]-bw*2.7],[cx-sA*bw*2.1,a[1]-bw*1.9],[cx-sA*bw*0.8,a[1]-bw*1.2]].concat(loop,[[cx+sA*bw*0.8,b[1]-bw*1.2],[cx+sA*bw*2.2,b[1]-bw*2.0],[cx+sA*bw*2.1,b[1]-bw*3.0],[cx+sA*bw*1.2,b[1]-bw*3.4],[cx+sA*bw*0.8,b[1]-bw*2.9]]),false,3),false,2.5);
+  const L=G.length(spine,false),tw=u=>u<0.05?lerp(0.6,1,u/0.05):u>0.87?lerp(1,0.1,(u-0.87)/0.13):1;
+  const band=KO.bandParts('runeBand',G.sub(spine,false,0.12,0.86),()=>-bw/2,()=>bw,bw).parts;
   ctx.items.push({type:'parts',parts:FL.done(NO.weave([{pts:spine,w:u=>bw/2*tw(u)+1.2,z:0}],{gap:2.4}).map(p=>Object.assign(p,{ns:true}))),role:'ring',variant:'serpent'});
   ctx.items.push({type:'parts',parts:NO.weave([{pts:spine,w:u=>Math.max(0.5,bw/2*tw(u)-1.2),z:0}],{gap:4.8}).map(p=>({kind:'region',closed:true,role:'inner',bg:true,ns:true,plain:true,pts:p.pts})),role:'ring',variant:'serpentIn'});
   ctx.items.push({type:'parts',parts:band,role:'ring',variant:'runes'});
@@ -171,13 +173,12 @@ fn(ctx){
   ctx.items.push({type:'parts',parts:KO.bandParts(key,edge,()=>-bw/2,()=>bw,bw).parts,role:'border',variant:'edge'});
   const inner=G.offset(stone,-bw*1.7,true),xAt=y=>{let m=0;for(const q of inner)if(Math.abs(q[1]-y)<14)m=Math.max(m,Math.abs(q[0]-cx));return m||nw;};
   // registers
-  const yA=hr+hw*0.5,yB=y0+(y1-y0)*0.58,P=[];
+  const yA=hr+hw*0.46,yB=yA+(y1-y0)*0.115,P=[];
   for(const y of [yA,yB]){const x=xAt(y);P.push({kind:'line',role:'outer',pts:[[cx-x,y],[cx+x,y]]},{kind:'line',role:'inner',pts:[[cx-x,y+7],[cx+x,y+7]]});}
   ctx.parts(P,'frame');
   const hero=ctx.pick('hero'),ring=ctx.pick('ring'),M=SG.motifs[hero]||{};
   const ship=poolAll(g.motifs.hero).includes('longship')?'longship':hero,top=hero==='longship'?ring:hero;
   ctx.motif(top,cx,(y0+bw*2+yA)/2,Math.min(hw*1.25,(yA-y0)*0.74),{role:'hero',variant:'top'});
-  ctx.motif(ring,cx-xAt((yA+yB)/2)*0.48,(yA+yB)/2+4,Math.min((yB-yA)*0.72,xAt((yA+yB)/2)*0.8),{role:'ring',variant:'mid'});
-  ctx.motif(ring,cx+xAt((yA+yB)/2)*0.48,(yA+yB)/2+4,Math.min((yB-yA)*0.72,xAt((yA+yB)/2)*0.8),{role:'ring',flip:true,variant:'mid'});
+  for(const k of [-1,0,1])ctx.motif(ring,cx+k*xAt((yA+yB)/2)*0.6,(yA+yB)/2+4,Math.min((yB-yA)*0.8,xAt((yA+yB)/2)*0.56),{role:'ring',flip:k>0,variant:'mid'});
   ctx.motif(ship,cx,(yB+y1)/2-4,Math.min((y1-yB)*0.86,xAt((yB+y1)/2)*1.8),{role:'hero',variant:'ship'});
 }});
