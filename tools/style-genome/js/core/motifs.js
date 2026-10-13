@@ -547,11 +547,16 @@ fn(rng,g){const n=rng.pick([2,3,3,4]);return fitParts(knotField(-50,-50,50,50,rn
 function weaveCurves(strands,w,gap=0){
   GH.weave(strands);const h=w/2,hc=h+gap,out=[],byX={};
   strands.forEach((S,si)=>S.cross.forEach(c=>(byX[c.x]=byX[c.x]||[]).push([si,c])));
-  const sub=(S,a,b)=>{if(S.closed){while(a<0){a+=S.len;b+=S.len;}}else{a=Math.max(0,a);b=Math.min(S.len,b);}return G.sub(S.pts,S.closed,a/S.len,b/S.len);};
-  const dist=(q,W)=>{let m=1e9;for(let i=0;i<W.length-1;i++){const a=W[i],b=W[i+1],dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy||1e-9,t=clamp(((q[0]-a[0])*dx+(q[1]-a[1])*dy)/l),x=a[0]+dx*t-q[0],y=a[1]+dy*t-q[1];m=Math.min(m,Math.hypot(x,y));}return m;};
-  const over=c=>{const o=byX[c.x].find(e=>e[1]!==c);return sub(strands[o[0]],o[1].s-3*w,o[1].s+3*w);};
+  // the stretch of a strand between two arc lengths, found by bisection on its cumulative lengths
+  strands.forEach(S=>{const p=S.pts,n=p.length,c=[0];for(let i=1;i<=(S.closed?n:n-1);i++){const a=p[i-1],b=p[i%n];c.push(c[i-1]+Math.hypot(b[0]-a[0],b[1]-a[1]));}S.cum=c;S.len=c[c.length-1];});
+  const sub=(S,a,b)=>{const p=S.pts,n=p.length,c=S.cum,L=S.len,m=c.length-1;if(S.closed){while(a<0){a+=L;b+=L;}while(a>=L){a-=L;b-=L;}}else{a=Math.max(0,a);b=Math.min(L,b);}
+    const at=d=>{let lo=0,hi=m;while(hi-lo>1){const md=(lo+hi)>>1;if(c[md]<=d)lo=md;else hi=md;}const t=(d-c[lo])/((c[hi]-c[lo])||1),q=p[lo%n],r=p[hi%n];return{i:lo,pt:[q[0]+(r[0]-q[0])*t,q[1]+(r[1]-q[1])*t]};};
+    const A=at(a),o=[A.pt];let i=A.i+1,base=0;for(;;){if(i>m-(S.closed?0:0)){if(!S.closed)break;i=1;base+=L;}const d=base+c[i];if(d>=b-1e-9)break;if(d>a+1e-9)o.push(p[i%n]);i++;if(o.length>4*n)break;}
+    o.push(at(b>L&&S.closed?b-L:b).pt);return o;};
+  const dist=(q,W)=>{let m=1e18;for(let i=0;i<W.length-1;i++){const a=W[i],b=W[i+1],dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy||1e-9;let t=((q[0]-a[0])*dx+(q[1]-a[1])*dy)/l;t=t<0?0:t>1?1:t;const x=a[0]+dx*t-q[0],y=a[1]+dy*t-q[1],d=x*x+y*y;if(d<m)m=d;}return Math.sqrt(m);};
+  const over=c=>{const o=byX[c.x].find(e=>e[1]!==c);return sub(strands[o[0]],o[1].s-1.7*w-gap,o[1].s+1.7*w+gap);};
   // drop the run of points at the start of an edge that lies under the band W, and put a point exactly on its edge
-  const trim=(E,W)=>{let i=0;while(i<E.length&&dist(E[i],W)<hc)i++;if(i===0||i>=E.length)return E;let a=E[i-1],b=E[i];for(let k=0;k<22;k++){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(dist(m,W)<hc)a=m;else b=m;}return[b].concat(E.slice(i));};
+  const trim=(E,W)=>{let i=0;while(i<E.length&&dist(E[i],W)<hc)i++;if(i===0||i>=E.length)return E;let a=E[i-1],b=E[i];for(let k=0;k<11;k++){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(dist(m,W)<hc)a=m;else b=m;}return[b].concat(E.slice(i));};
   strands.forEach((S,si)=>{const U=S.cross.filter(c=>c.under);
     if(!U.length){out.push({kind:'line',closed:!!S.closed,role:'outer',plain:true,pts:G.offset(S.pts,h,!!S.closed)},{kind:'line',closed:!!S.closed,role:'outer',plain:true,pts:G.offset(S.pts,-h,!!S.closed)});return;}
     for(let k=0;k<U.length;k++){const c0=U[k],c1=U[(k+1)%U.length];let s0=c0.s,s1=c1.s;if(s1<=s0+1e-9)s1+=S.len;
@@ -571,7 +576,7 @@ fn(rng,g){
   const loop=G.arc(A[0],A[1],r,240,60,n).slice(0,-1).concat(G.arc(B[0],B[1],r,0,-180,n).slice(0,-1),G.arc(Cc[0],Cc[1],r,120,-60,n).slice(0,-1));
   const ring=rng.chance(.55),w=ring?5.4:7.4,S=[{pts:GH.tidy(loop,true),closed:true}];if(ring)S.push({pts:G.circle(0,0,r*0.8,120),closed:true});
   // where the bands are solid with no outline, a clear gap is what shows which one passes under
-  return fitParts(weaveCurves(S,w,((g&&g.fill&&g.fill.knockout)||0)>0.3?w*0.3:0));}});
+  return fitParts(weaveCurves(S,w,SG.knock?w*0.3:0));}});
 defMotif('triskele',{name:'Triple spiral',term:'triskele',
 meaning:'Three spirals turning the same way from one centre, their arms swelling like trumpets. A La Tène form that carried on into Insular metalwork and gospel books.',
 fn(rng,g){const P=[];const turns=rng.range(1.15,1.45);

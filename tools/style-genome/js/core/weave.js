@@ -75,26 +75,12 @@ function bandPieces(pts,cuts,cord,gap,tone,role='outer'){
 // dx·dy, so "over ⇔ (x even) = (dx·dy > 0)" alternates along every cord and gives the two
 // cords at a crossing opposite answers.
 function weaveGrid(loops,X,Y,{cord,gap,smooth=3,toneBase=0,role='outer'}){
-  const parts=[];
-  loops.forEach((loop,li)=>{
-    const n=loop.length;const unders=[];
-    for(let i=0;i<n;i++){
-      const p=loop[(i-1+n)%n],q=loop[i],r=loop[(i+1)%n];
-      const dx=q[0]-p[0],dy=q[1]-p[1];
-      if(dx!==r[0]-q[0]||dy!==r[1]-q[1])continue; // turned here: not a crossing
-      const over=((q[0]&1)===0)===(dx*dy>0);if(!over)unders.push(i);
-    }
-    const map=v=>[X(v[0]),Y(v[1])];
-    if(!unders.length){parts.push(...bandPieces(G.chaikin(loop.map(map),true,smooth),[],cord,gap,toneBase+li,role));return;}
-    for(let k=0;k<unders.length;k++){
-      const a=unders[k],b=k<unders.length-1?unders[k+1]:unders[0]+n;const seq=[];
-      for(let i=a;i<=b;i++)seq.push(map(loop[i%n]));
-      let piece=G.chaikin(seq,false,smooth);const L=G.length(piece,false);if(L<2*gap+cord*0.6)continue;
-      piece=G.resample(G.sub(piece,false,gap/L,1-gap/L),false,Math.max(1.2,cord*0.22));
-      parts.push({kind:'region',closed:true,role,tone:toneBase+li,plain:true,pts:G.band(piece,cord)});
-    }
-  });
-  return parts;
+  /* Each cord is smoothed once, as a whole closed curve, and then cut: smoothing the pieces
+     separately left a kink wherever two of them met. Ends are trimmed to the edge of the cord
+     that passes over (weaveCurves), so cords keep one width and meet edge to edge; a solid
+     style with no outline gets a clear gap there instead. */
+  const S=loops.map(l=>({pts:G.chaikin(l.map(v=>[X(v[0]),Y(v[1])]),true,smooth),closed:true}));
+  return weaveCurves(S,cord,SG.knock?cord*0.3:0).map(p=>p.kind==='region'?Object.assign(p,{tone:toneBase+p.tone,role}):Object.assign(p,{role}));
 }
 // Interlace for free-drawn closed loops (triquetra, rings): crossings found numerically.
 function weaveLoops(loops,{cord,gap,toneBase=0,role='outer'}){

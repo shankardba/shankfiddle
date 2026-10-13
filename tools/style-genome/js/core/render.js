@@ -4,7 +4,7 @@
    so a blended genome produces one coherent artwork rather than a collage. */
 
 function renderArtwork(g,{seed=1,structure=null,W=1000,H=1000}={}){
-  SG.cov=!!(g.fill&&g.fill.coverage>0.02); // lets unoutlined parts (paint, paper, thread) fall back to an outline where nothing is filled
+  SG.cov=!!(g.fill&&g.fill.coverage>0.02);SG.knock=((g.fill&&g.fill.knockout)||0)>0.3; // lets unoutlined parts (paint, paper, thread) fall back to an outline where nothing is filled
   const rng=makeRng(seed);const id=svgUid();
   const kinds=Array.isArray(g.structure.kinds)?g.structure.kinds:[g.structure.kinds];
   const skey=structure&&SG.structures[structure]?structure:(kinds.find(k=>SG.structures[k])&&rng.pick(kinds.filter(k=>SG.structures[k])))||'panel';
@@ -360,7 +360,7 @@ class Renderer{
 
 // one motif drawn in a tradition's hand, centred on its ground
 function renderMotifSpecimen(g,key,seed=3,size=220){
-  SG.cov=!!(g.fill&&g.fill.coverage>0.02);
+  SG.cov=!!(g.fill&&g.fill.coverage>0.02);SG.knock=((g.fill&&g.fill.knockout)||0)>0.3;
   const R=new Renderer(g,svgUid(),seed);const M=SG.motifs[key];R.sc=clamp(size/520,0.42,1);
   const k=size*0.0073;
   const parts=M.fn(makeRng(hashStr('m'+key+seed)),g).map(p=>p.kind==='dot'?Object.assign({},p,{x:p.x*k+size/2,y:p.y*k+size/2,r:p.r*k}):Object.assign({},p,{pts:G.xform(p.pts,{x:size/2,y:size/2,s:k})}));
@@ -370,7 +370,7 @@ function renderMotifSpecimen(g,key,seed=3,size=220){
 
 // one all-over repeat in a tradition's hand, filling its swatch
 function renderTileSpecimen(g,key,seed=3,size=220){
-  SG.cov=!!(g.fill&&g.fill.coverage>0.02);
+  SG.cov=!!(g.fill&&g.fill.coverage>0.02);SG.knock=((g.fill&&g.fill.knockout)||0)>0.3;
   const R=new Renderer(g,svgUid(),seed);
   R.emitItem(tileParts(key,{x0:0,y0:0,x1:size,y1:size},size/5.2,makeRng(hashStr('t'+key+seed)),g),{role:'frame',variant:'spec'+key,type:'parts',size:100},0.8);
   return R.finish(size,size);
