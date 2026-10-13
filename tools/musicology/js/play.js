@@ -98,7 +98,7 @@
       addBtn('▶ Play', function () { playAbc(vo); });
     }
     addBtn('Stop', function () { window.Labs.stop(); }, true);
-    if (b.type === 'rhythm') addBtn('⬇ MIDI', function () { window.Midi.download(window.Midi.block(b), b.title || 'rhythm'); }, true);
+    if (b.type === 'rhythm' && window.Midi) addBtn('⬇ MIDI', function () { window.Midi.download(window.Midi.block(b), b.title || 'rhythm'); }, true);
     return wrap;
   }
 

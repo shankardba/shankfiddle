@@ -299,10 +299,10 @@
       var chosen = selCycles.map(function (id) { return byId[id]; }).filter(Boolean);
       if (!chosen.length) { stage.innerHTML = '<p class="hint">Pick a cycle on the left.</p>'; return; }
       var html = '<h2>' + chosen.length + ' selected</h2>' +
-        '<div class="btnrow"><button class="btn" data-act="play">▶ Play together</button><button class="btn ghost" data-act="stop">Stop</button><button class="btn ghost" data-act="midi" title="Download these cycles as a MIDI file, one loop long">⬇ MIDI</button>' +
+        '<div class="btnrow"><button class="btn" data-act="play">▶ Play together</button><button class="btn ghost" data-act="stop">Stop</button>' + (window.Midi ? '<button class="btn ghost" data-act="midi" title="Download these cycles as a MIDI file, one loop long">⬇ MIDI</button>' : '') +
         '<label style="font-size:.85rem">cycle length <input type="range" id="spd" min="2" max="14" step="0.5" value="' + cycleSecs + '"> <span id="spdv">' + cycleSecs + ' s</span></label></div>' +
         '<div class="legend"><span><i style="background:' + TYPE_COL.D + '"></i>dum / düm (low)</span><span><i style="background:' + TYPE_COL.T + '"></i>tak / tek (high)</span><span><i style="background:' + TYPE_COL.B + '"></i>bell / clave stroke</span><span><i style="background:' + TYPE_COL.tali + '"></i>tali (clap)</span><span><i style="background:none;border:2px solid ' + TYPE_COL.khali + '"></i>khali (wave)</span><span>Bars across the ring mark group boundaries.</span></div>' +
-        '<p class="hint" style="margin-top:10px">⬇ MIDI saves one loop of the selected cycles at this cycle length, one track per cycle, on channel 10 with General MIDI drum notes: dum 36 (kick), tak 38 (snare), bell or clave 56 (cowbell), clap 39, wave 44 (pedal hi-hat), other pulses 42 (closed hi-hat). The first cycle you picked sets the grid (its pulses are eighth notes).</p>' +
+        (window.Midi ? '<p class="hint" style="margin-top:10px">⬇ MIDI saves one loop of the selected cycles at this cycle length, one track per cycle, on channel 10 with General MIDI drum notes: dum 36 (kick), tak 38 (snare), bell or clave 56 (cowbell), clap 39, wave 44 (pedal hi-hat), other pulses 42 (closed hi-hat). The first cycle you picked sets the grid (its pulses are eighth notes).</p>' : '') +
         '<div class="cyc-grid">' + chosen.map(function (c) {
           return '<div class="cyc"><h4><i class="dot" style="background:' + col(c.culture) + '"></i>' + esc(c.name) + '</h4><div class="cn">' + esc(c.note) + '</div>' + circle(c) +
             '<div style="font-size:.76rem;margin-top:4px">' + (c.groups.length ? 'grouping ' + c.groups.join('+') + ' · ' : '') + link(c.entry, 'source entry') + '</div></div>';
@@ -369,7 +369,7 @@
     stage.addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) return;
       if (b.dataset.act === 'play') play(); else if (b.dataset.act === 'stop') stopAll();
-      else if (b.dataset.act === 'midi') {
+      else if (b.dataset.act === 'midi' && window.Midi) {
         var chosen = selCycles.map(function (id) { return byId[id]; }).filter(Boolean);
         if (chosen.length) window.Midi.download(window.Midi.cycles(chosen, cycleSecs), chosen.map(function (c) { return c.id; }).join('-'));
       }
