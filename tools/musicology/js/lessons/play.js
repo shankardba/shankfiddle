@@ -123,6 +123,7 @@
       addBtn('▶ Play', function () { playAbc(vo, play); });
     }
     addBtn('Stop', function () { window.Labs.stop(); }, true);
+    if (b.type === 'rhythm') addBtn('⬇ MIDI', function () { window.Midi.download(window.Midi.block(b, play.tempo), b.title || 'rhythm'); }, true);
     return wrap;
   }
 
