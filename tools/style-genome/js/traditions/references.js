@@ -171,7 +171,13 @@ const SOURCES={
   'safavid-carpet':[W('Persian_carpet'),W('Arabesque'),W('Persian_art')],
   'persian-tazhib':[W('Tazhib'),W('Shamsa'),W('Persian_miniature')],
   'termeh':[W('Termeh'),W('Paisley')],
-  'gol-o-morgh':[W('Qajar_art'),W('Lacquer'),W('Common_nightingale'),W('Persian_art')]
+  'gol-o-morgh':[W('Qajar_art'),W('Lacquer'),W('Common_nightingale'),W('Persian_art')],
+  // Polynesia (checked 2026-10-12)
+  'samoan-siapo':[W('Siapo'),W('Tapa_cloth')],
+  'tongan-ngatu':[W('Tapa_cloth'),W('Polynesian_culture')],
+  'hawaiian-kapa':[W('Kapa'),W('Tapa_cloth')],
+  'hawaiian-quilt':[W('Hawaiian_quilt'),W('Tivaevae'),W('Breadfruit')],
+  'marquesan-carving':[W('Culture_of_the_Marquesas_Islands'),W('Tiki'),W('Marquesas_Islands')]
 };
 
 for(const T of SG.traditions){

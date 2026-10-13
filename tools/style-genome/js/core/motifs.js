@@ -541,12 +541,37 @@ const gcd=(a,b)=>b?gcd(b,a%b):a;
 defMotif('knot',{name:'Knot panel',term:'interlace',
 meaning:'Cords that braid over and under in strict alternation with no loose ends. Built the way Insular artists did: lay out a plait on a grid of dots, then add breaks that turn the strands back on themselves.',
 fn(rng,g){const n=rng.pick([2,3,3,4]);return fitParts(knotField(-50,-50,50,50,rng,{cell:100/n,breaks:rng.range(0.12,0.32),sym:'c4',tries:120}));}});
+/* Weave curved bands of one width. Each strand is cut at its under-crossings; each end is
+   trimmed back to the edge of the band that passes over it there (or `gap` short of it), so
+   pieces meet edge to edge with no overlap, and corners in a strand stay mitred. */
+function weaveCurves(strands,w,gap=0){
+  GH.weave(strands);const h=w/2,hc=h+gap,out=[],byX={};
+  strands.forEach((S,si)=>S.cross.forEach(c=>(byX[c.x]=byX[c.x]||[]).push([si,c])));
+  const sub=(S,a,b)=>{if(S.closed){while(a<0){a+=S.len;b+=S.len;}}else{a=Math.max(0,a);b=Math.min(S.len,b);}return G.sub(S.pts,S.closed,a/S.len,b/S.len);};
+  const dist=(q,W)=>{let m=1e9;for(let i=0;i<W.length-1;i++){const a=W[i],b=W[i+1],dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy||1e-9,t=clamp(((q[0]-a[0])*dx+(q[1]-a[1])*dy)/l),x=a[0]+dx*t-q[0],y=a[1]+dy*t-q[1];m=Math.min(m,Math.hypot(x,y));}return m;};
+  const over=c=>{const o=byX[c.x].find(e=>e[1]!==c);return sub(strands[o[0]],o[1].s-3*w,o[1].s+3*w);};
+  // drop the run of points at the start of an edge that lies under the band W, and put a point exactly on its edge
+  const trim=(E,W)=>{let i=0;while(i<E.length&&dist(E[i],W)<hc)i++;if(i===0||i>=E.length)return E;let a=E[i-1],b=E[i];for(let k=0;k<22;k++){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(dist(m,W)<hc)a=m;else b=m;}return[b].concat(E.slice(i));};
+  strands.forEach((S,si)=>{const U=S.cross.filter(c=>c.under);
+    if(!U.length){out.push({kind:'line',closed:!!S.closed,role:'outer',plain:true,pts:G.offset(S.pts,h,!!S.closed)},{kind:'line',closed:!!S.closed,role:'outer',plain:true,pts:G.offset(S.pts,-h,!!S.closed)});return;}
+    for(let k=0;k<U.length;k++){const c0=U[k],c1=U[(k+1)%U.length];let s0=c0.s,s1=c1.s;if(s1<=s0+1e-9)s1+=S.len;
+      const C=sub(S,s0,s1);if(C.length<2)continue;const W0=over(c0),W1=over(c1);
+      const L=trim(trim(G.offset(C,h,false),W0).reverse(),W1).reverse(),R=trim(trim(G.offset(C,-h,false),W0).reverse(),W1).reverse();
+      if(L.length<2||R.length<2)continue;out.push({kind:'region',closed:true,role:'outer',tone:si,plain:true,pts:L.concat(R.reverse())});}});
+  return out;
+}
 defMotif('triquetra',{name:'Triquetra',term:'triquetra',
 meaning:'Three pointed lobes drawn as one unbroken line that weaves through itself, often with a ring woven through it. Read as the Trinity in Christian Insular art, though the form is older than that reading.',
-fn(rng,g){const rho=20,r=rho*Math.sqrt(3);const c=a=>[rho*Math.cos(a*DEG),rho*Math.sin(a*DEG)];const [A,B,Cc]=[c(90),c(210),c(330)];
-  const loop=G.chain(G.arc(A[0],A[1],r,0,-180,44),G.arc(B[0],B[1],r,120,-60,44),G.arc(Cc[0],Cc[1],r,240,60,44)).slice(0,-1);
-  const loops=[loop];if(rng.chance(.55))loops.push(G.circle(0,0,rho*1.3,90));
-  return fitParts(weaveLoops(loops,{cord:6.4,gap:6.2}));}});
+fn(rng,g){
+  /* Three semicircles. Their centres stand on an equilateral triangle whose side is the radius, so
+     each pair of circles makes a vesica; each arc runs from one tip to the next, round the side
+     that faces the middle. The band keeps one width, comes to a mitred point at every tip, and
+     where it passes under it is cut to the edge of the band above. */
+  const r=40,d=r/Math.sqrt(3),c=a=>[d*Math.cos(a*DEG),d*Math.sin(a*DEG)],A=c(-30),B=c(90),Cc=c(210),n=61; // an odd count keeps the crossings off the vertices
+  const loop=G.arc(A[0],A[1],r,240,60,n).slice(0,-1).concat(G.arc(B[0],B[1],r,0,-180,n).slice(0,-1),G.arc(Cc[0],Cc[1],r,120,-60,n).slice(0,-1));
+  const ring=rng.chance(.55),w=ring?5.4:7.4,S=[{pts:GH.tidy(loop,true),closed:true}];if(ring)S.push({pts:G.circle(0,0,r*0.8,120),closed:true});
+  // where the bands are solid with no outline, a clear gap is what shows which one passes under
+  return fitParts(weaveCurves(S,w,((g&&g.fill&&g.fill.knockout)||0)>0.3?w*0.3:0));}});
 defMotif('triskele',{name:'Triple spiral',term:'triskele',
 meaning:'Three spirals turning the same way from one centre, their arms swelling like trumpets. A La Tène form that carried on into Insular metalwork and gospel books.',
 fn(rng,g){const P=[];const turns=rng.range(1.15,1.45);
