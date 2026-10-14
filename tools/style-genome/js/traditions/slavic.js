@@ -123,7 +123,7 @@ slT({
     'For Łowicz work, cut each colour as its own piece, a little smaller each time, and paste one on another.',
     'Paste the finished piece on the wall at Easter, in place of last year’s.'
   ],
-  maths:'One fold gives one mirror line; three folds give a star with eight mirror lines, the symmetry of a regular octagon. Whatever is cut in the folded wedge appears sixteen times. Layering is a stack of shapes each contained in the one below, so only the rim of each colour shows.',
+  maths:'One fold gives one mirror line. Three folds — in half, in half again, then on the diagonal — give eight layers, so whatever is cut in the wedge appears eight times and the design has four mirror lines: the eight symmetries of a square. The sixteen-petalled stars take a fourth fold. Layering is a stack of shapes each contained in the one below, so only the rim of each colour shows.',
   symbolism:'They were made by women for the white walls of the main room and replaced each year. The rooster is the farmyard and the morning; the tree with its birds is the tree of life, older than paper. Sheep shears were the only scissors in the house.'
 });
 
