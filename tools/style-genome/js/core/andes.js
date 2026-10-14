@@ -135,8 +135,52 @@ fn(){const P=[],sp=coilSpine(7.5,20),n=sp.length,B=coilBand(sp,5.2);
     for(const [y0,y1] of [[-6.4,-11],[5.6,10.6]])for(const dx of [-12,-8.6])P.push(pcQ(M(nzCap([[dx,y0],[dx-2.6,y1]],1.3,0)),4,0.9));
     P.push(pcQ(M(nzCap([[-18.6,0],[-25,0]],1.5,0)),4,0.9),pcQ(M(nzCap([[-25,0],[-29,-2.8]],1.2,0)),4,0.9),pcQ(M(nzCap([[-25,0],[-29,2.8]],1.2,0)),4,0.9));}
   return pcDone(P,98);}});
-defMotif('chBird',{name:'Seabird',term:'—',figure:true,mirrorOk:true,meaning:'A crested seabird in profile, squared off by the weave: pelican, cormorant or booby. On the desert coast the birds’ guano fed the fields.',
-fn(){return anFit(AN.bird([0,1,2]),90);}});
+/* Painted cloth of the central coast, drawn 2026-10-13 against a reference supplied by the user (a
+   Chancay-type cotton cloth painted in one brown, with its line drawing). What it shows, and what the
+   code keeps: the figure is laid down with a loaded brush in BANDS of one width; every form is a
+   panel with squared, softly rounded corners; details are smaller panels set inside larger ones;
+   limbs are bars that turn through right angles; and the spare ground is filled with squared hooks,
+   a band that turns in on itself twice. One colour on bare cloth. */
+const chHole=(pts,z)=>({kind:'region',closed:true,role:'detail',bg:true,plain:true,ns:true,z,pts});
+const chRR=(x0,y0,x1,y1,r=2.4)=>G.roundRect(x0,y0,x1,y1,r,4);
+// a panel drawn as a band: the outer shape in colour, its inside left as cloth
+const chBox=(P,x0,y0,x1,y1,w,z,ci=0)=>{P.push(pcQ(chRR(x0,y0,x1,y1,Math.min(3,(x1-x0)*0.3)),ci,z),chHole(chRR(x0+w,y0+w,x1-w,y1-w,1.2),z+0.01));};
+// a path that turns through its corners on a small fixed radius, so a bar stays square and only its corners soften
+const chPath=(pts,r=2.2)=>{const o=[pts[0]];for(let i=1;i<pts.length-1;i++){const a=pts[i-1],q=pts[i],b=pts[i+1],la=Math.hypot(q[0]-a[0],q[1]-a[1])||1,lb=Math.hypot(b[0]-q[0],b[1]-q[1])||1,k=Math.min(r,la*0.45,lb*0.45),p0=[q[0]+(a[0]-q[0])/la*k,q[1]+(a[1]-q[1])/la*k],p1=[q[0]+(b[0]-q[0])/lb*k,q[1]+(b[1]-q[1])/lb*k];o.push(...G.quad(p0,q,p1,5));}o.push(pts[pts.length-1]);return o;};
+const chBar=(P,pts,w,z,ci=0)=>P.push(pcQ(nzCap(pts.length>2?chPath(pts,w*0.55):pts,w,0),ci,z));
+defMotif('chFeline',{name:'Painted cat',term:'—',figure:true,meaning:'A cat standing upright and facing out, arms raised and feet turned out, painted on cotton cloth in bands of a single brown: square head, square ears each with a smaller square inside, a mouth that is a squared spiral. Figures like this fill the painted cloths of the central coast, each in its own frame, with squared hooks in the spaces between.',
+fn(){const P=[],w=3.2;
+  for(const s of [-1,1]){
+    // ear with its inner square; eye
+    chBox(P,s*14-6.4,-46,s*14+6.4,-33,w,1);P.push(pcQ(chRR(s*14-1.7,-41.2,s*14+1.7,-37.8,0.8),0,1.1));
+    // arm: out from the shoulder, up, and a hand of three fingers
+    chBar(P,[[s*10,-6],[s*25,-6],[s*25,-20]],4.4,2);for(const d of [-4,0,4])chBar(P,[[s*25+d,-21],[s*25+d*1.25,-28.6]],2.4,2);
+    // leg: down from the hip, out, and a foot with three claws
+    chBar(P,[[s*7,13],[s*7,25],[s*21,25],[s*21,31]],4.6,2);for(const d of [-4,0,4])chBar(P,[[s*21+d,31.6],[s*21+d*1.3+s*1.4,38.6]],2.3,2);
+    // squared hooks in the ground beside the figure
+    chBar(P,[[s*33,-34],[s*46,-34],[s*46,-17],[s*38,-17],[s*38,-26]],3.4,0.5);chBar(P,[[s*33,34],[s*46,34],[s*46,17],[s*38,17],[s*38,26]],3.4,0.5);}
+  // head, then the body below it
+  chBox(P,-17,-37,17,-11,w,3);chBox(P,-12.6,-13,12.6,15,w,2.5);
+  for(const s of [-1,1]){chBox(P,s*8-4.4,-31.6,s*8+4.4,-24.6,1.9,3.2);P.push(pcQ(G.circle(s*8,-28.1,1.15,10),0,3.3));}
+  // mouth: a squared spiral; a mark on the belly
+  chBar(P,[[-7,-15.4],[7,-15.4],[7,-21],[-1.6,-21],[-1.6,-18.2]],2,3.2);
+  P.push(pcQ([[-3.4,3],[3.4,3],[0,9]],0,2.7),pcQ(chRR(-6,-7.4,6,-4.8,1),0,2.7));
+  return pcDone(P,98);}});
+defMotif('chHook',{name:'Squared hook',term:'—',mirrorOk:true,meaning:'A band that turns in on itself twice at right angles: the commonest filling of coastal cloth, painted or woven. In rows, hook facing hook, it makes the interlocking wave; alone it fills whatever corner a figure leaves.',
+fn(){const P=[];chBar(P,[[-32,34],[-32,-32],[32,-32],[32,20],[-12,20],[-12,-12],[13,-12],[13,3],[1,3]],8.6,0);return pcDone(P,90);}});
+defMotif('chBird',{name:'Seabird',term:'—',figure:true,mirrorOk:true,meaning:'A crested seabird in profile, laid down in bands: pelican, cormorant or booby, with a hooked beak, a crest of three bars and a wing that is a squared spiral. On the desert coast the birds’ guano fed the fields.',
+fn(){const P=[],w=3;
+  // tail: three bars; legs with three toes each
+  for(const [x,y] of [[-41,-6],[-44,4],[-41,14]])chBar(P,[[-20,4],[x,y]],3.6,0.5);
+  for(const x of [-5,6]){chBar(P,[[x,17],[x,33]],3.2,0.5);for(const d of [-1,0,1])chBar(P,[[x,33],[x+5.6+d*0.6,33+d*3.6+1.4]],2,0.5);}
+  // body: one rounded panel, the wing a squared spiral inside it
+  P.push(pcQ(G.chaikin([[-23,-3],[3,-11],[19,-1],[15,16],[-8,21],[-25,12]],true,3),0,1),chHole(G.chaikin([[-19.6,-1],[2.6,-7.6],[15.4,0.4],[12.4,13.4],[-7.6,17.6],[-21.6,10.6]],true,3),1.01));
+  chBar(P,[[-15,12],[8,10.6],[8,-0.6],[-7,1],[-7,6.4],[1,5.8]],2.4,1.2);
+  // neck, head with its eye, hooked beak, crest
+  chBar(P,[[11,-4],[15,-14],[17,-22]],6.4,1.5);chBox(P,9,-36,27,-20,w,2);P.push(pcQ(G.circle(18.6,-28,2,12),0,2.1));
+  chBar(P,[[27,-29],[41,-29],[41,-21.6]],3.6,1.9);
+  for(const [x,d] of [[12.6,-3.4],[18,-1.6],[23.4,0.4]])chBar(P,[[x,-36],[x+d,-46]],2.6,1.9);
+  return pcDone(P,96);}});
 /* Geoglyphs, redrawn 2026-10-13 against a sheet of nine Nazca figures supplied by the user.
    What the sheet shows, and what the code keeps: a figure is not a stick drawing. It is a narrow
    BAND of even width that the line walks all the way round, so every limb, feather and finger has
@@ -151,14 +195,42 @@ const nzCap=(pts,w,sm=2)=>{const sp=G.resample(sm?G.chaikin(pts,false,sm):pts,fa
   return L.concat(arc(sp[n-1],L[n-1],R[n-1]),R.slice().reverse(),arc(sp[0],R[0],L[0]));};
 const nzFig=(bands,extra=[],size=96)=>{const P=[];for(const b of bands)P.push({kind:'region',closed:true,role:'outer',tone:1,pts:b});for(const b of bands)P.push({kind:'region',closed:true,role:'outer',tone:1,ns:true,pts:G.offset(b,-0.28,true)});return fitParts(P.concat(extra),size);};
 const nzFan=(B,x,y,a0,a1,n,len,w=1.9)=>{for(let k=0;k<n;k++){const a=(a0+(a1-a0)*(n>1?k/(n-1):0.5))*DEG,l=len*(1-0.16*Math.abs(k-(n-1)/2)/Math.max(1,(n-1)/2));B.push(nzCap([[x,y],[x+Math.cos(a)*l,y+Math.sin(a)*l]],w,0));}};
-defMotif('nzHummingbird',{name:'Hummingbird',term:'colibrí',upright:true,meaning:'A hummingbird nearly a hundred metres long, its beak a ruled straight band. Like every Nazca figure it is one unbroken outline, made by lifting the dark stones from the pale ground beneath: the wing feathers are long parallel bars hung from the wing like the teeth of a comb.',
+defMotif('nzHummingbird',{name:'Hummingbird',term:'colibrí',upright:true,meaning:'A hummingbird nearly a hundred metres long, its beak a ruled straight band. Like every Nazca figure it is one unbroken outline, made by lifting the dark stones from the pale ground beneath. Each wing is a comb of parallel bars set square to the body, the longest next to the head, and the tail is five bars with the middle one longest.',
 fn(){const B=[];
-  B.push(nzCap([[0,-18],[0,-60]],1.7,0),G.circle(0,-15,4.6,24),nzCap([[0,-12],[0,4],[0,18]],t=>4.6-1.2*t,0));
-  for(const s of [-1,1]){B.push(nzCap([[s*2,-8],[s*20,-12],[s*46,-13]],3,2));
-    [[11,24],[19,27],[27,25],[35,20],[43,14]].forEach(([x,l])=>B.push(nzCap([[s*x,-12],[s*(x+3),-12+l]],3.9,0)));
-    nzFan(B,s*4,13,s>0?20:160,s>0?75:105,3,6.6,1.6);}
-  [[-4.2,46],[0,56],[4.2,46]].forEach(([x,l])=>B.push(nzCap([[x*0.6,16],[x*1.5,l]],3.7,0)));
-  return nzFig(B,[{kind:'dot',x:1.2,y:-15.6,r:0.8,role:'detail'}],98);}});
+  B.push(nzCap([[0,-21],[0,-64]],1.7,0),G.circle(0,-18.6,4,24),G.ellipse(0,-5,5.8,12.6,30));
+  for(const s of [-1,1]){
+    // wing: four bars pointing straight out, stepping shorter toward the tail
+    [36,29,21,13].forEach((l,i)=>B.push(nzCap([[s*3,-13+i*5.4],[s*(4+l),-13+i*5.4]],4.2,0)));
+    // foot: three toes beside the root of the tail
+    B.push(nzCap([[s*4.6,5],[s*9,9]],2,0));nzFan(B,s*9,9,s>0?-10:190,s>0?80:100,3,5.6,1.5);}
+  // tail: five bars, the middle one longest
+  [[-8.6,24],[-4.3,30],[0,37],[4.3,30],[8.6,24]].forEach(([x,l])=>B.push(nzCap([[x*0.5,4],[x,6+l]],3.6,0)));
+  return nzFig(B,[{kind:'dot',x:1.3,y:-19.2,r:0.8,role:'detail'}],98);}});
+defMotif('nzDog',{name:'Dog',term:'perro',upright:true,mirrorOk:true,meaning:'A dog standing with its legs straight under it, ears pricked, jaws a little open and tail raised: one of the smaller Nazca figures, about fifty metres long. Every leg is a pair of parallel lines closed by a foot with toes.',
+fn(){const B=[];
+  B.push(nzCap([[-18,0],[14,-1]],t=>4.6-0.6*t,0));
+  // legs: straight bars, each with three toes
+  for(const x of [-16.6,-9.6,6,13]){B.push(nzCap([[x,2],[x,30]],3.4,0));nzFan(B,x,30,20,100,3,5.4,1.5);}
+  // neck and head, the jaws parted; two ears
+  B.push(nzCap([[13,-2],[21,-12],[29,-15]],5.2,2),nzCap([[27,-16.6],[41,-18]],3,0),nzCap([[27,-12.6],[38,-9.6]],2.5,0),nzCap([[22,-16],[20,-25]],2.5,0),nzCap([[27,-18],[27.6,-27]],2.5,0));
+  // tail, raised and curled forward
+  B.push(nzCap([[-19,-2],[-27,-9],[-27,-20],[-21,-24]],2.6,2));
+  return nzFig(B,[{kind:'dot',x:29,y:-16.2,r:0.8,role:'detail'}],96);}});
+defMotif('nzHeron',{name:'Heron',term:'garza',upright:true,meaning:'A bird whose neck runs up from the body in a long zigzag to a small head and bent beak: the longest of the Nazca birds, some three hundred metres from tail to beak. The wings are combs of parallel bars and the tail is a sheaf of them.',
+fn(){const B=[];
+  // neck: a zigzag of five reaches, rounded at each turn, ending in the head and a bent beak
+  B.push(nzCap([[0,14],[13,6],[-15,-3],[15,-13],[-12,-23],[7,-31],[7,-45],[15,-45]],2.8,1));
+  B.push(G.ellipse(0,22,6.6,9.6,28));
+  for(const s of [-1,1]){[[30,-8],[25,0],[19,8]].forEach(([l,d],i)=>B.push(nzCap([[s*4,17+i*4.6],[s*(5+l),17+i*4.6+d*0.5]],3.4,0)));
+    B.push(nzCap([[s*3.6,30],[s*8,36]],2,0));nzFan(B,s*8,36,s>0?10:170,s>0?100:80,3,6,1.5);}
+  [[-6.4,16],[-2.2,22],[2.2,22],[6.4,16]].forEach(([x,l])=>B.push(nzCap([[x*0.6,30],[x,32+l]],3.2,0)));
+  return nzFig(B,[],98);}});
+defMotif('nzHands',{name:'The hands',term:'las manos',upright:true,meaning:'A small rounded body with two hands held out, one of five fingers and one of four. Why one hand is short of a finger nobody knows; the monkey beside it on the plain is drawn the same way.',
+fn(){const B=[];
+  B.push(G.ellipse(0,-14,14,15,36),G.circle(9.6,-29,4.4,18));
+  B.push(nzCap([[-8,-3],[-13,10]],4.4,0));nzFan(B,-13,10,70,150,4,16,2.6);
+  B.push(nzCap([[7,-2],[13,10]],4.4,0));nzFan(B,13,10,28,118,5,17,2.6);
+  return nzFig(B,[{kind:'dot',x:10.6,y:-29.6,r:0.8,role:'detail'}],94);}});
 defMotif('nzSpider',{name:'Spider',term:'araña',upright:true,meaning:'A spider forty-six metres long. Each leg is a band with two bends, and one hind leg runs on far beyond the body, which some read as the path by which the figure was entered and walked.',
 fn(){const B=[G.ellipse(0,17,12.6,16.6,40),G.ellipse(0,-7,7.6,9.6,32)];
   for(const s of [-1,1]){B.push(nzCap([[s*3,-15],[s*6.4,-23],[s*5,-29],[s*1.8,-27]],1.9,2));

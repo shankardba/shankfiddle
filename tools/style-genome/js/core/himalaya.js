@@ -211,17 +211,24 @@ TB.fur=(cp,w,z,rake=1)=>{const sp=G.resample(G.chaikin(tbU(cp),false,3),false,0.
 // a long lock: a tapering leaf with three hair lines running its length
 TB.flock=(cp,w,z)=>{const sp=G.resample(G.chaikin(tbU(cp),false,3),false,1),n=sp.length,hw=t=>Math.max(0.12,w*0.5*Math.pow(Math.sin(Math.PI*clamp(0.16+0.84*t)),0.8)),P=[tbR(G.ribbon(sp,hw),tbGR,z)];
   for(const o of [-0.5,0,0.5])P.push(tbL(sp.slice(1,Math.round(n*0.9)).map((q,i)=>{const k=i+1,a=sp[k-1],b=sp[Math.min(n-1,k+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[q[0]-(b[1]-a[1])/l*hw(k/n)*o,q[1]+(b[0]-a[0])/l*hw(k/n)*o];}),z+0.05));return P;};
+// a tress: full at the root and drawn out along a wave to a point, combed with hair lines that run
+// its whole length and close on the tip. Mane and tail are tresses laid one over the next, all
+// streaming the same way, never fanned from a point.
+TB.tress=(cp,w,z,ci=tbGR)=>{const sp=G.resample(G.chaikin(tbU(cp),false,3),false,0.9),n=sp.length,hw=t=>Math.max(0.1,w*0.5*Math.pow(1-clamp(t),0.72)*(0.55+0.45*Math.min(1,t*7))),P=[tbR(G.ribbon(sp,hw),ci,z)];
+  for(const o of [-0.68,-0.34,0,0.34,0.68]){const m=Math.round(n*(0.95-Math.abs(o)*0.22));P.push(tbL(sp.slice(1,m).map((q,i)=>{const k=i+1,a=sp[k-1],b=sp[Math.min(n-1,k+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[q[0]-(b[1]-a[1])/l*hw(k/n)*o,q[1]+(b[0]-a[0])/l*hw(k/n)*o];}),z+0.05));}
+  return P;};
 // a curl seen end on: a disc with a spiral wound into it
-TB.curl=(x,y,r,z,dir=1)=>{const [c]=tbU([[x,y]]),R=r*0.95,sp=[];for(let i=0;i<=40;i++){const t=i/40,a=(dir*t*900)*DEG,rr=R*(1-0.9*t);sp.push([c[0]+Math.cos(a)*rr,c[1]+Math.sin(a)*rr]);}
-  return[tbR(G.circle(c[0],c[1],R,24),tbGR,z),tbL(sp,z+0.05),tbL(G.circle(c[0],c[1],R*0.72,18).slice(0,12),z+0.05)];};
+TB.curl=(x,y,r,z,dir=1,ci=tbGR)=>{const [c]=tbU([[x,y]]),R=r*0.95,sp=[];for(let i=0;i<=40;i++){const t=i/40,a=(dir*t*900)*DEG,rr=R*(1-0.9*t);sp.push([c[0]+Math.cos(a)*rr,c[1]+Math.sin(a)*rr]);}
+  return[tbR(G.circle(c[0],c[1],R,24),ci,z),tbL(sp,z+0.05),tbL(G.circle(c[0],c[1],R*0.72,18).slice(0,12),z+0.05)];};
 // a paw: ankle at (x,y), toes toward `rot` (degrees, 0 = down)
 TB.paw=(x,y,rot,s,z)=>{const [c]=tbU([[x,y]]),T=p=>G.xform(p,{x:c[0],y:c[1],rot,s:s*0.95}),P=[tbR(T(G.chaikin([[-5,-2.6],[5,-2.6],[6.6,1.4],[5,4.6],[-5,4.6],[-6.6,1.4]],true,2)),tbWH,z)];
   for(const [a,b,r] of [[-4.6,5,-14],[-1.6,6.2,-5],[1.6,6.2,5],[4.6,5,14]]){P.push(tbR(T(G.xform(G.chaikin([[-1.7,-2.4],[1.7,-2.4],[2.1,1],[0,3],[-2.1,1]],true,2),{x:a,y:b,rot:r})),tbWH,z+0.1));
     P.push(tbR(T(G.xform([[-0.7,2.4],[0.7,2.4],[0.5,5.4]],{x:a,y:b,rot:r})),tbWH,z+0.2));}return P;};
 TB.lion=()=>{const P=[];
-  // tail: long locks behind a knot of three curls
-  for(const cp of [[[32,17],[36,10],[37,4],[35,0]],[[31,16],[31,8],[27,2],[22,-1]],[[30,16],[25,10],[19,7],[14,7]],[[30,17],[23,14],[16,13],[10,10]],[[30,18],[23,18],[17,19],[12,17]],[[31,19],[25,22],[20,22],[17,20]]])P.push(...TB.flock(cp.map(([x,y])=>[31+(x-31)*1.25,18+(y-18)*1.25]),7.6,-5));
-  P.push(...TB.curl(29.6,17.6,5,-4),...TB.curl(36,16.6,4.4,-4,-1),...TB.curl(32.6,22,4,-3.9));
+  // tail: a plume of tresses that rises behind a knot of three curls and streams back, every tress
+  // bent the same way and flicking up at its point, the outer ones laid first
+  [[[36,17],[40,7],[35,-4],[25,-8],[17,-6],[11,-9]],[[34.6,16],[37,7],[32,-1],[23,-3],[15,-1],[8.6,-3.6]],[[33,15.6],[34,8],[29,3],[21,2.4],[14,5],[7.6,3.6]],[[31.6,15.6],[30.6,10],[26,7],[19,7.4],[13,10.6],[7,10]],[[30.4,16.6],[27,13.4],[22,12],[16.6,13.6],[12,16.6],[7,16.6]],[[30,19],[25.6,17.6],[21,17.6],[16.6,20],[12.6,22.6]]].forEach((cp,i)=>P.push(...TB.tress(cp,[9,8.6,8.2,7.6,7,6][i],-5+i*0.1)));
+  P.push(...TB.curl(29.6,17.6,5.2,-4),...TB.curl(36.4,16.6,4.6,-4,-1),...TB.curl(32.8,22.4,4.2,-3.9));
   // one contour for body and all four legs, as far as the ankles
   const S=[[34,25],[44,25],[54,28],[63,32],[71,33.5],[80,36],[87,41],[89.4,49],[87.4,56],[84.6,59],[89,58.6],[94.6,60.6],[94,66],[87,66.4],[80,64.6],[75.4,64.6],[76.4,69],[78.6,73],[75,76.4],[69.6,77.4],[63,73.6],[57.4,65],[53,58.4],[47.4,58.4],[43.6,52.6],[43.4,58.6],[39.6,59.6],[35.6,58.4],[33.4,52],[31,46.4],[26,42.6],[20,41.4],[14.4,44],[11,47.6],[7.6,48.4],[4.6,46],[4.8,38],[9,30],[16,26.4],[25,25.4]];
   P.push(tbR(G.chaikin(tbU(S),true,3),tbWH,0));
@@ -237,25 +244,32 @@ TB.lion=()=>{const P=[];
     P.push(tbR(G.xform(G.ribbon(sp,t=>Math.max(0.15,r*0.36*Math.sin(Math.PI*clamp(0.05+0.9*t)))),{x:c[0],y:c[1],rot:ro}),tbGR,2));}
   // muscle lines
   P.push(tbL(G.chaikin(tbU([[47,57],[50,50],[49,43]]),false,2),2),tbL(G.chaikin(tbU([[84,59],[80,60],[76,63]]),false,2),2),tbL(G.chaikin(tbU([[31,46],[30,40],[33,34]]),false,2),2));
-  // the head and mane are drawn about the neck and enlarged: the head is big for the body
-  const B=P.length;
-  // mane: locks streaming back from the skull, then the collar under the jaw
-  for(const cp of [[[80,20],[73,17],[68,18],[65,21]],[[79,23],[71,22],[65,25],[60,28]],[[79,27],[71,27],[65,31],[60,35.6]],[[80,31],[73,32],[68,36],[63.6,39.6]],[[81,34],[76,36],[72,40],[68.6,43]]])P.push(...TB.flock(cp,5.2,3));
-  P.push(...TB.fur([[78,41.4],[83,40.6],[88,38.6],[92.6,39.6]],4.4,3),...TB.flock([[92,38.6],[95.6,39],[95,42.6],[92.6,44]],3.4,3));
-  // curls at the back of the head
-  for(const [x,y,r] of [[78.4,29.4,2.9],[77.6,24,2.9],[80.4,19.6,2.6]])P.push(tbR(G.circle(...tbU([[x,y]])[0],r*0.95,18),tbWH,3.5));
-  // mouth, then the head over it
-  P.push(tbR(G.chaikin(tbU([[88,31],[91.4,29.6],[96,27.6],[99,29],[100.4,34.6],[97,33.6],[92,33]]),true,1),tbRD,4));
-  P.push(tbR(G.chaikin(tbU([[79.4,33],[77.6,27],[79.6,21],[84,17.6],[90,18],[95,17.4],[98,19.6],[98.6,24.6],[96.4,27.6],[91.6,29.6],[88,31],[92,33],[97,33.6],[100.6,35],[99.6,38],[94,37.6],[88,36.4],[83,35.4]]),true,2),tbWH,4.2));
-  P.push(tbR(G.ribbon(G.resample(G.chaikin(tbU([[91,31.6],[95,31.6],[99,30],[101.6,28],[100,26.6]]),false,3),false,0.8),t=>1.5-0.9*t),tbRD,5));
-  for(const [x,y,d] of [[93.4,29,1],[96,28,1],[94.6,33.4,-1],[98,33.8,-1]]){const [c]=tbU([[x,y]]);P.push(tbR([[c[0]-0.7,c[1]],[c[0]+0.7,c[1]],[c[0]+0.2,c[1]+d*2.3]],tbWH,5));}
-  // nose, eyes under green brows, ear, and the lines of muzzle and cheek
-  for(const [x,y,r] of [[93,18.6,1.5],[95,17.6,1.4],[94.6,19.8,1.3]])P.push(tbR(G.circle(...tbU([[x,y]])[0],r,10),tbRD,5));
-  for(const [x,y,r] of [[89.4,24.4,2],[88.4,19.8,1.7]]){const [c]=tbU([[x,y]]);P.push(tbR(G.ellipse(c[0],c[1],r*1.25,r,16,-20),tbWH,5),tbR(G.circle(c[0]+0.2,c[1],r*0.74,14),tbOR,5.1),tbN(G.circle(c[0]+0.3,c[1],r*0.34,8),tbBL,5.2));}
-  P.push(...TB.fur([[84.6,23.4],[86.4,21.6],[88.6,22]],2.4,5),...TB.fur([[84,19.6],[85.6,18],[87.4,17.8]],2,5),...TB.fur([[84.4,27],[85.6,31],[88.6,33.6]],2.6,5,-1));
-  P.push(tbR(G.chaikin(tbU([[80,31],[77.4,35],[79.6,39.4],[82.6,35.6],[82.4,32]]),true,2),tbWH,5),tbL(G.chaikin(tbU([[80.6,32.6],[79.6,35.6],[80.4,37.6]]),false,2),5.1));
-  P.push(tbL(G.chaikin(tbU([[91,21],[93.6,22],[96.6,21.6]]),false,2),5.1),tbL(G.chaikin(tbU([[92,26],[94.6,25.4],[97.6,24.6]]),false,2),5.1));
-  const k=1.3,[pv]=tbU([[80,38]]);for(let i=B;i<P.length;i++)P[i]=Object.assign({},P[i],{pts:P[i].pts.map(([x,y])=>[pv[0]+(x-pv[0])*k,pv[1]+(y-pv[1])*k])});
+  // mane: tresses streaming back from the skull, the top ones level and the lower ones falling
+  // along the neck, each lapping the one below it
+  [[[81,35],[78,39.6],[75,44],[72.6,46.6],[71.6,50]],[[79.6,32],[75,35.6],[71,40.6],[67.6,43],[65.6,47]],[[79,28.6],[73,31],[68,35.6],[63.6,37.6],[60.6,41.6]],[[79,25],[72,26],[66,30],[60.6,30.6],[56.6,34]],[[79.6,21.6],[72.6,21],[66,24],[60,23.6],[55,26]],[[81,18.6],[74,16.6],[67,18.6],[61,17],[55.6,18.6]],[[83,16],[76,12.6],[69,13.6],[63,11],[58,11.6]]].forEach((cp,i)=>P.push(...TB.tress(cp,7,3+i*0.05)));
+  // the head is drawn in its own frame, in profile, then set on the neck with the muzzle raised
+  const hc=Math.cos(-18*DEG),hs=Math.sin(-18*DEG),HK=1.16,hd=q=>q.map(([x,y])=>[79.4+(x*hc-y*hs)*HK,34+(x*hs+y*hc)*HK]),H1=q=>hd([q])[0];
+  // ruff along the jaw, the beard under the chin, a lock at the throat
+  P.push(...TB.fur(hd([[3,4.4],[9,7.4],[17,7.6],[24.4,5.6]]),4.8,3.4),...TB.tress(hd([[23.6,5],[26,9],[25.6,13],[23.6,16.6]]),4.4,3.4),...TB.tress(hd([[16,7],[17,11],[15.6,14.6]]),3.4,3.4),...TB.tress(hd([[8,7],[7.6,11.6],[5,15.6],[3.6,19.6]]),4.6,3.4));
+  // the inside of the mouth, seen through the open jaws
+  P.push(tbR(tbU(hd([[10.6,-3.6],[15,-5.6],[20,-6.8],[25.2,-7.8],[22.6,-3.8],[24.2,0.6],[20,0.8],[15,-0.2]])),tbRD,4));
+  // one contour for the head: skull, brow, the square raised muzzle, the notch of the open jaws, chin and jowl
+  P.push(tbR(G.chaikin(tbU(hd([[0,-6],[1.6,-13],[6.6,-17],[12,-17.8],[15.6,-16.8],[18.2,-14.8],[22,-15.2],[25.6,-14.8],[27.2,-12.4],[26.8,-9.6],[25.2,-7.6],[20,-6.6],[15,-5.4],[10.8,-3.6],[15,-0.4],[20,0.6],[24.2,0.4],[25.8,1.8],[24.8,4.8],[19,6.2],[12,6.6],[6,5.8],[1,2]])),true,2),tbWH,4.2));
+  // tongue: an S that curls up at its tip
+  P.push(tbR(G.ribbon(G.resample(G.chaikin(tbU(hd([[13.6,-2.6],[19,-2.8],[24,-3.8],[28.4,-5.8],[30.6,-8.8],[29.4,-10.4]])),false,3),false,0.8),t=>1.9-1.2*t),tbRD,5),tbL(G.chaikin(tbU(hd([[15,-2.6],[20,-2.9],[24.6,-4.1],[28.2,-6.2]])),false,2),5.05));
+  // fangs and the smaller teeth, upper and lower
+  for(const [x,y,d,h] of [[24.4,-7.5,1,3.3],[21.6,-6.9,1,1.7],[19,-6.4,1,1.6],[16.4,-5.8,1,1.5],[23.2,0.5,-1,2.9],[20.4,0.7,-1,1.6],[17.8,0.3,-1,1.5]]){P.push(tbR(tbU(hd([[x-0.8,y],[x+0.8,y],[x+0.3,y+d*h]])),tbWH,5.1));}
+  // nose: a knob of three lobes on the end of the muzzle
+  for(const [x,y,r] of [[25.4,-15.8,1.7],[27.6,-14,1.6],[27.4,-16.8,1.5]])P.push(tbR(G.circle(...tbU([H1([x,y])])[0],r*HK,12),tbRD,5));
+  // eyes: bulging, ringed, looking up; a green brow swept back from each
+  for(const [x,y,r0] of [[15.4,-11.8,2.7],[20.2,-13.2,2]]){const [c]=tbU([H1([x,y])]),r=r0*HK;P.push(tbR(G.ellipse(c[0],c[1],r*1.3,r*1.05,18,-30),tbWH,5),tbR(G.circle(c[0]+0.4,c[1]-0.3,r*0.72,14),tbOR,5.1),tbN(G.circle(c[0]+0.6,c[1]-0.45,r*0.34,8),tbBL,5.2));}
+  P.push(...TB.tress(hd([[16.4,-15],[12.6,-17.4],[8.6,-18],[5,-16.4]]),3.2,5.3),...TB.tress(hd([[21,-15.8],[18.4,-18.4],[15.6,-19.2],[13,-18.4]]),2.6,5.3));
+  // three curls at the back of the skull, the ear below them
+  {const c1=H1([1.6,-10.4]),c2=H1([0.4,-4.2]),c3=H1([5.2,-15.6]);P.push(...TB.curl(c1[0],c1[1],3.8,4.6,1,tbWH),...TB.curl(c2[0],c2[1],3.8,4.6,-1,tbWH),...TB.curl(c3[0],c3[1],3.5,4.6,1,tbWH));}
+  P.push(tbR(G.chaikin(tbU(hd([[3.6,-1.6],[1,2.8],[2.6,7.8],[6,3.8],[6.6,-0.2]])),true,2),tbWH,5),tbL(G.chaikin(tbU(hd([[4,0.4],[2.8,3.4],[3.4,5.6]])),false,2),5.1));
+  // the lines of the face: the wrinkles of the muzzle, the cheek curl, whisker spots
+  P.push(tbL(G.chaikin(tbU(hd([[19.6,-10.4],[22.4,-10.2],[25.4,-10.8]])),false,2),5.1),tbL(G.chaikin(tbU(hd([[20.6,-8.6],[23,-8.6],[25.6,-9]])),false,2),5.1),tbL(G.chaikin(tbU(hd([[10.8,-3.6],[8.6,-2.4],[7.4,-4.4],[8.8,-6.4],[10.6,-6]])),false,3),5.1),tbL(G.chaikin(tbU(hd([[8,1.6],[12,3.2],[17,3.4],[21.6,2.8]])),false,2),5.1));
+  for(const [x,y] of [[21.6,-11.8],[23.4,-12],[22.6,-13]])P.push(tbN(G.circle(...tbU([H1([x,y])])[0],0.32,6),tbBL,5.1));
   return P;};
 defMotif('snowLion',{name:'Snow lion',term:'gangs seng ge',figure:true,mirrorOk:true,meaning:'The white lion of the snow mountains, bounding with its head thrown up: a mane and tail of green or turquoise flying behind, a fringe of the same down each leg. It leaps from peak to peak without tiring. It is fearless good cheer, the emblem of Tibet, and eight of them hold up a Buddha’s throne.',
 fn(){return tbFit(TB.lion(),96);}});

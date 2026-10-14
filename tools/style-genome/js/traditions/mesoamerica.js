@@ -16,7 +16,7 @@ defTradition({
   axes:{density:.32,weight:.55,uniformity:.99,geometry:.65,symmetry:.92,fill:0,chroma:0,ornament:.24,abstraction:.8,narrative:.15},
   genes:{
     structure:{kinds:['sheet','calendar'],folds:8,density:.3,symmetry:'bilateral',borderBands:0},
-    motifs:{hero:['sunStone','glyphMask','serpent','maquizcoatl','eagle','turtle','pyramid','lizard','ollin','featherFan','calli','xochitl','tecpatl'],ring:['stepFret','ollin','cartouche'],filler:['dot','stepFret'],border:['greca','stepDiamond'],petal:'round'},
+    motifs:{hero:['sunStone','glyphMask','serpent','maquizcoatl','eagle','ocelotl','tochtli','mazatl','itzcuintli','miquiztli','ozomatli','cozcacuauhtli','cipactli','turtle','pyramid','lizard','ollin','featherFan','calli','xochitl','tecpatl'],ring:['stepFret','ollin','cartouche'],filler:['dot','stepFret'],border:['greca','stepDiamond'],petal:'round'},
     line:{weight:4.6,contrast:0,double:false,wobble:0,taper:0,breaks:0,dash:null,misreg:0},
     fill:{modes:{none:1},coverage:0,hatchGap:6},
     ornament:{dotRows:.08,echo:.35,echoCount:1,echoStyle:'solid',scallops:0,halo:0,gems:null,groundStitch:false},
@@ -73,7 +73,7 @@ defTradition({
   axes:{density:.52,weight:.46,uniformity:.93,geometry:.27,symmetry:.61,fill:.05,chroma:0,ornament:.4,abstraction:.85,narrative:.1},
   genes:{
     structure:{kinds:['sheet','field'],folds:8,density:.45,symmetry:'free',borderBands:0},
-    motifs:{hero:['eagle','serpent','maquizcoatl','lizard','turtle','fish','glyphMask','sunStone','xochitl','tecpatl'],ring:['spiral','stepFret','ollin'],filler:['dot','spiral'],border:['zigzag','stepDiamond'],petal:'round'},
+    motifs:{hero:['eagle','serpent','maquizcoatl','ocelotl','tochtli','mazatl','itzcuintli','miquiztli','ozomatli','lizard','turtle','fish','glyphMask','sunStone','xochitl','tecpatl'],ring:['spiral','stepFret','ollin'],filler:['dot','spiral'],border:['zigzag','stepDiamond'],petal:'round'},
     line:{weight:3.4,contrast:.1,double:false,wobble:.3,taper:0,breaks:0,dash:null,misreg:0},
     fill:{modes:{flat:1},coverage:1,hatchGap:6,knockout:1},
     ornament:{dotRows:.2,echo:.55,echoCount:1,echoStyle:'solid',scallops:0,halo:0,gems:null,groundStitch:false},
@@ -228,7 +228,7 @@ defTradition({
   axes:{density:.65,weight:.5,uniformity:.9,geometry:.55,symmetry:.4,fill:.95,chroma:.85,ornament:.4,abstraction:.7,narrative:.95},
   genes:{
     structure:{kinds:['daycount','panel'],folds:8,density:.6,symmetry:'free',borderBands:1},
-    motifs:{hero:['eagle','serpent','maquizcoatl','lizard','ollin','xochitl','calli','tecpatl','pyramid'],ring:['ollin','stepFret','floret'],filler:['dot','floret'],border:['dotRow','lines','greca'],petal:'round'},
+    motifs:{hero:['eagle','serpent','maquizcoatl','ocelotl','tochtli','mazatl','itzcuintli','miquiztli','ozomatli','cozcacuauhtli','cipactli','lizard','ollin','xochitl','calli','tecpatl','pyramid'],ring:['ollin','stepFret','floret'],filler:['dot','floret'],border:['dotRow','lines','greca'],petal:'round'},
     line:{weight:2.8,contrast:0,double:false,wobble:.15,taper:0,breaks:0,dash:null,misreg:0},
     fill:{modes:{flat:1},coverage:1,hatchGap:6},
     ornament:{dotRows:0,echo:.1,echoCount:1,echoStyle:'solid',scallops:0,halo:0,gems:null,groundStitch:false},
@@ -256,7 +256,7 @@ defTradition({
   axes:{density:.9,weight:.55,uniformity:.8,geometry:.65,symmetry:.95,fill:.7,chroma:.05,ornament:.9,abstraction:.8,narrative:.6},
   genes:{
     structure:{kinds:['calendar'],folds:8,density:.85,symmetry:'radial',borderBands:0},
-    motifs:{hero:['ollin'],ring:['ollin','eagle','serpent','lizard','xochitl','calli','tecpatl','stepFret'],filler:['stepFret','dot'],border:['greca','stepDiamond'],petal:'step'},
+    motifs:{hero:['ollin'],ring:['ollin','eagle','serpent','lizard','ocelotl','tochtli','mazatl','itzcuintli','miquiztli','ozomatli','cozcacuauhtli','cipactli','xochitl','calli','tecpatl','stepFret'],filler:['stepFret','dot'],border:['greca','stepDiamond'],petal:'step'},
     line:{weight:3.2,contrast:.3,double:false,wobble:.1,taper:0,breaks:0,dash:null,misreg:0},
     fill:{modes:{flat:.75,none:.25},coverage:.9,hatchGap:6},
     ornament:{dotRows:.3,echo:.45,echoCount:1,echoStyle:'solid',scallops:0,halo:0,gems:null,groundStitch:false},

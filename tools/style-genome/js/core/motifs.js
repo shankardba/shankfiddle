@@ -98,35 +98,52 @@ fn(rng,g){
 const pkU=p=>p.map(([x,y])=>[x-50,y-50]),pkZ=(p,z)=>Object.assign(p,{z});
 function pkScales(P,poly,pitch,z,skip){const b=G.bbox(poly);let row=0;for(let y=b.y0+pitch*0.4;y<b.y1;y+=pitch*0.78,row++)for(let x=b.x0+(row%2?pitch/2:0);x<b.x1;x+=pitch){
     if(!G.inside(x,y,poly)||!G.inside(x-pitch*0.45,y,poly)||!G.inside(x+pitch*0.45,y,poly)||!G.inside(x,y+pitch*0.5,poly)||(skip&&skip(x,y)))continue;P.push(pkZ(ln(G.arc(x,y,pitch*0.5,8,172,6),'detail'),z));}}
-function pkFeather(P,bx,by,ang,len,z){const d=[Math.sin(ang*DEG),-Math.cos(ang*DEG)],n=[d[1],-d[0]],k=0.32,at=t=>[bx+d[0]*len*t,by+d[1]*len*t];
-  P.push(reg(G.xform(G.teardrop(len*k,len*(1-k),12),{x:bx+d[0]*len*(1-k),y:by+d[1]*len*(1-k),rot:ang+180}),'inner',{tone:2,z}));
-  // barbs raked off the shaft toward the tip, longer where the vane is broad
-  for(let i=0;i<9;i++){const t=0.14+i*0.06,q=at(t),w=len*0.3*Math.pow(t/0.68,1.2);for(const s of [-1,1])P.push(pkZ(ln([q,[q[0]+s*n[0]*w+d[0]*w*0.7,q[1]+s*n[1]*w+d[1]*w*0.7]],'detail'),z+0.05));}
-  P.push(pkZ(ln([[bx,by],at(0.6)],'detail'),z+0.05));
-  const e=at(0.7);P.push(reg(G.ellipse(e[0],e[1],len*0.23,len*0.27,18,ang),'inner',{tone:3,z:z+0.1}),reg(G.ellipse(e[0]+d[0]*len*0.02,e[1]+d[1]*len*0.02,len*0.15,len*0.19,14,ang),'inner',{tone:0,z:z+0.2}));
-  P.push(reg(G.xform(G.teardrop(len*0.07,len*0.13,8),{x:e[0]+d[0]*len*0.03,y:e[1]+d[1]*len*0.03,rot:ang+180}),'detail',{tone:2,z:z+0.3}));}
-defMotif('bird',{name:'Peacock',term:'mayūra',mirrorOk:true,meaning:'Beauty, monsoon rains and courtship; vehicle of Kārttikeya. India\'s national bird and a constant in textiles, mehndi and folk painting.',
-fn(rng,g){const P=[],R=[57,59.4];
-  // the train: six ranks hanging down and back from the rump, farthest first
-  [[62,7,112,184],[51,6,115,181],[40,5,119,177],[29,4,124,172],[17.6,3,132,164]].forEach(([dist,n,a0,a1],r)=>{for(let i=0;i<n;i++){const a=lerp(a0,a1,i/(n-1)),len=18-r*0.4,d=[Math.sin(a*DEG),-Math.cos(a*DEG)];
-    pkFeather(P,R[0]-50+d[0]*(dist-len),R[1]-50+d[1]*(dist-len),a,len,r);}});
+// one train feather: a leaf drawn out to a point, barbs raked off the shaft, and the eye in nested rings
+function pkFeather(P,bx,by,ang,L,W,z){const d=[Math.sin(ang*DEG),-Math.cos(ang*DEG)],n=[-d[1],d[0]],pt=(a,b)=>[bx+n[0]*a+d[0]*b,by+n[1]*a+d[1]*b];
+  const side=(s,k=1,c=0)=>G.bez(pt(0,c),pt(s*W*1.25*k,c+L*0.1*k),pt(s*W*1.2*k,c+L*0.62*k),pt(0,c+L*k),10);
+  P.push(reg(side(1).concat(side(-1).reverse().slice(1,-1)),'inner',{tone:2,z}));
+  for(let i=0;i<6;i++){const b=L*(0.1+i*0.135),w=W*Math.sin(Math.PI*Math.pow((b+L*0.1)/L,0.8))*0.78;for(const s of [-1,1])P.push(pkZ(ln([pt(0,b),pt(s*w*0.6,b+L*0.07),pt(s*w,b+L*0.11)],'detail'),z+0.02));}
+  P.push(pkZ(ln([pt(0,0),pt(0,L*0.3)],'detail'),z+0.02));
+  P.push(reg(side(1,0.6,L*0.26).concat(side(-1,0.6,L*0.26).reverse().slice(1,-1)),'inner',{tone:3,z:z+0.04}));
+  const e=pt(0,L*0.56);P.push(reg(G.ellipse(e[0],e[1],W*0.43,L*0.15,16,ang),'inner',{tone:0,z:z+0.06}));
+  P.push(reg(G.xform(G.teardrop(W*0.2,L*0.085,8),{x:e[0]+d[0]*L*0.02,y:e[1]+d[1]*L*0.02,rot:ang+180}),'detail',{tone:2,z:z+0.08}));}
+defMotif('bird',{name:'Peacock',term:'mayūra',mirrorOk:true,meaning:'Beauty, monsoon rains and courtship; vehicle of Kārttikeya. India\'s national bird and a constant in textiles, mehndi and folk painting. It is drawn with a long S of a neck, a necklace at its base, a wing banded with patterns, and a train that hangs down behind in rows of eyed feathers laid one over another like scales.',
+fn(rng,g){const P=[];
+  // the train: a cascade down and back from the rump. Rows of feathers are set across a drooping
+  // spine, the farthest row first, each row half a feather behind the last and stepped sideways,
+  // so that they lap like scales and every eye shows.
+  {const sp=G.resample(G.bez([-6,0],[10,-1],[26,9],[27,39],40),false,0.5),n=sp.length,sm=t=>{const u=clamp((t-0.08)/0.62);return u*u*(3-2*u);},hw=t=>3.2+10.4*sm(t)-2.4*Math.pow(Math.max(0,(t-0.8)/0.2),2),pitch=5.2,lat=7.2;
+    const rows=Math.floor((n*0.5-2)/pitch);
+    for(let k=0;k<rows;k++){const s=n*0.5-1-k*pitch,i=Math.max(1,Math.min(n-2,Math.round(s/0.5))),t=i/(n-1),q=sp[i],a=sp[i-1],b=sp[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/l,ty=(b[1]-a[1])/l,ang=Math.atan2(tx,-ty)/DEG,w=hw(t);
+      let m=Math.max(1,Math.round(2*w/lat));if((m+k)%2)m+=1;const sc=lerp(0.74,1.08,t);
+      const order=[...Array(m).keys()].sort((x,y)=>Math.abs(y-(m-1)/2)-Math.abs(x-(m-1)/2));
+      for(const j of order){const u=(j-(m-1)/2)*(m>1?Math.min(lat,2*w/(m-1)*0.92):0);pkFeather(P,q[0]-ty*u,q[1]+tx*u,ang+(w?u/w*lerp(14,30,t*t):0),13.4*sc,4.9*sc,k*0.2+(1-Math.abs(j-(m-1)/2)/m)*0.1);}}}
   // legs behind the body: a feathered thigh, the shank bent at the heel, three toes forward and one back
-  for(const x of [39.6,46.4]){P.push(reg(pkU(G.chaikin([[x-2.6,62],[x+2.6,62],[x+1.2,71],[x-1,71]],true,2)),'outer',{tone:0,z:6}));
-    P.push(reg(G.ribbon(G.resample(G.chaikin(pkU([[x,70],[x-0.8,75],[x+1.6,79],[x,84.6]]),false,2),false,1),()=>0.75),'outer',{tone:3,z:6}));
-    for(const [dx,dy] of [[-6.4,2.2],[-3.6,3.6],[0.2,4],[3.4,1.2]])P.push(reg(G.ribbon([[x-50,84.4-50],[x-50+dx*0.55,84.4-50+dy*0.7],[x-50+dx,84.4-50+dy]],t=>0.62-0.4*t),'outer',{tone:3,z:6}));}
-  // one contour: crown, nape, the S of the neck, back, rump, belly, breast, throat
-  const B=G.chaikin(pkU([[22,16],[26,12],[31,14],[32.6,20],[30,28],[28.6,36],[32,43],[42,47],[52,52],[59.4,58.4],[55,63.6],[45,66],[34,63],[25.6,55.6],[21,46],[20,38],[21.4,30],[19.4,24],[18,21],[19.6,18.4]]),true,3);
+  for(const x of [37,44]){P.push(reg(pkU(G.chaikin([[x-3,60.6],[x+3,60.6],[x+1.5,69.6],[x-1.3,69.6]],true,2)),'outer',{tone:0,z:6}));
+    P.push(reg(G.ribbon(G.resample(G.chaikin(pkU([[x,68.6],[x-0.9,72.6],[x+1.2,75.4],[x,79.4]]),false,2),false,1),()=>0.95),'outer',{tone:3,z:6}));
+    for(const [dx,dy] of [[-6.6,2],[-3.8,3.4],[0.2,3.8],[3.6,1.2]])P.push(reg(G.ribbon([[x-50,79.2-50],[x-50+dx*0.55,79.2-50+dy*0.7],[x-50+dx,79.2-50+dy]],t=>0.78-0.5*t),'outer',{tone:3,z:6}));}
+  // one contour: brow, crown, nape, the S of the neck, back, rump, belly, the full breast, throat
+  const B=G.chaikin(pkU([[20.4,10.8],[24,8.6],[27.8,9.6],[29.4,12],[29.4,15],[30.2,21],[29.4,27.6],[29.6,33.6],[33,38.6],[39.6,42],[47,45],[53.4,49],[57,53.6],[54,58.4],[47,62.6],[39,64.6],[31,63],[25,58],[20,51],[18.8,44.6],[20.4,38],[23,32],[24,26.4],[23,21],[21,17],[19.6,14]]),true,3);
   P.push(reg(B,'outer',{tone:0,z:7}));
-  const W=G.chaikin(pkU([[30.6,45],[40,45.4],[52,51.4],[59.6,58.6],[49,60.8],[37,57.4]]),true,2);
-  // plumage: small scales down the neck and breast, larger coverts on the wing, quills behind them
-  pkScales(P,B,2.5,7.1,(x,y)=>y<-29||G.inside(x,y,W)||G.inside(x,y+1.4,W)||G.inside(x,y-1.4,W));
-  P.push(reg(W,'inner',{tone:1,z:7.2}));pkScales(P,W,4.2,7.3,(x,y)=>x>1+y*0.2&&x>3);
-  for(const k of [0,1,2,3])P.push(pkZ(ln(pkU([[45-k*0.6,50.4+k*2],[59-k*1.4,58.2+k*0.6]]),'detail'),7.3));
-  // head: beak, eye in its pale patch, a fan of crest stalks tipped with spots
-  P.push(reg(pkU([[20.8,15.4],[11.4,18.8],[20,19.8]]),'outer',{tone:3,z:7.4}),pkZ(ln(pkU([[12.6,18.6],[20,17.8]]),'detail'),7.5));
-  P.push(reg(pkU(G.chaikin([[21.4,15.4],[24.6,13.6],[28.4,15],[28,18.4],[24,19.4],[21.4,18]],true,2)),'inner',{bg:true,z:7.4}),pkZ(ln(pkU(G.chaikin([[21.4,15.4],[24.6,13.6],[28.4,15],[28,18.4],[24,19.4],[21.4,18]],true,2)),'detail',true),7.5));
-  P.push(reg(pkU(G.chain(G.quad([22.2,16.8],[25,14.4],[27.6,16.8],8),G.quad([27.6,16.8],[25,18.6],[22.2,16.8],8)).slice(0,-1)),'detail',{tone:3,z:7.6}),pkZ(dt(25-50,16.7-50,0.95),7.7));
-  for(const a of [-36,-22,-8,6,20,34,48]){const e=[27-50+Math.sin(a*DEG)*10.5,12.6-50-Math.cos(a*DEG)*10.5];P.push(pkZ(ln([[27-50,12.6-50],e],'detail'),7.4),reg(G.xform(G.teardrop(1.25,3,8),{x:e[0],y:e[1],rot:a+180}),'inner',{tone:3,z:7.4}),pkZ(dt(e[0],e[1],0.45),7.5));}
+  // the wing: an almond over the body, banded from the shoulder outward
+  const W=G.chaikin(pkU([[27,46.6],[34,42.6],[44,45.4],[52,49.6],[56.6,54],[50,58.2],[40,60],[32,56.6],[27.4,52]]),true,3),S0=[29-50,49.6-50];
+  const inW=(x,y)=>G.inside(x,y,W),neck=pkU([[21.6,34.4],[30.2,33.4],[31.4,36.2],[20.6,37.6]]);
+  pkScales(P,B,2.5,7.1,(x,y)=>y<-33||inW(x,y)||inW(x,y+1.4)||inW(x,y-1.4)||G.inside(x,y,neck)||G.inside(x,y+1.6,neck));
+  // necklace: a band of beads round the base of the neck
+  P.push(reg(G.chaikin(neck,true,1),'inner',{tone:3,z:7.15}));for(let i=0;i<6;i++)P.push(pkZ(dt(lerp(22.2,30,i/5)-50,35.9-50-i*0.2,0.58),7.2));
+  P.push(reg(W,'inner',{tone:1,z:7.2}));
+  // bands on the wing: arcs struck from the shoulder, scallops between them, then the quills
+  for(const r of [6.4,11.4,16.4]){const q=[];for(let a=-60;a<=100;a+=4){const x=S0[0]+Math.cos(a*DEG)*r,y=S0[1]+Math.sin(a*DEG)*r;if(inW(x,y))q.push([x,y]);}if(q.length>2)P.push(pkZ(ln(q,'inner'),7.3));}
+  for(const [r,st,rr] of [[3.4,34,1.5],[9,17,1.9],[14,12,2.1]])for(let a=-70;a<=110;a+=st){const x=S0[0]+Math.cos(a*DEG)*r,y=S0[1]+Math.sin(a*DEG)*r;if(!inW(x,y)||!inW(x+Math.cos(a*DEG)*rr,y+Math.sin(a*DEG)*rr))continue;
+    P.push(pkZ(ln(G.arc(x,y,rr,a-80,a+80,6),'detail'),7.3),pkZ(dt(x+Math.cos(a*DEG)*rr*0.1,y+Math.sin(a*DEG)*rr*0.1,0.4),7.3));}
+  [[-6,0],[4,1],[14,0],[24,1],[34,0]].forEach(([a,k])=>{const c0=[S0[0]+Math.cos(a*DEG)*16.6,S0[1]+Math.sin(a*DEG)*16.6],c1=[S0[0]+Math.cos((a+3)*DEG)*(26.4-Math.abs(a-12)*0.2),S0[1]+Math.sin((a+3)*DEG)*(26.4-Math.abs(a-12)*0.2)];
+    if(inW(c0[0],c0[1]))P.push(reg(G.ribbon(G.resample([c0,c1],false,1),t=>1.5*Math.pow(Math.sin(Math.PI*clamp(0.1+0.86*t)),0.6)),'inner',{tone:k?3:0,z:7.25+a*0.001}));});
+  // head: short curved beak, the eye in its pale patch, a fan of crest stalks tipped with spots
+  P.push(reg(pkU(G.chain(G.bez([20.2,11.8],[17.6,12.2],[14.8,13.2],[12.8,15.8],8),G.bez([12.8,15.8],[15.6,15.4],[18,15.8],[19.8,16.2],6))),'outer',{tone:3,z:7.4}),pkZ(ln(pkU([[14.2,15.2],[19.8,14.5]]),'detail'),7.5));
+  const patch=pkU(G.chaikin([[20.8,12.2],[24,10.4],[27.6,12],[27.4,15.2],[23.6,16.4],[20.8,14.8]],true,2));
+  P.push(reg(patch,'inner',{bg:true,z:7.4}),pkZ(ln(patch,'detail',true),7.5));
+  P.push(reg(pkU(G.chain(G.quad([21.6,13.5],[24.2,11.3],[26.8,13.5],8),G.quad([26.8,13.5],[24.2,15.2],[21.6,13.5],8)).slice(0,-1)),'detail',{tone:3,z:7.6}),pkZ(dt(24.2-50,13.4-50,0.9),7.7));
+  for(const a of [-38,-24,-10,4,18,32,46]){const o=[25.8-50,9-50],e=[o[0]+Math.sin(a*DEG)*9,o[1]-Math.cos(a*DEG)*9];P.push(pkZ(ln([o,e],'detail'),7.4),reg(G.xform(G.teardrop(1.2,2.8,8),{x:e[0],y:e[1],rot:a+180}),'inner',{tone:3,z:7.4}),pkZ(dt(e[0],e[1],0.42),7.5));}
   return fitParts(P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]));
 }});
 
@@ -404,26 +421,36 @@ fn(rng,g){const P=[];const roundEyes=rng.chance(.6),tongue=rng.chance(.45);
   for(const s of [-1,1])P.push(ln([[s*30,-14],[s*24,-18],[s*30,-22]],'detail'));
   return fitParts(P);}});
 
-defMotif('eagle',{name:'Eagle',term:'cuauhtli',mirrorOk:true,meaning:'Day sign of the eagle, drawn as a head in profile: a heavy hooked beak, a fierce eye under a jutting brow, and feathers lying over one another down the neck, each tipped dark. Emblem of the sun and of the eagle warriors; the eagle on a cactus marks where the Mexica founded Tenochtitlan.',
+defMotif('eagle',{name:'Eagle',term:'cuauhtli',mirrorOk:true,meaning:'Day sign of the eagle, drawn as a head in profile: a heavy hooked beak open on its tongue, a fierce eye under a jutting brow, and pointed feathers lying over one another down the neck, each tipped dark like a flint blade. Emblem of the sun and of the eagle warriors; the eagle on a cactus marks where the Mexica founded Tenochtitlan.',
 fn(rng,g){const P=[],Z=(p,z)=>Object.assign(p,{z});
-  /* Second redraw: the plumage is shingled, not a sunburst. Feathers lie in rows that sweep back
-     and down from the face; each row is drawn over the roots of the row behind it. */
-  const fe=(x,y,len,w,rot,z)=>{const T=q=>G.xform(q,{x,y,rot});P.push(reg(T(G.chain(G.bez([0,0],[-w*1.5,-len*0.3],[-w*0.9,-len*0.78],[0,-len],10),G.bez([0,-len],[w*0.9,-len*0.78],[w*1.5,-len*0.3],[0,0],10)).slice(0,-1)),'outer',{tone:0,z}));
-    P.push(reg(T([[0,-len],[-w*0.56,-len*0.74],[0,-len*0.62],[w*0.56,-len*0.74]]),'inner',{tone:1,z:z+0.01}),Z(ln(T([[0,-len*0.08],[0,-len*0.6]]),'detail'),z+0.02));};
-  // rows from the back of the neck forward: [distance from the eye, feathers, first and last direction]
-  [[44,9,188,304],[34,8,192,306],[24,7,198,308],[14,5,208,300]].forEach(([dist,n,a0,a1],r)=>{for(let i=0;i<n;i++){const a=lerp(a0,a1,i/(n-1)),d=[Math.sin(a*DEG),-Math.cos(a*DEG)],len=22-r*1.6;fe(4+d[0]*(dist-len),-6+d[1]*(dist-len),len,4.4-r*0.3,a,r);}});
-  // crown feathers lying back over the skull
-  for(const [x,y,a] of [[3,-20,284],[9,-23,290],[-4,-15,278]])fe(x,y,17,3.6,a,3.5);
+  /* Third redraw, against the four day-sign sheets. The plumage is a ruff down the NECK, every
+     feather pointing away from the beak and down, laid in stepped rows from the bottom up; only a
+     short row stands off the back of the skull. Each feather is a flame: full near the root, bent,
+     drawn to a point, its last third dark. The beak is a third of the whole. */
+  const fe=(x,y,ang,len,w,z,bend=0.1)=>{const d=[Math.sin(ang*DEG),-Math.cos(ang*DEG)],n=[-d[1],d[0]],sp=G.resample(G.quad([x,y],[x+d[0]*len*0.5+n[0]*len*bend,y+d[1]*len*0.5+n[1]*len*bend],[x+d[0]*len,y+d[1]*len],12),false,0.7),m=sp.length,hw=t=>0.08+w*Math.pow(Math.sin(Math.PI*Math.pow(clamp(t),0.58)),0.85),k=Math.round(m*0.62);
+    P.push(reg(G.ribbon(sp,hw),'outer',{tone:0,z}));const tip=sp.slice(k);P.push(reg(G.ribbon(tip,t=>hw(lerp(k/(m-1),1,t))),'inner',{tone:1,z:z+0.01}),Z(ln(sp.slice(1,k),'detail'),z+0.02));};
+  // the neck under its feathers
+  P.push(reg(G.chaikin([[-8,-18],[8,-2],[14,10],[6,26],[-8,38],[-26,34],[-30,16],[-22,-2]],true,2),'outer',{tone:0,z:0}));
+  // rows down the neck, lowest first: each row a little narrower, stepped half a feather sideways
+  for(let k=5;k>=0;k--){const s=5+k*6.4,hwid=10.5+k*1.5,m=5+(k%2),ax=[Math.sin(207*DEG),-Math.cos(207*DEG)],nr=[-ax[1],ax[0]];
+    for(let j=0;j<m;j++){const u=(j-(m-1)/2)/((m-1)/2)*hwid;fe(-1+ax[0]*s+nr[0]*u,-5+ax[1]*s+nr[1]*u,207+u/hwid*27,13.6,3.5,(5-k)*0.1+0.2,u>0?0.1:-0.1);}}
+  // the feathers that stand off the back of the skull and the crown
+  [[218,13],[236,13.6],[254,14],[272,13.6],[289,12.6],[304,11]].forEach(([a,l],i)=>fe(6+Math.sin(a*DEG)*9,-12-Math.cos(a*DEG)*9,a-4,l,3.3,1+i*0.02,0.12));
   // skull and face: one contour from the crown round the cheek to the throat
-  P.push(reg(G.chaikin([[3,-21],[11,-24],[18,-21],[21,-13],[19,-3],[14,4],[6,7],[-2,4],[-5,-4],[-4,-14]],true,3),'outer',{tone:0,z:4}));
-  for(const [x,y,a] of [[0,0,238],[-2,-9,250],[4,6,222],[9,0,230]])P.push(Z(ln(G.xform(G.quad([-2.6,0],[0,-4.4],[2.6,0],6),{x,y,rot:a}),'detail'),4.1));
-  // beak: the upper mandible hooks over the lower; cere, nostril, gape, tongue
-  P.push(reg(G.chaikin([[13,-1],[24,-1],[32,2.4],[31,5.6],[22,6.4],[13,4.4]],true,2),'outer',{tone:2,z:4.5}),reg(G.chaikin([[17,-2.6],[27,-2],[33,1.4],[24,0.6]],true,2),'inner',{tone:3,z:4.6}));
-  P.push(reg(G.chaikin([[15,-18],[26,-19],[36,-14.6],[41.6,-7],[42,1],[39.6,7.6],[37.6,2],[34,-2.6],[27,-4.6],[15,-4.6]],true,2),'outer',{tone:2,z:5}));
-  P.push(Z(ln(G.bez([21,-18.4],[19.4,-14],[19.4,-9],[21,-4.8],8),'inner'),5.1),Z(dt(26.6,-13,1.1),5.2));
+  P.push(reg(G.chaikin([[2,-24],[11,-26],[19,-23],[22,-16],[21,-8],[17,-1],[9,3],[1,2],[-5,-4],[-7,-13],[-4,-20]],true,3),'outer',{tone:0,z:4}));
+  for(const [x,y,a] of [[-1,-2,236],[-3,-11,254],[3,2,218],[4,-4,232],[-1,-17,276]])P.push(Z(ln(G.xform(G.quad([-2.6,0],[0,-4.6],[2.6,0],6),{x,y,rot:a}),'detail'),4.1));
+  // the bare face round the eye, lighter
+  P.push(reg(G.chaikin([[8,-20],[17,-21.6],[21,-16],[21,-8],[16,-3],[9.6,-4.6],[6,-11.6]],true,2),'inner',{tone:2,z:4.3}));
+  // beak: the lower mandible, the tongue lying in it, then the upper mandible hooked over both
+  P.push(reg(G.chain(G.bez([15,-5],[24,-5.6],[32,-4.6],[38.6,-1.4],10),G.bez([38.6,-1.4],[36,3],[30,5],[22,4.6],10),[[15,2.4]]),'outer',{tone:2,z:4.5}));
+  P.push(reg(azTube([[19,-6.4],[27,-6.6],[34,-5.8],[39,-4]],t=>1.4-0.9*t),'inner',{tone:3,z:4.6}));
+  P.push(reg(G.chain(G.bez([15,-22.6],[25,-24.2],[34,-22.6],[41,-18.4],12),G.bez([41,-18.4],[46.6,-14],[48.2,-5],[44.6,6.6],10),G.bez([44.6,6.6],[43.6,0.6],[40,-5],[33,-7.2],10),[[16,-7.8]]),'outer',{tone:2,z:5}));
+  P.push(Z(ln(G.bez([22,-20.6],[30,-20.4],[37,-17.6],[42,-11],10),'detail'),5.1));
+  // cere and nostril
+  P.push(reg(G.chaikin([[15.4,-22.6],[21.6,-23.4],[21.4,-7.8],[16,-7.8]],true,1),'inner',{tone:3,z:5.2}),Z(dt(26.4,-16.4,1.15),5.3));
   // the eye under its brow
-  P.push(reg(G.chaikin([[2,-16],[10,-19.6],[19,-16],[20,-12.6],[11,-14],[3,-12.6]],true,2),'inner',{tone:1,z:5.5}));
-  P.push(reg(G.ellipse(11.4,-10,4.6,3.4,18,8),'inner',{tone:2,z:5.4}),reg(G.ellipse(11.8,-10,3,2.5,14,8),'inner',{bg:true,z:5.5}),Z(dt(12.2,-10.2,1.25),5.6));
+  P.push(reg(G.chaikin([[2.6,-17.6],[10,-21.6],[18.6,-19.6],[21.6,-15],[12,-16.4],[4,-14.2]],true,2),'inner',{tone:1,z:5.5}));
+  P.push(reg(G.ellipse(11.8,-11.6,4.7,3.6,18,8),'inner',{tone:3,z:5.4}),reg(G.ellipse(12.1,-11.6,3.2,2.6,14,8),'inner',{bg:true,z:5.45}),Z(dt(12.6,-11.8,1.3),5.6));
   return fitParts(P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]));}});
 defMotif('serpent',{name:'Serpent',term:'coatl',mirrorOk:true,meaning:'The serpent, day sign coatl: coiled, covered in scales, the mouth open on its fangs and forked tongue, rattles at the tail. Plumed, it is Quetzalcoatl, lord of wind, learning and the morning star; its banded body becomes step-frets and its coils frame temples.',
 fn(rng,g){const P=[],cp=[[20,-21],[2,-31],[-22,-30],[-40,-14],[-41,9],[-26,25],[-2,28],[18,20],[30,24]],sp=G.resample(G.chaikin(cp,false,3),false,1.2),n=sp.length,W=t=>t>0.84?Math.max(2,11.6*(1-(t-0.84)/0.16*0.72)):t<0.1?8+t/0.1*3.6:11.6;
@@ -485,6 +512,130 @@ fn(){const P=[];for(const s of [-1,1]){P.push(reg(azTube([[s*7,30],[s*34,27],[s*
   P.push(reg(G.chaikin([[-5.6,24],[-6.6,-24],[-4,-33],[4,-33],[6.6,-24],[5.6,24]],true,2),'outer',{tone:0}),ln([[0,18],[0,-27]],'detail'));
   for(const [x,y] of [[-10,-42],[0,-46],[10,-42]]){P.push(ln([[x*0.3,-33],[x,y+3]],'detail'),reg(G.circle(x,y,3.2,12),'inner',{tone:2}));}
   P.push(reg(G.circle(0,27,8.6,22),'outer',{tone:2}),reg(G.circle(0,27,4,14),'inner',{bg:true}),reg([[-20,36],[20,36],[16,44],[-16,44]],'outer',{tone:1}),ln([[-18,40],[18,40]],'detail'));return fitParts(P);}});
+/* More day signs, drawn 2026-10-13 against the four sheets of the twenty signs supplied by the
+   user. What the sheets share, and what the code keeps: each sign is a HEAD in profile that fills
+   a square, cut off at the neck by a collar (a band with a row of rounded flaps under it); the
+   outline is bold and even; the eye is a ring with a heavy brow; the mouth is open on its teeth,
+   which are blocks or points, and a red tongue comes out; the animal is told by one or two marks
+   only: the jaguar's round ear and spots, the rabbit's long ears and two front teeth, the deer's
+   antler, the dog's torn ear, the monkey's crest and earring, the vulture's bald wrinkled head. */
+const AZ={};
+AZ.sm=(pts,it=2)=>G.chaikin(pts,true,it);
+AZ.z=(p,z)=>Object.assign(p,{z});
+AZ.sort=P=>P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]);
+// ring eye with a heavy brow over it
+AZ.eye=(P,x,y,r,z,brow=1)=>{P.push(reg(G.circle(x,y,r,22),'inner',{tone:2,z}),reg(G.circle(x,y,r*0.66,18),'inner',{bg:true,z:z+0.01}),AZ.z(ln(G.circle(x,y,r*0.66,18),'detail',true),z+0.02),AZ.z(dt(x+r*0.12,y,r*0.32,'inner'),z+0.03));
+  if(brow)P.push(reg(G.ribbon(G.resample(G.bez([x-r*1.5,y-r*0.5],[x-r*0.7,y-r*1.75],[x+r*0.9,y-r*1.75],[x+r*1.7,y-r*0.55],14),false,0.8),t=>r*0.34*Math.pow(Math.sin(Math.PI*clamp(0.08+0.88*t)),0.6)),'inner',{tone:1,z:z+0.04}));};
+// collar under the neck: a band and a row of rounded flaps
+AZ.collar=(P,x0,x1,y,z,n=4)=>{const w=(x1-x0)/n;for(let i=0;i<n;i++){const a=x0+i*w+w*0.08,b=x0+(i+1)*w-w*0.08;P.push(reg(AZ.sm([[a,y+3],[b,y+3],[b,y+9.6],[(a+b)/2,y+12.4],[a,y+9.6]],2),'inner',{tone:2,z}));}
+  P.push(reg([[x0-1.6,y],[x1+1.6,y],[x1+1.6,y+5.4],[x0-1.6,y+5.4]],'inner',{tone:3,z:z+0.1}));};
+// pointed teeth along a lip line, hanging (dir 1) or standing (dir -1)
+AZ.teeth=(P,x0,y0,x1,y1,n,h,dir,z,w=2.3)=>{for(let i=0;i<n;i++){const t=n>1?i/(n-1):0.5,x=lerp(x0,x1,t),y=lerp(y0,y1,t),q=[[x-w/2,y],[x+w/2,y],[x,y+dir*h]];P.push(reg(q,'detail',{bg:true,z}),AZ.z(ln(q,'detail',true),z+0.01));}};
+AZ.fang=(P,x,y,h,dir,z,w=3.6)=>{const q=G.chain(G.bez([x-w/2,y],[x-w*0.3,y+dir*h*0.6],[x,y+dir*h*0.9],[x+w*0.1,y+dir*h],6),G.bez([x+w*0.1,y+dir*h],[x+w*0.4,y+dir*h*0.6],[x+w/2,y+dir*h*0.3],[x+w/2,y],6));P.push(reg(q,'detail',{bg:true,z}),AZ.z(ln(q,'detail',true),z+0.01));};
+AZ.tongue=(P,cp,w,z)=>{P.push(reg(azTube(cp,t=>w*(0.5-0.2*t),1),'inner',{tone:3,z}),AZ.z(ln(G.resample(G.chaikin(cp,false,3),false,1.2).slice(2,-3),'detail'),z+0.01));};
+AZ.blot=(P,x,y,r,z,k=0)=>{const q=[];for(let i=0;i<7;i++){const a=i/7*Math.PI*2+k,rr=r*(0.72+0.42*Math.abs(Math.sin(i*2.3+k*1.7)));q.push([x+Math.cos(a)*rr,y+Math.sin(a)*rr*0.86]);}P.push(reg(AZ.sm(q,2),'inner',{tone:1,z}));};
+defMotif('ocelotl',{name:'Jaguar',term:'ocelotl',mirrorOk:true,meaning:'Day sign of the jaguar: a round ear, a coat of dark spots, fangs, and the tongue out. The jaguar is the night sun that travels under the earth, the animal of sorcerers and of the jaguar warriors, and the companion of Tezcatlipoca.',
+fn(){const P=[];AZ.collar(P,-35,1,27,3.5);
+  P.push(reg([[12,-1],[28,-4],[37,-5],[35,2],[34,9],[26,7]],'inner',{tone:1,z:2}));
+  P.push(reg(AZ.sm([[-35,29],[-36.6,6],[-36,-10],[-30,-24],[-25.6,-31],[-23,-40],[-11,-41.6],[-6,-31.6],[4,-31],[16,-27],[26,-21.6],[35,-18.6],[39.6,-12],[37.8,-5],[28,-3.4],[12,-1],[26,7],[34.4,8.6],[33.4,15.4],[18,18.8],[5,20.4],[1,29]]),'outer',{tone:0,z:3}));
+  P.push(reg(AZ.sm([[-21,-36.6],[-12.6,-37.6],[-9.6,-30.6],[-20,-29.6]]),'inner',{tone:2,z:3.2}),reg(AZ.sm([[32.6,-18.8],[39.4,-12.6],[33,-12.2]],1),'inner',{tone:1,z:3.2}));
+  [[-27,-17,3.6],[-16.6,-23,3.2],[-6,-21.6,3],[-23.6,-4,3.6],[-11,-9,3.3],[1.6,-9.6,2.8],[-28,10,3.4],[-16,6.6,3.6],[-4,5,3],[-23,20,3.2],[-9.6,17.6,3.2],[7,12,2.6],[22,-12,2.2],[5,-23.6,2.2]].forEach(([x,y,r],i)=>AZ.blot(P,x,y,r,3.1,i));
+  AZ.eye(P,14.6,-17.4,4.7,3.3);
+  AZ.fang(P,32.6,-4.6,7,1,3.3);AZ.teeth(P,27.6,-3.6,18.6,-2,3,3.2,1,3.3);AZ.fang(P,29.6,7.6,-5.6,-1,3.3,3.2);AZ.teeth(P,25,7,20,4.6,2,-2.8,-1,3.3);
+  AZ.tongue(P,[[21,1.6],[30,1.8],[38,1.6],[43.4,5],[44,11.6]],4.6,3.4);
+  for(const [x,y] of [[29.6,-9.6],[32.6,-8.6],[30.6,-12]])P.push(AZ.z(dt(x,y,0.6),3.3));
+  return fitParts(AZ.sort(P));}});
+defMotif('tochtli',{name:'Rabbit',term:'tochtli',mirrorOk:true,meaning:'Day sign of the rabbit: long ears laid back, a round eye, two front teeth. The Mexica saw a rabbit in the face of the moon; it is the sign of plenty, of pulque and its four hundred rabbit gods, and of drunkenness.',
+fn(){const P=[];AZ.collar(P,-31,1,26,3.5);
+  // ears: two long leaves laid back from the crown, the far one first
+  for(const [cp,z] of [[[[-8,-22],[-18,-34],[-28,-43],[-38,-48]],2.4],[[[-15,-19],[-27,-28],[-39,-34],[-49,-36]],2.6]]){const sp=G.resample(G.chaikin(cp,false,3),false,1);P.push(reg(G.ribbon(sp,t=>0.3+6*Math.pow(Math.sin(Math.PI*clamp(0.06+0.9*t)),0.7)),'outer',{tone:0,z}),reg(G.ribbon(sp.slice(4,-6),t=>0.2+2.7*Math.pow(Math.sin(Math.PI*clamp(0.06+0.9*t)),0.8)),'inner',{tone:2,z:z+0.05}));}
+  P.push(reg([[14,6],[26,4],[33,2.4],[31,9],[28,14],[24,12]],'inner',{tone:1,z:2}));
+  P.push(reg(AZ.sm([[-31,28],[-33,6],[-29,-10],[-21,-19],[-10,-23.6],[3,-23],[18,-17],[29,-10.6],[35,-4.4],[33.6,2.4],[26,4],[14,6],[24,12],[28.4,14],[25,19.6],[10,20.6],[3,22],[1,28]]),'outer',{tone:0,z:3}));
+  AZ.eye(P,9.6,-8.6,5.4,3.3,0);P.push(reg(AZ.sm([[30,-9.6],[35,-4.6],[30.6,-4.4]],1),'inner',{tone:3,z:3.2}));
+  // the two front teeth
+  for(const x of [26.2,29.4]){const q=[[x-1.5,3.6],[x+1.5,3.2],[x+1.5,10.6],[x-1.5,10.8]];P.push(reg(q,'detail',{bg:true,z:3.3}),AZ.z(ln(q,'detail',true),3.31));}
+  AZ.tongue(P,[[20,9],[27,10.6],[33,13],[35,18]],3.6,2.8);
+  for(const [x,y] of [[24,-3],[27,-1.6],[25,0.4]])P.push(AZ.z(dt(x,y,0.6),3.3));
+  P.push(AZ.z(ln(G.bez([-22,2],[-14,8],[-4,10],[6,8],8),'detail'),3.2),AZ.z(ln(G.bez([-24,12],[-14,16],[-6,16],[0,14],8),'detail'),3.2));
+  return fitParts(AZ.sort(P));}});
+defMotif('mazatl',{name:'Deer',term:'mazatl',mirrorOk:true,meaning:'Day sign of the deer: a long muzzle, a leaf of an ear, a forked antler, the tongue hanging. The deer is the wild, the hunt and the wanderer; the god Mixcoatl hunts a two-headed deer across the northern sky.',
+fn(){const P=[];AZ.collar(P,-29,2,26,3.5);
+  // antler: a beam with two tines, each swelling a little before its point
+  for(const cp of [[[-3,-21],[-7,-32],[-13,-41],[-11,-49]],[[-7,-33],[-2,-39],[4,-43],[9,-48]],[[-10,-39],[-17,-41],[-23,-45]]])P.push(reg(azTube(cp,t=>3-2*t,1),'outer',{tone:2,z:2.2}));
+  // ear: one leaf laid back
+  {const sp=G.resample(G.chaikin([[-14,-18],[-25,-22],[-36,-23],[-46,-28]],false,3),false,1);P.push(reg(G.ribbon(sp,t=>0.3+6.4*Math.pow(Math.sin(Math.PI*clamp(0.06+0.9*t)),0.7)),'outer',{tone:0,z:2.6}),reg(G.ribbon(sp.slice(4,-6),t=>0.2+2.8*Math.pow(Math.sin(Math.PI*clamp(0.06+0.9*t)),0.8)),'inner',{tone:2,z:2.65}));}
+  P.push(reg([[15,8],[30,7.6],[40.6,7],[38,12],[36,15],[30,14]],'inner',{tone:1,z:2}));
+  P.push(reg(AZ.sm([[-29,28],[-31,4],[-26,-13],[-12,-22.6],[3,-21],[14,-16],[26,-10],[38,-4.4],[43,2],[40.8,7],[30,7.8],[15,8],[30,14],[36.6,15],[31,20.6],[12,20.6],[3,22],[2,28]]),'outer',{tone:0,z:3}));
+  AZ.eye(P,6.6,-9.6,4.4,3.3);P.push(reg(AZ.sm([[37.6,-4.6],[43.2,2],[37,1.6]],1),'inner',{tone:1,z:3.2}));
+  for(let i=0;i<4;i++){const x=20+i*4.4,q=[[x-1.6,7.9],[x+1.6,7.8],[x+1.6,11],[x-1.6,11]];P.push(reg(q,'detail',{bg:true,z:3.3}),AZ.z(ln(q,'detail',true),3.31));}
+  AZ.tongue(P,[[30,11.6],[37,11],[42,13],[42.6,20],[40,25]],4.2,3.4);
+  for(const [x,y,r] of [[-18,-4,1.5],[-10,2,1.3],[-20,10,1.4],[-4,-12,1.2],[-8,14,1.3],[4,6,1.2]])P.push(reg(G.circle(x,y,r,10),'detail',{bg:true,z:3.2}));
+  return fitParts(AZ.sort(P));}});
+defMotif('itzcuintli',{name:'Dog',term:'itzcuintli',mirrorOk:true,meaning:'Day sign of the dog: a torn ear, dark patches on a pale coat, teeth and tongue. The dog guides the dead across the river of the underworld, and Xolotl, the dog-headed twin of Quetzalcoatl, leads the sun down each night.',
+fn(){const P=[];AZ.collar(P,-33,2,27,3.5);
+  P.push(reg([[10,2],[28,0],[39,-1],[37,6],[35,12],[26,11]],'inner',{tone:1,z:2}));
+  // the ear stands up and is torn: two ragged points with a bite out of the edge
+  P.push(reg(G.chain(G.bez([-29,-21],[-32,-31],[-30,-40],[-24,-44],8),[[-21.6,-40.6],[-18,-45],[-15.6,-40.6],[-11.6,-43.6]],G.bez([-11.6,-43.6],[-6.6,-38],[-5.6,-30],[-8,-23],8)),'outer',{tone:0,z:2.6}),reg(AZ.sm([[-24,-27],[-25,-36],[-17,-37],[-12,-28]],2),'inner',{tone:2,z:2.7}));
+  P.push(reg(AZ.sm([[-33,29],[-35,6],[-34,-10],[-28,-22],[-18,-27],[-6,-27],[8,-23.6],[20,-18],[31,-13.6],[39,-10],[42,-4],[39.4,-1],[28,0.2],[10,2],[26,11],[35.4,12],[33.6,18],[18,20.6],[5,21.6],[2,29]]),'outer',{tone:0,z:3}));
+  // dark patches: one round the eye, two on the cheek and neck
+  P.push(reg(AZ.sm([[2,-22],[13,-20.6],[17,-12],[11,-5],[1,-7],[-3,-15]]),'inner',{tone:1,z:3.1}));AZ.blot(P,-20,-6,5.6,3.1,2);AZ.blot(P,-14,14,4.8,3.1,5);AZ.blot(P,-27,16,3.4,3.1,1);
+  AZ.eye(P,7.4,-13.6,4.2,3.3,0);P.push(reg(AZ.sm([[36.6,-11],[42.2,-4.4],[36.6,-4.6]],1),'inner',{tone:1,z:3.2}));
+  AZ.fang(P,33.6,-0.6,6,1,3.3,3.2);AZ.teeth(P,28.6,0.2,16,1.6,4,2.8,1,3.3,2.5);AZ.fang(P,30,11.2,-5,-1,3.3,3);AZ.teeth(P,25.6,10.6,19,7.2,2,-2.6,-1,3.3);
+  AZ.tongue(P,[[21,5.6],[30,5.4],[38,5.6],[43,9.6],[42,16]],4.4,3.4);
+  return fitParts(AZ.sort(P));}});
+defMotif('miquiztli',{name:'Death',term:'miquiztli',mirrorOk:true,meaning:'Day sign of death: a skull in profile, the eye a great ring, the teeth in two rows of blocks. Death here is not an end: the bones are the seed from which Quetzalcoatl remade people, and the lord of the dead, Mictlantecuhtli, is drawn smiling.',
+fn(){const P=[];
+  // the jaw hangs under the skull, hinged behind the teeth
+  P.push(reg(AZ.sm([[-10,3],[-3,7],[4,15],[30,15.6],[30.6,25],[22,31.6],[4,31],[-7,22],[-13,10]]),'outer',{tone:0,z:2}));
+  P.push(reg(AZ.sm([[-36,-6],[-33,-23],[-22,-36],[-4,-42],[14,-37],[25,-26],[28,-14],[24,-6],[30,-1],[31,11.6],[3,12],[-3,6],[-14,8],[-28,6]]),'outer',{tone:0,z:3}));
+  // teeth: blocks, upper and lower
+  for(let i=0;i<5;i++){const x=6+i*5,q=[[x,4.6],[x+4.2,4.6],[x+4.2,11.4],[x,11.4]],r=[[x,16.4],[x+4.2,16.4],[x+4.2,22.6],[x,22.6]];P.push(reg(q,'detail',{bg:true,z:3.3}),AZ.z(ln(q,'detail',true),3.31),reg(r,'detail',{bg:true,z:3.3}),AZ.z(ln(r,'detail',true),3.31));}
+  // the eye socket, the hollow of the nose, the seam of the skull, a red spot at the temple
+  P.push(reg(G.circle(9,-15,9.6,28),'inner',{tone:2,z:3.3}),reg(G.circle(9,-15,6.6,22),'inner',{bg:true,z:3.31}),AZ.z(ln(G.circle(9,-15,6.6,22),'detail',true),3.32),reg(G.circle(9.6,-15,3,14),'inner',{tone:1,z:3.33}));
+  P.push(reg(AZ.sm([[24,-7.6],[29,-1.6],[23.6,-1]],1),'inner',{tone:1,z:3.2}),reg(G.circle(-22,-10,5.4,18),'inner',{tone:3,z:3.2}),AZ.z(ln(G.circle(-22,-10,2.6,12),'detail',true),3.25));
+  P.push(AZ.z(ln(G.chaikin([[-32,-18],[-24,-24],[-18,-20],[-10,-28],[-4,-24],[4,-32],[10,-36]],false,2),'detail'),3.2),AZ.z(ln(G.bez([-12,6],[-8,-2],[-2,-6],[2,-8],8),'detail'),3.2));
+  return fitParts(AZ.sort(P));}});
+defMotif('ozomatli',{name:'Monkey',term:'ozomatli',mirrorOk:true,meaning:'Day sign of the monkey: a crest of hair standing along the skull, a bare face with a snub nose, and an earring with a hanging drop. The monkey is the dancer, the jester and the craftsman, and the companion of Xochipilli, lord of flowers and song.',
+fn(){const P=[];AZ.collar(P,-30,2,27,3.5);
+  // crest: a comb of pointed tufts from the brow over the crown to the nape
+  for(let i=0;i<10;i++){const a=(-128+i*19)*DEG,c=[-7,-10],r0=21.6,r1=33+3*Math.sin(i*1.3),w=5.2*DEG;P.push(reg([[c[0]+Math.cos(a-w*1.7)*r0,c[1]+Math.sin(a-w*1.7)*r0],[c[0]+Math.cos(a+0.06)*r1,c[1]+Math.sin(a+0.06)*r1],[c[0]+Math.cos(a+w*1.7)*r0,c[1]+Math.sin(a+w*1.7)*r0]],'outer',{tone:1,z:2.4}));}
+  P.push(reg([[10,4.6],[22,4],[29,2.4],[27,8],[26,12.6],[22,10.4]],'inner',{tone:1,z:2}));
+  P.push(reg(AZ.sm([[-30,29],[-32,8],[-31,-10],[-24,-25],[-10,-33],[4,-31],[12,-24],[11,-17],[19,-12],[27,-8],[31,-3.6],[29.2,2.4],[22,4],[10,4.6],[22,10.4],[26.6,12.6],[21,19],[8,20.6],[3,22],[2,29]]),'outer',{tone:0,z:3}));
+  // the bare face
+  P.push(reg(AZ.sm([[4,-24],[11,-17.6],[19,-12.6],[26,-8.6],[30,-3.8],[28.4,1.8],[20,3.2],[10,3.8],[3,-2],[1,-13]]),'inner',{tone:2,z:3.1}));
+  AZ.eye(P,10.6,-9.6,3.9,3.3);P.push(AZ.z(dt(27.6,-4.6,0.8),3.3),AZ.z(ln(G.bez([21,-9.6],[24,-8.6],[26.6,-6.6],[26.4,-4],6),'detail'),3.3));
+  AZ.teeth(P,25,3.4,13.6,4.4,4,2.6,1,3.3,2.6);
+  // earspool with its drop
+  P.push(reg(G.circle(-11,0,6.4,22),'inner',{tone:3,z:3.3}),reg(G.circle(-11,0,3.2,14),'inner',{bg:true,z:3.31}),AZ.z(ln(G.circle(-11,0,3.2,14),'detail',true),3.32),reg(G.xform(G.teardrop(3.6,7.6,12),{x:-11,y:15.6,rot:180}),'inner',{tone:2,z:3.3}));
+  return fitParts(AZ.sort(P));}});
+defMotif('cozcacuauhtli',{name:'Vulture',term:'cōzcacuāuhtli',mirrorOk:true,meaning:'Day sign of the king vulture: a bald, wrinkled head, a short hooked beak, an ear ornament and a ruff of feathers at the neck. The bald head makes it the sign of old age and long life, and of the wise who have seen much.',
+fn(){const P=[],fe=(x,y,ang,len,w,z)=>{const d=[Math.sin(ang*DEG),-Math.cos(ang*DEG)],sp=G.resample([[x,y],[x+d[0]*len,y+d[1]*len]],false,0.8),m=sp.length,hw=t=>0.08+w*Math.pow(Math.sin(Math.PI*Math.pow(clamp(t),0.58)),0.85),k=Math.round(m*0.6);P.push(reg(G.ribbon(sp,hw),'outer',{tone:1,z}),reg(G.ribbon(sp.slice(k),t=>hw(lerp(k/(m-1),1,t))),'inner',{tone:0,z:z+0.01}));};
+  // ruff: two rows of feathers round the base of the neck
+  for(let k=1;k>=0;k--)for(let j=0;j<7+k;j++){const u=(j-(6+k)/2)/((6+k)/2);fe(-13+u*19,14+k*7+Math.abs(u)*-2,180+u*-38,13,3.6,1+(1-k)*0.2);}
+  // lower mandible and tongue, then the bald head and neck in one contour
+  P.push(reg(G.chain(G.bez([12,2],[21,1.6],[30,2.6],[36,5.6],8),G.bez([36,5.6],[32,9.6],[24,10.6],[14,9.4],8)),'outer',{tone:2,z:2.4}),reg(azTube([[15,0.8],[24,0.6],[32,1.8],[37,3.6]],t=>1.3-0.8*t,1),'inner',{tone:3,z:2.5}));
+  P.push(reg(AZ.sm([[-27,20],[-30,2],[-28,-14],[-20,-25],[-6,-29.6],[8,-27.6],[16,-21],[18,-10],[16,-1],[13,8],[6,15],[-2,20]]),'outer',{tone:3,z:3}));
+  // wrinkles of the bare skin
+  for(const [x,y,a] of [[-18,-16,-60],[-10,-24,-30],[-22,-4,-80],[-14,-8,-60],[-6,-16,-40],[-20,8,-90],[-10,4,-70],[-2,-26,-10]])P.push(AZ.z(ln(G.xform(G.quad([-3,0],[0,-2.6],[3,0],6),{x,y,rot:a}),'detail'),3.1));
+  // upper mandible: short, deep, hooked
+  P.push(reg(G.chain(G.bez([13,-13.6],[22,-14.6],[32,-13.6],[40,-9.6],10),G.bez([40,-9.6],[44.6,-6],[45,2],[41.6,8.6],8),G.bez([41.6,8.6],[40.6,3.6],[37,0.6],[30,-0.4],8),[[13,-0.6]]),'outer',{tone:2,z:3.4}),reg(AZ.sm([[13,-13.8],[20,-14.6],[20,-0.8],[13.4,-0.6]],1),'inner',{tone:1,z:3.5}),reg(AZ.sm([[15,-13.6],[16,-19.6],[21,-21],[24,-17],[21.6,-13.6]],2),'inner',{tone:1,z:3.45}),AZ.z(dt(25.6,-8.6,1),3.6));
+  AZ.eye(P,5,-12,4.2,3.6);
+  // ear ornament: a disc with a hanging tab
+  P.push(reg(G.circle(-12,-2,5.2,18),'inner',{tone:2,z:3.6}),AZ.z(dt(-12,-2,1.6,'inner'),3.7),reg(AZ.sm([[-14.6,3.6],[-9.4,3.6],[-8.6,13],[-12,15.6],[-15.4,13]],1),'inner',{tone:2,z:3.55}));
+  return fitParts(AZ.sort(P));}});
+defMotif('cipactli',{name:'Crocodile',term:'cipactli',mirrorOk:true,meaning:'First of the twenty day signs: the earth monster, a crocodile drawn as an upper jaw alone, lined with teeth, with a curled brow and a row of spines down its back. The gods made the earth from its body, and it has no lower jaw because it lost it in the struggle.',
+fn(){const P=[];
+  // spines down the back, each lapping the next
+  for(let i=7;i>=0;i--){const x=-34+i*7.6,y=-13-Math.sin(i/7*Math.PI)*9;P.push(reg(G.chain(G.bez([x-4.6,y+5],[x-3.6,y-3],[x-1,y-9],[x+3,y-13],8),G.bez([x+3,y-13],[x+4.6,y-7],[x+5.4,y-1],[x+5,y+5],8)),'outer',{tone:2,z:2+i*0.01}));}
+  // the upper jaw and head in one contour: upturned snout, brow, the long toothed lip, the neck
+  P.push(reg(AZ.sm([[-42,22],[-44,2],[-38,-10],[-24,-17],[-8,-21],[6,-23],[16,-19],[26,-13],[36,-12],[44,-17],[47,-11],[44,-3],[36,2],[22,4],[6,6],[-10,9],[-22,14],[-26,22]]),'outer',{tone:0,z:3}));
+  // teeth all along the lip, larger toward the front
+  for(let i=0;i<9;i++){const t=i/8,x=lerp(-18,41,t),y=lerp(11.6,-1.6,Math.pow(t,0.9)),h=4+3.6*t,q=[[x-2,y-0.6],[x+2,y-1.4],[x+0.6,y+h]];P.push(reg(q,'detail',{bg:true,z:2.6}),AZ.z(ln(q,'detail',true),2.61));}
+  // eye under a brow that ends in a curl; nostril; plates on the neck
+  AZ.eye(P,10,-10,5.2,3.3,0);P.push(reg(G.ribbon(cnArcs([17,-17.6],182,[[-26,38],[-5,150],[-2.6,200]],0.5),t=>2-1.1*t),'inner',{tone:1,z:3.4}),AZ.z(dt(41,-11.6,1.2),3.3),AZ.z(ln(G.arc(41,-11.6,3,150,330,8),'detail'),3.3));
+  for(const [x,y] of [[-32,2],[-22,-4],[-12,-8],[-34,12],[-24,6],[-12,2],[0,-2],[-2,-12]])P.push(AZ.z(ln(G.xform(G.quad([-3.4,0],[0,-3.4],[3.4,0],6),{x,y,rot:-70}),'detail'),3.1));
+  P.push(AZ.z(ln(G.bez([34,0.6],[24,2.6],[10,4.4],[-8,7.4],10),'inner'),3.2));
+  return fitParts(AZ.sort(P));}});
 /* Double-headed serpent, drawn 2026-10-13 against three references supplied by the user (a scaled
    ink drawing, a line drawing, and a pair of stylised versions). What they share, and what the code
    keeps: the body is ONE band of even width folded into a meander, three loops below and two above,
@@ -513,7 +664,11 @@ fn(rng,g){const P=[],Z=(p,z)=>Object.assign(p,{z}),sp=coilSpine(),n=sp.length,hw
   // ringed eye under a curled brow; marks on the snout
   H.push(reg(G.circle(-8.6,-5,3.2,22),'inner',{tone:3,z:2.7}),Z(dt(-8.6,-5,1.5,'inner'),2.8));
   H.push(reg(G.ribbon(cnArcs([-15,-9.8],-12,[[30,16],[-3.4,205],[-1.7,170]],0.5),t=>1.5-0.8*t),'inner',{tone:1,z:2.6}));
-  for(const x of [-21.6,-18.6,-15.8])H.push(Z(ln([[x,-8],[x+0.3,-5.6]],'detail'),2.2));
+  // plates along the snout, a band of gum on each jaw, and a rosette behind the eye
+  for(const x of [-22.4,-19,-15.6])H.push(reg([[x-1.2,-8.5],[x+1.2,-8.7],[x+1.3,-6.3],[x-1.1,-6.1]],'inner',{tone:3,z:2.2}));
+  H.push(reg(G.ribbon(G.bez([-25,-4.4],[-17,-3.8],[-10,-3.2],[-4.4,-0.8],12),()=>0.85),'inner',{tone:3,z:2.15}),reg(G.ribbon(G.bez([-23.8,5.5],[-17,5.5],[-10,4.7],[-5.4,2.7],12),()=>0.8),'inner',{tone:3,z:2.15}));
+  H.push(reg(G.circle(-0.6,-8.6,3.9,20),'inner',{tone:3,z:2.7}),reg(G.circle(-0.6,-8.6,1.9,12),'inner',{bg:true,z:2.71}),Z(ln(G.circle(-0.6,-8.6,1.9,12),'detail',true),2.72));
+  for(let i=0;i<8;i++){const a=i*45*DEG;H.push(Z(ln([[-0.6+Math.cos(a)*2.2,-8.6+Math.sin(a)*2.2],[-0.6+Math.cos(a)*3.7,-8.6+Math.sin(a)*3.7]],'detail'),2.73));}
   const K=1.5;for(const s of [-1,1])for(const p of H){const f=([x,y])=>[s*(-6*7.5-5+x*K),-22/2-7.5-2+y*K];P.push(p.kind==='dot'?Object.assign({},p,{x:f([p.x,p.y])[0],y:f([p.x,p.y])[1],r:p.r*K}):Object.assign({},p,{pts:p.pts.map(f)}));}
   return fitParts(cnSort(P),98);}});
 defMotif('tecpatl',{name:'Flint knife',term:'tecpatl',upright:true,meaning:'Day sign of the flint: a leaf-shaped blade, half red and half white, with an eye and a row of teeth where the two colours meet, because the knife is alive and hungry. It is the sacrificial knife and the north.',
@@ -797,28 +952,36 @@ function inkLeaf(x,y,ang,len,w,bend=0){const d=[Math.sin(ang*DEG),-Math.cos(ang*
   return G.ribbon(sp,t=>0.06+w*2.9*Math.pow(clamp(t),0.62)*Math.pow(1-clamp(t),1.25));}
 defMotif('bamboo',{name:'Bamboo',term:'take 竹 / zhú',upright:true,
 meaning:'Hollow, straight and bending without breaking — the upright scholar. One of the Four Gentlemen of ink painting, practised as a discipline of single, unretouched strokes: each length of the stem is one stroke, each joint a hooked dash, each leaf a single pull of the brush drawn out to a point.',
-fn(rng,g){const P=[],Z=(p,z)=>Object.assign(p,{z}),s=rng.chance(0.5)?1:-1,sp=cnArcs([s*-16,52],-90+s*5,[[s*260,13],[s*-200,10]],0.7),n=sp.length;
-  const at=t=>{const i=Math.round(clamp(t)*(n-1)),a=sp[Math.max(0,i-1)],b=sp[Math.min(n-1,i+1)];return{p:sp[i],h:Math.atan2(b[0]-a[0],-(b[1]-a[1]))/DEG,i};};
-  // the culm: five strokes, the middle ones longest, each a little swollen at its ends
-  const cuts=[0,0.19,0.42,0.65,0.84,1],hw=t=>1.9-1.15*t;
-  for(let k=0;k<5;k++){const i0=Math.round(cuts[k]*(n-1))+(k?1:0),i1=Math.round(cuts[k+1]*(n-1))-1,seg=sp.slice(i0,i1+1),w=hw((cuts[k]+cuts[k+1])/2);
-    P.push(reg(G.ribbon(seg,t=>w*(1+0.2*Math.pow(Math.abs(2*t-1),3))*(k===4?1-0.5*t:1)),'outer',{tone:1,z:1}));
-    P.push(Z(ln(seg.slice(3,-3).map((q,j)=>{const o=at((i0+j+3)/(n-1)),a=(o.h+90)*DEG;return[q[0]+Math.sin(a)*w*0.38,q[1]-Math.cos(a)*w*0.38];}),'detail'),1.1));}
-  // joints: a short hooked dash across each gap, wider than the stem
-  const joints=[1,2,3,4].map(k=>at(cuts[k]));
-  joints.forEach((o,k)=>{const w=hw(cuts[k+1])*1.45,a=(o.h+90)*DEG,u=[Math.sin(a),-Math.cos(a)],v=[Math.sin(o.h*DEG),-Math.cos(o.h*DEG)];
-    P.push(reg(G.ribbon(G.quad([o.p[0]-u[0]*w-v[0]*0.5,o.p[1]-u[1]*w-v[1]*0.5],[o.p[0]+v[0]*0.5,o.p[1]+v[1]*0.5],[o.p[0]+u[0]*w-v[0]*0.5,o.p[1]+u[1]*w-v[1]*0.5],12),t=>0.2+0.5*Math.pow(Math.abs(2*t-1),1.5)),'inner',{tone:1,z:1.2}));});
-  // a cluster of leaves hung from a point: fanned, uneven, the longest in the middle
-  const cluster=(x,y,dir,L,m,back=[0,0])=>{const offs=m>=5?[-50,-24,-2,22,50]:m===4?[-40,-12,14,42]:[-30,0,30],lens=m>=5?[0.56,0.9,1,0.8,0.5]:m===4?[0.66,1,0.9,0.56]:[0.72,1,0.64],st=m>=5?[2,1,0,1,2]:m===4?[1.4,0,0.6,1.8]:[1,0,1];
-    offs.forEach((o,i)=>{const l=L*lens[i]*rng.range(0.9,1.1);P.push(reg(inkLeaf(x-back[0]*st[i]*1.5,y-back[1]*st[i]*1.5,dir+o+rng.range(-7,7),l,l*0.05,(o<0?-1:1)*rng.range(0.02,0.09)),'outer',{tone:2,z:2+i*0.01}));});};
-  // twigs from the joints, alternately to either side, each with a side shoot
-  [[1,-1,15,30],[2,1,17,33],[3,-1,14,28]].forEach(([k,sd,len,L])=>{const o=joints[k],side=sd*s,tw=cnArcs(o.p,o.h+side*46-90,[[side*-60,len]].map(([r,l])=>[r,l/Math.abs(r)/DEG]),0.6),e=tw[tw.length-1],mid=tw[Math.round(tw.length*0.55)];
-    P.push(reg(G.ribbon(tw,t=>0.42-0.26*t),'inner',{tone:1,z:0.5}));
-    const sh=cnArcs(mid,o.h+side*82-90,[[side*40,len*0.42/40/DEG]],0.6),e2=sh[sh.length-1];P.push(reg(G.ribbon(sh,t=>0.28-0.16*t),'inner',{tone:1,z:0.5}));
-    const bk=q=>{const a=q[q.length-1],b=q[q.length-4],l=Math.hypot(a[0]-b[0],a[1]-b[1])||1;return[(a[0]-b[0])/l,(a[1]-b[1])/l];};
-    cluster(e[0],e[1],side*118,L,rng.pick([4,5,5]),bk(tw));cluster(e2[0],e2[1],side*150,L*0.66,rng.pick([3,3,4]),bk(sh));});
-  // the tip: the last stroke runs out into a twig and a cluster
-  {const o=at(1);cluster(o.p[0],o.p[1],o.h-s*46,27,4);P.push(reg(inkLeaf(o.p[0],o.p[1],o.h+s*6,20,0.9,0.03),'outer',{tone:2,z:2}),reg(inkLeaf(o.p[0],o.p[1],o.h+s*38,14,0.66,0.05),'outer',{tone:2,z:2}));}
+fn(rng,g){const P=[],s=rng.chance(0.5)?1:-1;
+  /* A culm with its twigs and leaves. It is drawn twice: once in full ink, and once behind it,
+     thinner, shorter and in a pale wash, leaning the other way, as the paintings set a far stalk
+     behind a near one. K scales lengths, WK widths; `wash` thins the ink toward the paper. */
+  const stalk=(ox,oy,lean,K,WK,wash,dz,twigs)=>{
+    const add=p=>{if(wash&&p.kind==='region')p.wash=wash;p.z=(p.z||0)+dz;P.push(p);};
+    const sp=cnArcs([ox,oy],-90+lean,[[s*260*K,13],[s*-200*K,10]],0.7),n=sp.length;
+    const at=t=>{const i=Math.round(clamp(t)*(n-1)),a=sp[Math.max(0,i-1)],b=sp[Math.min(n-1,i+1)];return{p:sp[i],h:Math.atan2(b[0]-a[0],-(b[1]-a[1]))/DEG,i};};
+    // the culm: five strokes, the middle ones longest, each a little swollen at its ends
+    const cuts=[0,0.19,0.42,0.65,0.84,1],hw=t=>(1.9-1.15*t)*WK;
+    for(let k=0;k<5;k++){const i0=Math.round(cuts[k]*(n-1))+(k?1:0),i1=Math.round(cuts[k+1]*(n-1))-1,seg=sp.slice(i0,i1+1),w=hw((cuts[k]+cuts[k+1])/2);
+      add(reg(G.ribbon(seg,t=>w*(1+0.2*Math.pow(Math.abs(2*t-1),3))*(k===4?1-0.5*t:1)),'outer',{tone:1,z:1}));
+      if(!wash)add(Object.assign(ln(seg.slice(3,-3).map((q,j)=>{const o=at((i0+j+3)/(n-1)),a=(o.h+90)*DEG;return[q[0]+Math.sin(a)*w*0.38,q[1]-Math.cos(a)*w*0.38];}),'detail'),{z:1.1}));}
+    // joints: a short hooked dash across each gap, wider than the stem
+    const joints=[1,2,3,4].map(k=>at(cuts[k]));
+    joints.forEach((o,k)=>{const w=hw(cuts[k+1])*1.45,a=(o.h+90)*DEG,u=[Math.sin(a),-Math.cos(a)],v=[Math.sin(o.h*DEG),-Math.cos(o.h*DEG)];
+      add(reg(G.ribbon(G.quad([o.p[0]-u[0]*w-v[0]*0.5,o.p[1]-u[1]*w-v[1]*0.5],[o.p[0]+v[0]*0.5,o.p[1]+v[1]*0.5],[o.p[0]+u[0]*w-v[0]*0.5,o.p[1]+u[1]*w-v[1]*0.5],12),t=>0.2+0.5*Math.pow(Math.abs(2*t-1),1.5)),'inner',{tone:1,z:1.2}));});
+    // a cluster of leaves: fanned, uneven, the longest in the middle, each starting a little further back along the twig
+    const cluster=(x,y,dir,L,m,back=[0,0])=>{const offs=m>=5?[-50,-24,-2,22,50]:m===4?[-40,-12,14,42]:[-30,0,30],lens=m>=5?[0.56,0.9,1,0.8,0.5]:m===4?[0.66,1,0.9,0.56]:[0.72,1,0.64],st=m>=5?[2,1,0,1,2]:m===4?[1.4,0,0.6,1.8]:[1,0,1];
+      offs.forEach((o,i)=>{const l=L*lens[i]*rng.range(0.9,1.1);add(reg(inkLeaf(x-back[0]*st[i]*1.5,y-back[1]*st[i]*1.5,dir+o+rng.range(-7,7),l,l*0.05,(o<0?-1:1)*rng.range(0.02,0.09)),'outer',{tone:2,z:2+i*0.01}));});};
+    // twigs from the joints, alternately to either side, each with a side shoot
+    twigs.forEach(([k,sd,len,L])=>{const o=joints[k],side=sd*s,tw=cnArcs(o.p,o.h+side*46-90,[[side*-60,len*K/60/DEG]],0.6),e=tw[tw.length-1],mid=tw[Math.round(tw.length*0.55)];
+      add(reg(G.ribbon(tw,t=>(0.42-0.26*t)*WK),'inner',{tone:1,z:0.5}));
+      const sh=cnArcs(mid,o.h+side*82-90,[[side*40,len*K*0.42/40/DEG]],0.6),e2=sh[sh.length-1];add(reg(G.ribbon(sh,t=>(0.28-0.16*t)*WK),'inner',{tone:1,z:0.5}));
+      const bk=q=>{const a=q[q.length-1],b=q[Math.max(0,q.length-4)],l=Math.hypot(a[0]-b[0],a[1]-b[1])||1;return[(a[0]-b[0])/l,(a[1]-b[1])/l];};
+      cluster(e[0],e[1],side*118,L*K,rng.pick([4,5,5]),bk(tw));cluster(e2[0],e2[1],side*150,L*K*0.66,rng.pick([3,3,4]),bk(sh));});
+    // the tip: the last stroke runs out into a cluster
+    {const o=at(1);cluster(o.p[0],o.p[1],o.h-s*46,27*K,4);add(reg(inkLeaf(o.p[0],o.p[1],o.h+s*6,20*K,0.9*K,0.03),'outer',{tone:2,z:2}));add(reg(inkLeaf(o.p[0],o.p[1],o.h+s*38,14*K,0.66*K,0.05),'outer',{tone:2,z:2}));}};
+  stalk(s*9,56,s*-9,0.8,0.62,0.6,-4,[[2,1,15,30],[3,-1,13,26]]);
+  stalk(s*-17,52,s*5,1,1,0,0,[[1,-1,15,30],[2,1,17,33],[3,-1,14,28]]);
   return fitParts(cnSort(P));}});
 
 /* ---------- Chinese vocabulary ---------- */
@@ -831,7 +994,7 @@ fn(rng,g){const P=[],Z=(p,z)=>Object.assign(p,{z}),s=rng.chance(0.5)?1:-1,sp=cnA
 function ruyiOutline(){const half=G.chain(G.bez([0,-38],[1.6,-35],[3.6,-33.4],[6.6,-32],8),G.bez([6.6,-32],[12.6,-29.6],[17.6,-26.6],[19.6,-21.6],12),G.bez([19.6,-21.6],[25,-27.6],[43,-22],[44,-3],18),G.bez([44,-3],[45,12],[37,24],[24,24],16),G.bez([24,24],[17,24],[12,20],[6.6,18.4],10),G.bez([6.6,18.4],[4.4,17.8],[2.2,17.6],[0,17.6],5));
   return half.concat(half.slice(1,-1).reverse().map(([x,y])=>[-x,y]));}
 // the inner line of a strap: the outline moved in by d, with the loops an offset makes at tight corners cut away
-function ruyiInner(o,d){const far=q=>{let m=1e9;for(const p of o){const k=Math.hypot(p[0]-q[0],p[1]-q[1]);if(k<m)m=k;}return m;};return G.offset(G.resample(o,true,0.9),-d,true).filter(q=>far(q)>=d*0.9);}
+function ruyiInner(o,d){const far=q=>{let m=1e9;for(const p of o){const k=Math.hypot(p[0]-q[0],p[1]-q[1]);if(k<m)m=k;}return m;};return G.offset(G.resample(o,true,0.9),-d,true).filter(q=>far(q)>=d*0.94);}
 defMotif('ruyi',{name:'Ruyi head',term:'rúyì 如意',upright:true,
 meaning:'The lobed cloud-and-fungus head of the ruyi scepter, whose name means "as you wish". It is drawn as an even strap: a pointed crown, two full lobes with a scroll rolled into each, a waisted stem at the foot and a pearl under the crown. It tops collars, lappets and borders; as a cloud (yún) it also puns on yùn, luck.',
 fn(rng,g){const o=ruyiOutline(),Z=(p,z)=>Object.assign(p,{z}),P=[reg(o,'outer',{tone:1,z:0}),reg(ruyiInner(o,4.2),'inner',{tone:2,z:1})];
@@ -840,7 +1003,13 @@ fn(rng,g){const o=ruyiOutline(),Z=(p,z)=>Object.assign(p,{z}),P=[reg(o,'outer',{
     P.push(reg(G.ribbon(sp,t=>{const u=Math.abs(2*t-1);return u<0.62?1.9:Math.max(0.5,1.9-2.6*(u-0.62));}),'inner',{tone:1,z:2}));for(const q of [sp[0],sp[n-1]])P.push(Z(dt(q[0],q[1],1.4,'inner'),2.1));}
   // waisted stem at the foot, pearl under the crown
   const st=G.chain(G.bez([-5.4,2.6],[-2.4,6],[-2.4,10],[-6.4,13.2],10),[[6.4,13.2]],G.bez([6.4,13.2],[2.4,10],[2.4,6],[5.4,2.6],10));
-  P.push(reg(st,'inner',{tone:1,z:2.2}),reg(G.circle(0,-21.6,3,24),'inner',{tone:1,z:2.2}));
+  // three ways of filling the foot and the crown, all found on the reference sheet: a waisted stem
+  // and a pearl; a cash coin and a pearl; a stem and a small head repeated under the crown
+  const v=rng.int(0,2);
+  if(v===1){P.push(reg(G.circle(0,8.6,6.6,28),'inner',{tone:1,z:2.2}),reg(G.circle(0,8.6,4.4,22),'inner',{tone:2,z:2.25}),Z(ln(G.circle(0,8.6,4.4,22),'detail',true),2.26),reg([[-1.9,6.7],[1.9,6.7],[1.9,10.5],[-1.9,10.5]],'inner',{tone:1,z:2.3}));}
+  else P.push(reg(st,'inner',{tone:1,z:2.2}));
+  if(v===2)P.push(reg(o.map(([x,y])=>[x*0.2,-21.4+y*0.2]),'inner',{tone:1,z:2.2}));
+  else P.push(reg(G.circle(0,-21.6,3,24),'inner',{tone:1,z:2.2}));
   return fitParts(cnSort(P));}});
 /* Lion-dance head, drawn 2026-10-14 against three references supplied by the user (two detailed
    line drawings and a sheet of simplified frontal masks). The frontal mask gives the structure;
@@ -871,8 +1040,17 @@ fn(rng,g){const H=[],C=[],Z=(p,z)=>Object.assign(p,{z});
   for(const [r,tone] of [[11.6,2],[9,1],[6.4,2],[4,3]])H.push(reg(G.circle(20.6,-7,r,34),'inner',tone===2?{bg:true,z:2}:{tone,z:2}));
   for(const r of [11.6,9,6.4,4])H.push(Z(ln(G.circle(20.6,-7,r,34),r>10?'outer':'inner',true),2.1));
   H.push(Z(dt(20.6,-7,2.5),2.2),reg(G.circle(21.8,-8.2,0.85,8),'detail',{bg:true,z:2.3}));
-  // cheek: a spiral curl and two flame strokes
-  H.push(cnSpiral(34.6,6,4.6,200,1.5,1,2),cnSpiral(9,-25,3.2,90,1.3,1,2),cnSpiral(17,-28.6,2.6,60,1.2,-1,2),Z(ln(G.bez([37,-2],[40,2],[39,6],[41,9],8),'detail'),2));
+  // lashes: short strokes raked off the upper rim of the eye
+  for(let i=0;i<11;i++){const a=(196+i*15)*DEG,c=[20.6,-7];H.push(Z(ln([[c[0]+Math.cos(a)*11.8,c[1]+Math.sin(a)*11.8],[c[0]+Math.cos(a+0.16)*14.4,c[1]+Math.sin(a+0.16)*14.4]],'detail'),2.15));}
+  // cheek: a shaded scroll with three flames sweeping up from it
+  cnVolute(H,33.4,5.6,5.6,200,1,1.6,{tone:0,turns:1.9,shade:[40,210],lines:3});
+  for(const cp of [[[36,0],[40,-3],[42,-7],[41,-11]],[[38,3],[43,2],[46,-1],[47,-5]],[[38,8],[43,9],[47,8],[50,5]]])H.push(reg(G.ribbon(G.resample(G.chaikin(cp,false,3),false,0.8),t=>1.5*Math.pow(1-t,0.8)+0.06),'inner',{tone:2,z:1.7}));
+  // forehead: a cloud scroll each side of the mirror, and rows of scales over the dome
+  cnVolute(H,11.4,-27.4,3.6,30,1,1.6,{tone:0,turns:1.8});cnVolute(H,18.6,-29.6,2.8,200,-1,1.55,{tone:0,turns:1.7});
+  H.push(reg(G.ribbon(G.resample(G.chaikin([[21,-30],[25,-30.6],[28.6,-28.6],[31,-25.6]],false,3),false,0.8),t=>1.3*Math.pow(1-t,0.8)+0.06),'inner',{tone:2,z:1.5}));
+  for(const [y,xs] of [[-16.6,[5,10.4]],[-12.6,[2.6,7.6]]])for(const x of xs)H.push(Z(ln(G.arc(x,y,2.6,200,340,6),'detail'),1.5));
+  // hair hanging beside the cheek, from under the ear
+  [[43,-12,48,26,4.6],[46,-14,53,18,4.2],[41,-6,44,32,4.2]].forEach(([x0,y0,x1,y1,w],i)=>cnLock(H,[[x0,y0],[x0+3,y0+(y1-y0)*0.3],[x1-2.6,y0+(y1-y0)*0.62],[x1+1.4,y0+(y1-y0)*0.86],[x1,y1]],w,2,-0.5-i*0.01));
   // nostril curl and the fold beside the nose
   H.push(cnSpiral(5.4,-1.6,3.4,180,1.4,-1,5),Z(ln(G.bez([10,-6],[13,-1],[11,3],[7,5],8),'detail'),5));
   // beard: long locks hanging from the jaw, waving outward
@@ -882,6 +1060,8 @@ fn(rng,g){const H=[],C=[],Z=(p,z)=>Object.assign(p,{z});
   // the mask: one contour, broad at the cheeks and drawn in to the jaw
   const half=[[0,-32],[12,-34.6],[25,-32.6],[36,-25],[42,-13],[42.6,0],[39,11],[32,18],[28,27],[24,35],[14,40],[0,42]];
   C.push(reg(G.chaikin(half.concat(half.slice(1,-1).reverse().map(([x,y])=>[-x,y])),true,3),'outer',{tone:0,z:1}));
+  // fur along the rim of the mask, from the crown down to the ear
+  for(const s of [-1,1])cnFur(C,[[s*5,-33.4],[s*14,-35.4],[s*25,-33.4],[s*33,-28.6]],3.6,2,1.2,-s,1.1);
   // horn on its boss, and the mirror on the brow
   C.push(reg(G.ribbon(G.resample(G.chaikin([[0,-36],[1,-42],[4,-47],[9,-49]],false,3),false,1),t=>4.4*(1-0.82*t)+0.4),'outer',{tone:3,z:0.5}),reg(G.chaikin([[-7,-31],[-6,-37],[0,-40],[6,-37],[7,-31]],true,2),'outer',{tone:1,z:0.6}));
   for(const y of [-36,-33.6])C.push(Z(ln(G.quad([-5.4,y],[0,y-1.8],[5.4,y],6),'detail'),0.7));
@@ -962,12 +1142,12 @@ fn(rng,g){const H=[],C=[],HH=[],HC=[],Z=(p,z)=>Object.assign(p,{z}),sliver=(cp,w
   // a wisp of cloud trailing from the shoulder, over the arm
   cnTail(H,[19,-10],-30,[[-12,36],[9,60]],5.6,1.4,{tone:3,comb:[[-0.3,0.1,0.6],[0.3,0.1,0.7]]});cnVolute(H,22.4,-11.4,3.5,150,-1,1.45,{tone:3,turns:1.7});cnVolute(H,15.4,-9.4,5,60,1,1.5,{tone:3,turns:1.9,shade:[40,200],lines:3});
   // ---- right half of the head (drawn at natural size, enlarged below) ----
-  const head=G.chain(G.bez([0,26.4],[6.6,25.6],[11.2,22],[11.6,16.6],12),G.bez([11.6,16.6],[13.6,12.6],[17,7.6],[19.6,1.6],10),G.bez([19.6,1.6],[14.6,4.6],[10.2,6.4],[7.4,10.2],10),G.bez([7.4,10.2],[5,7.8],[2.2,7.2],[0,7.6],8));
-  HH.push(reg(sliver([[11.4,11.6],[13,9.4],[15.2,6.8],[17.6,3.8]],0.7,0.6),'detail',{tone:3,z:5}));
+  const head=G.chain(G.bez([0,26.4],[7.6,26],[12.8,22.6],[13.2,17],12),G.bez([13.2,17],[13.4,14.4],[13.4,12.6],[13,11],6),G.bez([13,11],[15.8,9.6],[18.8,7.2],[21.4,3.6],8),G.bez([21.4,3.6],[16.6,4.4],[12.6,5.4],[9.2,7.8],8),G.bez([9.2,7.8],[6,6.4],[3,6],[0,6.4],8));
+  HH.push(reg(sliver([[12.6,10],[14.6,8.8],[16.8,7],[19,5]],0.7,0.6),'detail',{tone:3,z:5}));
   // brow: a flame of three points over the eye
-  HH.push(reg(G.chain(G.bez([1.6,14.6],[3.6,12],[7,11],[11.4,9.4],10),G.bez([11.4,9.4],[9.6,11.4],[8.6,12],[10.6,12.4],6),G.bez([10.6,12.4],[8.6,13],[7.6,13.4],[8.8,14.6],6),G.bez([8.8,14.6],[6,13.2],[3.6,13.6],[1.6,14.6],8)),'inner',{tone:2,z:5}));
-  const eye=G.chain(G.bez([1.8,17.2],[3.4,14.4],[7,14.4],[9.2,16],8),G.bez([9.2,16],[7.2,18.6],[3.8,18.8],[1.8,17.2],8));
-  HH.push(reg(eye,'inner',{bg:true,z:5}),Z(ln(eye,'inner',true),5.02),Z(dt(5.4,16.5,1.3,'inner'),5.05));
+  HH.push(reg(G.chain(G.bez([1.4,14.2],[3.6,11.4],[7,10.4],[11.6,9.6],10),G.bez([11.6,9.6],[9.8,11.2],[9,11.8],[11,12.4],6),G.bez([11,12.4],[9,12.8],[8.2,13.2],[9.4,14.2],6),G.bez([9.4,14.2],[6.4,12.8],[3.6,13.2],[1.4,14.2],8)),'inner',{tone:2,z:5}));
+  const eye=G.circle(5.8,16.3,2.8,18);
+  HH.push(reg(eye,'inner',{bg:true,z:5}),Z(ln(eye,'inner',true),5.02),Z(dt(5.8,16.4,1.3,'inner'),5.05),Z(ln(G.arc(8.2,20.8,2.6,-50,100,8),'detail'),5.05),reg([[1.2,23.2],[3.2,23],[2.3,25.6]],'detail',{bg:true,z:5.3}));
   HH.push(cnSpiral(5.4,21,1.5,180,1.2,-1,5.2),Z(ln(G.bez([6.2,23.2],[4.2,24.4],[1.8,24.4],[0,22.6],8),'inner'),5.2),Z(ln(G.bez([8,19.4],[9.6,20.4],[10,21.8],[9.2,23.2],6),'detail'),5.2));
   // collar: a scalloped ruff behind the head
   {const cx=0,cy=14,R=12.6,rr=4.9,as=[168,201,235,270,305,339,372],cs=as.map(a=>[cx+Math.cos(a*DEG)*R,cy+Math.sin(a*DEG)*R]),ring=[];

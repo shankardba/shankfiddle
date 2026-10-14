@@ -122,12 +122,14 @@ const peZ=(p,z)=>Object.assign(p,{z});
 PE.cup=(c,r,a0,span,depth,ci,z,sq=0.86)=>{const n=22,out=[],inn=[],lip=[],P=[],at=(a,rr)=>[c[0]+Math.cos(a*DEG)*rr,c[1]+Math.sin(a*DEG)*rr*sq];
   for(let i=0;i<=n;i++){const t=i/n,a=a0+span*t,e=Math.pow(Math.sin(Math.PI*t),0.7),ro=r*(1+0.03*Math.sin(t*Math.PI*5+a0)*e);out.push(at(a,ro));inn.push(at(a,r*(1-depth*e)));lip.push(at(a,ro*(1-depth*0.17*e)));}
   P.push(peR(out.concat(inn.slice().reverse()),ci,z),peN(out.concat(lip.slice().reverse()),peIV,z+0.01),peL(lip.slice(2,-2),z+0.02));
+  if(ci===pePK){const mid=[];for(let i=3;i<=n-3;i++){const t=i/n,a=a0+span*t,e=Math.pow(Math.sin(Math.PI*t),0.7);mid.push(at(a,r*(1-depth*e*0.76)));}P.push(peN(mid.concat(inn.slice(3,n-2).reverse()),peRD,z+0.005));}
   for(const t of [0.24,0.36,0.47,0.56,0.67,0.78]){const a=a0+span*t,e=Math.pow(Math.sin(Math.PI*t),0.7);P.push(peL([at(a,r*(1-depth*e*0.98)),at(a+span*0.012,r*(1-depth*e*(0.5+0.2*Math.abs(t-0.5))))],z+0.02));}
   return P;};
 // a guard petal: a broad fan from the heart, its edge waved and rolled
 PE.guard=(c,ang,hw,len,ci,z,sq=0.86)=>{const n=24,out=[],lip=[],P=[],at=(a,rr)=>[c[0]+Math.cos(a*DEG)*rr,c[1]+Math.sin(a*DEG)*rr*sq];
   for(let i=0;i<=n;i++){const t=i/n,a=ang-hw+2*hw*t,e=Math.pow(Math.sin(Math.PI*t),0.42),rr=len*(0.5+0.5*e)*(1+0.035*Math.sin(t*Math.PI*6+ang));out.push(at(a,rr));lip.push(at(a,rr*(1-0.085*e)));}
   P.push(peR([c].concat(out),ci,z),peN(out.concat(lip.slice().reverse()),peIV,z+0.01),peL(lip.slice(2,-2),z+0.02));
+  if(ci===pePK){const q=[];for(let i=3;i<=n-3;i++){const t=i/n,a=ang-hw+2*hw*t;q.push(at(a,len*(0.3+0.26*Math.pow(Math.sin(Math.PI*t),0.5))));}P.push(peN([c].concat(q),peRD,z+0.005));}
   for(const t of [0.2,0.32,0.43,0.5,0.57,0.68,0.8]){const a=ang-hw+2*hw*t;P.push(peL([at(a,len*0.34),at(a,len*(0.5+0.5*Math.pow(Math.sin(Math.PI*t),0.42))*(0.6+0.14*Math.cos(t*20)))],z+0.02));}
   return P;};
 PE.rose=(r=20,turn=0)=>{const P=[],c=[0,0];
@@ -159,6 +161,19 @@ fn(){const st=G.bez([3,50],[-3,36],[5,20],[0,2],16),P=[peR(G.ribbon(st,t=>1.5-0.
   P.push(...pePut(PE.spray(30,false),{x:st[4][0],y:st[4][1],rot:-64,dz:-2}),...pePut(PE.spray(27,false),{x:st[8][0],y:st[8][1],rot:60,dz:-2}));
   const tw=G.bez(st[6],[10,26],[17,22],[20,15],8);P.push(peR(G.ribbon(tw,t=>0.9-0.4*t),peGR,-3),...pePut(PE.rosebud(15),{x:20,y:15,rot:22,dz:-2}));
   P.push(...pePut(PE.rose(19,-8),{y:-20}));return peFit(P,96);}});
+// an open blossom seen a little from the side: five notched petals, each with its rolled rim and its
+// blush, round a boss with a ring of stamens
+PE.blossom=(r=18,turn=0)=>{const P=[],c=[0,0];
+  for(let i=0;i<5;i++)P.push(peR(G.xform(G.petal(r*1.25,r*0.22,'pointed'),{rot:turn+36+i*72}),peDG,-2));
+  [2,3,1,4,0].forEach((i,k)=>P.push(...PE.guard(c,turn-90+i*72,41,r*(i===2||i===3?1.06:0.98),pePK,-1+k*0.1,0.82)));
+  P.push(peN(G.ellipse(0,0,r*0.2,r*0.17,16),peGD,3));
+  for(let i=0;i<11;i++){const a=(turn+i*360/11)*DEG,e=[Math.cos(a)*r*0.4,Math.sin(a)*r*0.4*0.82];P.push(peL([[Math.cos(a)*r*0.17,Math.sin(a)*r*0.14],e],3.1),peN(G.circle(e[0],e[1],r*0.045,6),peGD,3.2));}
+  return P;};
+defMotif('peBlossom',{name:'Blossom',term:'shokūfeh',upright:true,meaning:'A single open blossom of the wild rose, the almond or the peach: five notched petals round a ring of stamens, on a twig with a bud beside it. It is the first flower of spring, and in the painted pages it stands on the thinner twigs where the full rose would be too heavy.',
+fn(){const st=G.bez([2,50],[-3,38],[4,26],[0,12],14),P=[peR(G.ribbon(st,t=>1.2-0.4*t),peBR,-3)];
+  P.push(...pePut(PE.leaflet(17,9.6,0.1),{x:st[4][0],y:st[4][1],rot:62,dz:-2.5}),...pePut(PE.leaflet(15,8.4,-0.1),{x:st[8][0],y:st[8][1],rot:-58,dz:-2.5}));
+  const tw=G.bez(st[6],[-8,30],[-15,26],[-19,20],8);P.push(peR(G.ribbon(tw,t=>0.8-0.3*t),peBR,-3),...pePut(PE.rosebud(13),{x:-19,y:20,rot:-28,dz:-2}));
+  P.push(...pePut(PE.blossom(23,8),{y:-14}));return peFit(P,96);}});
 defMotif('peRoseLeaf',{name:'Rose leaves',term:'barg-e gol',upright:true,meaning:'A spray of rose leaves: broad, saw-edged leaflets in threes or fives on one stalk, each with its midrib and side veins, and one half painted darker than the other so that the leaf seems to turn in the light.',
 fn(rng){return peFit(PE.spray(80,rng.chance(0.4)),94);}});
 defMotif('peRoseBud',{name:'Rosebud',term:'ghoncheh-ye gol',upright:true,meaning:'The closed rose: folded petals in the grip of long sepals that run on past the tip. The poets make the bud the tight-lipped beloved, and the opened flower her smile.',
@@ -282,42 +297,54 @@ fn(ctx){
   ctx.items.push({type:'parts',parts:tileParts(peTile(g,'peBotehRows'),r,lerp(120,84,clamp(S.density)),rng.fork('b'),g),role:'frame',variant:'field'});
 }});
 /* Rose and nightingale: a flowering branch across the page, the bird upon it. */
-defStructure('golomorgh',{name:'Rose and nightingale',blurb:'A rose tree on a tuft of ground: a knotted trunk, boughs leaving it at different heights and ending in full blossoms and buds, sprays of saw-edged leaves, a nightingale on a side branch with its head lifted to a flower, and a butterfly in the open space.',
+defStructure('golomorgh',{name:'Rose and nightingale',blurb:'A rose bush growing across the page from one lower corner: a knotted trunk leaning as it rises, boughs of unequal length ending in full roses, open blossoms and buds, sprays of saw-edged leaves, a nightingale on a branch with its head lifted to the largest flower, a butterfly in the open space, and a tuft of ground at the foot.',
 fn(ctx){
   const {W,H,g,rng}=ctx;let r={x0:60,y0:40,x1:W-60,y1:H-40};
   ctx.parts([{kind:'region',closed:true,role:'outer',bg:true,plain:true,pts:peRect(r.x0-20,r.y0-20,r.x1+20,r.y1+20)}],'frame');
   r=PE.frame(ctx,r,peKey(g,'peGuard',/Guard|Madakhil|lines|dotRow/),12,peGD);r=PE.frame(ctx,r,peKey(g,'peVine',/^(?!peGuard|peMadakhil)/),W*0.05);r=PE.frame(ctx,r,'lines',8,peGD);
   const w=r.x1-r.x0,h=r.y1-r.y0,fl=rng.chance(0.5),X=u=>r.x0+(fl?1-u:u)*w,Y=v=>r.y0+v*h,sg=fl?-1:1,P=[];
-  const hero=ctx.pick('hero'),rk=[...new Set(poolAll(g.motifs.ring))].filter(k=>SG.motifs[k]&&k!=='dot'),bird=rk.find(k=>SG.motifs[k].bird||SG.motifs[k].figure)||rk[0]||'bird',fly=rk.find(k=>/apillon|utterfly/.test(k)),bud=rk.find(k=>k!==bird&&k!==fly)||hero,fil=ctx.pick('filler'),leaf=fil==='dot'?'leaf':fil;
-  // the trunk: an S from the ground to the highest flower, thick and knotted below
-  const tr=G.resample(G.chaikin([[0.4,0.93],[0.43,0.8],[0.37,0.66],[0.42,0.52],[0.5,0.42],[0.53,0.35],[0.54,0.3]].map(([u,v])=>[X(u),Y(v)]),false,3),false,5),nt=tr.length,tw=t=>w*(0.019*Math.pow(1-t,1.2)*(1+0.2*Math.sin(t*46)*Math.max(0,1-t*1.7))+0.0055);
+  const hero=ctx.pick('hero'),rk=[...new Set(poolAll(g.motifs.ring))].filter(k=>SG.motifs[k]&&k!=='dot'),bird=rk.find(k=>SG.motifs[k].bird||SG.motifs[k].figure)||rk[0]||'bird',fly=rk.find(k=>/apillon|utterfly/.test(k)),rest=rk.filter(k=>k!==bird&&k!==fly),bud=rest[0]||hero,blo=rest[1]||bud,fil=ctx.pick('filler'),leaf=fil==='dot'?'leaf':fil;
   const at=(sp,t)=>{const i=Math.round(clamp(t)*(sp.length-1)),a=sp[Math.max(0,i-1)],b=sp[Math.min(sp.length-1,i+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return{p:sp[i],d:[(b[0]-a[0])/l,(b[1]-a[1])/l]};};
+  /* The plan, from the four reference pages: the bush is not a tree with a round head. It enters at
+     one lower corner and leans across the page; the largest flower is high and off centre; the
+     boughs are of unequal length and leave the trunk at different heights; one side is left open,
+     and the butterfly goes there; the bird sits near the middle, looking up at the great rose. */
+  const tr=G.resample(G.chaikin([[0.3,0.94],[0.34,0.81],[0.27,0.68],[0.36,0.56],[0.46,0.46],[0.47,0.36],[0.42,0.28]].map(([u,v])=>[X(u),Y(v)]),false,3),false,5),nt=tr.length;
+  // the trunk is knotted: it swells into a burl at three places and is thick only near the ground
+  const burl=t=>0.42*Math.exp(-Math.pow((t-0.13)/0.05,2))+0.34*Math.exp(-Math.pow((t-0.33)/0.045,2))+0.26*Math.exp(-Math.pow((t-0.55)/0.04,2)),tw=t=>w*(0.02*Math.pow(1-t,1.15)*(1+burl(t))+0.0055);
   P.push(peR(G.ribbon(tr,tw),peBR,1));
-  for(const f of [-0.5,0.1,0.55])P.push(peL(tr.slice(1,Math.round(nt*(0.5+0.2*f))).map((q,i)=>{const o=at(tr,(i+1)/nt);return[q[0]-o.d[1]*tw((i+1)/nt)*f,q[1]+o.d[0]*tw((i+1)/nt)*f];}),1.1));
-  for(const [t,s] of [[0.1,1],[0.24,-1],[0.4,1]]){const o=at(tr,t),k=tw(t),c=[o.p[0]-o.d[1]*k*0.2*s,o.p[1]+o.d[0]*k*0.2*s];P.push(peL(G.ellipse(c[0],c[1],k*0.36,k*0.6,14),1.2,'detail',true),peR(G.xform([[-k*0.5,0],[0,-k*1.5],[k*0.5,0]],{x:o.p[0]-o.d[1]*k*0.9*s,y:o.p[1]+o.d[0]*k*0.9*s,rot:s*sg*58}),peBR,0.9));}
-  // boughs and twigs: [where it leaves the trunk, end, bulge, what it carries, size]
-  const BR=[[0.34,[0.7,0.5],-0.22,hero,0.34],[0.52,[0.29,0.38],0.2,hero,0.33],[0.2,[0.1,0.7],-0.14,null,0],[0.72,[0.82,0.22],0.2,bud,0.15],[0.86,[0.3,0.16],-0.2,bud,0.15],[0.62,[0.86,0.36],0.12,bud,0.13]],sp=[];
+  for(const f of [-0.55,0.05,0.5])P.push(peL(tr.slice(1,Math.round(nt*(0.46+0.2*f))).map((q,i)=>{const o=at(tr,(i+1)/nt),k=tw((i+1)/nt)*f;return[q[0]-o.d[1]*k,q[1]+o.d[0]*k];}),1.1));
+  // a hollow in each burl, and the stub of a cut branch beside it
+  for(const [t,s] of [[0.13,1],[0.33,-1],[0.55,1]]){const o=at(tr,t),k=tw(t),c=[o.p[0]-o.d[1]*k*0.3*s,o.p[1]+o.d[0]*k*0.3*s],a=Math.atan2(o.d[1],o.d[0])/DEG;
+    P.push(peL(G.ellipse(c[0],c[1],k*0.3,k*0.5,14,a+90),1.2,'detail',true),peN(G.ellipse(c[0],c[1],k*0.14,k*0.27,10,a+90),peDG,1.15),peR(G.xform([[-k*0.42,0],[-k*0.1,-k*1.2],[k*0.34,-k*1.1],[k*0.42,0]],{x:o.p[0]-o.d[1]*k*0.86*s,y:o.p[1]+o.d[0]*k*0.86*s,rot:a+90+s*62}),peBR,0.9));}
+  // boughs: [where it leaves the trunk, end, bulge, what it carries, size]
+  const BR=[[0.5,[0.74,0.44],-0.24,hero,0.3],[0.3,[0.19,0.5],0.2,hero,0.26],[0.62,[0.72,0.69],0.22,blo,0.17],[0.82,[0.7,0.15],0.18,bud,0.14],[0.92,[0.15,0.2],-0.2,blo,0.16]],sp=[];
   BR.forEach(([t,e,bulge],i)=>{const o=at(tr,t),E=[X(e[0]),Y(e[1])],d=Math.hypot(E[0]-o.p[0],E[1]-o.p[1]),nx=-(E[1]-o.p[1])/d,ny=(E[0]-o.p[0])/d,c1=[o.p[0]+o.d[0]*d*0.3,o.p[1]+o.d[1]*d*0.3],c2=[lerp(o.p[0],E[0],0.68)+nx*bulge*d*sg,lerp(o.p[1],E[1],0.68)+ny*bulge*d*sg];
-    sp[i]=G.bez(o.p,c1,c2,E,26);P.push(peR(G.ribbon(sp[i],u=>tw(t)*0.62*(1-0.72*u)+w*0.003),peBR,0.5));});
-  // two side twigs with buds, off the two great boughs
-  const TW=[[0,0.55,[0.9,0.64],0.13],[1,0.6,[0.1,0.5],0.13]];
-  TW.forEach(([bi,t,e],i)=>{const o=at(sp[bi],t),E=[X(e[0]),Y(e[1])];sp[6+i]=G.bez(o.p,[o.p[0]+o.d[0]*w*0.06,o.p[1]+o.d[1]*w*0.06],[lerp(o.p[0],E[0],0.6),lerp(o.p[1],E[1],0.4)],E,16);P.push(peR(G.ribbon(sp[6+i],u=>w*(0.006-0.003*u)),peBR,0.4));});
+    sp[i]=G.bez(o.p,c1,c2,E,26);P.push(peR(G.ribbon(sp[i],u=>tw(t)*0.6*(1-0.72*u)+w*0.003),peBR,0.5));});
+  // twigs off the boughs, and a second thin stem from the root
+  const TW=[[0,0.5,[0.87,0.6],bud,0.13],[1,0.55,[0.11,0.34],bud,0.13],[2,0.5,[0.84,0.8],bud,0.11]];
+  TW.forEach(([bi,t,e],i)=>{const o=at(sp[bi],t),E=[X(e[0]),Y(e[1])];sp[5+i]=G.bez(o.p,[o.p[0]+o.d[0]*w*0.06,o.p[1]+o.d[1]*w*0.06],[lerp(o.p[0],E[0],0.6),lerp(o.p[1],E[1],0.4)],E,16);P.push(peR(G.ribbon(sp[5+i],u=>w*(0.006-0.003*u)),peBR,0.4));});
+  const st2=G.bez([X(0.31),Y(0.93)],[X(0.25),Y(0.86)],[X(0.2),Y(0.82)],[X(0.13),Y(0.74)],18);P.push(peR(G.ribbon(st2,u=>w*(0.008-0.004*u)),peBR,0.6));
+  // short side twigs with a red tip, as on a bush coming into bud
+  [[0,0.3,1],[0,0.78,-1],[1,0.4,-1],[2,0.3,1],[3,0.5,-1],[4,0.5,1],[2,0.8,-1]].forEach(([bi,t,sd])=>{const o=at(sp[bi],t),d=[o.d[0]*0.6-o.d[1]*sd*0.8,o.d[1]*0.6+o.d[0]*sd*0.8],l=w*0.045,e=[o.p[0]+d[0]*l,o.p[1]+d[1]*l];
+    P.push(peR(G.ribbon([o.p,[o.p[0]+d[0]*l*0.5-d[1]*l*0.08,o.p[1]+d[1]*l*0.5+d[0]*l*0.08],e],u=>w*(0.0035-0.002*u)),peBR,0.3),peN(G.xform(G.teardrop(w*0.006,w*0.014,8),{x:e[0],y:e[1],rot:Math.atan2(d[0],-d[1])/DEG+180}),peRD,0.35));});
   // the tuft of ground, with grass
-  const gx=X(0.4),gy=Y(0.945);P.push(peN(G.chaikin([[-0.3,0.02],[-0.2,-0.012],[-0.06,-0.026],[0.08,-0.02],[0.22,-0.01],[0.32,0.02],[0.1,0.034],[-0.12,0.034]].map(([a,b])=>[gx+a*w,gy+b*h]),true,3),peGR,0));
+  const gx=X(0.34),gy=Y(0.945);P.push(peN(G.chaikin([[-0.3,0.02],[-0.2,-0.012],[-0.06,-0.026],[0.08,-0.02],[0.22,-0.01],[0.32,0.02],[0.1,0.034],[-0.12,0.034]].map(([a,b])=>[gx+a*w*sg,gy+b*h]),true,3),peGR,0));
   for(let i=0;i<22;i++){const x=gx+(i/21-0.5)*w*0.56,l=h*(0.022+0.02*((i*7)%5)/4),lean=((i*5)%7-3)*0.12;P.push(peR(G.ribbon(G.quad([x,gy+h*0.012],[x+lean*l*0.3,gy-l*0.6],[x+lean*l,gy-l],8),t=>w*0.004*(1-t)+0.2),i%2?peDG:peGR,0.2));}
   ctx.items.push({type:'parts',parts:FL.done(P),role:'ring',variant:'tree'});
   // place a motif whose own stalk is at the foot, so that the stalk continues the line it grows from
   const grow=(key,q,d,size,o)=>{const a=Math.atan2(d[0],-d[1])/DEG;ctx.motif(key,q[0]+d[0]*size*0.4,q[1]+d[1]*size*0.4,size,Object.assign({rot:a},o));};
-  // leaf sprays along the boughs, alternately to either side
-  let li=0;const sprays=(s,ts,size)=>ts.forEach(t=>{const o=at(s,t),sd=(li++%2?1:-1),d=[o.d[0]*0.5-o.d[1]*sd*0.86,o.d[1]*0.5+o.d[0]*sd*0.86];grow(leaf,o.p,d,size,{role:'filler',variant:'leaf'+(li%2),noOcc:true});});
-  sprays(tr,[0.46,0.6,0.8,0.93],w*0.17);sprays(sp[0],[0.3,0.52,0.74,0.92],w*0.17);sprays(sp[1],[0.34,0.56,0.76,0.93],w*0.17);sprays(sp[2],[0.4,0.86],w*0.13);sprays(sp[3],[0.5,0.82],w*0.13);sprays(sp[4],[0.45,0.8],w*0.13);sprays(sp[5],[0.6],w*0.12);sprays(sp[6],[0.6],w*0.11);sprays(sp[7],[0.6],w*0.11);
-  // flowers and buds on the ends
-  const top=at(tr,1);grow(hero,top.p,top.d,w*0.37,{role:'hero',variant:'hero',noOcc:true});
-  BR.forEach(([t,e,b,k,s],i)=>{if(!k)return;const o=at(sp[i],1);grow(k,o.p,o.d,w*s,{role:k===hero?'hero':'ring',variant:k===hero?'hero':'bud',noOcc:true});});
-  TW.forEach(([bi,t,e,s],i)=>{const o=at(sp[6+i],1);grow(bud,o.p,o.d,w*s,{role:'ring',variant:'bud',noOcc:true});});
-  // the bird on the low branch, looking up into the tree; a butterfly in the open corner; two small flowers at the foot
-  const bp=at(sp[2],0.62);ctx.motif(bird,bp.p[0],bp.p[1]-w*0.1,w*0.3,{role:'ring',variant:'bird',flip:!fl,noOcc:true});
-  if(fly)ctx.motif(fly,X(0.8),Y(0.78),w*0.15,{role:'ring',variant:'fly',flip:fl,rot:sg*-14,noOcc:true});
-  for(const [u,s] of [[0.2,1],[0.62,-1]]){const x=X(u),y=gy,st=G.bez([x,y],[x+s*sg*w*0.02,y-h*0.03],[x-s*sg*w*0.03,y-h*0.06],[x+s*sg*w*0.01,y-h*0.085],10);
+  // leaf sprays along the boughs, alternately to either side, no two the same size
+  let li=0;const sprays=(s,ts,size)=>ts.forEach(t=>{const o=at(s,t),sd=(li++%2?1:-1),d=[o.d[0]*0.5-o.d[1]*sd*0.86,o.d[1]*0.5+o.d[0]*sd*0.86];grow(leaf,o.p,d,size*rng.range(0.82,1.16),{role:'filler',variant:'leaf'+(li%2),noOcc:true});});
+  sprays(tr,[0.42,0.7,0.88],w*0.19);sprays(sp[0],[0.34,0.62,0.9],w*0.19);sprays(sp[1],[0.4,0.7,0.93],w*0.18);sprays(sp[2],[0.36,0.84],w*0.15);sprays(sp[3],[0.55,0.86],w*0.14);sprays(sp[4],[0.5,0.84],w*0.14);sprays(sp[5],[0.6],w*0.12);sprays(sp[6],[0.6],w*0.12);sprays(st2,[0.55],w*0.13);
+  // flowers on the ends: the great rose on the trunk, then each bough and twig
+  const top=at(tr,1);grow(hero,top.p,top.d,w*0.38,{role:'hero',variant:'hero',noOcc:true});
+  BR.forEach(([t,e,b,k,s],i)=>{const o=at(sp[i],1);grow(k,o.p,o.d,w*s,{role:k===hero?'hero':'ring',variant:k===hero?'hero':'bud',noOcc:true});});
+  TW.forEach(([bi,t,e,k,s],i)=>{const o=at(sp[5+i],1);grow(k,o.p,o.d,w*s,{role:'ring',variant:'bud',noOcc:true});});
+  {const o=at(st2,1);grow(blo,o.p,o.d,w*0.15,{role:'ring',variant:'bud',noOcc:true});}
+  // the bird on the low bough, looking up at the great rose; a butterfly in the open corner; two herbs at the foot
+  const bp=at(sp[2],0.52);ctx.motif(bird,bp.p[0],bp.p[1]-w*0.1,w*0.3,{role:'ring',variant:'bird',flip:fl,noOcc:true});
+  if(fly)ctx.motif(fly,X(0.86),Y(0.27),w*0.14,{role:'ring',variant:'fly',flip:!fl,rot:sg*12,noOcc:true});
+  for(const [u,s] of [[0.14,1],[0.56,-1]]){const x=X(u),y=gy,st=G.bez([x,y],[x+s*sg*w*0.02,y-h*0.03],[x-s*sg*w*0.03,y-h*0.06],[x+s*sg*w*0.01,y-h*0.085],10);
     ctx.items.push({type:'parts',parts:[peR(G.ribbon(st,t=>w*0.0035),peGR,0),...pePut(PE.leaflet(h*0.04,h*0.016,0.2*s),{x:st[3][0],y:st[3][1],rot:s*sg*50}),...pePut(PE.rosette(w*0.024,true),{x:st[10][0],y:st[10][1],dz:1})],role:'filler',variant:'herb'});}
 }});

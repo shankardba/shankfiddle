@@ -267,6 +267,8 @@ class Renderer{
       if(this.dotOn&&!it.under&&!p.noSeed){const solid=base!==this.ground||it.figure;
         if(p.role==='outer'||(it.type==='parts'&&p.role!=='detail'))this.seeds.push({pts,closed:true,gid:this.body.length});
         if(solid&&(p.role==='outer'||it.type==='parts'))this.masks.push(pts);}
+      // a wash: the same pigment thinned toward the ground, for forms that stand further back (pale ink behind dark)
+      if(p.wash&&typeof base==='string'&&base[0]==='#'&&base!==this.ground){base=C.mix(base,this.ground,p.wash);this.ink=C.mix(this.ink,this.ground,p.wash*0.8);}
       out.push(`<path d="${d}" fill="${base}"/>`);
       const gapPx=Math.max(3.2,(F.hatchGap||6));
       if(mode==='hatch'||mode==='crosshatch'){const ang=[45,135,90,0][i%4];const c=base!==this.ground&&C.L(base)<0.45?this.ground:this.ink;ov=this.pattern(mode,c,ang,gapPx);}
@@ -290,7 +292,7 @@ class Renderer{
           out.push(`<path d="${dPath(e,true)}" ${this.strokeAttrs(w*0.7,O.echoStyle==='solid'?null:O.echoStyle)}/>`);
         }
       }
-      this.ink=inkSave;
+      this.ink=p.wash?C.mix(inkSave,this.ground,p.wash*0.8):inkSave;
       // outline
       const gapC=L.double?(g.palette.gap==='auto'?this.fillColor(r,base):(g.palette.gap||this.ground)):null;
       // brush outlines: closed loops, or — with the breaks gene — open strokes that taper at the gap

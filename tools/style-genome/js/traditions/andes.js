@@ -84,7 +84,7 @@ anT({
   axes:{density:.2,weight:.3,uniformity:.95,geometry:.6,symmetry:.5,fill:0,chroma:.1,ornament:.1,abstraction:.8,narrative:.4},
   genes:{
     structure:{kinds:['geoglyph'],folds:4,density:.15,symmetry:'free',borderBands:0,bare:.5},
-    motifs:{hero:['nzHummingbird','nzSpider','nzMonkey'],ring:['spiral','chakana'],filler:['dot'],border:['lines','zigzag'],petal:'pointed'},
+    motifs:{hero:['nzHummingbird','nzSpider','nzMonkey','nzDog','nzHeron','nzHands'],ring:['spiral','chakana'],filler:['dot'],border:['lines','zigzag'],petal:'pointed'},
     line:AD_LINE(2.6,{wobble:.05,contrast:.5}),
     fill:{modes:{flat:1},coverage:0,hatchGap:6},
     ornament:AD_ORN(),
@@ -109,7 +109,7 @@ anT({
   axes:{density:.95,weight:.4,uniformity:.9,geometry:.95,symmetry:.8,fill:1,chroma:.5,ornament:.6,abstraction:.9,narrative:.3},
   genes:{
     structure:{kinds:['wagara','mantle','frieze'],folds:4,density:.6,symmetry:'free',borderBands:0,bare:1},
-    motifs:{hero:['chBird','pcSerpent'],ring:['chBird','chakana'],filler:['dot'],border:['waveBand','stepFretBand','tocapuBand'],petal:'step',tile:['stepWave','birdRows']},
+    motifs:{hero:['chBird','chFeline','pcSerpent'],ring:['chBird','chHook','chakana'],filler:['dot'],border:['waveBand','stepFretBand','tocapuBand'],petal:'step',tile:['stepWave','birdRows']},
     line:AD_LINE(1.2),
     fill:{modes:{flat:1},coverage:1,hatchGap:6},
     ornament:AD_ORN(),

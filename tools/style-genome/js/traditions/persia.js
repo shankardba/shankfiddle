@@ -107,7 +107,7 @@ peT({
   axes:{density:.5,weight:.2,uniformity:.3,geometry:.1,symmetry:.2,fill:.9,chroma:.6,ornament:.6,abstraction:.3,narrative:.6},
   genes:{
     structure:{kinds:['golomorgh'],folds:2,density:.5,symmetry:'free',borderBands:2,bare:.4},
-    motifs:{hero:['peRose'],ring:['peNightingale','peRoseBud','pePapillon'],filler:['peRoseLeaf'],border:['peVine','peGuard'],petal:'round'},
+    motifs:{hero:['peRose'],ring:['peNightingale','peRoseBud','peBlossom','pePapillon'],filler:['peRoseLeaf'],border:['peVine','peGuard'],petal:'round'},
     line:PE_LINE(0.7,{wobble:.01}),
     fill:{modes:{flat:1},coverage:1,hatchGap:5},
     ornament:PE_ORN(),

@@ -70,32 +70,38 @@ NO.arcs=(start,heading,segs,step=1.1)=>{let [x,y]=start,h=heading;const P=[[x,y]
 NO.arcBand=(start,heading,segs,ws,o={})=>{const A=NO.arcs(start,heading,segs),n=ws.length-1;return Object.assign({pts:A.pts,end:A.end,heading:A.heading,w:t=>{const k=clamp(t)*n,i=Math.min(n-1,Math.floor(k));return lerp(ws[i],ws[i+1],k-i);}},o);};
 NO.at=(b,t)=>{const i=Math.round(clamp(t)*(b.pts.length-1)),a=b.pts[Math.max(0,i-1)],c=b.pts[Math.min(b.pts.length-1,i+1)];return{p:b.pts[i],h:Math.atan2(c[1]-a[1],c[0]-a[0])/DEG};};
 NO.beast=function(rng){const P=[];
-  /* body, head to hind foot: the neck arches over, turns under at the chest, runs across as the
-     broad barrel, and swings round one large loop to come back along the ground as the hind leg */
-  const body=NO.arcBand([-44,-6],-80,[[19,190],[-13,110],[0,12],[19,205],[0,20],[-34,34]],[2.4,2.7,3.1,4.6,6,6.2,5.4,4.2,3.2,2.4,1.9]);
-  const sh=NO.at(body,0.37),hp=NO.at(body,0.5);
-  // foreleg, leaving the chest on a tangent; a tail tendril rising from the top of the loop
-  const fore=NO.arcBand(NO.at(body,0.36).p,128,[[0,5],[-15,84],[10,96]],[3,2.3,2,1.7,1.5]);
-  const hind=NO.arcBand(hp.p,-70,[[0,4],[-21,205],[5,290]],[2.6,2,1.7,1.5,1.3,1.1,0.9,0.5]);
-  // two snakes: each one large round loop through the animal, wound off into a small curl
-  const s1=NO.arcBand([14,-44],180,[[-30,285],[4.6,290]],[1.5,1.5,1.5,1.5,1.5,1.5,1.4,1.2,0.9,0.5],{sec:true});
-  const s2=NO.arcBand([-50,24],90,[[-28,292],[4.4,290]],[1.4,1.4,1.4,1.4,1.4,1.4,1.3,1.1,0.8,0.5],{sec:true});
-  const s3=NO.arcBand([46,44],-90,[[-22,236],[13,150],[-4,280]],[1.2,1.2,1.2,1.2,1.2,1.1,1,0.8,0.5],{sec:true});
-  P.push(...NO.weave([body,hind,fore,s1,s2,s3],{gap:1.25}));
+  /* Second composition, 2026-10-13, after looking again at the three references. The carved beasts
+     share a plan that the first attempt missed: the body is an S laid so that it crosses the field
+     three times, nearly level each time (neck and back, belly, hind leg), swelling at the two turns,
+     which are the shoulder and the hip; and the thin snake does not circle it but runs UP AND DOWN
+     through those three passes in tall narrow loops, so the crossings are square and the open spaces
+     are a lattice. The beast is five or six times as wide as the snake. */
+  const body=NO.arcBand([34,-42],100,[[16,65],[80,16],[-13,190],[90,20],[14,170],[-100,20]],[1.7,2.7,4.4,6.2,6,5.2,5.6,6.6,5.2,3.2,1.9]);
+  const sh=NO.at(body,0.315),hp=NO.at(body,0.69);
+  // foreleg: leaves the shoulder on its tangent and hangs to the ground, bowed a little
+  const fore=NO.arcBand(sh.p,sh.h,[[0,8],[60,16],[-46,34]],[3.4,2.6,2.1,1.8,1.5]);
+  // tail: a tendril off the back of the hip, wound into a curl outside the loop
+  const tail=NO.arcBand(hp.p,hp.h+180,[[0,15],[6.4,200],[2.8,230]],[2.2,1.7,1.4,1.2,1,0.8,0.5]);
+  // the snake: down, up and down again through all three passes, then a curl
+  const sn=NO.arcBand([-1,-44.6],8,[[5.5,92],[-230,20],[-5.5,160],[-230,19.5],[4.5,180],[230,19.5],[-5,200],[-2.4,230]],[1.6,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.2,1.1,0.9,0.5],{sec:true});
+  // crest: a lappet from the back of the head, curling over the neck
+  const lap=NO.arcBand([33,-45],-120,[[0,3],[-12,50],[5,200],[2.3,220]],[1.5,1.3,1.1,0.9,0.7,0.5]);
+  P.push(...NO.weave([body,fore,tail,lap,sn],{gap:1.25}));
   // feet: a heel and two long toes, the upper one hooked
   for(const b of [fore,body]){const e=b.end,a=b.heading;for(const [d,l,k] of [[-24,9,1],[14,8,0.8]]){const t=NO.arcs(e,a+d,[[0,2],[k>0.9?-9:8,l*5]]).pts;P.push(flP(G.ribbon(t,u=>1.5*(1-0.85*u)),1));}
     P.push(flP(G.xform(G.petal(4,1.3,'pointed'),{x:e[0],y:e[1],rot:a-90+180}),1));}
   // spiral joints, cut into shoulder and hip
-  for(const [q,r,dir] of [[sh.p,4.6,1],[hp.p,5.2,-1]]){const sp=[];for(let i=0;i<=34;i++){const t=i/34,a=(dir*t*640+40)*DEG,rr=lerp(r,0.5,t);sp.push([q[0]+Math.cos(a)*rr,q[1]+Math.sin(a)*rr]);}P.push(heKn(sp,0.8));}
-  // head: one contour, drawn pointing right and turned to carry on from the neck
-  const hd=NO.at(body,0),H=pts=>G.xform(pts,{x:hd.p[0],y:hd.p[1],rot:hd.h+180});
-  P.push(flP(H(G.chaikin([[2,-2.8],[-4,-5],[-11,-6.6],[-18,-5.6],[-24,-3.4],[-27,-4.6],[-29,-8],[-27.6,-10.6],[-30.4,-8.6],[-31,-4.6],[-28,-1],[-23,0],[-25,2.4],[-23.6,5.4],[-21.6,2.6],[-15,3.6],[-7,3.6],[2,2.8]],true,2)),3));
-  P.push(flC(H(G.chain(G.quad([-5,-1.4],[-11,-6],[-19,-2.6],8),G.quad([-19,-2.6],[-11,-0.4],[-5,-1.4],8)).slice(0,-1)),4),flP(H(G.circle(-11.6,-2.6,0.9,10)),5));
-  P.push(heKn(H([[-16,1.6],[-22.6,0.6]]),0.7));
-  // lappet: a tendril curling back from the crown of the head
-  const lp=NO.arcs(H([[-2,-4.6]])[0],hd.h+180+150,[[0,3],[14,70],[-3.6,290]]).pts;P.push(flP(G.ribbon(lp,u=>1.5*(1-0.6*u)),3));
-  // snake heads: a small pointed lobe with an eye, at the thick end of each
-  for(const s of [s1,s2,s3]){const a=NO.at(s,0);P.push(flP(G.xform(G.chaikin([[0,-1.6],[4,-2.6],[8.4,-1],[9.6,0.4],[7,1.2],[4,2.4],[0,1.6]],true,2),{x:a.p[0],y:a.p[1],rot:a.h+180}),5),flC(G.xform(G.circle(4.6,-0.4,0.75,8),{x:a.p[0],y:a.p[1],rot:a.h+180}),6));}
+  for(const [q,r,dir] of [[sh.p,4.8,1],[hp.p,5.2,-1]]){const sp=[];for(let i=0;i<=34;i++){const t=i/34,a=(dir*t*640+40)*DEG,rr=lerp(r,0.5,t);sp.push([q[0]+Math.cos(a)*rr,q[1]+Math.sin(a)*rr]);}P.push(heKn(sp,0.8));}
+  // head: long and narrow, set level on the neck. One contour: crown, the upper lip curled up,
+  // the mouth a little open, the lower lip curled down, the jaw. The eye is a long drop that fills it.
+  const H=pts=>G.xform(pts,{x:33.4,y:-42,rot:-12,s:1.18});
+  P.push(flP(H(G.chain(G.bez([-1,-3],[4,-6.4],[13,-7],[20,-4.6],12),G.bez([20,-4.6],[23,-3.6],[25,-4.4],[27,-7.4],8),G.bez([27,-7.4],[28.6,-4],[27,-1.4],[23,-0.8],8),[[19,-0.2],[23,0.9]],G.bez([23,0.9],[26,1.6],[27.4,3.6],[26.4,6.4],8),G.bez([26.4,6.4],[24,4.4],[21,3.8],[17,3.8],8),G.bez([17,3.8],[10,4.2],[4,4.6],[-1,3],10))),3));
+  P.push(flC(H(G.chain(G.bez([3,-1.2],[4.4,-5],[11,-5.4],[18.6,-2.6],10),G.bez([18.6,-2.6],[11,0.8],[5,1.6],[3,-1.2],10)).slice(0,-1)),4),flP(H(G.ellipse(8,-1.9,1.5,1.2,10)),5));
+  P.push(heKn(H([[12,2.2],[18.4,1.4]]),0.7));
+  // ear: a small leaf behind the eye
+  P.push(flP(H(G.chain(G.bez([1,-4.4],[-3,-8.6],[-8,-9.6],[-11,-7],8),G.bez([-11,-7],[-7,-6],[-3,-4],[0,-2],8))),3));
+  // snake head: a small pointed lobe with an eye, biting
+  {const a=NO.at(sn,0);P.push(flP(G.xform(G.chaikin([[0,-1.7],[4,-2.9],[9,-1.2],[10.4,0.4],[7.6,1.3],[4,2.6],[0,1.7]],true,2),{x:a.p[0],y:a.p[1],rot:a.h+180}),5),flC(G.xform(G.circle(4.8,-0.5,0.8,8),{x:a.p[0],y:a.p[1],rot:a.h+180}),6));}
   return P;};
 defMotif('urnesBeast',{name:'Great beast',term:'Urnes animal',figure:true,mirrorOk:true,meaning:'A slender four-legged animal whose neck and body sweep round in open loops, bitten by and biting the thin snakes that weave through it. Carved on the portal of the stave church at Urnes in Norway about 1070 and on hundreds of Swedish runestones. It has been read as a lion, as Christ contending with evil, or as the struggle at the world’s end; nothing written at the time says which.',
 fn(rng){return noFit(NO.beast(rng),96);}});
