@@ -829,25 +829,95 @@ fn(rng,g){const H=[],C=[],Z=(p,z)=>Object.assign(p,{z});
   for(const s of [-1,1])C.push(cnSpiral(s*36,13.6,4,s>0?180:0,1.4,s,6.2),cnSpiral(s*14,8.6,2.8,s>0?0:180,1.2,-s,6.2),Z(ln(G.bez([s*19,7],[s*24,9.6],[s*28,9],[s*31,11.6],8),'detail'),6.2));
   const P=H.concat(H.map(p=>p.kind==='dot'?Object.assign({},p,{x:-p.x}):Object.assign({},p,{pts:p.pts.map(([x,y])=>[-x,y])})),C);
   return fitParts(P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]),96);}});
+/* Cloud and bat, redrawn 2026-10-13 against six references supplied by the user (a shaded line
+   cloud, a sheet of small clouds, a gold line cloud; a papercut bat, a sheet of three line bats,
+   a cloud-and-flame study). What they share, and what the code keeps:
+   - a cloud is a cluster of SCROLLS, not of circles. Each lobe is a volute: its outline runs once
+     round and then dives inside its own start and winds on to the centre, so the radius falls all
+     the way and no lobe is round. Lobes lap one another, and where two meet the line makes a cusp.
+   - the tails are long tapering S curves that end in a point.
+   - the shading the user asked to keep: fine lines that follow each scroll just inside its outline,
+     each one shorter than the last, and long lines combed down the tails.
+   - a bat is drawn head down. Its lines are long taut curves that meet in SHARP points: the finger
+     tips of the wing, the ears, the brows. The wing arm ends in a rolled tip. The body is a stack
+     of lapped arches under a ruyi cap, and the head sits in a scalloped collar with a ring in the
+     mouth. */
+function cnArcs(start,heading,segs,step=0.8){let [x,y]=start,h=heading;const P=[[x,y]];
+  for(const [r,sw] of segs){if(!r){x+=Math.cos(h*DEG)*sw;y+=Math.sin(h*DEG)*sw;P.push([x,y]);continue;}
+    const R=Math.abs(r),s=r>0?1:-1,cx=x-s*R*Math.sin(h*DEG),cy=y+s*R*Math.cos(h*DEG),n=Math.max(3,Math.round(R*Math.abs(sw)*DEG/step));
+    for(let i=1;i<=n;i++){const a=(h+s*sw*i/n)*DEG;P.push([cx+s*R*Math.sin(a),cy-s*R*Math.cos(a)]);}h+=s*sw;x=P[P.length-1][0];y=P[P.length-1][1];}
+  return P;}
+// one scroll: filled disc of the first turn, the volute line over it, and shading lines inside the outline
+function cnVolute(P,cx,cy,r,a0,dir,z,o={}){const turns=o.turns||2.1,T=turns*360,N=Math.round(turns*46),n1=Math.round(N/turns),rad=u=>r*(1-0.84*u),
+    pt=(u,off=0)=>{const a=(a0+dir*u*T)*DEG,rr=Math.max(0,rad(u)-off);return[cx+Math.cos(a)*rr,cy+Math.sin(a)*rr];},Z=(q,zz)=>Object.assign(q,{z:zz});
+  const sp=[];for(let i=0;i<=N;i++)sp.push(pt(i/N));
+  P.push(reg(sp.slice(0,n1+1),'outer',{ns:true,tone:o.tone||1,z}),Z(ln(sp.slice(0,n1+2),'outer'),z+0.01),Z(ln(sp.slice(n1+1),'inner'),z+0.01));
+  if(o.shade){const [h0,h1]=o.shade,gap=r*0.84/turns,k=o.lines||5;
+    for(let i=0;i<k;i++){const off=gap*(0.1+0.6*i/k),u0=(h0+i*i*2.2+((i*37)%11))/T,u1=(h1-i*17-((i*53)%13))/T,m=Math.max(4,Math.round((u1-u0)*T/8)),q=[];if(u1<=u0)continue;
+      for(let j=0;j<=m;j++)q.push(pt(u0+(u1-u0)*j/m,off));P.push(Z(ln(q,'detail'),z+0.02));}
+    for(let i=0;i<Math.min(3,k-2);i++){const off=gap*(0.2+0.2*i),u0=1/turns+(h0+20+i*14)/T,u1=1/turns+(h1-40-i*30)/T,m=Math.max(4,Math.round((u1-u0)*T/10)),q=[];if(u1<=u0)continue;
+      for(let j=0;j<=m;j++)q.push(pt(u0+(u1-u0)*j/m,off));P.push(Z(ln(q,'detail'),z+0.02));}}}
+// a tapering tail on an arc spine, combed with long lines
+function cnTail(P,start,heading,segs,w,z,o={}){const sp=cnArcs(start,heading,segs),n=sp.length,hw=t=>w*0.5*Math.pow(1-t,o.pow||0.8)+0.04,Z=(q,zz)=>Object.assign(q,{z:zz});
+  P.push(reg(G.ribbon(sp,hw),'outer',{tone:o.tone||1,z}));
+  (o.comb||[[-0.5,0.04,0.62],[-0.08,0.1,0.8],[0.38,0.02,0.5]]).forEach(([f,t0,t1])=>{const q=[];for(let i=Math.round(t0*n);i<Math.round(t1*n);i++){const a=sp[Math.max(0,i-1)],b=sp[Math.min(n-1,i+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,k=hw(i/n)*f;q.push([sp[i][0]-(b[1]-a[1])/l*k,sp[i][1]+(b[0]-a[0])/l*k]);}
+    if(q.length>2)P.push(Z(ln(q,'detail'),z+0.02));});
+  return sp;}
+const cnSort=P=>P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]);
 defMotif('cloud',{name:'Auspicious cloud',term:'xiángyún 祥云',upright:true,
-meaning:'Clouds drawn as clusters of curls with a trailing tail — the vapour on which immortals travel, and, by sound, good fortune (yún / yùn).',
+meaning:'Clouds drawn as a cluster of scrolls with long trailing tails — the vapour on which immortals travel, and, by sound, good fortune (yún / yùn). Each lobe is a scroll that winds in on itself, and fine lines following the scrolls give them roundness.',
 fn(rng,g){const P=[];
-  const body=G.chain(G.arc(-22,0,15,160,330,20),G.arc(2,-8,17,215,335,20),G.arc(24,1,14,230,380,20),G.bez([37.2,5.8],[30,14],[-30,14],[-36.1,5.1],14));
-  P.push(reg(body,'outer'));
-  for(const [cx,cy,r,s] of [[-22,0,10,1],[2,-8,12,-1],[24,1,9,1]]){const sp=[];for(let i=0;i<=28;i++){const u=i/28,a=-Math.PI/2+s*u*Math.PI*2.1,rr=r*(1-0.85*u);sp.push([cx+Math.cos(a)*rr,cy+Math.sin(a)*rr]);}P.push(ln(sp,'inner'));}
-  P.push(ln(G.chain(G.bez([-36,6],[-44,8],[-48,16],[-58,14],10),G.bez([-58,14],[-64,12],[-62,4],[-56,6],8)),'outer'));
-  return fitParts(P);}});
+  cnTail(P,[-12,6.5],176,[[-30,36],[24,76],[-22,40]],13,0,{comb:[[-0.62,0.1,0.6],[-0.3,0.06,0.74],[0.04,0.1,0.84],[0.36,0.05,0.66],[0.66,0.12,0.5]]});
+  cnTail(P,[22,8.5],4,[[22,34],[-18,74],[16,38]],10.5,0.1,{comb:[[-0.55,0.1,0.55],[-0.12,0.06,0.8],[0.3,0.1,0.66],[0.62,0.14,0.5]]});
+  // the mass behind the scrolls, so no ground shows between them where the cloud is cut or painted solid
+  P.push(reg(G.chaikin([[-30,8],[-17,-9],[6,-15],[30,-6],[40,8],[28,13],[16,10],[-6,10],[-22,12]],true,2),'outer',{ns:true,tone:1,z:0.5}));
+  cnVolute(P,29,-5,10.5,125,-1,1,{shade:[50,225],lines:5});
+  cnVolute(P,-15,-8,13,70,1,2,{shade:[55,235],lines:6});
+  cnVolute(P,7,-14,16.5,105,-1,3,{shade:[45,240],lines:7});
+  cnVolute(P,-27,5,8.5,20,1,4,{shade:[40,210],lines:4});
+  cnVolute(P,37.5,6,7,160,-1,4.5,{shade:[40,200],lines:4});
+  cnVolute(P,-6,7,12.5,5,1,5,{shade:[30,230],lines:6});
+  cnVolute(P,16,8,11.5,175,-1,6,{shade:[30,230],lines:6});
+  return fitParts(cnSort(P));}});
 defMotif('bat',{name:'Bat',term:'fú 蝠',upright:true,
-meaning:'The bat is fú, sounding like fú 福, good fortune; five bats are the Five Blessings. Drawn with scalloped wings, often flying head-down so that fortune "arrives".',
-fn(rng,g){const half=[];
-  const wing=G.chain(G.bez([-6,-6],[-16,-20],[-36,-24],[-50,-12],14),G.quad([-50,-12],[-40,-6],[-42,6],8),G.quad([-42,6],[-34,-2],[-28,6],8),G.quad([-28,6],[-20,0],[-16,12],8),G.quad([-16,12],[-10,6],[-6,12],8));
-  half.push(reg(wing,'outer'));
-  for(const p of [[-42,6],[-28,6],[-16,12]])half.push(ln([[-8,-4],p],'detail'));
-  const P=[...half,...mirParts(half)];
-  P.push(reg(G.ellipse(0,4,7,13,30),'outer'));P.push(reg(G.circle(0,-12,6.5,20),'outer'));
-  for(const s of [-1,1])P.push(reg([[s*2,-17],[s*7,-24],[s*6,-14]],'outer'),dt(s*2.4,-12.5,1.2));
-  P.push(reg([[-3,16],[3,16],[0,24]],'outer'));
-  return fitParts(P);}});
+meaning:'The bat is fú, sounding like fú 福, good fortune; five bats are the Five Blessings. It is drawn flying head down, so that fortune "arrives", with wings that sweep out in long curves to rolled tips and sharp finger points, a body of lapped arches under a ruyi cap, and often a ring or a coin in its mouth: fortune before your eyes.',
+fn(rng,g){const H=[],C=[],HH=[],HC=[],Z=(p,z)=>Object.assign(p,{z}),sliver=(cp,w,pw=1)=>{const sp=G.bez(cp[0],cp[1],cp[2],cp[3],22);return G.ribbon(sp,t=>w*Math.pow(1-t,pw)+0.05);};
+  // ---- right wing ----
+  const arm=cnArcs([4,-3],24,[[-44,70],[-14,62],[-6.5,150],[-3.2,170]]),na=arm.length,ka=Math.round(na*0.6);
+  const T1=[48,19],T2=[32,24],T3=[18,22];
+  // membrane: the top edge runs under the arm; the outer edge and the scallops between the fingers meet in points
+  H.push(reg(G.chain([[4,12],[4,-3]],arm.slice(0,ka),G.bez(arm[ka-1],[62,-4],[57,10],T1,16),G.bez(T1,[46,9],[36,9],T2,14),G.bez(T2,[31,12],[22,10],T3,14),G.bez(T3,[17,12],[11,9],[4,12],12)),'outer',{tone:1,z:0}));
+  for(const [tip,c1,c2] of [[T1,[27,4],[44,5]],[T2,[19,6],[31,11]],[T3,[11,7],[18,13]]])H.push(reg(sliver([[8,0],c1,c2,tip],0.95,0.7),'inner',{tone:2,z:0.2}));
+  // arm: a band that thins to a rolled tip, with the line of the bone down its middle
+  H.push(reg(G.ribbon(arm,t=>t<0.62?3.3-1.5*t:Math.max(0.3,2.37*(1-(t-0.62)/0.38*0.9))),'outer',{tone:2,z:1}),Z(ln(arm.slice(3,Math.round(na*0.66)),'detail'),1.05));
+  // a wisp of cloud trailing from the shoulder, over the arm
+  cnTail(H,[19,-10],-30,[[-12,36],[9,60]],5.6,1.4,{tone:3,comb:[[-0.3,0.1,0.6],[0.3,0.1,0.7]]});cnVolute(H,22.4,-11.4,3.5,150,-1,1.45,{tone:3,turns:1.7});cnVolute(H,15.4,-9.4,5,60,1,1.5,{tone:3,turns:1.9,shade:[40,200],lines:3});
+  // ---- right half of the head (drawn at natural size, enlarged below) ----
+  const head=G.chain(G.bez([0,26.4],[6.6,25.6],[11.2,22],[11.6,16.6],12),G.bez([11.6,16.6],[13.6,12.6],[17,7.6],[19.6,1.6],10),G.bez([19.6,1.6],[14.6,4.6],[10.2,6.4],[7.4,10.2],10),G.bez([7.4,10.2],[5,7.8],[2.2,7.2],[0,7.6],8));
+  HH.push(reg(sliver([[11.4,11.6],[13,9.4],[15.2,6.8],[17.6,3.8]],0.7,0.6),'detail',{tone:3,z:5}));
+  // brow: a flame of three points over the eye
+  HH.push(reg(G.chain(G.bez([1.6,14.6],[3.6,12],[7,11],[11.4,9.4],10),G.bez([11.4,9.4],[9.6,11.4],[8.6,12],[10.6,12.4],6),G.bez([10.6,12.4],[8.6,13],[7.6,13.4],[8.8,14.6],6),G.bez([8.8,14.6],[6,13.2],[3.6,13.6],[1.6,14.6],8)),'inner',{tone:2,z:5}));
+  const eye=G.chain(G.bez([1.8,17.2],[3.4,14.4],[7,14.4],[9.2,16],8),G.bez([9.2,16],[7.2,18.6],[3.8,18.8],[1.8,17.2],8));
+  HH.push(reg(eye,'inner',{bg:true,z:5}),Z(ln(eye,'inner',true),5.02),Z(dt(5.4,16.5,1.3,'inner'),5.05));
+  HH.push(cnSpiral(5.4,21,1.5,180,1.2,-1,5.2),Z(ln(G.bez([6.2,23.2],[4.2,24.4],[1.8,24.4],[0,22.6],8),'inner'),5.2),Z(ln(G.bez([8,19.4],[9.6,20.4],[10,21.8],[9.2,23.2],6),'detail'),5.2));
+  // collar: a scalloped ruff behind the head
+  {const cx=0,cy=14,R=12.6,rr=4.9,as=[168,201,235,270,305,339,372],cs=as.map(a=>[cx+Math.cos(a*DEG)*R,cy+Math.sin(a*DEG)*R]),ring=[];
+   cs.forEach((c,i)=>{for(let k=0;k<=40;k++){const a=k/40*Math.PI*2,q=[c[0]+Math.cos(a)*rr,c[1]+Math.sin(a)*rr];if(cs.every((d,j)=>j===i||Math.hypot(q[0]-d[0],q[1]-d[1])>=rr-1e-6)&&Math.hypot(q[0]-cx,q[1]-cy)>R)ring.push(q);}});
+   ring.sort((p,q)=>((Math.atan2(p[1]-cy,p[0]-cx)/DEG+270)%360)-((Math.atan2(q[1]-cy,q[0]-cx)/DEG+270)%360));
+   HC.push(reg(ring.concat([[0,cy+4]]),'outer',{tone:2,z:3}));}
+  HC.push(reg(head.concat(head.slice(1,-1).reverse().map(([x,y])=>[-x,y])),'outer',{tone:1,z:4}));
+  HC.push(reg([[0,9.4],[1.7,11.6],[0,13.8],[-1.7,11.6]],'inner',{tone:3,z:5}));
+  HC.push(reg(G.chain(G.bez([0,18],[1.6,18.6],[3,19.6],[3.2,20.8],8),G.bez([3.2,20.8],[2.2,21.2],[0.8,21.4],[0,22.4],6),G.bez([0,22.4],[-0.8,21.4],[-2.2,21.2],[-3.2,20.8],6),G.bez([-3.2,20.8],[-3,19.6],[-1.6,18.6],[0,18],8)),'inner',{tone:2,z:5.1}));
+  // the ring in the mouth
+  HC.push(reg(G.circle(0,29.6,4.4,28),'outer',{tone:3,z:3.5}),reg(G.circle(0,29.6,2.7,22),'inner',{bg:true,z:3.6}),Z(ln(G.circle(0,29.6,2.7,22),'inner',true),3.62));
+  // body: a ruyi cap, then arches lapping toward the head
+  for(const s of [-1,1])C.push(reg(G.circle(s*4.3,-24.6,3.1,20),'outer',{tone:3,z:1.8}));
+  C.push(reg(G.circle(0,-27.6,3.7,22),'outer',{tone:3,z:1.9}),Z(dt(0,-27.6,1,'detail'),1.95));
+  [[-18.6,6.2,5.4],[-11.4,8.4,6.8],[-2.6,10.6,9]].forEach(([cy,hw,h],i)=>{C.push(reg(G.chaikin([[-hw,cy+h*0.7],[-hw*0.97,cy-h*0.3],[-hw*0.56,cy-h*0.94],[0,cy-h*1.14],[hw*0.56,cy-h*0.94],[hw*0.97,cy-h*0.3],[hw,cy+h*0.7],[hw*0.5,cy+h],[-hw*0.5,cy+h]],true,3),'outer',{tone:2,z:2+i*0.1}));
+    for(const f of [0.62,0.36])C.push(Z(ln(G.bez([-hw*f,cy-h*(1.14-0.62*f-0.2)],[-hw*f*0.5,cy-h*(1.02-0.3*f)],[hw*f*0.5,cy-h*(1.02-0.3*f)],[hw*f,cy-h*(1.14-0.62*f-0.2)],10),'detail'),2.05+i*0.1));});
+  const mir=A=>A.concat(A.map(p=>p.kind==='dot'?Object.assign({},p,{x:-p.x}):Object.assign({},p,{pts:p.pts.map(([x,y])=>[-x,y])})));
+  const K=1.22,ox=0,oy=9,big=mir(HH).concat(HC).map(p=>p.kind==='dot'?Object.assign({},p,{x:p.x*K,y:oy+(p.y-oy)*K+1,r:p.r*K}):Object.assign({},p,{pts:p.pts.map(([x,y])=>[x*K,oy+(y-oy)*K+1])}));
+  return fitParts(cnSort(mir(H).concat(C,big)));}});
 defMotif('plum',{name:'Plum blossom',term:'méihuā 梅花',
 meaning:'Five round petals: the plum flowers on bare branches in late winter, so it stands for endurance and renewal. Scattered on cracked ice it is the "ice and plum" pattern.',
 fn(rng,g){const P=[];const rot=rng.range(0,72);
