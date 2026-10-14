@@ -942,7 +942,7 @@
         "#.HHH....$........#",
         "#.HHH.,,..Vb...o..#",
         "#..5.=========....#",
-        "#.o..=...,,,.=..o.#",
+        "#.o..=...,,,P=..o.#",
         "#....=..HHHgg=....#",
         "#..S.=..HHHQg=..$.#",
         "#....====2====....#",
@@ -959,9 +959,10 @@
       // `buildings`, and the exit tile at the foot of its south wall
       // (`door: true`) is its doorstep. Here: the Schoolhouse in the
       // north-west, and Home — the cottage in the middle of the courtyard.
-      // Beside Home is the family's garden ('g' beds). 'Q' is where Mom
-      // stands tending it once Dad is gone — her entry in `npcs` is added
-      // just below LEVELS (see "Mom moves out to the garden").
+      // Beside Home is the family's garden ('g' beds). 'Q' and 'P' are
+      // where Mom and Dad stand when they're out tending it — their
+      // entries in `npcs` are added just below LEVELS (see "The garden
+      // beside Home is a motif").
       buildings: ['school', 'home'],
       signs: [
         "A crooked signpost: \"Six Light Shards sleep in this clearing. Gather them all to wake the grove.\"",
@@ -2435,6 +2436,9 @@
     // Liz's respect (learned.songwriting), a real prerequisite rather
     // than two independent, order-free teachers.
     if (npcDef.requiresLearned && !story.learned[npcDef.requiresLearned]) return true;
+    // presentIf is a plain yes/no for a character whose whereabouts depend
+    // on more than the chapter (Mom and Dad and their garden).
+    if (npcDef.presentIf) return !npcDef.presentIf();
     // presentDuring is an explicit whitelist for a character who isn't
     // present for one contiguous stretch of chapters — see the doc above
     // LEVELS. It fully replaces the presentFrom/absentFrom range check
@@ -4809,18 +4813,42 @@
   var LEVEL_INDEX = {};
   LEVELS.forEach(function (lvl, i) { LEVEL_INDEX[lvl.id] = i; });
 
-  // Mom moves out to the garden. After Dad dies she is no longer inside the
-  // house: from 'grief' on she's outside it in the Clearing, tending her
-  // garden to stay busy. She's the same character with the same lines and
-  // respect (one def, shared), just standing somewhere else — so the house
-  // is empty until she walks back in for the finale (playFinale()).
+  // The garden beside Home is a motif that runs the length of the story.
+  // Once BOY has gone off to college (story.learned.visitedCollege), Mom and
+  // Dad take it up together: for the rest of 'earning_respect' both of them
+  // are out there in the Clearing, not in the house. Dad's diagnosis ends
+  // that — he's at the Hospital, then bedridden at Home, and she is inside
+  // with him. After he dies she goes back out to it alone, to stay busy:
+  // from 'grief' on Mom is in the garden and the house stands empty until
+  // she walks back in for the finale (playFinale()). They're the same two
+  // characters with the same lines and respect (one def each, shared) — only
+  // where they stand changes (`presentIf`, see npcAbsent()). The garden
+  // lines themselves are `musings`: each plays once, in its chapter.
   (function () {
-    var homeMom = LEVELS[LEVEL_INDEX.home].npcs.M;
-    var gardenMom = {};
-    for (var k in homeMom) gardenMom[k] = homeMom[k];
-    gardenMom.presentDuring = ['grief', 'duty'];
-    LEVELS[LEVEL_INDEX.clearing].npcs.Q = gardenMom;
-    homeMom.presentDuring = ['childhood', 'earning_respect', 'diagnosis', 'hospice'];
+    var home = LEVELS[LEVEL_INDEX.home].npcs, clearing = LEVELS[LEVEL_INDEX.clearing].npcs;
+    function gardeningTogether() { return story.chapter === 'earning_respect' && !!story.learned.visitedCollege; }
+    function inChapters(list) { return list.indexOf(story.chapter) !== -1; }
+    function copy(def) { var out = {}; for (var k in def) out[k] = def[k]; return out; }
+
+    home.M.musings = (home.M.musings || []).concat([
+      { key: 'garden_together', chapter: 'earning_respect', requires: 'visitedCollege', line: "With you off at college the house got so quiet, BOY. So your father and I started a garden. He digs, I plant. He's already calling the tomatoes his." },
+      { key: 'garden_alone', chapter: 'grief', line: "He planted this row, BOY. Crooked, like everything he planted. I can't bring myself to straighten it." },
+      { key: 'garden_busy', chapter: 'grief', line: "People keep telling me to rest. I'd rather have dirt under my nails. Out here, something still needs me every morning." },
+      { key: 'garden_tomatoes', chapter: 'duty', line: "Look, BOY. His tomatoes came in after all. Stubborn, just like him. Take some with you." }
+    ]);
+    home.D.musings = (home.D.musings || []).concat([
+      { key: 'garden_together', chapter: 'earning_respect', requires: 'visitedCollege', line: "Your mother says I plant the rows crooked. She's right. Don't you tell her I said so, BOY." }
+    ]);
+
+    var gardenMom = copy(home.M), gardenDad = copy(home.D);
+    home.M.presentIf = function () { return inChapters(['childhood', 'earning_respect', 'diagnosis', 'hospice']) && !gardeningTogether(); };
+    gardenMom.presentIf = function () { return gardeningTogether() || inChapters(['grief', 'duty']); };
+    home.D.presentIf = function () { return inChapters(['childhood', 'earning_respect', 'hospice']) && !gardeningTogether(); };
+    gardenDad.presentIf = gardeningTogether;
+    delete home.D.presentDuring;
+    delete gardenDad.presentDuring;
+    clearing.Q = gardenMom;
+    clearing.P = gardenDad;
   })();
 
   // GOAL_INDEX['<tool>:<goal id>'] -> { key, npcName } — built once from
@@ -6340,10 +6368,10 @@
   }
   // Returns a dialogue `link` (see openDialogue) offering Mom's ride, or
   // undefined when it doesn't apply — safe to call for any isFamily NPC;
-  // only actually produces anything for Mom, at Home, before the car, and
+  // only actually produces anything for Mom (indoors or out in the garden), before the car, and
   // only once there's somewhere that ride would actually go.
   function momRideLink(def) {
-    if (def.id !== 'mom' || world.id !== 'home' || story.hasCar) return undefined;
+    if (def.id !== 'mom' || story.hasCar) return undefined;
     var curChapterIdx = CHAPTERS.indexOf(story.chapter);
     var hasDestination = LEVELS.some(function (lvl) {
       if (!lvl.availableFrom || !drivable(lvl)) return false;
