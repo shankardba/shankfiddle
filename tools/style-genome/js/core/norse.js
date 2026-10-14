@@ -26,17 +26,24 @@ const noFit=(P,s=94)=>fitParts(FL.done(P),s);
 NO.spine=(cp,closed=false,step=1.6)=>G.resample(G.chaikin(cp,closed,4),closed,step);
 /* Weave bands of varying width. bands: [{pts, closed, w:t=>halfWidth, z}] → solid parts.
    Uses GH.weave for the over/under, then cuts each band at its under-crossings. */
-NO.weave=function(bands,{gap=1.1,sec=null}={}){
-  const S=bands.map(b=>({pts:b.pts,closed:!!b.closed}));GH.weave(S);
+NO.weave=function(bands,{gap=1.1}={}){
+  /* Each band is cut at its under-crossings, and each cut end is trimmed along the band's own two
+     edges to the edge of the band above (its half-width there, plus the gap), so ends follow the
+     curve of what they pass under instead of being sawn off square. */
+  const S=bands.map(b=>({pts:b.pts,closed:false}));GH.weave(S);
   const byX={};S.forEach((s,si)=>s.cross.forEach(c=>(byX[c.x]=byX[c.x]||[]).push([si,c])));
+  const M=S.map((s,si)=>{const P=s.pts,n=P.length,cum=[0];for(let i=1;i<n;i++)cum.push(cum[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]));const L=cum[n-1]||1,b=bands[si],eL=[],eR=[];
+    for(let i=0;i<n;i++){const a=P[Math.max(0,i-1)],c=P[Math.min(n-1,i+1)],l=Math.hypot(c[0]-a[0],c[1]-a[1])||1,nx=-(c[1]-a[1])/l,ny=(c[0]-a[0])/l,w=Math.max(0.2,b.w(cum[i]/L));eL.push([P[i][0]+nx*w,P[i][1]+ny*w]);eR.push([P[i][0]-nx*w,P[i][1]-ny*w]);}
+    return{P,n,cum,L,eL,eR};});
+  const dist=(q,W)=>{let m=1e18;for(let i=0;i<W.length-1;i++){const a=W[i],b=W[i+1],dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy||1e-9;let t=((q[0]-a[0])*dx+(q[1]-a[1])*dy)/l;t=t<0?0:t>1?1:t;const x=a[0]+dx*t-q[0],y=a[1]+dy*t-q[1],d=x*x+y*y;if(d<m)m=d;}return Math.sqrt(m);};
+  const over=c=>{const o=byX[c.x].find(e=>e[1]!==c),m=M[o[0]],hc=bands[o[0]].w(clamp(o[1].s/m.L))+gap,W=[];for(let i=0;i<m.n;i++)if(Math.abs(m.cum[i]-o[1].s)<hc*3+3)W.push(m.P[i]);return{W,hc};};
+  const trim=(E,O)=>{if(!O||O.W.length<2)return E;let i=0;while(i<E.length&&dist(E[i],O.W)<O.hc)i++;if(i===0||i>=E.length)return i>=E.length?[]:E;let a=E[i-1],b=E[i];for(let k=0;k<11;k++){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(dist(m,O.W)<O.hc)a=m;else b=m;}return[b].concat(E.slice(i));};
   const out=[];
-  S.forEach((s,si)=>{const b=bands[si],L=s.len,P=s.pts,n=P.length,cum=[0];for(let i=1;i<n;i++)cum.push(cum[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]));
-    const cuts=[];for(const c of s.cross){if(!c.under)continue;const o=byX[c.x].find(e=>e[1]!==c);if(!o)continue;const ob=bands[o[0]],ot=clamp(o[1].s/S[o[0]].len);
-      const sn=Math.max(0.35,Math.abs(c.od[0]*0+1)),tx=at(c.s),cr=Math.abs(tx[0]*c.od[1]-tx[1]*c.od[0])||0.35;cuts.push([c.s-(ob.w(ot)+gap)/Math.max(0.35,cr),c.s+(ob.w(ot)+gap)/Math.max(0.35,cr)]);}
-    function at(d){let i=1;while(i<n-1&&cum[i]<d)i++;const a=P[i-1],q=P[i],l=Math.hypot(q[0]-a[0],q[1]-a[1])||1;return[(q[0]-a[0])/l,(q[1]-a[1])/l];}
-    cuts.sort((p,q)=>p[0]-q[0]);let a=0;const spans=[];for(const [c0,c1] of cuts){if(c0>a+0.6)spans.push([a,c0]);a=Math.max(a,c1);}if(a<L-0.6)spans.push([a,L]);
-    for(const [d0,d1] of spans){const seg=[];for(let i=0;i<n;i++)if(cum[i]>=d0&&cum[i]<=d1)seg.push(P[i]);if(seg.length<2)continue;
-      const rb=G.ribbon(seg,t=>Math.max(0.25,b.w(clamp((d0+t*(d1-d0))/L))));out.push(Object.assign(b.sec?flS(rb,b.z||0):flP(rb,b.z||0),{band:si}));}});
+  S.forEach((s,si)=>{const m=M[si],b=bands[si],U=s.cross.filter(c=>c.under).sort((p,q)=>p.s-q.s),B=[{s:0,c:null}].concat(U.map(c=>({s:c.s,c})),[{s:m.L,c:null}]);
+    for(let k=0;k<B.length-1;k++){const s0=B[k].s,s1=B[k+1].s;if(s1-s0<0.8)continue;const idx=[];for(let i=0;i<m.n;i++)if(m.cum[i]>=s0-1e-6&&m.cum[i]<=s1+1e-6)idx.push(i);if(idx.length<2)continue;
+      const O0=B[k].c?over(B[k].c):null,O1=B[k+1].c?over(B[k+1].c):null;
+      const Lf=trim(trim(idx.map(i=>m.eL[i]),O0).reverse(),O1).reverse(),Rt=trim(trim(idx.map(i=>m.eR[i]),O0).reverse(),O1).reverse();
+      if(Lf.length<2||Rt.length<2)continue;const poly=Lf.concat(Rt.reverse());out.push(Object.assign(b.sec?flS(poly,b.z||0):flP(poly,b.z||0),{band:si}));}});
   return out;};
 // width profiles
 NO.taper=(w0,w1)=>t=>lerp(w0,w1,t);
@@ -48,30 +55,55 @@ NO.head=(pts,s,z=5)=>{const a=pts[0],b=pts[Math.min(pts.length-1,6)],ang=Math.at
 /* ---------- the great beast ---------- */
 // a band from control points with a half-width given at each control point
 NO.band=(cp,ws,o={})=>{const pts=NO.spine(cp),n=ws.length-1;return Object.assign({pts,w:t=>{const k=clamp(t)*n,i=Math.min(n-1,Math.floor(k));return lerp(ws[i],ws[i+1],k-i);}},o);};
+/* The great beast, redrawn 2026-10-13 against three reference drawings supplied by the user.
+   What makes an Urnes line look right is that it is never a freehand wobble: every band is a
+   chain of circular ARCS, each leaving the last on its tangent, so loops are round, curves are
+   taut, and a band can only swell, thin or end in a curl. NO.arcs builds a spine that way, like
+   a compass walked along the band: [radius, sweep] turns right for a positive radius and left
+   for a negative one; [0, length] goes straight. */
+NO.arcs=(start,heading,segs,step=1.1)=>{let [x,y]=start,h=heading;const P=[[x,y]];
+  for(const [r,sw] of segs){if(!r){const n=Math.max(1,Math.round(sw/step));for(let i=1;i<=n;i++)P.push([x+Math.cos(h*DEG)*sw*i/n,y+Math.sin(h*DEG)*sw*i/n]);x+=Math.cos(h*DEG)*sw;y+=Math.sin(h*DEG)*sw;continue;}
+    const R=Math.abs(r),s=r>0?1:-1,cx=x-s*R*Math.sin(h*DEG),cy=y+s*R*Math.cos(h*DEG),n=Math.max(2,Math.round(R*Math.abs(sw)*DEG/step));
+    for(let i=1;i<=n;i++){const a=(h+s*sw*i/n)*DEG;P.push([cx+s*R*Math.sin(a),cy-s*R*Math.cos(a)]);}h+=s*sw;x=P[P.length-1][0];y=P[P.length-1][1];}
+  return{pts:P,end:[x,y],heading:h};};
+// a band on an arc spine, its half-width set at even stations along the length
+NO.arcBand=(start,heading,segs,ws,o={})=>{const A=NO.arcs(start,heading,segs),n=ws.length-1;return Object.assign({pts:A.pts,end:A.end,heading:A.heading,w:t=>{const k=clamp(t)*n,i=Math.min(n-1,Math.floor(k));return lerp(ws[i],ws[i+1],k-i);}},o);};
+NO.at=(b,t)=>{const i=Math.round(clamp(t)*(b.pts.length-1)),a=b.pts[Math.max(0,i-1)],c=b.pts[Math.min(b.pts.length-1,i+1)];return{p:b.pts[i],h:Math.atan2(c[1]-a[1],c[0]-a[0])/DEG};};
 NO.beast=function(rng){const P=[];
-  // facing left: tail → haunch → waist → shoulder → neck arching back over the body → head
-  const body=NO.band([[40,-12],[46,6],[36,24],[20,27],[6,17],[-6,7],[-20,-3],[-27,-20],[-16,-38],[6,-43],[24,-32],[25,-16],[13,-7]],[0.5,1.3,2.4,7.6,4.6,2.9,7,4.4,3.3,3,2.9,2.9,3.2]);
-  const hind=NO.band([[17,28],[9,40],[-4,40],[-10,46],[-22,45]],[3,2.3,1.9,1.6,1.4]);
-  const fore=NO.band([[-22,1],[-33,10],[-32,22],[-40,28],[-48,24]],[3,2.3,1.9,1.6,1.4]);
-  // two snakes threading the loops
-  const s1=NO.band([[-46,-34],[-34,-44],[-18,-30],[-6,-16],[10,-24],[36,-46],[46,-30],[34,-10],[14,2],[-2,22],[-18,30],[-36,20],[-40,4]],[1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.4,1.2,0.8,0.3],{sec:true});
-  const s2=NO.band([[2,48],[20,44],[30,34],[26,14],[38,2],[48,-10],[40,-26],[26,-22]],[1.3,1.3,1.3,1.3,1.3,1.1,0.8,0.3],{sec:true});
-  P.push(...NO.weave([body,hind,fore,s1,s2],{gap:1.3}));
-  for(const b of [hind,fore]){const sp=b.pts,e=sp[sp.length-1],q=sp[sp.length-8],a=Math.atan2(e[1]-q[1],e[0]-q[0])/DEG;for(const d of [-30,0,30])P.push(flP(G.xform(G.petal(6.5,1.3,'pointed'),{x:e[0],y:e[1],rot:a+90+d}),1));}
-  // spiral joints cut into haunch and shoulder
-  for(const [x,y,r,a0] of [[19.5,26,5.6,30],[-20,-4,5,210]]){const sp=[];for(let i=0;i<=30;i++){const t=i/30,a=(a0+t*600)*DEG,rr=lerp(r,0.6,t);sp.push([x+Math.cos(a)*rr,y+Math.sin(a)*rr]);}P.push(heKn(sp,0.85));}
-  // head: long jaw, pointed eye, curled lip, a lappet trailing behind
-  const sp=body.pts,e=sp[sp.length-1],q=sp[sp.length-10],ang=Math.atan2(e[1]-q[1],e[0]-q[0])/DEG,H=pts=>G.xform(pts,{x:e[0],y:e[1],rot:ang});
-  P.push(flP(H(G.chain(G.bez([-4,-3.4],[4,-8],[14,-7.4],[21,-3],12),G.bez([21,-3],[25,-1.4],[25.6,-6.4],[22,-7.4],6),G.bez([22,-7.4],[29,-8],[29,1.4],[21,2],8),G.bez([21,2],[13,3.4],[5,6.4],[-4,3.6],12))),3));
-  P.push(flC(H(FL.lens(7.4,2,1.7).map(([x,y])=>[x+8.5,y-2])),4),flP(H(G.circle(8.5,-2,0.95,10)),5),heKn(H([[13,1.6],[20.4,-0.6]]),0.7));
-  P.push(flP(H(G.chain(G.bez([0,-5.4],[-5,-13],[-14,-13],[-17,-7],10),G.bez([-17,-7],[-12,-9],[-6,-7.4],[-3,-3.6],8))),3));
-  P.push(...NO.head(s1.pts,1.9),...NO.head(s2.pts,1.7));
+  /* body, head to hind foot: the neck arches over, turns under at the chest, runs across as the
+     broad barrel, and swings round one large loop to come back along the ground as the hind leg */
+  const body=NO.arcBand([-44,-6],-80,[[19,190],[-13,110],[0,12],[19,205],[0,20],[-34,34]],[2.4,2.7,3.1,4.6,6,6.2,5.4,4.2,3.2,2.4,1.9]);
+  const sh=NO.at(body,0.37),hp=NO.at(body,0.5);
+  // foreleg, leaving the chest on a tangent; a tail tendril rising from the top of the loop
+  const fore=NO.arcBand(NO.at(body,0.36).p,128,[[0,5],[-15,84],[10,96]],[3,2.3,2,1.7,1.5]);
+  const hind=NO.arcBand(hp.p,-70,[[0,4],[-21,205],[5,290]],[2.6,2,1.7,1.5,1.3,1.1,0.9,0.5]);
+  // two snakes: each one large round loop through the animal, wound off into a small curl
+  const s1=NO.arcBand([14,-44],180,[[-30,285],[4.6,290]],[1.5,1.5,1.5,1.5,1.5,1.5,1.4,1.2,0.9,0.5],{sec:true});
+  const s2=NO.arcBand([-50,24],90,[[-28,292],[4.4,290]],[1.4,1.4,1.4,1.4,1.4,1.4,1.3,1.1,0.8,0.5],{sec:true});
+  const s3=NO.arcBand([46,44],-90,[[-22,236],[13,150],[-4,280]],[1.2,1.2,1.2,1.2,1.2,1.1,1,0.8,0.5],{sec:true});
+  P.push(...NO.weave([body,hind,fore,s1,s2,s3],{gap:1.25}));
+  // feet: a heel and two long toes, the upper one hooked
+  for(const b of [fore,body]){const e=b.end,a=b.heading;for(const [d,l,k] of [[-24,9,1],[14,8,0.8]]){const t=NO.arcs(e,a+d,[[0,2],[k>0.9?-9:8,l*5]]).pts;P.push(flP(G.ribbon(t,u=>1.5*(1-0.85*u)),1));}
+    P.push(flP(G.xform(G.petal(4,1.3,'pointed'),{x:e[0],y:e[1],rot:a-90+180}),1));}
+  // spiral joints, cut into shoulder and hip
+  for(const [q,r,dir] of [[sh.p,4.6,1],[hp.p,5.2,-1]]){const sp=[];for(let i=0;i<=34;i++){const t=i/34,a=(dir*t*640+40)*DEG,rr=lerp(r,0.5,t);sp.push([q[0]+Math.cos(a)*rr,q[1]+Math.sin(a)*rr]);}P.push(heKn(sp,0.8));}
+  // head: one contour, drawn pointing right and turned to carry on from the neck
+  const hd=NO.at(body,0),H=pts=>G.xform(pts,{x:hd.p[0],y:hd.p[1],rot:hd.h+180});
+  P.push(flP(H(G.chaikin([[2,-2.8],[-4,-5],[-11,-6.6],[-18,-5.6],[-24,-3.4],[-27,-4.6],[-29,-8],[-27.6,-10.6],[-30.4,-8.6],[-31,-4.6],[-28,-1],[-23,0],[-25,2.4],[-23.6,5.4],[-21.6,2.6],[-15,3.6],[-7,3.6],[2,2.8]],true,2)),3));
+  P.push(flC(H(G.chain(G.quad([-5,-1.4],[-11,-6],[-19,-2.6],8),G.quad([-19,-2.6],[-11,-0.4],[-5,-1.4],8)).slice(0,-1)),4),flP(H(G.circle(-11.6,-2.6,0.9,10)),5));
+  P.push(heKn(H([[-16,1.6],[-22.6,0.6]]),0.7));
+  // lappet: a tendril curling back from the crown of the head
+  const lp=NO.arcs(H([[-2,-4.6]])[0],hd.h+180+150,[[0,3],[14,70],[-3.6,290]]).pts;P.push(flP(G.ribbon(lp,u=>1.5*(1-0.6*u)),3));
+  // snake heads: a small pointed lobe with an eye, at the thick end of each
+  for(const s of [s1,s2,s3]){const a=NO.at(s,0);P.push(flP(G.xform(G.chaikin([[0,-1.6],[4,-2.6],[8.4,-1],[9.6,0.4],[7,1.2],[4,2.4],[0,1.6]],true,2),{x:a.p[0],y:a.p[1],rot:a.h+180}),5),flC(G.xform(G.circle(4.6,-0.4,0.75,8),{x:a.p[0],y:a.p[1],rot:a.h+180}),6));}
   return P;};
 defMotif('urnesBeast',{name:'Great beast',term:'Urnes animal',figure:true,mirrorOk:true,meaning:'A slender four-legged animal whose neck and body sweep round in open loops, bitten by and biting the thin snakes that weave through it. Carved on the portal of the stave church at Urnes in Norway about 1070 and on hundreds of Swedish runestones. It has been read as a lion, as Christ contending with evil, or as the struggle at the world’s end; nothing written at the time says which.',
 fn(rng){return noFit(NO.beast(rng),96);}});
 defMotif('urnesSnake',{name:'Snake knot',term:'ormslinga',mirrorOk:true,meaning:'One thin snake tied in a figure-eight, its head passing under its own body: the smallest unit of the late Viking styles, used to fill any space a larger animal leaves.',
-fn(){const sp=NO.spine([[-8,-6],[-30,-34],[-44,-10],[-24,10],[0,0],[24,-10],[44,10],[30,34],[8,8],[-8,30],[-22,42]]);
-  return noFit(NO.weave([{pts:sp,w:NO.snakeW(3),z:0}],{gap:1.6}).concat(NO.head(sp,3.4)),90);}});
+fn(){const b=NO.arcBand([8,-10],-150,[[19,262],[0,14],[-19,262],[0,6],[5,300]],[2.2,3,3.2,3.2,3.2,3.2,3.1,2.8,2.2,1.5,0.8]);
+  const a=NO.at(b,0),P=NO.weave([b],{gap:1.5});
+  P.push(flP(G.xform(G.chaikin([[0,-3],[6,-4.6],[13,-2],[15,0.6],[11,2.2],[6,4],[0,3]],true,2),{x:a.p[0],y:a.p[1],rot:a.h+180}),5),flC(G.xform(G.circle(7,-0.6,1.2,10),{x:a.p[0],y:a.p[1],rot:a.h+180}),6));
+  return noFit(P,90);}});
 // closed knots as woven straps of even width
 defMotif('norseKnot',{name:'Ring knot',term:'—',meaning:'A looped band tied through a ring. Closed knots like this fill the lobes of trefoil brooches and the fields of Borre-style mounts.',
 fn(rng,g){const loop=[];for(let i=0;i<121;i++){const a=i/121*Math.PI*2,r=27+15*Math.cos(3*a);loop.push([Math.cos(a)*r,Math.sin(a)*r]);}
