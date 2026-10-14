@@ -104,24 +104,104 @@ fn(){const P=[],O=G.chaikin([[2,-48],[6,-36],[11,-16],[13.4,4],[11,22],[0,31],[-
   for(let i=0;i<7;i++){const y=22-i*9.6,w=10.4*Math.sin(Math.PI*clamp(0.1+0.8*(1-i/7)))+1.4;P.push(peL([[-w,y-4],[0,y],[w,y-4]],1));}
   for(const s of [-1,1]){P.push(peR(SL.curl(s*3,46,22,s*62,s*-58,1.5),peGR,-1),...pePut(PE.rosette(5,true),{x:s*19,y:33,dz:1}),...pePut(PE.rosette(3.4,true),{x:s*12,y:43,dz:1}));}
   P.push(peR(peRect(-24,46,24,48),peGD,-1));return peFit(P,96);}});
-PE.rose=(r=20)=>{const P=[];for(let i=0;i<7;i++)P.push(peR(SL.petal(0,0,i*360/7,r*1.16,0.4),peIV,-1));for(let i=0;i<5;i++)P.push(peR(SL.petal(0,0,i*72+10,r,0.42),peRD,0));for(let i=0;i<5;i++)P.push(peR(SL.petal(0,0,i*72+46,r*0.76,0.44),peIV,1),peL(SL.petal(0,0,i*72+46,r*0.5,0.36).slice(2,9),1.5));
-  for(let i=0;i<3;i++)P.push(peR(SL.petal(0,0,i*120+20,r*0.46,0.46),peRD,2));const sp=[];for(let i=0;i<=22;i++){const t=i/22,a=t*640*DEG,rr=r*0.24*(1-0.8*t);sp.push([Math.cos(a)*rr,Math.sin(a)*rr]);}P.push(peL(sp,3));return P;};
-defMotif('peRose',{name:'Rose',term:'gol',upright:true,meaning:'The hundred-petalled rose on its stem with a bud and leaves. Gol means both rose and flower. In the poetry the rose is the beloved, beautiful and indifferent, and blooms for a few days only.',
-fn(){const P=[peR(G.band(G.bez([4,48],[-6,28],[8,6],[0,-14],14),2.2),peGR,-2),peR(SL.curl(1,22,26,-58,-40,1.5),peGR,-2)];
-  for(const [x,y,a] of [[2,30,74],[0,18,-110],[5,38,118]])P.push(...pePut(PE.saz([[0,0],[4,-9],[3,-20]],4.6),{x,y,rot:a,dz:-1}));
-  const e=SL.end(1,22,26,-58,-40);for(const [a,ci] of [[-20,peRD],[20,peRD],[0,peIV]])P.push(peR(G.xform(G.petal(13,3.4,'pointed'),{x:e[0],y:e[1],rot:e[2]+a}),ci,a?0:1));
-  for(const a of [100,170,240])P.push(peR(SL.dab(0,-12,11,a,0.24),peGR,-0.5));P.push(...pePut(PE.rose(21),{y:-22}));return peFit(P,96);}});
-defMotif('peNightingale',{name:'Nightingale',term:'bolbol',figure:true,mirrorOk:true,meaning:'The small brown bird that sings all night to the rose and is wounded by its thorns: the lover, the poet, the soul. Rose and nightingale together, gol o bolbol, is the commonest subject of Persian lacquer and of the painted pages of the eighteenth and nineteenth centuries.',
+/* Rose, bud, leaf, nightingale and butterfly, redrawn 2026-10-13 against four gol-o-morgh
+   references supplied by the user (a grisaille page of a flowering tree with birds, a watercolour
+   page with a bird and butterfly on a knotted trunk, a lacquer book cover, and a blossom spray on
+   green). Nothing is traced. What the paintings share, and what the code keeps:
+   - a rose is a full CUP seen from the side and a little above: big guard petals splayed behind
+     and below, and inside them petals that wrap round the heart, each lapping the next, each with
+     a paler turned-over rim and dark depth showing between;
+   - petals and leaves are shaded with fine lines running the way the form grows;
+   - leaves are broad, saw-edged and veined, one half darker than the other, in sprays of three or five;
+   - the bush is a small TREE: a knotted trunk on a tuft of ground, boughs leaving it at different
+     heights, twigs ending in a flower or a bud;
+   - the bird is slim and long-tailed, its head lifted to the flower, its wing in lapped ranks. */
+const [pePK,peDG,peBR]=[6,7,8];
+const peZ=(p,z)=>Object.assign(p,{z});
+// a cupped petal: a crescent about c with a pale rolled rim and shading lines rising from its base
+PE.cup=(c,r,a0,span,depth,ci,z,sq=0.86)=>{const n=22,out=[],inn=[],lip=[],P=[],at=(a,rr)=>[c[0]+Math.cos(a*DEG)*rr,c[1]+Math.sin(a*DEG)*rr*sq];
+  for(let i=0;i<=n;i++){const t=i/n,a=a0+span*t,e=Math.pow(Math.sin(Math.PI*t),0.7),ro=r*(1+0.03*Math.sin(t*Math.PI*5+a0)*e);out.push(at(a,ro));inn.push(at(a,r*(1-depth*e)));lip.push(at(a,ro*(1-depth*0.17*e)));}
+  P.push(peR(out.concat(inn.slice().reverse()),ci,z),peN(out.concat(lip.slice().reverse()),peIV,z+0.01),peL(lip.slice(2,-2),z+0.02));
+  for(const t of [0.24,0.36,0.47,0.56,0.67,0.78]){const a=a0+span*t,e=Math.pow(Math.sin(Math.PI*t),0.7);P.push(peL([at(a,r*(1-depth*e*0.98)),at(a+span*0.012,r*(1-depth*e*(0.5+0.2*Math.abs(t-0.5))))],z+0.02));}
+  return P;};
+// a guard petal: a broad fan from the heart, its edge waved and rolled
+PE.guard=(c,ang,hw,len,ci,z,sq=0.86)=>{const n=24,out=[],lip=[],P=[],at=(a,rr)=>[c[0]+Math.cos(a*DEG)*rr,c[1]+Math.sin(a*DEG)*rr*sq];
+  for(let i=0;i<=n;i++){const t=i/n,a=ang-hw+2*hw*t,e=Math.pow(Math.sin(Math.PI*t),0.42),rr=len*(0.5+0.5*e)*(1+0.035*Math.sin(t*Math.PI*6+ang));out.push(at(a,rr));lip.push(at(a,rr*(1-0.085*e)));}
+  P.push(peR([c].concat(out),ci,z),peN(out.concat(lip.slice().reverse()),peIV,z+0.01),peL(lip.slice(2,-2),z+0.02));
+  for(const t of [0.2,0.32,0.43,0.5,0.57,0.68,0.8]){const a=ang-hw+2*hw*t;P.push(peL([at(a,len*0.34),at(a,len*(0.5+0.5*Math.pow(Math.sin(Math.PI*t),0.42))*(0.6+0.14*Math.cos(t*20)))],z+0.02));}
+  return P;};
+PE.rose=(r=20,turn=0)=>{const P=[],c=[0,0];
+  for(const a of [62,90,118])P.push(peR(G.xform(G.petal(r*1.5,r*0.3,'pointed'),{rot:a+90+turn*0.3}),peDG,-2));
+  [[-100,40,1.2],[-38,38,1.24],[-160,36,1.22],[150,40,1.34],[26,40,1.36],[90,46,1.46]].forEach(([a,hw,l],i)=>P.push(...PE.guard(c,a+turn,hw,r*l,i<3?pePK:(i<5?peRD:pePK),-1+i*0.1)));
+  const m=[];for(let i=0;i<36;i++){const a=i/36*Math.PI*2;m.push([Math.cos(a)*r*0.94,Math.sin(a)*r*0.94*0.86]);}P.push(peR(m,peRD,0.5));
+  for(let k=0;k<8;k++)P.push(...PE.cup(c,r*(0.98-0.105*k),turn+70+k*137.5,188-9*k,0.3,k%2?pePK:peRD,1+k*0.1));
+  const sp=[];for(let i=0;i<=20;i++){const t=i/20,a=(turn+t*520)*DEG,rr=r*0.16*(1-0.8*t);sp.push([Math.cos(a)*rr,Math.sin(a)*rr*0.86]);}P.push(peL(sp,3));return P;};
+// a leaflet with a saw edge, base at 0,0 and tip up: two tones about the midrib, side veins running forward
+PE.leaflet=(len,wid,bend=0.1)=>{const n=20,L=[],R=[],mid=[],P=[];
+  for(let i=0;i<=n;i++){const t=i/n,odd=i%2&&i<n-1,y=-len*t,x=bend*len*Math.sin(Math.PI*t),w=wid*0.5*Math.pow(Math.sin(Math.PI*Math.pow(clamp(0.03+0.97*t),0.72)),0.8)+(odd?wid*0.085:0),dy=odd?-len*0.028:0;mid.push([x,y]);L.push([x-w,y+dy]);R.push([x+w,y+dy]);}
+  P.push(peR(mid.concat(L.slice().reverse()),peGR,0),peR(mid.concat(R.slice().reverse()),peDG,0),peL(mid,0.1));
+  for(let k=1;k<=5;k++){const i=Math.round(k*n/6.6),j=Math.min(n-1,i+3);for(const E of [L,R])P.push(peL([mid[i],[lerp(mid[i][0],E[j][0],0.55),lerp(mid[i][1],E[j][1],0.45)],[lerp(mid[j][0],E[j][0],0.88),E[j][1]]],0.1));}
+  return P;};
+// a spray of three or five leaflets on a stalk, base at 0,0, growing up
+PE.spray=(len=40,five=false)=>{const st=G.bez([0,0],[len*0.06,-len*0.2],[-len*0.05,-len*0.36],[0,-len*0.52],10),P=[peR(G.ribbon(st,t=>len*0.016*(1-0.5*t)),peGR,-0.2)];
+  const put=(t,a,l)=>{const q=st[Math.round(t*10)];P.push(...pePut(PE.leaflet(l,l*0.56,a<0?-0.1:0.1),{x:q[0],y:q[1],rot:a}));};
+  if(five){put(0.34,-66,len*0.36);put(0.38,64,len*0.36);}put(0.72,-54,len*0.42);put(0.76,52,len*0.42);put(1,3,len*0.5);return P;};
+// a bud: hip, folded petals, and long sepals that clasp it and run on past the tip; base at 0,0, tip up
+PE.rosebud=(len=30)=>{const P=[],k=len/30;
+  P.push(peR(G.chaikin([[-3.4,-1],[-4,-5],[0,-7.4],[4,-5],[3.4,-1],[0,0.6]],true,3).map(([x,y])=>[x*k,y*k]),peDG,0));
+  P.push(peR(G.chain(G.bez([-4.6,-6],[-8,-14],[-4.6,-22],[0.6,-27],12),G.bez([0.6,-27],[5.4,-21],[7.6,-13],[4.6,-6],12)).map(([x,y])=>[x*k,y*k]),pePK,1));
+  P.push(peR(G.chain(G.bez([-1.6,-6.4],[-4.6,-13],[-1.6,-21],[0.6,-27],10),G.bez([0.6,-27],[3.6,-20],[4.6,-12],[2.6,-6.4],10)).map(([x,y])=>[x*k,y*k]),peRD,1.1),peL(G.bez([0.4,-8],[-0.8,-14],[0.2,-20],[0.6,-25],8).map(([x,y])=>[x*k,y*k]),1.2));
+  for(const [cp,w] of [[[[-3.6,-4],[-8.6,-12],[-7,-22],[-9.6,-31]],1.9],[[[3.6,-4],[8.4,-11],[6.4,-20],[9.4,-28]],1.8],[[[0,-5],[1.4,-9],[0.4,-13],[1,-17]],1.5]])P.push(peR(G.ribbon(G.bez(cp[0],cp[1],cp[2],cp[3],14).map(([x,y])=>[x*k,y*k]),t=>k*w*Math.pow(1-t,0.7)+0.05),peGR,1.5));
+  return P;};
+defMotif('peRose',{name:'Rose',term:'gol',upright:true,meaning:'The hundred-petalled rose, drawn as a full cup: broad guard petals splayed behind and below, and within them petals that wrap round the heart, each with a pale rolled rim. Gol means both rose and flower. In the poetry the rose is the beloved, beautiful and indifferent, and blooms for a few days only.',
+fn(){const st=G.bez([3,50],[-3,36],[5,20],[0,2],16),P=[peR(G.ribbon(st,t=>1.5-0.5*t),peBR,-3)];
+  for(const [i,s] of [[3,-1],[6,1],[9,-1]])P.push(peR([[st[i][0],st[i][1]-1.2],[st[i][0]+s*3.4,st[i][1]-2.4],[st[i][0],st[i][1]+1.2]],peBR,-3));
+  P.push(...pePut(PE.spray(30,false),{x:st[4][0],y:st[4][1],rot:-64,dz:-2}),...pePut(PE.spray(27,false),{x:st[8][0],y:st[8][1],rot:60,dz:-2}));
+  const tw=G.bez(st[6],[10,26],[17,22],[20,15],8);P.push(peR(G.ribbon(tw,t=>0.9-0.4*t),peGR,-3),...pePut(PE.rosebud(15),{x:20,y:15,rot:22,dz:-2}));
+  P.push(...pePut(PE.rose(19,-8),{y:-20}));return peFit(P,96);}});
+defMotif('peRoseLeaf',{name:'Rose leaves',term:'barg-e gol',upright:true,meaning:'A spray of rose leaves: broad, saw-edged leaflets in threes or fives on one stalk, each with its midrib and side veins, and one half painted darker than the other so that the leaf seems to turn in the light.',
+fn(rng){return peFit(PE.spray(80,rng.chance(0.4)),94);}});
+defMotif('peRoseBud',{name:'Rosebud',term:'ghoncheh-ye gol',upright:true,meaning:'The closed rose: folded petals in the grip of long sepals that run on past the tip. The poets make the bud the tight-lipped beloved, and the opened flower her smile.',
+fn(){const st=G.bez([-4,48],[2,36],[-3,26],[0,16],10),P=[peR(G.ribbon(st,t=>1.3-0.5*t),peGR,-1),...pePut(PE.leaflet(17,9,0.1),{x:st[3][0],y:st[3][1],rot:58,dz:-1}),...pePut(PE.leaflet(14,8,-0.1),{x:st[6][0],y:st[6][1],rot:-62,dz:-1}),...pePut(PE.rosebud(46),{y:16})];return peFit(P,94);}});
+defMotif('peNightingale',{name:'Nightingale',term:'bolbol',bird:true,meaning:'The small plain bird that sings all night to the rose and is wounded by its thorns: the lover, the poet, the soul. Rose and nightingale together, gol o bolbol, is the commonest subject of Persian lacquer and of the painted pages of the eighteenth and nineteenth centuries. It is drawn slim and long-tailed, head lifted and beak open toward the flower.',
 fn(){const P=[];
-  P.push(peR(G.band(G.bez([-40,30],[-14,22],[14,26],[42,18],12),2.4),peGR,-2));for(const [x,y,a] of [[-26,26,-40],[20,23,30],[34,20,-150]])P.push(peR(SL.dab(x,y,10,a,0.28),peGR,-2));
-  P.push(peR(G.chaikin([[4,2],[20,10],[40,26],[44,34],[36,33],[16,20]],true,2),peBL,-1));
-  P.push(peR(G.chaikin([[-19,-10],[-9,-18],[6,-13],[17,-2],[19,9],[9,17],[-5,17],[-15,9],[-20,0]],true,3),peGD,0),peR(G.circle(-17,-15,8,24),peGD,0.2));
-  P.push(peR(G.chaikin([[-22,-6],[-12,-3],[-8,6],[-13,13],[-20,6]],true,2),peRD,0.5),peR([[-24,-17.4],[-34,-18.6],[-24.4,-14.6]],peBL,0.4),peR([[-24.4,-14.4],[-32,-12],[-23.6,-12.4]],peBL,0.4));
-  P.push(peR(G.chaikin([[-6,-9],[8,-7],[20,6],[24,16],[10,11],[-2,4]],true,2),peBL,1),peL(G.bez([-2,-4],[8,-1],[14,6],[19,12],8),2),peL(G.bez([-3,0],[4,3],[9,7],[13,11],8),2));
-  P.push(peR(G.circle(-19.6,-16.6,1.9,12),peIV,1),peN(G.circle(-19.8,-16.6,0.9,8),peBL,2));
-  for(const x of [-2,6]){P.push(peL([[x,16],[x-1,24]],1,'inner'));for(const d of [-3,0,3])P.push(peL([[x-1,24],[x-1+d,26.6]],1));}return peFit(P,94);}});
+  // body: one contour from the brow over the back, along the tail, and home under the belly and throat
+  const B=G.chaikin([[-27,-21.6],[-24.6,-25.6],[-19.6,-27.6],[-14,-26.4],[-9.6,-22],[-4,-16.6],[4,-11],[12,-4.4],[19,2.6],[24,8.6],[28,14],[25,17],[19,17.4],[12,18],[4,17.6],[-4,15.6],[-11,11.6],[-17,5],[-21,-3],[-23,-10.6],[-25.6,-15.6],[-27.4,-18.4]],true,3);
+  // tail: three long feathers, lapped
+  [[[20,9],[30,17],[41,27],[48,37]],[[19,11],[28,20],[37,31],[42,40]],[[17,13],[24,22],[31,32],[34,40]]].forEach((cp,i)=>P.push(peR(G.ribbon(G.bez(cp[0],cp[1],cp[2],cp[3],16),t=>2.5*Math.pow(Math.sin(Math.PI*clamp(0.16+0.8*t)),0.6)),peBR,-1+i*0.1),peL(G.bez(cp[0],cp[1],cp[2],cp[3],16).slice(3,-2),-0.9+i*0.1)));
+  P.push(peR(B,peIV,0));
+  // back and crown washed darker, breast blushed
+  P.push(peN(G.chaikin([[-26,-21],[-23,-26],[-16,-27.4],[-9.6,-22],[-2,-15],[8,-7.6],[18,2],[24,9],[15,5],[4,-3],[-6,-11],[-14,-18],[-20,-21]],true,3),peGD,0.1));
+  P.push(peN(G.chaikin([[-22,-8],[-16,-5],[-11,2],[-9,9],[-14,7],[-19,0]],true,3),pePK,0.1));
+  for(let i=0;i<9;i++){const x=-20+i*2.5+((i*7)%3)*0.5,y=-6+i*2.1;P.push(peL([[x,y],[x+1.9,y+1.1]],0.2),peL([[x+3.4,y+2.6],[x+5.2,y+3.5]],0.2));}
+  // wing: two ranks of small coverts, then five long flight feathers lapped toward the tail
+  P.push(peR(G.chaikin([[-12,-12],[-4,-15],[6,-9],[15,-1],[23,8],[30,17],[22,14],[13,11],[4,8],[-5,3],[-11,-4]],true,3),peBR,1));
+  [[[2,-2],[10,3],[19,9],[31,18]],[[0,0],[8,5],[16,10],[26,16.6]],[[-2,1],[5,6],[12,10],[21,15]],[[-4,1],[2,6],[8,9],[15,12.6]],[[-6,0],[-1,5],[4,7.6],[9,10]]].forEach((cp,i)=>P.push(peR(G.ribbon(G.bez(cp[0],cp[1],cp[2],cp[3],14),t=>1.9*Math.pow(Math.sin(Math.PI*clamp(0.12+0.84*t)),0.6)),i%2?peBR:peGD,1.1+i*0.05)));
+  for(const [x0,y0,n,r] of [[-9.6,-10.6,7,1.5],[-8.6,-7.6,7,1.6],[-7.6,-4.4,6,1.7]])for(let i=n-1;i>=0;i--){const x=x0+i*2.6,y=y0+i*1.9;P.push(peR(G.chaikin([[x-r,y-r*0.6],[x+r*0.7,y-r],[x+r*1.5,y+r*0.5],[x+r*0.3,y+r*1.1],[x-r*0.8,y+r*0.5]],true,2),peBR,2),peL([[x-r*0.3,y-r*0.2],[x+r*0.9,y+r*0.5]],2.1));}
+  // head: open beak, eye with its stripe
+  P.push(peR(G.chain(G.bez([-26.2,-22.6],[-29,-23.6],[-32,-24.6],[-34.6,-25.4],6),G.bez([-34.6,-25.4],[-32,-23.4],[-29,-21.6],[-26.4,-20.4],6)),peBR,0.5,'inner'),peR(G.chain(G.bez([-26.6,-19.8],[-29,-20],[-31,-20],[-33,-19.6],6),G.bez([-33,-19.6],[-30.6,-18.6],[-28,-17.8],[-25.6,-17.4],6)),peBR,0.4,'inner'));
+  P.push(peL(G.bez([-26,-21],[-22,-23.4],[-17,-23],[-13,-20.6],8),1),peR(G.circle(-21,-21.6,1.7,14),peIV,1.1),peN(G.circle(-21.2,-21.6,0.95,10),peBL,1.2));
+  // legs: thin, the toes closed on the twig
+  for(const [x,d] of [[2,0],[8,-0.6]]){P.push(peL([[x,16.6],[x-1.4,22],[x-1,26]],-0.5,'inner'));for(const [dx,dy] of [[-3.6,1.4],[-1.4,2.6],[2.4,1.6]])P.push(peL(G.quad([x-1,26],[x-1+dx*0.6,26+dy*0.2],[x-1+dx,26+dy+d],6),-0.4,'inner'));}
+  P.push(peR(G.ribbon(G.bez([-22,30],[-8,25.6],[12,28.6],[30,24],16),t=>1.6-0.7*t),peBR,-2),...pePut(PE.leaflet(11,6,0.1),{x:-14,y:27.6,rot:-70,dz:-2}));
+  return peFit(P,94);}});
+defMotif('pePapillon',{name:'Butterfly',term:'parvāneh',mirrorOk:true,meaning:'A butterfly with its wings raised, hovering beside the bush. Parvāneh is also the moth that circles the candle until it burns: with the nightingale, the second of the poets\' two lovers.',
+fn(){const P=[];
+  // a wing: outline as separate curves so the apex stays a point and the margin scallops; a darker band inside the margin, veins from the root, a row of spots
+  const wing=(root,segs,ci,band,z,spots,sc)=>{const O=G.chain(...segs.map(q=>G.bez(q[0],q[1],q[2],q[3],12))),inner=O.map(([x,y])=>[root[0]+(x-root[0])*0.8,root[1]+(y-root[1])*0.8]);
+    P.push(peR(O,band,z),peR(inner,ci,z+0.01));const n=inner.length;for(const f of [0.3,0.42,0.54,0.66,0.78]){const e=inner[Math.round(f*(n-1))];P.push(peL(G.quad(root,[lerp(root[0],e[0],0.5)+(e[1]-root[1])*0.06,lerp(root[1],e[1],0.5)-(e[0]-root[0])*0.06],e,8),z+0.02));}
+    for(const f of spots){const e=O[Math.round(f*(O.length-1))];P.push(peN(G.circle(root[0]+(e[0]-root[0])*0.9,root[1]+(e[1]-root[1])*0.9,1.25,10),sc,z+0.03));}};
+  const r=[0,6];
+  // far forewing, a little behind
+  wing([4,5],[[[4,5],[10,-8],[22,-24],[37,-33]],[[37,-33],[39,-25],[37,-17],[35,-11]],[[35,-11],[30,-6],[24,-2],[18,2]],[[18,2],[13,4],[8,5],[4,5]]],peGD,peBL,-1,[0.36,0.44,0.52],peIV);
+  // near forewing: a long front edge to a pointed apex, then a scalloped outer margin
+  wing(r,[[[0,6],[-6,-8],[-4,-28],[10,-44]],[[10,-44],[15,-38],[16,-33],[20,-30]],[[20,-30],[19,-24],[21,-19],[24,-15]],[[24,-15],[21,-10],[21,-5],[22,-1]],[[22,-1],[14,3],[7,5],[0,6]]],peGD,peTQ,0,[0.3,0.4,0.5,0.6,0.7],peRD);
+  // near hindwing: round, scalloped, with a short tail
+  wing([1,8],[[[1,8],[9,5],[18,3],[26,5]],[[26,5],[27,10],[30,12],[30,17]],[[30,17],[27,20],[27,24],[24,27]],[[24,27],[21,27],[19,31],[15,33]],[[15,33],[10,26],[5,18],[1,8]]],peGD,peTQ,0.2,[0.28,0.4,0.52,0.64],peRD);
+  P.push(peR(G.ribbon(G.bez([-10,18],[-5,12],[-1,7],[3,-2],12),t=>1.5*Math.pow(Math.sin(Math.PI*clamp(0.12+0.8*t)),0.7)),peBR,2));
+  for(const cp of [[[-9.6,17],[-15,11],[-18,4],[-16,-4]],[[-10,17.6],[-17,14],[-23,9],[-24,1]]]){P.push(peL(G.bez(cp[0],cp[1],cp[2],cp[3],10),2));P.push(peN(G.circle(cp[3][0],cp[3][1],0.8,8),peBR,2));}
+  return peFit(P,92);}});
 
-/* ---------- borders ---------- (y = 0 is the outer edge) */
 const peClamp=(P,L,t)=>P.map(p=>Object.assign({},p,{pts:p.pts.map(([x,y])=>[clamp(x,0,L),clamp(y,0,t)])}));
 defBorder('peVine',{name:'Blossom vine',fn(L,t){const n=Math.max(2,2*Math.round(L/(t*1.7)/2)),w=L/n,P=[peN(peRect(0,0,L,t),peBL)],s=[];
   for(let i=0;i<=n*20;i++){const x=i/(n*20)*L;s.push([x,t/2+t*0.24*Math.sin(x/w*Math.PI)]);}P.push(peN(G.band(s,Math.max(0.9,t*0.03)),peGD));
@@ -202,18 +282,42 @@ fn(ctx){
   ctx.items.push({type:'parts',parts:tileParts(peTile(g,'peBotehRows'),r,lerp(120,84,clamp(S.density)),rng.fork('b'),g),role:'frame',variant:'field'});
 }});
 /* Rose and nightingale: a flowering branch across the page, the bird upon it. */
-defStructure('golomorgh',{name:'Rose and nightingale',blurb:'A single rose bush crossing the page from the foot: full blossoms, buds and saw-edged leaves on bending stems, and a nightingale perched among them.',
+defStructure('golomorgh',{name:'Rose and nightingale',blurb:'A rose tree on a tuft of ground: a knotted trunk, boughs leaving it at different heights and ending in full blossoms and buds, sprays of saw-edged leaves, a nightingale on a side branch with its head lifted to a flower, and a butterfly in the open space.',
 fn(ctx){
   const {W,H,g,rng}=ctx;let r={x0:60,y0:40,x1:W-60,y1:H-40};
   ctx.parts([{kind:'region',closed:true,role:'outer',bg:true,plain:true,pts:peRect(r.x0-20,r.y0-20,r.x1+20,r.y1+20)}],'frame');
   r=PE.frame(ctx,r,peKey(g,'peGuard',/Guard|Madakhil|lines|dotRow/),12,peGD);r=PE.frame(ctx,r,peKey(g,'peVine',/^(?!peGuard|peMadakhil)/),W*0.05);r=PE.frame(ctx,r,'lines',8,peGD);
-  const w=r.x1-r.x0,h=r.y1-r.y0,X=u=>r.x0+u*w,Y=v=>r.y0+v*h,fl=rng.chance(0.5),U=u=>fl?1-u:u,base=[X(U(0.3)),Y(0.98)],P=[];
-  const hero=ctx.pick('hero'),rk=[...new Set(poolAll(g.motifs.ring))].filter(k=>SG.motifs[k]&&k!=='dot'),bird=rk.find(k=>SG.motifs[k].figure)||rk[0]||'bird',bud=rk.find(k=>k!==bird)||hero,fil=ctx.pick('filler'),leaf=fil==='dot'?'leaf':fil;
-  const T=[[0.56,0.2,0.4,hero],[0.26,0.42,0.34,hero],[0.74,0.52,0.32,hero],[0.82,0.2,0.15,bud],[0.2,0.16,0.15,bud],[0.86,0.76,0.14,bud],[0.14,0.66,0.13,bud]];
-  for(const [u,v] of T){const e=[X(U(u)),Y(v)],m=[lerp(base[0],e[0],0.15)+(e[0]-base[0])*0.1,lerp(base[1],e[1],0.7)];P.push(peR(G.ribbon(G.resample(G.quad(base,m,e,18),false,6),t=>4.4*(1-0.62*t)),peGR,0));}
-  const bp=[X(U(0.5)),Y(0.66)];P.push(peR(G.ribbon(G.resample(G.quad(base,[lerp(base[0],bp[0],0.2),lerp(base[1],bp[1],0.6)],[bp[0]+(fl?-1:1)*w*0.12,bp[1]+h*0.03],16),false,6),t=>4*(1-0.6*t)),peGR,0));
-  ctx.items.push({type:'parts',parts:P,role:'ring',variant:'stems'});
-  [[0.4,0.3,-20],[0.66,0.34,40],[0.4,0.54,-70],[0.62,0.7,70],[0.2,0.8,-96],[0.3,0.28,-50],[0.7,0.1,20],[0.5,0.84,100],[0.84,0.4,60]].forEach(([u,v,a],i)=>ctx.motif(leaf,X(U(u)),Y(v),w*0.2,{role:'filler',variant:'leaf'+(i%2),rot:fl?-a:a,flip:fl!==(a>0)}));
-  for(const [u,v,s,k] of T)ctx.motif(k,X(U(u)),Y(v),w*s,{role:k===hero?'hero':'ring',variant:k===hero?'hero':'bud',flip:fl!==(u>0.5)});
-  ctx.motif(bird,bp[0],bp[1]-w*0.075,w*0.27,{role:'ring',variant:'bird',flip:!fl});
+  const w=r.x1-r.x0,h=r.y1-r.y0,fl=rng.chance(0.5),X=u=>r.x0+(fl?1-u:u)*w,Y=v=>r.y0+v*h,sg=fl?-1:1,P=[];
+  const hero=ctx.pick('hero'),rk=[...new Set(poolAll(g.motifs.ring))].filter(k=>SG.motifs[k]&&k!=='dot'),bird=rk.find(k=>SG.motifs[k].bird||SG.motifs[k].figure)||rk[0]||'bird',fly=rk.find(k=>/apillon|utterfly/.test(k)),bud=rk.find(k=>k!==bird&&k!==fly)||hero,fil=ctx.pick('filler'),leaf=fil==='dot'?'leaf':fil;
+  // the trunk: an S from the ground to the highest flower, thick and knotted below
+  const tr=G.resample(G.chaikin([[0.4,0.93],[0.43,0.8],[0.37,0.66],[0.42,0.52],[0.5,0.42],[0.53,0.35],[0.54,0.3]].map(([u,v])=>[X(u),Y(v)]),false,3),false,5),nt=tr.length,tw=t=>w*(0.019*Math.pow(1-t,1.2)*(1+0.2*Math.sin(t*46)*Math.max(0,1-t*1.7))+0.0055);
+  const at=(sp,t)=>{const i=Math.round(clamp(t)*(sp.length-1)),a=sp[Math.max(0,i-1)],b=sp[Math.min(sp.length-1,i+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return{p:sp[i],d:[(b[0]-a[0])/l,(b[1]-a[1])/l]};};
+  P.push(peR(G.ribbon(tr,tw),peBR,1));
+  for(const f of [-0.5,0.1,0.55])P.push(peL(tr.slice(1,Math.round(nt*(0.5+0.2*f))).map((q,i)=>{const o=at(tr,(i+1)/nt);return[q[0]-o.d[1]*tw((i+1)/nt)*f,q[1]+o.d[0]*tw((i+1)/nt)*f];}),1.1));
+  for(const [t,s] of [[0.1,1],[0.24,-1],[0.4,1]]){const o=at(tr,t),k=tw(t),c=[o.p[0]-o.d[1]*k*0.2*s,o.p[1]+o.d[0]*k*0.2*s];P.push(peL(G.ellipse(c[0],c[1],k*0.36,k*0.6,14),1.2,'detail',true),peR(G.xform([[-k*0.5,0],[0,-k*1.5],[k*0.5,0]],{x:o.p[0]-o.d[1]*k*0.9*s,y:o.p[1]+o.d[0]*k*0.9*s,rot:s*sg*58}),peBR,0.9));}
+  // boughs and twigs: [where it leaves the trunk, end, bulge, what it carries, size]
+  const BR=[[0.34,[0.7,0.5],-0.22,hero,0.34],[0.52,[0.29,0.38],0.2,hero,0.33],[0.2,[0.1,0.7],-0.14,null,0],[0.72,[0.82,0.22],0.2,bud,0.15],[0.86,[0.3,0.16],-0.2,bud,0.15],[0.62,[0.86,0.36],0.12,bud,0.13]],sp=[];
+  BR.forEach(([t,e,bulge],i)=>{const o=at(tr,t),E=[X(e[0]),Y(e[1])],d=Math.hypot(E[0]-o.p[0],E[1]-o.p[1]),nx=-(E[1]-o.p[1])/d,ny=(E[0]-o.p[0])/d,c1=[o.p[0]+o.d[0]*d*0.3,o.p[1]+o.d[1]*d*0.3],c2=[lerp(o.p[0],E[0],0.68)+nx*bulge*d*sg,lerp(o.p[1],E[1],0.68)+ny*bulge*d*sg];
+    sp[i]=G.bez(o.p,c1,c2,E,26);P.push(peR(G.ribbon(sp[i],u=>tw(t)*0.62*(1-0.72*u)+w*0.003),peBR,0.5));});
+  // two side twigs with buds, off the two great boughs
+  const TW=[[0,0.55,[0.9,0.64],0.13],[1,0.6,[0.1,0.5],0.13]];
+  TW.forEach(([bi,t,e],i)=>{const o=at(sp[bi],t),E=[X(e[0]),Y(e[1])];sp[6+i]=G.bez(o.p,[o.p[0]+o.d[0]*w*0.06,o.p[1]+o.d[1]*w*0.06],[lerp(o.p[0],E[0],0.6),lerp(o.p[1],E[1],0.4)],E,16);P.push(peR(G.ribbon(sp[6+i],u=>w*(0.006-0.003*u)),peBR,0.4));});
+  // the tuft of ground, with grass
+  const gx=X(0.4),gy=Y(0.945);P.push(peN(G.chaikin([[-0.3,0.02],[-0.2,-0.012],[-0.06,-0.026],[0.08,-0.02],[0.22,-0.01],[0.32,0.02],[0.1,0.034],[-0.12,0.034]].map(([a,b])=>[gx+a*w,gy+b*h]),true,3),peGR,0));
+  for(let i=0;i<22;i++){const x=gx+(i/21-0.5)*w*0.56,l=h*(0.022+0.02*((i*7)%5)/4),lean=((i*5)%7-3)*0.12;P.push(peR(G.ribbon(G.quad([x,gy+h*0.012],[x+lean*l*0.3,gy-l*0.6],[x+lean*l,gy-l],8),t=>w*0.004*(1-t)+0.2),i%2?peDG:peGR,0.2));}
+  ctx.items.push({type:'parts',parts:FL.done(P),role:'ring',variant:'tree'});
+  // place a motif whose own stalk is at the foot, so that the stalk continues the line it grows from
+  const grow=(key,q,d,size,o)=>{const a=Math.atan2(d[0],-d[1])/DEG;ctx.motif(key,q[0]+d[0]*size*0.4,q[1]+d[1]*size*0.4,size,Object.assign({rot:a},o));};
+  // leaf sprays along the boughs, alternately to either side
+  let li=0;const sprays=(s,ts,size)=>ts.forEach(t=>{const o=at(s,t),sd=(li++%2?1:-1),d=[o.d[0]*0.5-o.d[1]*sd*0.86,o.d[1]*0.5+o.d[0]*sd*0.86];grow(leaf,o.p,d,size,{role:'filler',variant:'leaf'+(li%2),noOcc:true});});
+  sprays(tr,[0.46,0.6,0.8,0.93],w*0.17);sprays(sp[0],[0.3,0.52,0.74,0.92],w*0.17);sprays(sp[1],[0.34,0.56,0.76,0.93],w*0.17);sprays(sp[2],[0.4,0.86],w*0.13);sprays(sp[3],[0.5,0.82],w*0.13);sprays(sp[4],[0.45,0.8],w*0.13);sprays(sp[5],[0.6],w*0.12);sprays(sp[6],[0.6],w*0.11);sprays(sp[7],[0.6],w*0.11);
+  // flowers and buds on the ends
+  const top=at(tr,1);grow(hero,top.p,top.d,w*0.37,{role:'hero',variant:'hero',noOcc:true});
+  BR.forEach(([t,e,b,k,s],i)=>{if(!k)return;const o=at(sp[i],1);grow(k,o.p,o.d,w*s,{role:k===hero?'hero':'ring',variant:k===hero?'hero':'bud',noOcc:true});});
+  TW.forEach(([bi,t,e,s],i)=>{const o=at(sp[6+i],1);grow(bud,o.p,o.d,w*s,{role:'ring',variant:'bud',noOcc:true});});
+  // the bird on the low branch, looking up into the tree; a butterfly in the open corner; two small flowers at the foot
+  const bp=at(sp[2],0.62);ctx.motif(bird,bp.p[0],bp.p[1]-w*0.1,w*0.3,{role:'ring',variant:'bird',flip:!fl,noOcc:true});
+  if(fly)ctx.motif(fly,X(0.8),Y(0.78),w*0.15,{role:'ring',variant:'fly',flip:fl,rot:sg*-14,noOcc:true});
+  for(const [u,s] of [[0.2,1],[0.62,-1]]){const x=X(u),y=gy,st=G.bez([x,y],[x+s*sg*w*0.02,y-h*0.03],[x-s*sg*w*0.03,y-h*0.06],[x+s*sg*w*0.01,y-h*0.085],10);
+    ctx.items.push({type:'parts',parts:[peR(G.ribbon(st,t=>w*0.0035),peGR,0),...pePut(PE.leaflet(h*0.04,h*0.016,0.2*s),{x:st[3][0],y:st[3][1],rot:s*sg*50}),...pePut(PE.rosette(w*0.024,true),{x:st[10][0],y:st[10][1],dz:1})],role:'filler',variant:'herb'});}
 }});

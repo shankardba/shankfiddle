@@ -36,7 +36,7 @@ peT({
     line:PE_LINE(0.7),
     fill:{modes:{flat:1},coverage:1,hatchGap:5},
     ornament:PE_ORN(),
-    palette:{ground:'#b9a88c',ink:'#231712',fills:['#1f2f5a','#a82a22','#d6a94a','#4c7a4a','#efe4c8','#3f9aa0'],ciFills:['#1f2f5a','#a82a22','#d6a94a','#4c7a4a','#efe4c8','#3f9aa0'],gap:'#a82a22'},
+    palette:{ground:'#b9a88c',ink:'#231712',fills:['#1f2f5a','#a82a22','#d6a94a','#4c7a4a','#efe4c8','#3f9aa0'],ciFills:['#1f2f5a','#a82a22','#d6a94a','#4c7a4a','#efe4c8','#3f9aa0','#d98a86','#2f5234','#6e4a30'],gap:'#a82a22'},
     ground:{kind:'cloth',amount:.45}
   },
   rules:[
@@ -61,7 +61,7 @@ peT({
     line:PE_LINE(0.6,{wobble:0}),
     fill:{modes:{flat:.7,gold:.3},coverage:1,hatchGap:5},
     ornament:PE_ORN(),
-    palette:{ground:'#e4d3a8',ink:'#1c1410',fills:['#1d3f8a','#b5352a','#d9a52b','#3f7d4f','#fbf7ea','#3a9a9a'],ciFills:['#1d3f8a','#b5352a','#d9a52b','#3f7d4f','#fbf7ea','#3a9a9a'],metal:'#d9a52b',gap:'#1d3f8a'},
+    palette:{ground:'#e4d3a8',ink:'#1c1410',fills:['#1d3f8a','#b5352a','#d9a52b','#3f7d4f','#fbf7ea','#3a9a9a'],ciFills:['#1d3f8a','#b5352a','#d9a52b','#3f7d4f','#fbf7ea','#3a9a9a','#e39aa0','#27583a','#7a4f30'],metal:'#d9a52b',gap:'#1d3f8a'},
     ground:{kind:'paper',amount:.3}
   },
   rules:[
@@ -86,7 +86,7 @@ peT({
     line:PE_LINE(0.6,{wobble:0}),
     fill:{modes:{flat:1},coverage:1,hatchGap:5},
     ornament:PE_ORN(),
-    palette:{ground:'#3a2420',ink:'#1e1210',fills:['#7a1e22','#c8452a','#d6a53a','#4f7a4a','#efe2c4','#3f8f96'],ciFills:['#7a1e22','#c8452a','#d6a53a','#4f7a4a','#efe2c4','#3f8f96'],gap:'#7a1e22'},
+    palette:{ground:'#3a2420',ink:'#1e1210',fills:['#7a1e22','#c8452a','#d6a53a','#4f7a4a','#efe2c4','#3f8f96'],ciFills:['#7a1e22','#c8452a','#d6a53a','#4f7a4a','#efe2c4','#3f8f96','#e0958a','#2f5632','#9a6a44'],gap:'#7a1e22'},
     ground:{kind:'cloth',amount:.5}
   },
   rules:[
@@ -107,11 +107,11 @@ peT({
   axes:{density:.5,weight:.2,uniformity:.3,geometry:.1,symmetry:.2,fill:.9,chroma:.6,ornament:.6,abstraction:.3,narrative:.6},
   genes:{
     structure:{kinds:['golomorgh'],folds:2,density:.5,symmetry:'free',borderBands:2,bare:.4},
-    motifs:{hero:['peRose'],ring:['peNightingale','peBud'],filler:['peLeaf'],border:['peVine','peGuard'],petal:'round'},
+    motifs:{hero:['peRose'],ring:['peNightingale','peRoseBud','pePapillon'],filler:['peRoseLeaf'],border:['peVine','peGuard'],petal:'round'},
     line:PE_LINE(0.7,{wobble:.01}),
     fill:{modes:{flat:1},coverage:1,hatchGap:5},
     ornament:PE_ORN(),
-    palette:{ground:'#e6d3a6',ink:'#3a2418',fills:['#3a5a8a','#c2485a','#d6a53a','#55803f','#f9ece6','#4a9a98'],ciFills:['#3a5a8a','#c2485a','#d6a53a','#55803f','#f9ece6','#4a9a98'],metal:'#d6a53a',gap:'#e6d3a6'},
+    palette:{ground:'#e6d3a6',ink:'#3a2418',fills:['#3a5a8a','#c2485a','#d6a53a','#55803f','#f9ece6','#4a9a98'],ciFills:['#3a5a8a','#c2485a','#d6a53a','#55803f','#f9ece6','#4a9a98','#e79aa6','#35602f','#8a5c3a'],metal:'#d6a53a',gap:'#e6d3a6'},
     ground:{kind:'paper',amount:.35}
   },
   rules:[
