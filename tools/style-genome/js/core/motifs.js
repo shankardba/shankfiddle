@@ -773,6 +773,62 @@ fn(rng,g){const o=ruyiOutline();const P=[reg(o,'outer')];
   for(const s of [-1,1]){const sp=[];for(let i=0;i<=34;i++){const u=i/34,a=(s>0?200:-20)*DEG+s*u*Math.PI*2.3,r=15*(1-0.86*u);sp.push([s*24+Math.cos(a)*r,-12+Math.sin(a)*r]);}P.push(ln(sp,'inner'));}
   P.push(ln(G.bez([-6,-30],[-3,-24],[3,-24],[6,-30],8),'detail'));P.push(ln([[0,8],[0,26]],'detail'));
   return fitParts(P);}});
+/* Lion-dance head, drawn 2026-10-14 against three references supplied by the user (two detailed
+   line drawings and a sheet of simplified frontal masks). The frontal mask gives the structure;
+   the two drawings give the manner: big rounded forms bounded by taut curves, every edge of the
+   mask trimmed with fur drawn hair by hair, eyes as nested rings, spiral curls on nose and cheek,
+   a beard of long wavy locks. Built as a right half and mirrored, with the centre-line parts
+   drawn once. Parts of one kind share a tone. */
+function cnFur(P,cp,w,tone,z,rake=1,step=0.9){const sp=G.resample(G.chaikin(cp,false,3),false,step),n=sp.length,prof=t=>0.5*Math.pow(Math.sin(Math.PI*clamp(0.04+0.92*t)),0.4);
+  P.push(reg(G.ribbon(sp,t=>w*prof(t)),'inner',{tone,z}));
+  for(let i=1;i<n-1;i++){const a=sp[i-1],b=sp[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,t=[(b[0]-a[0])/l,(b[1]-a[1])/l],nn=[-t[1]*rake,t[0]*rake],q=sp[i],k=prof(i/n);
+    P.push(Object.assign(ln([[q[0]-nn[0]*w*k*0.5,q[1]-nn[1]*w*k*0.5],[q[0]+nn[0]*w*k*0.5+t[0]*w*0.14,q[1]+nn[1]*w*k*0.5+t[1]*w*0.14],[q[0]+nn[0]*w*k*1.3+t[0]*w*0.4,q[1]+nn[1]*w*k*1.3+t[1]*w*0.4]],'detail'),{z:z+0.05}));}}
+function cnLock(P,cp,w,tone,z){const sp=G.resample(G.chaikin(cp,false,3),false,1),n=sp.length,hw=t=>Math.max(0.12,w*0.5*Math.pow(Math.sin(Math.PI*clamp(0.2+0.8*t)),0.8));
+  P.push(reg(G.ribbon(sp,hw),'inner',{tone,z}));for(const o of [-0.45,0.1,0.55])P.push(Object.assign(ln(sp.slice(1,Math.round(n*0.9)).map((q,i)=>{const k=i+1,a=sp[k-1],b=sp[Math.min(n-1,k+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[q[0]-(b[1]-a[1])/l*hw(k/n)*o,q[1]+(b[0]-a[0])/l*hw(k/n)*o];}),'detail'),{z:z+0.05}));}
+function cnSpiral(x,y,r,a0,turns,dir,z){const s=[];for(let i=0;i<=30;i++){const t=i/30,a=(a0+dir*t*turns*360)*DEG,rr=r*(1-0.86*t);s.push([x+Math.cos(a)*rr,y+Math.sin(a)*rr]);}return Object.assign(ln(s,'inner'),{z});}
+function cnPom(P,x,y,r,z){P.push(reg(G.circle(x,y,r,20),'inner',{tone:2,z}));for(let i=0;i<14;i++){const a=i/14*Math.PI*2;P.push(Object.assign(ln([[x+Math.cos(a)*r*0.5,y+Math.sin(a)*r*0.5],[x+Math.cos(a+0.25)*r*1.22,y+Math.sin(a+0.25)*r*1.22]],'detail'),{z:z+0.05}));}}
+defMotif('xingShi',{name:'Lion-dance head',term:'xǐngshī 醒獅',upright:true,meaning:'The head of the southern dancing lion: a horn on the crown, a mirror on the brow to turn evil back on itself, great ringed eyes under shaggy brows, a broad fur-trimmed lip over the open mouth, and a long beard. Two dancers carry it through the streets at the new year, to drums and firecrackers, and it “eats” the greens hung over a doorway and spits them out as luck.',
+fn(rng,g){const H=[],C=[],Z=(p,z)=>Object.assign(p,{z});
+  // ---- right half ----
+  // ear: a leaf standing out behind the brow, fur along its outer edge
+  H.push(reg(G.chaikin([[28,-25],[34,-37],[44,-47],[51,-37],[48,-25],[40,-17],[31,-18]],true,2),'outer',{tone:1,z:0}),Z(ln(G.chaikin([[33,-23],[38,-33],[44,-39],[45,-30],[42,-23]],false,3),'detail'),0.1));
+  cnFur(H,[[33,-35],[43,-47],[51,-38],[49,-25]],4.4,2,0.2,-1);
+  // pom-pom on its spring, beside the cheek
+  H.push(Z(ln(G.bez([37,-2],[43,-6],[46,-10],[47,-14],8),'inner'),0));cnPom(H,47.6,-17,3.6,0.2);
+  // brow: a thick arch of fur over the eye
+  cnFur(H,[[3,-10],[10,-19],[22,-24],[35,-22],[43,-14]],8.4,2,3,-1);
+  for(const cp of [[[38,-19],[44,-22],[47,-28],[45,-33]],[[40,-16],[47,-17],[51,-22],[51,-27]],[[41,-13],[47,-12],[52,-15],[54,-19]]])cnLock(H,cp,3.4,2,2.9);
+  // eye: nested rings, the pupil large, a light in it; the lid a taut line above
+  for(const [r,tone] of [[11.6,2],[9,1],[6.4,2],[4,3]])H.push(reg(G.circle(20.6,-7,r,34),'inner',tone===2?{bg:true,z:2}:{tone,z:2}));
+  for(const r of [11.6,9,6.4,4])H.push(Z(ln(G.circle(20.6,-7,r,34),r>10?'outer':'inner',true),2.1));
+  H.push(Z(dt(20.6,-7,2.5),2.2),reg(G.circle(21.8,-8.2,0.85,8),'detail',{bg:true,z:2.3}));
+  // cheek: a spiral curl and two flame strokes
+  H.push(cnSpiral(34.6,6,4.6,200,1.5,1,2),cnSpiral(9,-25,3.2,90,1.3,1,2),cnSpiral(17,-28.6,2.6,60,1.2,-1,2),Z(ln(G.bez([37,-2],[40,2],[39,6],[41,9],8),'detail'),2));
+  // nostril curl and the fold beside the nose
+  H.push(cnSpiral(5.4,-1.6,3.4,180,1.4,-1,5),Z(ln(G.bez([10,-6],[13,-1],[11,3],[7,5],8),'detail'),5));
+  // beard: long locks hanging from the jaw, waving outward
+  [[3,40,1,78,7.4],[9,40,9,76,7.4],[15,39,18,72,7],[21,37,27,66,6.4],[26,34,35,58,5.6],[30,30,41,49,4.6]].forEach(([x0,y0,x1,y1,w],i)=>cnLock(H,[[x0,y0],[x0+3.4,y0+(y1-y0)*0.3],[x1-4,y0+(y1-y0)*0.62],[x1+1,y0+(y1-y0)*0.86],[x1,y1]],w,2,-2-i*0.01));
+  [[6,40,5,62,6],[12,40,14,60,5.6],[18,38,23,56,5.2],[24,36,31,50,4.6]].forEach(([x0,y0,x1,y1,w],i)=>cnLock(H,[[x0,y0],[x0-2.6,y0+(y1-y0)*0.34],[x1+2.6,y0+(y1-y0)*0.68],[x1,y1]],w,2,-1-i*0.01));
+  // ---- centre line ----
+  // the mask: one contour, broad at the cheeks and drawn in to the jaw
+  const half=[[0,-32],[12,-34.6],[25,-32.6],[36,-25],[42,-13],[42.6,0],[39,11],[32,18],[28,27],[24,35],[14,40],[0,42]];
+  C.push(reg(G.chaikin(half.concat(half.slice(1,-1).reverse().map(([x,y])=>[-x,y])),true,3),'outer',{tone:0,z:1}));
+  // horn on its boss, and the mirror on the brow
+  C.push(reg(G.ribbon(G.resample(G.chaikin([[0,-36],[1,-42],[4,-47],[9,-49]],false,3),false,1),t=>4.4*(1-0.82*t)+0.4),'outer',{tone:3,z:0.5}),reg(G.chaikin([[-7,-31],[-6,-37],[0,-40],[6,-37],[7,-31]],true,2),'outer',{tone:1,z:0.6}));
+  for(const y of [-36,-33.6])C.push(Z(ln(G.quad([-5.4,y],[0,y-1.8],[5.4,y],6),'detail'),0.7));
+  C.push(reg(G.circle(0,-22.6,5.6,24),'inner',{tone:3,z:4}),reg(G.circle(0,-22.6,3.6,18),'inner',{bg:true,z:4.1}),Z(ln(G.circle(0,-22.6,3.6,18),'detail',true),4.2),Z(dt(0,-22.6,1.2),4.3));
+  // nose: a rounded boss with a pom-pom above it
+  C.push(reg(G.chaikin([[-10,-1],[-8,-9],[0,-12.6],[8,-9],[10,-1],[6,4.4],[-6,4.4]],true,3),'outer',{tone:1,z:4.5}));cnPom(C,0,-14.6,3.3,5.5);
+  // mouth: the dark opening, tongue, the lower jaw with its row of teeth
+  C.push(reg(G.chaikin([[-33,16],[0,14],[33,16],[29,31],[0,36],[-29,31]],true,2),'outer',{paint:'ink',z:5}),reg(G.chaikin([[-10,25],[0,22],[10,25],[9,31],[0,33.6],[-9,31]],true,2),'inner',{tone:3,z:5.2}),Z(ln([[0,23.6],[0,31]],'detail'),5.3));
+  C.push(reg(G.chaikin([[-29,27],[-14,32],[0,33.6],[14,32],[29,27],[26,36.6],[13,40.6],[0,42],[-13,40.6],[-26,36.6]],true,2),'outer',{tone:0,z:5.5}));
+  for(let i=-5;i<=5;i++){const x=i*4.6,y=32.6-Math.abs(i)*0.55-Math.pow(Math.abs(i)/5,2)*2.2;C.push(reg(G.roundRect(x-1.9,y-0.4,x+1.9,y+3.6,0.8,2),'inner',{bg:true,z:5.6}),Z(ln(G.roundRect(x-1.9,y-0.4,x+1.9,y+3.6,0.8,2),'detail',true),5.7));}
+  // upper lip: one broad band across the face, its lower edge trimmed with fur
+  C.push(reg(G.chaikin([[-41,10],[-31,3],[-17,1.4],[-7,6],[0,8.6],[7,6],[17,1.4],[31,3],[41,10],[46.6,18],[42,25],[31,20.6],[14,17.6],[0,19.6],[-14,17.6],[-31,20.6],[-42,25],[-46.6,18]],true,3),'outer',{tone:2,z:6}));
+  cnFur(C,[[-44,22.6],[-31,19.6],[-14,16.6],[0,18.6],[14,16.6],[31,19.6],[44,22.6]],5.4,2,6.1,1,1);
+  for(const s of [-1,1])C.push(cnSpiral(s*36,13.6,4,s>0?180:0,1.4,s,6.2),cnSpiral(s*14,8.6,2.8,s>0?0:180,1.2,-s,6.2),Z(ln(G.bez([s*19,7],[s*24,9.6],[s*28,9],[s*31,11.6],8),'detail'),6.2));
+  const P=H.concat(H.map(p=>p.kind==='dot'?Object.assign({},p,{x:-p.x}):Object.assign({},p,{pts:p.pts.map(([x,y])=>[-x,y])})),C);
+  return fitParts(P.map((p,i)=>[p,i]).sort((a,b)=>(a[0].z||0)-(b[0].z||0)||a[1]-b[1]).map(a=>a[0]),96);}});
 defMotif('cloud',{name:'Auspicious cloud',term:'xiángyún 祥云',upright:true,
 meaning:'Clouds drawn as clusters of curls with a trailing tail — the vapour on which immortals travel, and, by sound, good fortune (yún / yùn).',
 fn(rng,g){const P=[];

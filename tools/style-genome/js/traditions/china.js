@@ -46,7 +46,7 @@ defTradition({
   axes:{density:.85,weight:.3,uniformity:.5,geometry:.3,symmetry:.85,fill:.7,chroma:.45,ornament:.8,abstraction:.5,narrative:.35},
   genes:{
     structure:{kinds:['medallion','panel'],folds:8,density:.8,symmetry:'radial',borderBands:2,vine:.45},
-    motifs:{hero:['lotusTop','fish','plum','ruyi'],ring:['ruyi','lotusSide','cloud','plum'],filler:['cloud','plum','dot'],border:['huiwen','wave','ruyiBand'],petal:'pointed'},
+    motifs:{hero:['lotusTop','fish','plum','ruyi','xingShi'],ring:['ruyi','lotusSide','cloud','plum'],filler:['cloud','plum','dot'],border:['huiwen','wave','ruyiBand'],petal:'pointed'},
     line:{weight:1.9,contrast:.35,double:false,wobble:.12,taper:.4,breaks:0,dash:null,misreg:0},
     fill:{modes:{flat:.85,none:.15},coverage:.85,hatchGap:6},
     ornament:{dotRows:0,echo:.3,echoCount:1,echoStyle:'solid',scallops:0,halo:0,gems:null,groundStitch:false},
@@ -78,7 +78,7 @@ defTradition({
   axes:{density:.75,weight:.6,uniformity:.85,geometry:.4,symmetry:1,fill:.9,chroma:.6,ornament:.6,abstraction:.75,narrative:.3},
   genes:{
     structure:{kinds:['medallion','emblem','sheet'],folds:8,density:.6,symmetry:'radial',borderBands:0},
-    motifs:{hero:['fish','bat','plum','lotusTop'],ring:['bat','plum','ruyi','fish'],filler:['plum','dot','cloud'],border:['zigzag','ruyiBand'],petal:'round'},
+    motifs:{hero:['fish','bat','plum','lotusTop','xingShi','xingShi'],ring:['bat','plum','ruyi','fish'],filler:['plum','dot','cloud'],border:['zigzag','ruyiBand'],petal:'round'},
     line:{weight:2.2,contrast:.2,double:false,wobble:.1,taper:0,breaks:0,dash:null,misreg:0},
     fill:{modes:{flat:1},coverage:1,hatchGap:6,knockout:.85},
     ornament:{dotRows:.15,echo:.4,echoCount:1,echoStyle:'solid',scallops:.25,halo:0,gems:null,groundStitch:false},
