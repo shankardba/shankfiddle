@@ -943,8 +943,8 @@
         "#.HHH.,,..Vb...o..#",
         "#..5.=========....#",
         "#.o..=...,,,.=..o.#",
-        "#....=..HHH..=....#",
-        "#..S.=..HHH..=..$.#",
+        "#....=..HHHgg=....#",
+        "#..S.=..HHHQg=..$.#",
         "#....====2====....#",
         "1.,......@.......$#",
         "#...~~~...8.orr.o.#",
@@ -959,6 +959,9 @@
       // `buildings`, and the exit tile at the foot of its south wall
       // (`door: true`) is its doorstep. Here: the Schoolhouse in the
       // north-west, and Home — the cottage in the middle of the courtyard.
+      // Beside Home is the family's garden ('g' beds). 'Q' is where Mom
+      // stands tending it once Dad is gone — her entry in `npcs` is added
+      // just below LEVELS (see "Mom moves out to the garden").
       buildings: ['school', 'home'],
       signs: [
         "A crooked signpost: \"Six Light Shards sleep in this clearing. Gather them all to wake the grove.\"",
@@ -2514,7 +2517,7 @@
     var exits = levelDef.exits || {};
     var npcs = levelDef.npcs || {};
     var obstacles = new Set();
-    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null, cliffs: [], goose: null };
+    var features = { trees: [], rocks: [], bushes: [], flowers: [], shards: [], crops: [], signs: [], houseTiles: [], portals: [], npcs: [], crowd: [], practiceSpots: [], car: null, kayak: null, crownTable: null, cliffs: [], goose: null, gardenBeds: [] };
     var groundKinds = [];
     var spareDemonSpots = [], MIN_DEMONS = levelDef.demonMin || 3;
     var playerStart = { x: 1, y: 1 };
@@ -2592,6 +2595,7 @@
             }
             break;
           case 'K': obstacles.add(key(x, y)); features.kayak = { x: x, y: y }; break;
+          case 'g': obstacles.add(key(x, y)); features.gardenBeds.push({ x: x, y: y }); break;
           // Dad's bedside table — only there from his diagnosis on, when his
           // crown comes off and waits on it (see useCrown()).
           case 'T':
@@ -2917,6 +2921,35 @@
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     g.add(mesh);
+    return g;
+  }
+
+  // A bed in the family garden beside Home: turned soil, rows of green,
+  // a flower or two.
+  function createGardenBed() {
+    var g = new THREE.Group();
+    var soil = new THREE.Mesh(
+      new THREE.BoxGeometry(TILE * 0.8, 0.14, TILE * 0.8),
+      new THREE.MeshStandardMaterial({ color: 0x5a3d28, roughness: 1 })
+    );
+    soil.position.y = GROUND_SURFACE_Y + 0.07;
+    soil.receiveShadow = true;
+    g.add(soil);
+    var leaf = new THREE.MeshStandardMaterial({ color: 0x4f9a48, roughness: 0.85 });
+    var blooms = [0xff6fa5, 0xffd166, 0xf2f2f2];
+    for (var row = -1; row <= 1; row++) {
+      for (var col = -1; col <= 1; col++) {
+        var sprout = new THREE.Mesh(new THREE.ConeGeometry(0.11, rand(0.24, 0.4), 5), leaf);
+        sprout.position.set(col * 0.5 + rand(-0.06, 0.06), GROUND_SURFACE_Y + 0.3, row * 0.5 + rand(-0.06, 0.06));
+        sprout.castShadow = true;
+        g.add(sprout);
+        if (Math.random() < 0.35) {
+          var bloom = new THREE.Mesh(new THREE.SphereGeometry(0.075, 6, 6), new THREE.MeshStandardMaterial({ color: pick(blooms), roughness: 0.6 }));
+          bloom.position.set(sprout.position.x, GROUND_SURFACE_Y + 0.5, sprout.position.z);
+          g.add(bloom);
+        }
+      }
+    }
     return g;
   }
 
@@ -4483,6 +4516,7 @@
       return glowGroup;
     } : createRock);
     place(w.features.bushes, createBush);
+    place(w.features.gardenBeds, createGardenBed);
     if (!interiorTheme) place(w.features.flowers, createFlower);
     place(w.features.signs, createSignPost);
     if (w.features.goose) place([w.features.goose], createGoose);
@@ -4774,6 +4808,20 @@
   var world = null;
   var LEVEL_INDEX = {};
   LEVELS.forEach(function (lvl, i) { LEVEL_INDEX[lvl.id] = i; });
+
+  // Mom moves out to the garden. After Dad dies she is no longer inside the
+  // house: from 'grief' on she's outside it in the Clearing, tending her
+  // garden to stay busy. She's the same character with the same lines and
+  // respect (one def, shared), just standing somewhere else — so the house
+  // is empty until she walks back in for the finale (playFinale()).
+  (function () {
+    var homeMom = LEVELS[LEVEL_INDEX.home].npcs.M;
+    var gardenMom = {};
+    for (var k in homeMom) gardenMom[k] = homeMom[k];
+    gardenMom.presentDuring = ['grief', 'duty'];
+    LEVELS[LEVEL_INDEX.clearing].npcs.Q = gardenMom;
+    homeMom.presentDuring = ['childhood', 'earning_respect', 'diagnosis', 'hospice'];
+  })();
 
   // GOAL_INDEX['<tool>:<goal id>'] -> { key, npcName } — built once from
   // every mission/challenge step with a `goal`, so the postMessage
