@@ -123,11 +123,18 @@ fn(){const P=[],fe=(x,y,ang,len,w,edge,fill,z,bend=0)=>{const a=ang*DEG,e=[x+Mat
   P.push(...pcS(G.circle(2.6,-26,5.4,26),0,4,2,0.9),pcQ(G.chaikin([[-1,-30],[1,-33.6],[4.6,-34],[6,-30.6]],true,2),0,1.9));
   P.push(pcQ(G.chain(G.bez([6,-29.6],[10,-30.6],[15,-29],[15.6,-24.6],8),G.bez([15.6,-24.6],[15.4,-22.6],[14,-21],[13,-20.4],5),G.bez([13,-20.4],[13,-23],[10,-24],[6.6,-23.4],6)),1,2.1),pcQ(G.circle(3.6,-27,1.5,12),5,2.2),pcQ(G.circle(3.8,-27,0.7,8),3,2.3));
   return pcDone(P,98);}});
-defMotif('pcSerpent',{name:'Two-headed serpent',term:'—',figure:true,meaning:'A zigzag body with a head at each end, tongues out. Double-headed serpents frame and trail from the larger figures on Paracas cloth, and stand for the sky’s arc, the rainbow and running water.',
-fn(){const z=[[0.1,0.5],[0.22,0.5],[0.22,0.28],[0.42,0.28],[0.42,0.72],[0.62,0.72],[0.62,0.28],[0.8,0.28],[0.8,0.5],[0.9,0.5]],P=[anP(G.band(z,0.13),3),anP(G.band(z,0.085),0),anP(G.band(z,0.028),1)];
-  for(const [x,d] of [[0.1,-1],[0.9,1]]){const h=d>0?[[x,0.36],[x+0.13,0.44],[x+0.13,0.56],[x,0.64]]:[[x,0.64],[x-0.13,0.56],[x-0.13,0.44],[x,0.36]];P.push(...anNest(h,[1,3,1],0.018),anR(Math.min(x+d*0.04,x+d*0.075),0.46,Math.max(x+d*0.04,x+d*0.075),0.495,2));
-    P.push(anP(G.band([[x+d*0.13,0.5],[x+d*0.18,0.5]],0.016),2),anP(G.band([[x+d*0.18,0.5],[x+d*0.21,0.47]],0.012),2),anP(G.band([[x+d*0.18,0.5],[x+d*0.21,0.53]],0.012),2));}
-  for(const [x,y] of [[0.32,0.28],[0.52,0.72],[0.71,0.28],[0.22,0.4],[0.42,0.5],[0.62,0.5]])P.push(anR(x-0.022,y-0.022,x+0.022,y+0.022,2));return anFit(P,96);}});
+defMotif('pcSerpent',{name:'Two-headed serpent',term:'—',figure:true,meaning:'A looping body with a head at each end, tongues out. Double-headed serpents frame and trail from the larger figures on Paracas cloth, and stand for the sky’s arc, the rainbow and running water. The body is one even band folded into loops, stitched in stripes of colour that run its whole length.',
+fn(){const P=[],sp=coilSpine(7.5,20),n=sp.length,B=coilBand(sp,5.2);
+  // the body: an edge, a field, and a stripe down the middle with spots along it
+  P.push(pcQ(B.poly,3,0),pcQ(coilBand(sp,4).poly,0,0.01),pcQ(coilBand(sp,1.3).poly,1,0.02));
+  for(let i=14;i<n-10;i+=13)for(const f of [0.2,0.8])P.push(pcQ(G.circle(lerp(B.L[i][0],B.R[i][0],f),lerp(B.L[i][1],B.R[i][1],f),0.95,8),5,0.03));
+  // heads: a blunt wedge with a round eye, whiskers, and a forked tongue
+  for(const s of [-1,1]){const f=([x,y])=>[s*(-50+x),-19.5+y],M=q=>q.map(f);
+    P.push(...pcS(M(G.chaikin([[2,-5.4],[-6,-8.6],[-15,-7],[-19,-1.6],[-19,1.6],[-15,7],[-6,8.6],[2,5.4]],true,3)),3,1,1,1.1));
+    P.push(pcQ(M(G.circle(-7.6,-2.6,2.7,18)),5,1.1),pcQ(M(G.circle(-7.6,-2.6,1.2,10)),3,1.2),pcQ(M(G.band([[-18.6,2.6],[-8,2.6]],0.9)),3,1.1));
+    for(const [y0,y1] of [[-6.4,-11],[5.6,10.6]])for(const dx of [-12,-8.6])P.push(pcQ(M(nzCap([[dx,y0],[dx-2.6,y1]],1.3,0)),4,0.9));
+    P.push(pcQ(M(nzCap([[-18.6,0],[-25,0]],1.5,0)),4,0.9),pcQ(M(nzCap([[-25,0],[-29,-2.8]],1.2,0)),4,0.9),pcQ(M(nzCap([[-25,0],[-29,2.8]],1.2,0)),4,0.9));}
+  return pcDone(P,98);}});
 defMotif('chBird',{name:'Seabird',term:'—',figure:true,mirrorOk:true,meaning:'A crested seabird in profile, squared off by the weave: pelican, cormorant or booby. On the desert coast the birds’ guano fed the fields.',
 fn(){return anFit(AN.bird([0,1,2]),90);}});
 /* Geoglyphs, redrawn 2026-10-13 against a sheet of nine Nazca figures supplied by the user.

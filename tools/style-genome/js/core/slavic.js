@@ -118,16 +118,54 @@ SL.rooster=()=>{const P=[];
   for(let i=0;i<4;i++)P.push(slN(G.circle(-6+i*4.6,12.4-i*0.6,1.25,8),slWH,1));return P;};
 defMotif('wyRooster',{name:'Paper rooster',term:'kogut',figure:true,mirrorOk:true,meaning:'A cockerel cut from black glazed paper with a tail of sickle feathers, each a separate strip of colour glued on. Two of them, facing, are the centre of the Łowicz cut-out; they hung on the whitewashed wall between the windows and were changed every Easter.',
 fn(){return slFit(SL.rooster(),94);}});
-defMotif('wyLeluja',{name:'Tree with birds',term:'leluja',upright:true,meaning:'The Kurpie cut-out: a sheet folded once and cut into a tree, branch over branch, with a pair of birds at its foot and a crown at the top, all in one colour. It is the old tree of life, and every one is different because it is cut without a drawing.',
-fn(){const H=[],ci=slGR;
-  [[34,50],[17,44],[0,36],[-17,27]].forEach(([y,l],i)=>{const r=84,b=-92;H.push(slN(SL.curl(0,y,l,r,b,2.3),ci,0));
-    [0.3,0.52,0.74].forEach(t=>{const e=SL.end(0,y,l*t,r,b*t);H.push(slN(SL.petal(e[0],e[1],e[2]+92,lerp(10,7,t),0.2),ci,0),slN(SL.petal(e[0],e[1],e[2]-78,6.4,0.2),ci,0));});
-    const e=SL.end(0,y,l,r,b);H.push(slN(G.circle(e[0],e[1],2.2,10),ci,0));for(let k=0;k<6;k++)H.push(slN(SL.petal(e[0],e[1],k*60+e[2],7.4,0.24),ci,0));});
-  // a bird at the foot, facing the trunk
-  H.push(slN(SL.dab(22,42,22,84,0.36),ci,0),slN(G.circle(17.6,34,4.6,12),ci,0),slN([[13.6,32.6],[8.6,34.4],[13.6,36]],ci,0));for(const a of [58,82,106])H.push(slN(SL.dab(38,41,12,a,0.2),ci,0));
-  H.push(slN(G.band([[23,48],[23,51]],1.3),ci,0),slN([[0,50.6],[46,50.6],[46,52],[40,54.6],[0,54.6]],ci,0));
-  const P=slMir(H);P.push(slN(G.band([[0,53],[0,-36]],3.2),ci,0),slN(SL.petal(0,-34,0,15,0.24),ci,0));for(const a of [-52,52])P.push(slN(SL.petal(0,-34,a,11,0.24),ci,0));
-  P.push(slN(G.circle(0,-52,2.4,10),ci,0));for(let i=0;i<10;i++)P.push(slN([[-1.5,44-i*8],[-5,41-i*8],[-1.5,38-i*8]],ci,0),slN([[1.5,44-i*8],[5,41-i*8],[1.5,38-i*8]],ci,0));return slFit(P,96);}});
+/* Leluja, redrawn 2026-10-13 against four Kurpie cut-outs supplied by the user (two with hens, one
+   with horses and roosters, one round repeating pattern). What they share, and what the code keeps:
+   the tree is a DOME. Two arched stems, one inside the other, spring from a bar at the top of the
+   trunk and meet at the crown in a heart; the outer one is lined on both sides with small pointed
+   leaves, the inner with leaves in pairs like hearts. A straight stem runs up the middle carrying
+   drop-shaped leaves that grow as they rise and shrink again to a bud. Hens sit inside the dome and
+   a larger pair stands at the foot, each one plump shape with a saw-cut tail and a cut eye and wing.
+   The trunk flares to a ground strip with a tuft of grass at each end. It is one colour, cut on one
+   fold, so the half is drawn and mirrored. */
+const slHole=(pts,z)=>({kind:'region',closed:true,role:'detail',bg:true,plain:true,ns:true,z,pts});
+SL.hen=(x,y,k,face=-1,ci=slBK)=>{const P=[],f=([a,b])=>[x-face*a*k,y+b*k],M=q=>q.map(f);
+  P.push(slN(M(G.chaikin([[-8.6,-10.6],[-7,-13.2],[-4.6,-12.8],[-3.4,-9.6],[-1,-6.4],[3,-5.8],[7,-8.2],[9.4,-12],[10.6,-14],[11.4,-9],[10.2,-3.6],[7.6,-0.6],[2,0.4],[-3,0],[-6.8,-2.4],[-8.2,-6],[-7.8,-9]],true,3)),ci,1));
+  P.push(slN(M([[-7.6,-12.2],[-11.2,-10.6],[-7.4,-9.4]]),ci,1));
+  for(let i=0;i<5;i++){const yy=-12+i*1.9,xx=10.4+0.6*Math.sin(i*0.8);P.push(slN(M([[xx-0.8,yy-0.2],[xx+1.5,yy+1.3],[xx-0.8,yy+1.6]]),ci,1));}
+  P.push(slHole(M(G.circle(-6.2,-10.8,0.75,8)),2),slHole(M(G.chain(G.bez([-2.6,-3.6],[0.6,-5.2],[4.6,-4.6],[7,-2.2],8),G.bez([7,-2.2],[4,-3],[0.6,-3],[-2.6,-3.6],8))),2));
+  return P;};
+defMotif('wyLeluja',{name:'Tree with birds',term:'leluja',upright:true,meaning:'The Kurpie cut-out: a sheet folded once and cut into a tree in one colour. Its crown is a dome of two arched stems lined with leaves, meeting in a heart; a stem of drop-shaped leaves runs up the middle; hens sit in the branches and a larger pair stands at the foot. It is the old tree of life, and every one is different because it is cut without a drawing.',
+fn(){const H=[],ci=slBK,leaf=(x,y,ang,len,k=0.24)=>H.push(slN(SL.petal(x,y,ang,len,k),ci,0));
+  // an arched stem: x = a·cos^p, y = y0 − b·sin, walked at even steps
+  const arch=(a,b,p,y0)=>G.resample(Array.from({length:61},(_,i)=>{const t=i/60*Math.PI/2;return[a*Math.pow(Math.cos(t),p),y0-b*Math.sin(t)];}),false,1);
+  const dirAt=(sp,i)=>{const u=sp[Math.max(0,i-1)],v=sp[Math.min(sp.length-1,i+1)];return Math.atan2(v[0]-u[0],-(v[1]-u[1]))/DEG;};
+  const A=arch(38,68,0.78,21.6),Bi=arch(26.6,52,0.78,21.6);
+  H.push(slN(G.band(A,1.15),ci,0),slN(G.band(Bi,1.15),ci,0));
+  // outer arch: a pointed leaf to either side at every step, leaning toward the crown
+  for(let i=3;i<A.length-3;i+=3.3){const j=Math.round(i),d=dirAt(A,j);leaf(A[j][0],A[j][1],d+62,5.2);leaf(A[j][0],A[j][1],d-62,4.6);}
+  // inner arch: leaves in pairs on the outside, like hearts
+  for(let i=4;i<Bi.length-4;i+=5.4){const j=Math.round(i),d=dirAt(Bi,j);leaf(Bi[j][0],Bi[j][1],d+44,4.4,0.27);leaf(Bi[j][0],Bi[j][1],d+104,4.4,0.27);}
+  // the bar under the dome, with a row of small drops hanging from it
+  H.push(slN(slRect(0,20.8,40.6,22.6),ci,0));for(let x=3.4;x<40;x+=3.9)H.push(slN(G.circle(x,23.6,1.15,8),ci,0));
+  // middle stem: small round leaves below, great drops above, shrinking to the bud
+  [[17,4.6,64,0.3],[12.4,5,64,0.3],[7.8,5.4,62,0.3],[-3,10.6,58,0.3],[-10.4,10.6,54,0.3],[-17.2,9,50,0.3],[-23,7,46,0.3],[-27.6,5,42,0.3]].forEach(([y,l,a,k])=>leaf(0.5,y,a,l,k));
+  // a tendril that carries the upper hen, ending in a ball
+  {const e=SL.end(0.4,3.6,20,112,-150);H.push(slN(SL.curl(0.4,3.6,20,112,-150,1.1),ci,0),slN(G.circle(e[0],e[1],1.5,10),ci,0));}
+  // plumes above the hens
+  const plume=(x,y,l,rot)=>{H.push(slN(SL.curl(x,y,l,rot,-34,0.9),ci,0));for(let k=1;k<=6;k++){const e=SL.end(x,y,l*k/6.4,rot,-34*k/6.4);leaf(e[0],e[1],e[2]+50,l*0.4*(1-k*0.07),0.12);leaf(e[0],e[1],e[2]-50,l*0.4*(1-k*0.07),0.12);}};
+  plume(13.6,-13.4,13,14);plume(18.6,9.6,8,10);
+  // hens: one on the tendril, one on the bar, a larger one on the ground, all facing the stem
+  H.push(...SL.hen(14.6,-2.2,0.86),...SL.hen(15.6,20.9,1.02),...SL.hen(21,45.4,1.62));
+  // trunk flaring to the ground strip, and a tuft of grass at its end
+  H.push(slN(G.chain([[0,22],[1.2,22]],G.bez([1.2,22],[1.6,34],[4,42],[9.6,45.4],12),[[0,45.4]]),ci,0));
+  H.push(slN([[0,45],[44.6,45],[46,46.6],[44.6,48.2],[46,49.8],[44.6,51.4],[0,51.4]],ci,0));
+  for(let k=0;k<9;k++){const a=(-44+k*11)*DEG;H.push(slN([[39.4-0.5,45.2],[39.4+Math.sin(a)*8.6,45.2-Math.cos(a)*8.6],[39.4+0.5,45.2]],ci,0));}
+  const P=slMir(H);
+  P.push(slN(G.band([[0,22.6],[0,-30]],1.5),ci,0),slN(SL.petal(0,-29,0,6.4,0.36),ci,0));
+  // hearts where the arches meet
+  const heart=(cy,r)=>G.chaikin([[0,cy+r*1.1],[-r*0.9,cy+r*0.1],[-r,cy-r*0.6],[-r*0.5,cy-r],[0,cy-r*0.5],[r*0.5,cy-r],[r,cy-r*0.6],[r*0.9,cy+r*0.1]],true,3);
+  P.push(slN(heart(-47.4,3.4),ci,0),slN(heart(-32,3),ci,0));
+  return slFit(P,96);}});
 defMotif('wyGwiazda',{name:'Paper star',term:'gwiozda',meaning:'The round Łowicz cut-out: a scalloped disc of black paper, and on it ring over ring of petals and flowers in red, orange, yellow and green, each layer cut smaller than the one below and pasted on.',
 fn(){const P=[],sc=[];for(let i=0;i<240;i++){const a=i/240*Math.PI*2,r=44.6+2.2*Math.abs(Math.cos(a*12));sc.push([Math.cos(a)*r,Math.sin(a)*r]);}P.push(slN(sc,slBK,0));
   for(let i=0;i<16;i++){P.push(slN(SL.petal(0,0,i*22.5,41,0.19),slRD,1),slN(SL.petal(0,0,i*22.5,34,0.16),slOR,2),slN(SL.petal(0,0,i*22.5,26,0.14),slYL,3),slN(SL.petal(0,0,i*22.5+11.25,37,0.07),slGR,1.5));const d=slDir(i*22.5+11.25);P.push(slN(G.circle(d[0]*40,d[1]*40,1.5,8),slWH,2));}

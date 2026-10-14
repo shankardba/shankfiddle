@@ -485,6 +485,37 @@ fn(){const P=[];for(const s of [-1,1]){P.push(reg(azTube([[s*7,30],[s*34,27],[s*
   P.push(reg(G.chaikin([[-5.6,24],[-6.6,-24],[-4,-33],[4,-33],[6.6,-24],[5.6,24]],true,2),'outer',{tone:0}),ln([[0,18],[0,-27]],'detail'));
   for(const [x,y] of [[-10,-42],[0,-46],[10,-42]]){P.push(ln([[x*0.3,-33],[x,y+3]],'detail'),reg(G.circle(x,y,3.2,12),'inner',{tone:2}));}
   P.push(reg(G.circle(0,27,8.6,22),'outer',{tone:2}),reg(G.circle(0,27,4,14),'inner',{bg:true}),reg([[-20,36],[20,36],[16,44],[-16,44]],'outer',{tone:1}),ln([[-18,40],[18,40]],'detail'));return fitParts(P);}});
+/* Double-headed serpent, drawn 2026-10-13 against three references supplied by the user (a scaled
+   ink drawing, a line drawing, and a pair of stylised versions). What they share, and what the code
+   keeps: the body is ONE band of even width folded into a meander, three loops below and two above,
+   the runs close enough almost to touch; every turn is a true half circle; a head at each end faces
+   outward with jaws open on a row of teeth and a long fang, a ringed eye under a curled brow, and an
+   upturned nose. The body is covered in rows of lapped scales, with a patterned collar here and there. */
+function coilSpine(R=7.5,L=22,step=0.9){return G.resample(cnArcs([-6*R-5,-L/2-R-2],0,[[0,5],[R,90],[0,L-1.5],[-R,180],[0,L],[R,180],[0,L],[-R,180],[0,L],[R,180],[0,L],[-R,180],[0,L-1.5],[R,90],[0,5]],step),false,step);}
+function coilBand(sp,hw){const n=sp.length,L=[],R=[];for(let i=0;i<n;i++){const a=sp[Math.max(0,i-1)],b=sp[Math.min(n-1,i+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,t=[(b[0]-a[0])/l,(b[1]-a[1])/l];L.push([sp[i][0]-t[1]*hw,sp[i][1]+t[0]*hw]);R.push([sp[i][0]+t[1]*hw,sp[i][1]-t[0]*hw]);}return{L,R,poly:L.concat(R.slice().reverse())};}
+defMotif('maquizcoatl',{name:'Double-headed serpent',term:'maquizcoatl',upright:true,meaning:'A serpent with a head at each end, its body folded into loops. The most famous is the turquoise mosaic worn on the chest, perhaps among the gifts sent to Cortés. A snake sheds its skin and so stands for renewal; with two heads it looks both ways at once, to the earth and the sky, and its looping body is the path between them.',
+fn(rng,g){const P=[],Z=(p,z)=>Object.assign(p,{z}),sp=coilSpine(),n=sp.length,hw=6.5,B=coilBand(sp,hw);
+  P.push(reg(B.poly,'outer',{tone:1,z:0}));
+  // rows of lapped scales across the band; a zigzag collar every so often
+  const rows=Math.round(n/4),at=(i,f)=>[lerp(B.L[i][0],B.R[i][0],f),lerp(B.L[i][1],B.R[i][1],f)];
+  for(let k=2;k<rows-1;k++){const i=k*4,j=Math.min(n-1,i+3);
+    if(k%13===6){P.push(Z(ln([B.L[i],B.R[i]],'inner'),0.2),Z(ln([B.L[j+2]||B.L[j],B.R[j+2]||B.R[j]],'inner'),0.2));const zz=[];for(let m=0;m<=8;m++)zz.push(m%2?at(j+1,m/8):at(i+1,m/8));P.push(Z(ln(zz,'detail'),0.2));k++;continue;}
+    const q=[];for(let m=0;m<4;m++){const f0=m/4,f1=(m+1)/4;q.push(at(i,f0+0.01),at(j,f0+0.07),at(j,f1-0.07));}q.push(at(i,1));P.push(Z(ln(q,'detail'),0.1));}
+  // a head, drawn facing left at natural size and then enlarged about the neck
+  const H=[],C=(...a)=>G.chain(...a.map(q=>G.bez(q[0],q[1],q[2],q[3],10)));
+  H.push(reg(C([[1,-5.6],[-3,-7.6],[-8,-9.6],[-14,-9],],[[-14,-9],[-19,-8.6],[-23,-8.6],[-25.6,-10.6]],[[-25.6,-10.6],[-28.6,-9],[-28.4,-5],[-25.4,-3.4]],[[-25.4,-3.4],[-18,-2.6],[-10,-2],[-3.4,0.4]],[[-3.4,0.4],[-1,2],[0,4],[1,5.6]]),'outer',{tone:2,z:2}));
+  H.push(reg(C([[1,5.6],[-1,3],[-3,1.6],[-4.6,1.8]],[[-4.6,1.8],[-11,3.4],[-18,4.4],[-24.6,4.6]],[[-24.6,4.6],[-25.6,6.6],[-24,8.6],[-21,8.8]],[[-21,8.8],[-13,9.4],[-6,8.6],[1,5.6]]),'outer',{tone:2,z:1.9}));
+  // gums, teeth and the long fang
+  H.push(Z(ln(G.bez([-24.6,-5.2],[-17,-4.6],[-10,-4],[-4.4,-1.6],10),'inner'),2.1),Z(ln(G.bez([-23.4,6.4],[-17,6.4],[-10,5.6],[-5.4,3.6],10),'inner'),2.1));
+  for(let k=0;k<6;k++){const x=-21+k*2.8,y=-3+k*0.34;H.push(reg([[x-1.1,y],[x+1.1,y+0.14],[x,y+2.5]],'inner',{tone:3,z:2.2}));}
+  for(let k=0;k<5;k++){const x=-20+k*2.9,y=4.5-k*0.3;H.push(reg([[x-1.1,y],[x+1.1,y-0.12],[x,y-2.3]],'inner',{tone:3,z:2.2}));}
+  H.push(reg(C([[-24.6,-3.4],[-24.4,0],[-23.4,2.6],[-22.2,4.4]],[[-22.2,4.4],[-22,1.6],[-22,-1],[-22.2,-3.2]]),'inner',{tone:3,z:2.3}));
+  // ringed eye under a curled brow; marks on the snout
+  H.push(reg(G.circle(-8.6,-5,3.2,22),'inner',{tone:3,z:2.7}),Z(dt(-8.6,-5,1.5,'inner'),2.8));
+  H.push(reg(G.ribbon(cnArcs([-15,-9.8],-12,[[30,16],[-3.4,205],[-1.7,170]],0.5),t=>1.5-0.8*t),'inner',{tone:1,z:2.6}));
+  for(const x of [-21.6,-18.6,-15.8])H.push(Z(ln([[x,-8],[x+0.3,-5.6]],'detail'),2.2));
+  const K=1.5;for(const s of [-1,1])for(const p of H){const f=([x,y])=>[s*(-6*7.5-5+x*K),-22/2-7.5-2+y*K];P.push(p.kind==='dot'?Object.assign({},p,{x:f([p.x,p.y])[0],y:f([p.x,p.y])[1],r:p.r*K}):Object.assign({},p,{pts:p.pts.map(f)}));}
+  return fitParts(cnSort(P),98);}});
 defMotif('tecpatl',{name:'Flint knife',term:'tecpatl',upright:true,meaning:'Day sign of the flint: a leaf-shaped blade, half red and half white, with an eye and a row of teeth where the two colours meet, because the knife is alive and hungry. It is the sacrificial knife and the north.',
 fn(){const L=G.bez([0,-48],[-26,-22],[-26,22],[0,48],22),Rr=G.bez([0,48],[26,22],[26,-22],[0,-48],22),P=[reg(L.concat([[0,-48]]),'outer',{bg:true}),reg(Rr.concat([[0,48]]),'outer',{tone:1}),ln(L.concat(Rr.slice(1,-1)),'outer',true),ln([[0,-48],[0,48]],'inner')];
   P.push(reg(G.circle(-8,-12,6,18),'inner',{tone:2}));azEye(P,-8,-12,3.8);P.push(reg([[-17,6],[17,6],[15,15],[-15,15]],'inner',{bg:true}));for(let i=-2;i<=2;i++)P.push(ln([[i*6,6],[i*5.6,15]],'detail'));P.push(ln([[-16,10.5],[16,10.5]],'detail'));return fitParts(P);}});
