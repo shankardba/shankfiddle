@@ -785,15 +785,41 @@ meaning:'A circle made in one breath with one stroke of the brush, often left op
 fn(rng,g){const a0=rng.range(95,150),sweep=rng.range(300,342);const ph=rng.range(0,6);const pts=[];
   for(let i=0;i<=72;i++){const u=i/72,a=(a0+u*sweep)*DEG,r=42+2.2*Math.sin(u*5+ph)-(u>0.8?(u-0.8)*14:0);pts.push([Math.cos(a)*r,Math.sin(a)*r*rng.range(0.995,1.005)]);}
   return fitParts([bl(pts,'tail',3.4)]);}});
+/* Bamboo, redrawn 2026-10-13 against three ink paintings supplied by the user (a single leaning
+   culm, a pair of culms, a grove). What they share, and what the code keeps: the culm is not one bar
+   but a row of separate strokes, each pressed at its start and its end so it is a little thicker
+   there, with a sliver of paper between one and the next; across each gap sits a short dark hooked
+   mark for the joint. The culm leans and thins as it rises. Twigs are hair-thin and spring from the
+   joints, first to one side and then the other. A leaf is one stroke: full a third of the way along
+   and drawn out to a long point, slightly bent; leaves hang in clusters of three to five from the
+   end of a twig, fanned like the strokes of a written character, no two the same length. */
+function inkLeaf(x,y,ang,len,w,bend=0){const d=[Math.sin(ang*DEG),-Math.cos(ang*DEG)],e=[x+d[0]*len,y+d[1]*len],m=[(x+e[0])/2-d[1]*bend*len,(y+e[1])/2+d[0]*bend*len],sp=G.resample(G.quad([x,y],m,e,20),false,0.8);
+  return G.ribbon(sp,t=>0.06+w*2.9*Math.pow(clamp(t),0.62)*Math.pow(1-clamp(t),1.25));}
 defMotif('bamboo',{name:'Bamboo',term:'take 竹 / zhú',upright:true,
-meaning:'Hollow, straight and bending without breaking — the upright scholar. One of the Four Gentlemen of ink painting, practised as a discipline of single, unretouched strokes.',
-fn(rng,g){const P=[];const segs=rng.int(3,4),lean=rng.range(-6,6),h=100/segs;
-  for(let k=0;k<segs;k++){const y0=50-k*h,y1=y0-h+3,x0=lean*k/segs,x1=lean*(k+1)/segs,w=5.2-k*0.5;
-    P.push(reg([[x0-w,y0],[x0+w,y0],[x1+w*0.92,y1],[x1-w*0.92,y1]],'outer'));P.push(ln(G.quad([x1-w*1.2,y1+1],[x1,y1-1.5],[x1+w*1.2,y1+1]),'inner'));}
-  const nodes=[1,2].map(k=>[lean*k/segs,50-k*h]);
-  nodes.forEach(([x,y],j)=>{const s=j?1:-1;P.push(ln(G.quad([x,y],[x+s*10,y-10],[x+s*24,y-12]),'inner'));
-    const n=rng.int(3,4);for(let i=0;i<n;i++)P.push(reg(G.xform(G.petal(rng.range(24,32),3.6,'pointed'),{x:x+s*(14+i*3),y:y-11+i*1.5,rot:s*(rng.range(100,150)+i*12)}),'outer'));});
-  return fitParts(P);}});
+meaning:'Hollow, straight and bending without breaking — the upright scholar. One of the Four Gentlemen of ink painting, practised as a discipline of single, unretouched strokes: each length of the stem is one stroke, each joint a hooked dash, each leaf a single pull of the brush drawn out to a point.',
+fn(rng,g){const P=[],Z=(p,z)=>Object.assign(p,{z}),s=rng.chance(0.5)?1:-1,sp=cnArcs([s*-16,52],-90+s*5,[[s*260,13],[s*-200,10]],0.7),n=sp.length;
+  const at=t=>{const i=Math.round(clamp(t)*(n-1)),a=sp[Math.max(0,i-1)],b=sp[Math.min(n-1,i+1)];return{p:sp[i],h:Math.atan2(b[0]-a[0],-(b[1]-a[1]))/DEG,i};};
+  // the culm: five strokes, the middle ones longest, each a little swollen at its ends
+  const cuts=[0,0.19,0.42,0.65,0.84,1],hw=t=>1.9-1.15*t;
+  for(let k=0;k<5;k++){const i0=Math.round(cuts[k]*(n-1))+(k?1:0),i1=Math.round(cuts[k+1]*(n-1))-1,seg=sp.slice(i0,i1+1),w=hw((cuts[k]+cuts[k+1])/2);
+    P.push(reg(G.ribbon(seg,t=>w*(1+0.2*Math.pow(Math.abs(2*t-1),3))*(k===4?1-0.5*t:1)),'outer',{tone:1,z:1}));
+    P.push(Z(ln(seg.slice(3,-3).map((q,j)=>{const o=at((i0+j+3)/(n-1)),a=(o.h+90)*DEG;return[q[0]+Math.sin(a)*w*0.38,q[1]-Math.cos(a)*w*0.38];}),'detail'),1.1));}
+  // joints: a short hooked dash across each gap, wider than the stem
+  const joints=[1,2,3,4].map(k=>at(cuts[k]));
+  joints.forEach((o,k)=>{const w=hw(cuts[k+1])*1.45,a=(o.h+90)*DEG,u=[Math.sin(a),-Math.cos(a)],v=[Math.sin(o.h*DEG),-Math.cos(o.h*DEG)];
+    P.push(reg(G.ribbon(G.quad([o.p[0]-u[0]*w-v[0]*0.5,o.p[1]-u[1]*w-v[1]*0.5],[o.p[0]+v[0]*0.5,o.p[1]+v[1]*0.5],[o.p[0]+u[0]*w-v[0]*0.5,o.p[1]+u[1]*w-v[1]*0.5],12),t=>0.2+0.5*Math.pow(Math.abs(2*t-1),1.5)),'inner',{tone:1,z:1.2}));});
+  // a cluster of leaves hung from a point: fanned, uneven, the longest in the middle
+  const cluster=(x,y,dir,L,m,back=[0,0])=>{const offs=m>=5?[-50,-24,-2,22,50]:m===4?[-40,-12,14,42]:[-30,0,30],lens=m>=5?[0.56,0.9,1,0.8,0.5]:m===4?[0.66,1,0.9,0.56]:[0.72,1,0.64],st=m>=5?[2,1,0,1,2]:m===4?[1.4,0,0.6,1.8]:[1,0,1];
+    offs.forEach((o,i)=>{const l=L*lens[i]*rng.range(0.9,1.1);P.push(reg(inkLeaf(x-back[0]*st[i]*1.5,y-back[1]*st[i]*1.5,dir+o+rng.range(-7,7),l,l*0.05,(o<0?-1:1)*rng.range(0.02,0.09)),'outer',{tone:2,z:2+i*0.01}));});};
+  // twigs from the joints, alternately to either side, each with a side shoot
+  [[1,-1,15,30],[2,1,17,33],[3,-1,14,28]].forEach(([k,sd,len,L])=>{const o=joints[k],side=sd*s,tw=cnArcs(o.p,o.h+side*46-90,[[side*-60,len]].map(([r,l])=>[r,l/Math.abs(r)/DEG]),0.6),e=tw[tw.length-1],mid=tw[Math.round(tw.length*0.55)];
+    P.push(reg(G.ribbon(tw,t=>0.42-0.26*t),'inner',{tone:1,z:0.5}));
+    const sh=cnArcs(mid,o.h+side*82-90,[[side*40,len*0.42/40/DEG]],0.6),e2=sh[sh.length-1];P.push(reg(G.ribbon(sh,t=>0.28-0.16*t),'inner',{tone:1,z:0.5}));
+    const bk=q=>{const a=q[q.length-1],b=q[q.length-4],l=Math.hypot(a[0]-b[0],a[1]-b[1])||1;return[(a[0]-b[0])/l,(a[1]-b[1])/l];};
+    cluster(e[0],e[1],side*118,L,rng.pick([4,5,5]),bk(tw));cluster(e2[0],e2[1],side*150,L*0.66,rng.pick([3,3,4]),bk(sh));});
+  // the tip: the last stroke runs out into a twig and a cluster
+  {const o=at(1);cluster(o.p[0],o.p[1],o.h-s*46,27,4);P.push(reg(inkLeaf(o.p[0],o.p[1],o.h+s*6,20,0.9,0.03),'outer',{tone:2,z:2}),reg(inkLeaf(o.p[0],o.p[1],o.h+s*38,14,0.66,0.05),'outer',{tone:2,z:2}));}
+  return fitParts(cnSort(P));}});
 
 /* ---------- Chinese vocabulary ---------- */
 /* Ruyi head, redrawn 2026-10-13 against a sheet of thirty line-drawn heads supplied by the user.
