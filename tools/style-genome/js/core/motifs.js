@@ -765,14 +765,26 @@ fn(rng,g){const P=[];const segs=rng.int(3,4),lean=rng.range(-6,6),h=100/segs;
   return fitParts(P);}});
 
 /* ---------- Chinese vocabulary ---------- */
-function ruyiOutline(){const half=G.chain(G.bez([0,40],[-14,30],[-38,22],[-42,4],14),G.bez([-42,4],[-48,-16],[-38,-34],[-24,-32],12),G.bez([-24,-32],[-16,-31],[-12,-26],[-11,-21],8),G.bez([-11,-21],[-12,-32],[-6,-40],[0,-40],10));
-  return half.concat(half.slice(0,-1).reverse().map(([x,y])=>[-x,y])).slice(0,-1);}
+/* Ruyi head, redrawn 2026-10-13 against a sheet of thirty line-drawn heads supplied by the user.
+   What the sheet shows, and what the code keeps: the outline is an even STRAP (two parallel lines)
+   with a small ogee point at the crown, two full side lobes that hang lower than the middle, and a
+   shallow foot between them; inside, a strap of the same weight arches across and rolls down into
+   each lobe as a scroll; a waisted stem stands at the foot and a pearl sits under the crown. Curves
+   are separate arcs joined at points, so the crown and the meeting of lobe and foot stay crisp. */
+function ruyiOutline(){const half=G.chain(G.bez([0,-38],[1.6,-35],[3.6,-33.4],[6.6,-32],8),G.bez([6.6,-32],[12.6,-29.6],[17.6,-26.6],[19.6,-21.6],12),G.bez([19.6,-21.6],[25,-27.6],[43,-22],[44,-3],18),G.bez([44,-3],[45,12],[37,24],[24,24],16),G.bez([24,24],[17,24],[12,20],[6.6,18.4],10),G.bez([6.6,18.4],[4.4,17.8],[2.2,17.6],[0,17.6],5));
+  return half.concat(half.slice(1,-1).reverse().map(([x,y])=>[-x,y]));}
+// the inner line of a strap: the outline moved in by d, with the loops an offset makes at tight corners cut away
+function ruyiInner(o,d){const far=q=>{let m=1e9;for(const p of o){const k=Math.hypot(p[0]-q[0],p[1]-q[1]);if(k<m)m=k;}return m;};return G.offset(G.resample(o,true,0.9),-d,true).filter(q=>far(q)>=d*0.9);}
 defMotif('ruyi',{name:'Ruyi head',term:'rúyì 如意',upright:true,
-meaning:'The lobed cloud-and-fungus head of the ruyi scepter, whose name means "as you wish". It tops collars, lappets and borders; as a cloud (yún) it also puns on yùn, luck.',
-fn(rng,g){const o=ruyiOutline();const P=[reg(o,'outer')];
-  for(const s of [-1,1]){const sp=[];for(let i=0;i<=34;i++){const u=i/34,a=(s>0?200:-20)*DEG+s*u*Math.PI*2.3,r=15*(1-0.86*u);sp.push([s*24+Math.cos(a)*r,-12+Math.sin(a)*r]);}P.push(ln(sp,'inner'));}
-  P.push(ln(G.bez([-6,-30],[-3,-24],[3,-24],[6,-30],8),'detail'));P.push(ln([[0,8],[0,26]],'detail'));
-  return fitParts(P);}});
+meaning:'The lobed cloud-and-fungus head of the ruyi scepter, whose name means "as you wish". It is drawn as an even strap: a pointed crown, two full lobes with a scroll rolled into each, a waisted stem at the foot and a pearl under the crown. It tops collars, lappets and borders; as a cloud (yún) it also puns on yùn, luck.',
+fn(rng,g){const o=ruyiOutline(),Z=(p,z)=>Object.assign(p,{z}),P=[reg(o,'outer',{tone:1,z:0}),reg(ruyiInner(o,4.2),'inner',{tone:2,z:1})];
+  // the inner strap: a low arch from the middle that rolls down into each lobe
+  {const h=cnArcs([0,-12.6],9,[[-60,18],[13.6,182],[8.6,150],[4.6,190]],0.7),sp=h.slice(1).reverse().map(([x,y])=>[-x,y]).concat(h),n=sp.length;
+    P.push(reg(G.ribbon(sp,t=>{const u=Math.abs(2*t-1);return u<0.62?1.9:Math.max(0.5,1.9-2.6*(u-0.62));}),'inner',{tone:1,z:2}));for(const q of [sp[0],sp[n-1]])P.push(Z(dt(q[0],q[1],1.4,'inner'),2.1));}
+  // waisted stem at the foot, pearl under the crown
+  const st=G.chain(G.bez([-5.4,2.6],[-2.4,6],[-2.4,10],[-6.4,13.2],10),[[6.4,13.2]],G.bez([6.4,13.2],[2.4,10],[2.4,6],[5.4,2.6],10));
+  P.push(reg(st,'inner',{tone:1,z:2.2}),reg(G.circle(0,-21.6,3,24),'inner',{tone:1,z:2.2}));
+  return fitParts(cnSort(P));}});
 /* Lion-dance head, drawn 2026-10-14 against three references supplied by the user (two detailed
    line drawings and a sheet of simplified frontal masks). The frontal mask gives the structure;
    the two drawings give the manner: big rounded forms bounded by taut curves, every edge of the
@@ -986,7 +998,7 @@ defBorder('huiwen',{name:'Key fret',fn(L,t){const k=t*0.82/5,n=Math.max(1,Math.r
   for(let i=0;i<n;i++)for(const [x,y] of KEY_UNIT)pts.push([i*6*kx+x*kx,y0+y*k]);pts.push([L,y0+5*k]);
   return[{kind:'line',closed:false,role:'outer',pts}];}});
 defBorder('ruyiBand',{name:'Ruyi collar',fn(L,t){const n=Math.max(2,Math.round(L/(t*0.95))),w=L/n,o=ruyiOutline(),P=[ln([[0,t*0.06],[L,t*0.06]],'inner')];
-  const s=Math.min(w*0.95,t*0.86)/92;for(let i=0;i<n;i++){P.push(reg(G.xform(o,{x:(i+.5)*w,y:t*0.5,s}),'outer'));P.push(dt((i+.5)*w,t*0.52,t*0.05));}return P;}});
+  const s=Math.min(w*0.95/88,t*0.86/56);for(let i=0;i<n;i++){const q=o.map(([x,y])=>[(i+.5)*w+x*s,t*0.5-(y+9.8)*s]);P.push(reg(q,'outer'),ln(ruyiInner(q,4.2*s),'inner',true));P.push(dt((i+.5)*w,t*0.5,t*0.05));}return P;}});
 defBorder('seigaihaBand',{name:'Wave scales',fn(L,t){return tileParts('seigaiha',{x0:0,y0:0,x1:L,y1:t},t*0.36).concat([ln([[0,0.5],[L,0.5]],'inner'),ln([[0,t-0.5],[L,t-0.5]],'inner')]);}});
 defBorder('taotieBand',{name:'Mask band',fn(L,t){const n=Math.max(1,Math.round(L/(t*1.9))),w=L/n,P=[ln([[0,t*0.04],[L,t*0.04]],'inner'),ln([[0,t*0.96],[L,t*0.96]],'inner')];
   const mask=SG.motifs.taotie.fn(makeRng(7),{});for(let i=0;i<n;i++){const k=Math.min(w*0.96,t*0.9*1.25)/100;
