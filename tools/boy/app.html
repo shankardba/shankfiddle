@@ -779,8 +779,8 @@
         "#.........#",
         "#....@...M#",
         "#o........#",
-        "2.........#",
-        "###########"
+        "#.........#",
+        "#####2#####"
       ],
       npcs: {
         D: {
@@ -932,21 +932,21 @@
           }
         }
       },
-      exits: { '2': { to: 'clearing', x: 16, y: 8 } }
+      exits: { '2': { to: 'clearing', x: 9, y: 8, door: true } }
     },
     {
       id: 'clearing',
       name: 'The Clearing',
       map: [
-        "####5######3#######",
-        "#........$........#",
-        "#..o..,,..Vb...o..#",
-        "#....=========....#",
+        "###########3#######",
+        "#.HHH....$........#",
+        "#.HHH.,,..Vb...o..#",
+        "#..5.=========....#",
         "#.o..=...,,,.=..o.#",
         "#....=..HHH..=....#",
         "#..S.=..HHH..=..$.#",
-        "#....=========....#",
-        "1.,......@.......$2",
+        "#....====2====....#",
+        "1.,......@.......$#",
         "#...~~~...8.orr.o.#",
         "#..~~~~~..F.K...C.#",
         "#...~~~.....rrb...#",
@@ -954,6 +954,12 @@
         "#..$.,,....eee,S..#",
         "###################"
       ],
+      // Buildings stand in the world and are entered by their doors: each
+      // cluster of 'H' tiles is one building, styled in reading order by
+      // `buildings`, and the exit tile at the foot of its south wall
+      // (`door: true`) is its doorstep. Here: the Schoolhouse in the
+      // north-west, and Home — the cottage in the middle of the courtyard.
+      buildings: ['school', 'home'],
       signs: [
         "A crooked signpost: \"Six Light Shards sleep in this clearing. Gather them all to wake the grove.\"",
         "Carved in the wood: \"The neighbors by the water are friendly — say hello if you pass by.\""
@@ -1131,9 +1137,9 @@
       },
       exits: {
         '1': { to: 'hollow', x: 9, y: 4 },
-        '2': { to: 'home', x: 1, y: 7 },
-        '3': { to: 'riverside', x: 6, y: 9 },
-        '5': { to: 'schoolhouse', x: 5, y: 7 },
+        '2': { to: 'home', x: 5, y: 7, door: true },
+        '3': { to: 'riverside', x: 6, y: 11 },
+        '5': { to: 'schoolhouse', x: 5, y: 7, door: true },
         // Coffee's Studio and Sir Earth's Conservatory used to be reached
         // from here (old digits '6'/'7') — relocated to College, reached
         // via its basement stairs and forest trail respectively, since
@@ -1258,11 +1264,14 @@
         "~~~~~~~~~~b~~",
         "~~~~~~~~~~~~~",
         "==~~~~~~~~===",
-        "#==K====.G..#",
-        "#,....@....,#",
+        "#==K=====HHH#",
+        "#,....G..HHH#",
+        "#.....@...7.#",
+        "#,.........,#",
         "#...........#",
         "######1######"
       ],
+      buildings: ['boathouse'],
       npcs: {
         G: {
           id: 'eric',
@@ -1335,7 +1344,41 @@
           instrumentSting: 'guitar'
         }
       },
-      exits: { '1': { to: 'clearing', x: 11, y: 1 } }
+      exits: {
+        '1': { to: 'clearing', x: 11, y: 1 },
+        '7': { to: 'boathouse', x: 4, y: 3, door: true }
+      }
+    },
+    {
+      // The boathouse on the Riverside's bank. Skipper keeps the boats, and
+      // the orange kayak tied up outside is hers to sell: BOY buys it in
+      // here (talkToBoatSeller()), then uses it on the bank (useKayak()).
+      id: 'boathouse',
+      name: 'The Boathouse',
+      walkInOnly: true,
+      map: [
+        "#########",
+        "#.o...o.#",
+        "#...B...#",
+        "#.......#",
+        "#o..@..o#",
+        "####1####"
+      ],
+      npcs: {
+        B: {
+          id: 'skipper',
+          name: 'Skipper',
+          appearance: { top: 0x3f6b82, bottom: 0x2b2f38, hairStyle: 'short', hair: 0xcfc9bd, pieceType: 'bishop', pieceAccent: 0xd98a2b },
+          boatSeller: {
+            intro: "Don't touch the boats, BOY. The orange one tied up outside is fifteen dollars. Come back when you've earned it.",
+            short: "Fifteen, BOY. You've got ${have}. Boats don't come cheaper for asking twice.",
+            offer: "Fifteen dollars. She's small, but she floats. Are you buying?",
+            sold: "She's yours. Follow the river north and it opens into the lake. People say there's an island out there, and more shores than anyone's bothered to name. Don't sink her.",
+            after: "Still afloat? Good. Mind the rocks out there, BOY."
+          }
+        }
+      },
+      exits: { '1': { to: 'riverside', x: 10, y: 10, door: true } }
     },
     {
       // Sora's meadow sits on the far shore of the Lake — no walking path
@@ -1475,7 +1518,7 @@
           dialogue: { default: "Come back to stare at infinity again, BOY? Good — that means it's working. How are you keeping?" }
         }
       },
-      exits: { '1': { to: 'clearing', x: 4, y: 1 } }
+      exits: { '1': { to: 'clearing', x: 3, y: 4, door: true } }
     },
     {
       // Reached via the basement stairs inside College's main building (see
@@ -2504,7 +2547,7 @@
         // A kayak is always pulled up on sand.
         if (c === 'K' && !npcs[c]) groundKinds[y][x] = '=';
         if (exits[c]) {
-          features.portals.push({ x: x, y: y, to: exits[c].to, spawn: { x: exits[c].x, y: exits[c].y }, stairs: exits[c].stairs });
+          features.portals.push({ x: x, y: y, to: exits[c].to, spawn: { x: exits[c].x, y: exits[c].y }, stairs: exits[c].stairs, door: exits[c].door });
           continue;
         }
         if (npcs[c]) {
@@ -2577,6 +2620,8 @@
     return {
       id: levelDef.id,
       name: levelDef.name,
+      buildingStyles: levelDef.buildings || [],
+      doorChars: new Set(Object.keys(exits).filter(function (c) { return exits[c].door; })),
       onWater: onWater,
       openWater: levelDef.openWater || [],
       W: w, H: h,
@@ -2653,6 +2698,7 @@
     home: { wall: 0xe0cba8, floor: 0x8a5c34, prop: 0x5a4230, bg: 0x2e2318 },
     hospital: { wall: 0xe3e8ea, floor: 0xeef1f2, prop: 0xc7d1d4, bg: 0xdfe6e8 },
     schoolhouse: { wall: 0x8a6a45, floor: 0xd8bd8a, prop: 0x2f4a3a, bg: 0x3a2e20 },
+    boathouse: { wall: 0x5f7f92, floor: 0x9a7b55, prop: 0xd98a2b, bg: 0x1c262c },
     studio: { wall: 0x2a3440, floor: 0x1f262d, prop: 0x4fd6c9, bg: 0x141a20, glow: { prop: 'panel', color: 0x4fd6c9 } },
     college: { wall: 0x5a4a3a, floor: 0x9c8560, prop: 0x2a2f3a, bg: 0x1f1a14 },
     // A cave-like environment unlocked from College, long before diagnosis
@@ -2704,6 +2750,7 @@
     island_summit: { sky: 0xe8f5f8, clouds: 14, snowCaps: true }
   };
   var PORTAL_TILE_COLOR = 0x554a66;
+  var DOORSTEP_TILE_COLOR = 0xb3aa98;
 
   // Boy is telling his own story: he and his family (Mom, Dad) are Indian
   // — everyone else in the world defaults to SKIN_LIGHT unless an NPC's
@@ -2899,12 +2946,48 @@
     return g;
   }
 
+  // Groups a level's 'H' tiles into buildings: tiles that touch belong to
+  // the same one. Returned in reading order of each building's first tile.
+  function buildingClusters(tiles) {
+    var left = tiles.slice(), clusters = [];
+    while (left.length) {
+      var cluster = [left.shift()];
+      for (var i = 0; i < cluster.length; i++) {
+        for (var j = left.length - 1; j >= 0; j--) {
+          if (Math.abs(left[j].x - cluster[i].x) + Math.abs(left[j].y - cluster[i].y) === 1) cluster.push(left.splice(j, 1)[0]);
+        }
+      }
+      clusters.push(cluster);
+    }
+    return clusters;
+  }
+
+  // A doorstep: the mat at the foot of a building's door, outside and in.
+  // Stepping onto it is going through the door.
+  function createDoormat() {
+    var mat = new THREE.Mesh(
+      new THREE.BoxGeometry(TILE * 0.62, 0.05, TILE * 0.42),
+      new THREE.MeshStandardMaterial({ color: 0x8a4b2f, roughness: 0.95 })
+    );
+    mat.position.y = GROUND_SURFACE_Y + 0.025;
+    mat.receiveShadow = true;
+    return mat;
+  }
+
   // Sized from tile-index deltas only (no world-origin lookup), so it can
   // be built before the level that owns it has become the active world.
-  // buildWorldGroup positions the returned group afterward.
-  // theme: 'clinical' swaps the cozy cottage palette (tan walls, terracotta
-  // roof, wood door) for a pale, institutional one — used for the Hospital,
-  // the one building that shouldn't look like a village home.
+  // buildWorldGroup positions the returned group afterward. The door is
+  // always in the middle of the south wall, facing the camera.
+  // style: 'home' (default) is the village cottage — tan walls, terracotta
+  // cone roof; 'school' is red brick under slate with a bell cupola;
+  // 'boathouse' is blue-grey boards with an oar racked on the wall;
+  // 'clinical' is the pale, flat-roofed Hospital.
+  var HOUSE_STYLES = {
+    home: { walls: 0xE4C79A, roof: 0xB5432E, door: 0x5b3620 },
+    school: { walls: 0xa5523d, roof: 0x4a4f57, door: 0x2f4a3a, trim: 0xe8e0cf },
+    boathouse: { walls: 0x6f8fa3, roof: 0x34424b, door: 0x4a3524, trim: 0xd98a2b },
+    clinical: { walls: 0xf5f7f8, roof: 0xc7d1d4, door: 0x9aa7ac }
+  };
   function createHouse(tiles, theme) {
     var minX = Math.min.apply(null, tiles.map(function (t) { return t.x; }));
     var maxX = Math.max.apply(null, tiles.map(function (t) { return t.x; }));
@@ -2913,12 +2996,14 @@
     var width = (maxX - minX) * TILE + TILE * 0.92;
     var depth = (maxY - minY) * TILE + TILE * 0.92;
     var clinical = theme === 'clinical';
+    var style = HOUSE_STYLES[theme] || HOUSE_STYLES.home;
+    var cottage = style === HOUSE_STYLES.home;
 
     var g = new THREE.Group();
     var wallH = 1.7;
     var walls = new THREE.Mesh(
       new THREE.BoxGeometry(width, wallH, depth),
-      new THREE.MeshStandardMaterial({ color: clinical ? 0xf5f7f8 : 0xE4C79A, roughness: clinical ? 0.6 : 0.85 })
+      new THREE.MeshStandardMaterial({ color: style.walls, roughness: clinical ? 0.6 : 0.85 })
     );
     walls.position.y = wallH / 2;
     walls.castShadow = true;
@@ -2927,30 +3012,35 @@
 
     // A peaked roof reads as "a house" — right for a village cottage, wrong
     // for a mass sitting inside the Hospital's own interior, so clinical
-    // gets a flat capped ceiling slab instead of the cottage's cone.
-    var roof = clinical
-      ? new THREE.Mesh(
-          new THREE.BoxGeometry(width * 1.06, 0.18, depth * 1.06),
-          new THREE.MeshStandardMaterial({ color: 0xc7d1d4, roughness: 0.6 })
-        )
-      : new THREE.Mesh(
-          new THREE.ConeGeometry(Math.max(width, depth) * 0.78, 1.15, 4),
-          new THREE.MeshStandardMaterial({ color: 0xB5432E, roughness: 0.75 })
-        );
+    // gets a flat capped ceiling slab instead. The cottage keeps its broad
+    // cone; the school and boathouse get a pyramid fitted to their own
+    // footprint.
+    var roofMat = new THREE.MeshStandardMaterial({ color: style.roof, roughness: clinical ? 0.6 : 0.75 });
+    var roof;
     if (clinical) {
+      roof = new THREE.Mesh(new THREE.BoxGeometry(width * 1.06, 0.18, depth * 1.06), roofMat);
       roof.position.y = wallH + 0.09;
-    } else {
+    } else if (cottage) {
+      roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(width, depth) * 0.78, 1.15, 4), roofMat);
       roof.rotation.y = Math.PI / 4;
       roof.position.y = wallH + 0.5;
+    } else {
+      roof = new THREE.Group();
+      var pyramid = new THREE.Mesh(new THREE.ConeGeometry(1, 1.1, 4), roofMat);
+      pyramid.rotation.y = Math.PI / 4;
+      pyramid.castShadow = true;
+      roof.add(pyramid);
+      roof.scale.set(width * 0.8, 1, depth * 0.8);
+      roof.position.y = wallH + 0.55;
     }
     roof.castShadow = true;
     g.add(roof);
 
     var door = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 1.05, 0.06),
-      new THREE.MeshStandardMaterial({ color: clinical ? 0x9aa7ac : 0x5b3620 })
+      new THREE.BoxGeometry(0.7, 1.15, 0.06),
+      new THREE.MeshStandardMaterial({ color: style.door })
     );
-    door.position.set(0, 0.52, depth / 2 + 0.03);
+    door.position.set(0, 0.57, depth / 2 + 0.03);
     g.add(door);
 
     var window1 = new THREE.Mesh(
@@ -2960,6 +3050,41 @@
     window1.position.set(width / 2 + 0.03, 1.0, 0);
     window1.rotation.y = Math.PI / 2;
     g.add(window1);
+
+    if (theme === 'school' || theme === 'boathouse') {
+      // Windows either side of the door, so the front reads as a face.
+      [-1, 1].forEach(function (side) {
+        var w2 = window1.clone();
+        w2.rotation.y = 0;
+        w2.position.set(side * width * 0.3, 1.0, depth / 2 + 0.03);
+        g.add(w2);
+      });
+    }
+    if (theme === 'school') {
+      var trimMat = new THREE.MeshStandardMaterial({ color: style.trim, roughness: 0.8 });
+      var cupola = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.55, 0.6), trimMat);
+      cupola.position.y = wallH + 1.25;
+      cupola.castShadow = true;
+      g.add(cupola);
+      var cap = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.45, 4), roofMat);
+      cap.rotation.y = Math.PI / 4;
+      cap.position.y = wallH + 1.75;
+      g.add(cap);
+      var bell = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), new THREE.MeshStandardMaterial({ color: 0xd9b23c, metalness: 0.6, roughness: 0.35 }));
+      bell.position.set(0, wallH + 1.25, 0.31);
+      g.add(bell);
+    }
+    if (theme === 'boathouse') {
+      var oarMat = new THREE.MeshStandardMaterial({ color: style.trim, roughness: 0.7 });
+      var shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.5, 6), oarMat);
+      shaft.rotation.z = Math.PI / 2 - 0.25;
+      shaft.position.set(-width * 0.3, 1.45, depth / 2 + 0.06);
+      g.add(shaft);
+      var blade = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.2, 0.04), oarMat);
+      blade.rotation.z = -0.25;
+      blade.position.set(-width * 0.3 + 0.85, 1.24, depth / 2 + 0.06);
+      g.add(blade);
+    }
 
     return g;
   }
@@ -4299,7 +4424,7 @@
         var ch = w.groundKinds[gy][gx];
         var isPortal = w.exitChars.has(ch);
         var thickness = ch === '~' ? 0.16 : 0.3;
-        var color = isPortal ? PORTAL_TILE_COLOR : groundColorFor(ch, w.id);
+        var color = w.doorChars.has(ch) ? DOORSTEP_TILE_COLOR : isPortal ? PORTAL_TILE_COLOR : groundColorFor(ch, w.id);
         var tileMesh = makeTile(color, thickness);
         var pos = worldPos(w, gx, gy);
         tileMesh.position.set(pos.x, thickness / -2 + (ch === '~' ? 0.02 : GROUND_SURFACE_Y), pos.z);
@@ -4361,7 +4486,7 @@
     if (!interiorTheme) place(w.features.flowers, createFlower);
     place(w.features.signs, createSignPost);
     if (w.features.goose) place([w.features.goose], createGoose);
-    place(w.features.portals, function (f) { return f.stairs === 'up' ? createStoneSteps() : createPortalMarker(); });
+    place(w.features.portals, function (f) { return f.door ? createDoormat() : f.stairs === 'up' ? createStoneSteps() : createPortalMarker(); });
     var mountain = MOUNTAIN_LEVELS[w.id];
     place(w.features.cliffs, function () { return createCliff(mountain && mountain.snowCaps); });
     if (mountain) {
@@ -4375,16 +4500,16 @@
       }
     }
 
-    if (w.features.houseTiles.length) {
-      var hMinX = Math.min.apply(null, w.features.houseTiles.map(function (t) { return t.x; }));
-      var hMaxX = Math.max.apply(null, w.features.houseTiles.map(function (t) { return t.x; }));
-      var hMinY = Math.min.apply(null, w.features.houseTiles.map(function (t) { return t.y; }));
-      var hMaxY = Math.max.apply(null, w.features.houseTiles.map(function (t) { return t.y; }));
-      var hc1 = worldPos(w, hMinX, hMinY), hc2 = worldPos(w, hMaxX, hMaxY);
-      var house = createHouse(w.features.houseTiles, w.id === 'hospital' ? 'clinical' : undefined);
+    // One building per connected cluster of 'H' tiles, styled in reading
+    // order by the level's `buildings` list (see the Clearing).
+    buildingClusters(w.features.houseTiles).forEach(function (tiles, i) {
+      var xs = tiles.map(function (t) { return t.x; }), ys = tiles.map(function (t) { return t.y; });
+      var hc1 = worldPos(w, Math.min.apply(null, xs), Math.min.apply(null, ys));
+      var hc2 = worldPos(w, Math.max.apply(null, xs), Math.max.apply(null, ys));
+      var house = createHouse(tiles, w.buildingStyles[i] || (w.id === 'hospital' ? 'clinical' : undefined));
       house.position.set((hc1.x + hc2.x) / 2, 0, (hc1.z + hc2.z) / 2);
       group.add(house);
-    }
+    });
 
     place(w.features.shards, createShard);
     place(w.features.crops, function (f) { return createCrop(f.kind || f.item); });
@@ -5466,28 +5591,15 @@
   }
 
   // The kayak is the only way onto the lake, and the lake the only way to
-  // Anybody's island. Buying it costs real money earned from jobs — no
-  // respect gate, nothing story-required, purely Boy's own choice. Once
+  // Anybody's island. Buying it costs real money earned from jobs, paid
+  // to Skipper inside the boathouse (talkToBoatSeller()) — no respect
+  // gate, nothing story-required, purely Boy's own choice. Once
   // owned, the same kayak (tied up at the Riverside, or beached on the
   // island) launches him onto the lake from wherever it sits.
   var KAYAK_COST = 15;
   function useKayak() {
     if (!story.hasKayak) {
-      if (story.money < KAYAK_COST) {
-        openDialogue('A little orange kayak tied up at the water\'s edge, with a hand-lettered tag: "$' + KAYAK_COST + '." (You have $' + story.money + '.)');
-        return;
-      }
-      openChoice('A little orange kayak tied up at the water\'s edge. The tag says $' + KAYAK_COST + '. Buy it?', null, [
-        { label: 'Buy it ($' + KAYAK_COST + ')', onSelect: function () {
-          story.money -= KAYAK_COST;
-          story.hasKayak = true;
-          renderStats();
-          sfxPickup();
-          openDialogue("It's yours. Follow the river north and it opens into the lake — people say there's an island out there, and more shores than anyone's bothered to name.");
-          showToast('🛶 You bought a kayak!', 2400);
-        } },
-        { label: 'Not yet' }
-      ]);
+      openDialogue('A little orange kayak tied up on the bank. A tag on the rope reads: "Ask inside the boathouse."');
       return;
     }
     var launch = LEVELS[LEVEL_INDEX[world.id]].kayakLaunch;
@@ -5495,6 +5607,29 @@
       { label: 'Paddle out', onSelect: function () { sfxPortal(); loadLevel(LEVEL_INDEX.lake, launch); } },
       { label: 'Not now' }
     ]);
+  }
+
+  // Skipper, in the boathouse: the kayak tied up outside is hers to sell.
+  function talkToBoatSeller(npc) {
+    var lines = npc.def.boatSeller, name = npc.def.name;
+    if (story.hasKayak) { openDialogue(lines.after, name, null, npc.obj); return; }
+    if (!story.learned.metSkipper) {
+      story.learned.metSkipper = true;
+      openDialogue(lines.intro, name, null, npc.obj);
+      return;
+    }
+    if (story.money < KAYAK_COST) { openDialogue(lines.short.replace('{have}', story.money), name, null, npc.obj); return; }
+    openChoice(lines.offer, name, [
+      { label: 'Buy the kayak ($' + KAYAK_COST + ')', onSelect: function () {
+        story.money -= KAYAK_COST;
+        story.hasKayak = true;
+        renderStats();
+        sfxPickup();
+        openDialogue(lines.sold, name, null, npc.obj);
+        showToast('🛶 You bought a kayak! It\'s tied up on the bank outside.', 3000);
+      } },
+      { label: 'Not yet' }
+    ], npc.obj);
   }
 
   function findNearbyCrownTable() {
@@ -5889,7 +6024,7 @@
       // she arrives, so the last words are BOY and Mom's alone.
       { say: 'Alright boys, time for us to get outta here.', speaker: 'The Devil', actor: 'devil' },
       { exit: pawns.concat(bishops).map(function (d) { return d.id; }).concat(['devil']), stagger: 0.07, wait: 1.0 },
-      { spawn: [{ id: 'mom', appearance: npcAppearance('home', 'mom'), x: 0, y: 7, facing: 'right', enter: 'stand' }] },
+      { spawn: [{ id: 'mom', appearance: npcAppearance('home', 'mom'), x: 5, y: 8, facing: 'up', enter: 'stand' }] },
       { walk: { actor: 'mom', to: 'boy' }, wait: 0.4 },
       { run: function () { faceEachOther(cutscene.actors.mom); }, camera: null, wait: 0.8 },
       { say: 'You will always be a BOY to me. Now go make me proud.', speaker: 'Mom', actor: 'mom' },
@@ -6330,6 +6465,7 @@
     if (def.id === 'devil') { talkToDevil(npc); return; }
     if (def.id === 'anybody') { talkToAnybody(npc); return; }
     if (def.gate) { talkToGatekeeper(npc); return; }
+    if (def.boatSeller) { talkToBoatSeller(npc); return; }
 
     var musing = pendingMusing(def);
     if (musing) {
@@ -6842,7 +6978,7 @@
         s.obj.userData.spin.position.y = 0.55 + Math.sin(t * 2.2) * 0.08;
       });
       world.features.portals.forEach(function (p) {
-        if (!p.obj) return;
+        if (!p.obj || !p.obj.userData.bob) return;
         p.obj.userData.bob.position.y = (p.obj.userData.bobBase || 0.58) + Math.sin(t * 3 + p.x) * 0.06;
       });
       world.features.npcs.forEach(function (n) {
