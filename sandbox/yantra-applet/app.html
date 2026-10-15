@@ -108,6 +108,18 @@
   }
   .gear-btn{right:14px;}
   .download-btn{left:14px;}
+  .dl-menu{
+    position:absolute;top:56px;left:14px;z-index:5;min-width:224px;
+    background:var(--panel-bg);border:1px solid var(--border);border-radius:6px;padding:4px;
+    display:none;box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  }
+  .dl-menu.open{display:block;}
+  .dl-menu button{
+    display:block;width:100%;text-align:left;background:none;border:0;border-radius:4px;
+    color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:9px 10px;cursor:pointer;
+  }
+  .dl-menu button:hover, .dl-menu button:focus-visible{background:var(--surface-2);outline:none;}
+  .dl-menu button span{display:block;color:var(--text-muted);font-size:10.5px;margin-top:2px;}
   .explain-btn{left:58px;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
   .theme-btn{left:102px;}
   .guide-btn{left:146px;font-family:'IBM Plex Mono',monospace;font-size:15px;}
@@ -312,13 +324,18 @@
 <div id="wrap">
   <canvas id="cv"></canvas>
 
-  <button class="download-btn" id="downloadBtn" aria-label="Download image">
+  <button class="download-btn" id="downloadBtn" aria-label="Download" aria-haspopup="menu" aria-expanded="false" title="Download a picture, or the lines only to print and color">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 3v12"></path>
       <path d="M7 10l5 5 5-5"></path>
       <path d="M5 21h14"></path>
     </svg>
   </button>
+
+  <div class="dl-menu" id="dlMenu" role="menu" aria-label="Download">
+    <button role="menuitem" id="dlPicture">Picture<span>as you see it now, current colors</span></button>
+    <button role="menuitem" id="dlLines">Lines only<span>black lines on white, to print and color</span></button>
+  </div>
 
   <button class="explain-btn" id="explainBtn" aria-label="Explain the math" aria-expanded="false" title="Explain the math">&Sigma;</button>
 
@@ -1026,6 +1043,7 @@
   // The palette the line work is drawn with: while filling, every line becomes
   // the palette's dark ink; otherwise custom palettes are darkened on light.
   function activePalette(){
+    if(exporting) return { name: 'Lines', down: exporting.ink, up: exporting.ink, lotus8: exporting.ink, lotus16: exporting.ink, triple: exporting.ink, bhupura: exporting.ink };
     var p = PALETTES[currentPalette];
     if(showFill){
       var ink = p.fill.ink;
@@ -1051,6 +1069,7 @@
   var canvas = document.getElementById('cv');
   var ctx = canvas.getContext('2d');
   var geo = null; // { cx, cy, R, scale } — recomputed on resize
+  var exporting = null; // set while the lines-only page is rendered to an offscreen canvas
 
   function resize(){
     var dpr = window.devicePixelRatio || 1;
@@ -2273,7 +2292,7 @@
     var w = canvas.clientWidth, h = canvas.clientHeight;
     var style = getComputedStyle(root);
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = style.getPropertyValue('--bg').trim();
+    ctx.fillStyle = exporting ? exporting.bg : style.getPropertyValue('--bg').trim();
     ctx.fillRect(0, 0, w, h);
 
     var pal = activePalette();
@@ -2341,6 +2360,7 @@
 
     drawBindu();
     drawIntersections();
+    if(exporting) return; // an offscreen lines-only render: leave the live UI state alone
 
     if(progress <= 0){
       if(stageLabel) stageLabel.textContent = 'Ready';
@@ -2436,6 +2456,73 @@
   window.addEventListener('yantra:guides', draw);
   themeBtn.addEventListener('click', function(){ setTimeout(draw, 0); });
   resize();
+
+  // ---------- downloads ----------
+  function downloadCanvas(cv, name){
+    cv.toBlob(function(blob){
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+    }, 'image/png');
+  }
+
+  // Lines only: the finished yantra as black lines on white, to print and color, centered on a
+  // US Letter portrait page at 300 dpi (2550 x 3300). Whatever the animation is
+  // showing, this is always the complete figure; fills, guide marks, the bindu
+  // and the intersection dots are left out, and the bhupura follows its toggle.
+  function renderLinesOnly(){
+    var W = 2550, H = 3300;
+    var oc = document.createElement('canvas');
+    oc.width = W; oc.height = H;
+    Object.defineProperty(oc, 'clientWidth', { value: W });
+    Object.defineProperty(oc, 'clientHeight', { value: H });
+    var preset = PRESETS[currentPresetKey];
+    var withFrame = currentPresetHasBhupura && showBhupura;
+    var half;
+    if(withFrame){
+      var sc = bhupuraScaleFor(preset.yantraExtent, preset.bhupuraLines, preset.bhupuraGap), m = 0;
+      bhupuraLinesFor(preset.bhupuraLines)[0].forEach(function(q){ m = Math.max(m, Math.abs(q[0]), Math.abs(q[1])); });
+      half = sc * m;
+    } else {
+      half = preset.yantraExtent;
+    }
+    var R = (W * 0.46) / half;
+    var saved = { ctx: ctx, canvas: canvas, geo: geo, progress: progress, showFill: showFill, showGuides: showGuides,
+      showBindu: showBindu, showXsect: showXsect, strokeWidth: strokeWidth, exporting: exporting };
+    try {
+      ctx = oc.getContext('2d'); canvas = oc;
+      geo = { cx: W / 2, cy: H / 2, R: R, scale: R * 2 };
+      progress = totalSteps; showFill = false; showGuides = false; showBindu = false; showXsect = false;
+      strokeWidth = clamp(3.5 * saved.strokeWidth, 3, 14); // about 0.6 mm on paper at the default line width
+      exporting = { bg: '#ffffff', ink: '#000000' };
+      draw();
+    } finally {
+      ctx = saved.ctx; canvas = saved.canvas; geo = saved.geo; progress = saved.progress; showFill = saved.showFill;
+      showGuides = saved.showGuides; showBindu = saved.showBindu; showXsect = saved.showXsect;
+      strokeWidth = saved.strokeWidth; exporting = saved.exporting;
+      draw();
+    }
+    return oc;
+  }
+
+  var downloadBtn = document.getElementById('downloadBtn');
+  var dlMenu = document.getElementById('dlMenu');
+  function setDownloadMenu(open){
+    dlMenu.classList.toggle('open', open);
+    downloadBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  downloadBtn.addEventListener('click', function(e){ e.stopPropagation(); setDownloadMenu(!dlMenu.classList.contains('open')); });
+  document.addEventListener('click', function(e){ if(!dlMenu.contains(e.target)) setDownloadMenu(false); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') setDownloadMenu(false); });
+  document.getElementById('dlPicture').addEventListener('click', function(){
+    setDownloadMenu(false);
+    downloadCanvas(canvas, 'yantra-' + currentPresetKey + '.png');
+  });
+  document.getElementById('dlLines').addEventListener('click', function(){
+    setDownloadMenu(false);
+    downloadCanvas(renderLinesOnly(), 'yantra-' + currentPresetKey + '-lines-only.png');
+  });
 
   // ---------- palette swatches ----------
   var paletteGrid = document.getElementById('paletteSwatches');
