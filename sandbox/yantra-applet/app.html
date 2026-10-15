@@ -1245,10 +1245,13 @@
     ] };
   }
 
-  function innerCircleStageDef(name, radiusFrac, instruction){
+  // radiusLabel (optional) gives the exact construction of the radius, e.g.
+  // '√2 times the radius (the diagonal of the square built on it)'; without
+  // it the instruction falls back to a rounded percentage.
+  function innerCircleStageDef(name, radiusFrac, instruction, radiusLabel){
     var relSize = radiusFrac < 1 ? 'smaller' : 'larger';
     return { kind: 'circle', name: name || 'Inner circle', radiusFrac: radiusFrac, subphases: [
-      { phase: 'setup', end: 0.3, duration: 500, instruction: 'Keeping the same center, set the compass to a ' + relSize + ' radius — ' + pct(radiusFrac) + '% of the outer circle.' },
+      { phase: 'setup', end: 0.3, duration: 500, instruction: 'Keeping the same center, set the compass to ' + (radiusLabel ? radiusLabel : 'a ' + relSize + ' radius — ' + pct(radiusFrac) + '% of the outer circle') + '.' },
       { phase: 'sweep', end: 1.0, duration: 800, instruction: instruction || 'Swing a full turn to draw this circle.' }
     ] };
   }
@@ -1276,8 +1279,11 @@
     return { apex: apexText, guide: guideText, corners: cornersText, stroke: strokeText };
   }
 
-  function triangleStageDef(tri, circleMethod, name, colorKey, circleLabel){
+  function triangleStageDef(tri, circleMethod, name, colorKey, circleLabel, customInstr){
     var instr = triangleInstructions(tri, circleMethod, circleLabel);
+    if(customInstr){
+      Object.keys(customInstr).forEach(function(k){ instr[k] = customInstr[k]; });
+    }
     return {
       kind: 'triangle', tri: tri, circleMethod: circleMethod, colorKey: colorKey || 'down', name: name,
       subphases: [
@@ -1289,7 +1295,9 @@
     };
   }
 
-  function lotusStageDef(count, name, innerRFrac, tipRFrac, colorKey, startAngle){
+  // tipLabel (optional) says exactly where the petal tips land, e.g. 'on the
+  // circle √2 times the base radius'.
+  function lotusStageDef(count, name, innerRFrac, tipRFrac, colorKey, startAngle, tipLabel){
     return {
       kind: 'lotus', name: name || (count + '-petal lotus'), count: count,
       innerRFrac: innerRFrac, tipRFrac: tipRFrac,
@@ -1297,7 +1305,7 @@
       colorKey: colorKey || 'lotus8',
       subphases: [
         { phase: 'draw', end: 1.0, duration: 900 + count * 25,
-          instruction: 'Divide the circle into ' + count + ' equal arcs (step your compass around it, or use a protractor). At each mark, draw a petal pointing outward, each touching the next — the ' + count + '-petal lotus.' }
+          instruction: 'Divide the circle into ' + count + ' equal arcs (step your compass around it, or use a protractor). At each mark, draw a petal pointing outward, each touching the next' + (tipLabel ? ', with its tip ' + tipLabel : '') + ' — the ' + count + '-petal lotus.' }
       ]
     };
   }
@@ -1476,23 +1484,40 @@
   }
 
 
-  // ---------- Das Mahavidyas ----------
-  // The ten wisdom goddesses. Each figure below is read from the Drik
-  // Panchang diagrams (see each preset's Sources), including ring radii and
-  // petal tips measured off the images, then rebuilt from the same stage
-  // library as every other preset. In every one, the circle holding the main
-  // figure is R = 1; petals are drawn touching, base on one ring and tip on
-  // the next (the usual ~1.4x ratio of these diagrams).
-  function nestedTriangleStages(radii, firstOnCircle){
-    return radii.map(function(r, i){
-      return triangleStageDef(equilateralTriangle('down', r), firstOnCircle && i === 0,
-        'Nested triangle ' + (i + 1) + ' of ' + radii.length, 'down');
-    });
+  // ---------- Das Mahavidyas and deity yantras ----------
+  // Every radius below is an exact, compass-constructible number, not a value
+  // read off a picture. The source diagrams (Drik Panchang for the Mahavidyas;
+  // Buhnemann 2003 for Ganesha and Durga) fix the topology: which figures
+  // appear, in what order, and what touches what. The proportions here are the
+  // exact version of those hand-made drawings:
+  //   * hexagram corners, petal bases and tangent circles sit exactly on shared
+  //     radii, so every incidence is exact;
+  //   * a ring of 8 petals ends on the circle sqrt(2) times its base radius (the
+  //     diagonal of the square on that radius), 16 and 24 petals on 5/4 of it;
+  //   * small triangles use simple fractions of the radius: 1/2 puts a down-
+  //     triangle's tip exactly on the hexagram's lower inner side.
+  var SQ2 = Math.SQRT2;
+  var TIP8 = 'on the circle √2 times the base radius (the diagonal of the square built on it)';
+  var TIP16 = 'on the circle 5/4 of the base radius (a quarter-radius beyond it, found by bisecting twice)';
+  var SQ2_LABEL = '√2 times the radius (the diagonal of the square built on it)';
+
+  // A down-pointing triangle about the center with circumradius rFrac * R and
+  // exact instructions: tip rLabel of the radius below center, top side half
+  // that distance above.
+  function radialDownTriangleStage(rFrac, rLabel, name, circleMethod, circleLabel, apexNote){
+    var custom = {
+      apex: apexNote || ('Mark the tip on the vertical axis, ' + rLabel + ' of the radius below the center.'),
+      guide: 'The top side lies exactly half as far above the center as the tip lies below it. Mark that point on the axis and draw a horizontal guide line through it, all the way across.'
+    };
+    return triangleStageDef(equilateralTriangle('down', rFrac), circleMethod, name, 'down', circleLabel, custom);
   }
-  function evenRadii(r0, step, n){
-    var out = [];
-    for(var i = 0; i < n; i++) out.push(r0 - step * i);
-    return out;
+  // Nested downward triangles about the center, circumradii radii[k] * R.
+  function nestedTriangleStages(radii, labels, firstOnCircle){
+    return radii.map(function(r, i){
+      return radialDownTriangleStage(r, labels[i], 'Nested triangle ' + (i + 1) + ' of ' + radii.length,
+        firstOnCircle && i === 0, undefined,
+        (firstOnCircle && i === 0) ? 'This triangle’s tip is the bottom pole of the circle — already marked.' : undefined);
+    });
   }
   function hexagramStages(){
     return [
@@ -1500,22 +1525,27 @@
       triangleStageDef(equilateralTriangle('down', 1), true, 'Downward triangle (Shakti)', 'down')
     ];
   }
-  function innerDownTriangleStage(rFrac){
-    return triangleStageDef(equilateralTriangle('down', rFrac), false, 'The small central triangle', 'down');
+  // Small central down-triangle. rFrac = 1/2 is special: its tip lands exactly
+  // where the axis crosses the upward triangle's base.
+  function innerDownTriangleStage(rFrac, rLabel, apexNote){
+    return radialDownTriangleStage(rFrac, rLabel, 'The small central triangle', false, undefined, apexNote);
   }
   var TIP_NOTE = 'Swing a full turn through the petal tips — it also meets the next ring’s petal bases.';
+  var TIP_CIRCLE_NOTE = 'Swing a full turn through the petal tips to close the lotus in one circle.';
 
-  // Kali: five nested downward triangles inside three concentric circles,
-  // one 8-petal lotus, closed by a circle through the petal tips.
+  // Kali: five nested downward triangles (circumradii 7/9 down to 3/9, equally
+  // stepped) inside three concentric circles 1, 11/12 and 5/6, then an
+  // 8-petal lotus and a circle through its tips.
   function buildKaliStages(){
+    var radii = [7/9, 6/9, 5/9, 4/9, 3/9];
     return [
       circleStageDef('The outer circle'),
       axisStageDef(),
-      innerCircleStageDef('The second circle', 0.915),
-      innerCircleStageDef('The third circle', 0.83)
-    ].concat(nestedTriangleStages(evenRadii(0.764, 0.111, 5), false)).concat([
-      lotusStageDef(8, 'Eight-petal lotus', 1.00, 1.32, 'lotus8'),
-      innerCircleStageDef('The petal-tip circle', 1.32, 'Swing a full turn through the petal tips to close the lotus in one circle.')
+      innerCircleStageDef('The second circle', 11/12, undefined, '11/12 of the radius (one twelfth less)'),
+      innerCircleStageDef('The third circle', 5/6, undefined, '5/6 of the radius (two twelfths less)')
+    ].concat(nestedTriangleStages(radii, ['7/9', '6/9 (two thirds)', '5/9', '4/9', '3/9 (one third)'], false)).concat([
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8),
+      innerCircleStageDef('The petal-tip circle', SQ2, TIP_CIRCLE_NOTE, SQ2_LABEL)
     ]);
   }
   // Tara: a single downward triangle inscribed in the circle, 8 petals.
@@ -1524,75 +1554,101 @@
       circleStageDef('The circle'),
       axisStageDef(),
       triangleStageDef(equilateralTriangle('down', 1), true, 'The downward triangle', 'down'),
-      lotusStageDef(8, 'Eight-petal lotus', 1.00, 1.40, 'lotus8')
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8)
     ];
   }
-  // Bhuvaneshvari: hexagram with a small downward triangle, an 8-petal ring,
-  // a boundary circle, and a second, larger 8-petal ring.
+  // Bhuvaneshvari: hexagram with a small downward triangle (circumradius 1/3),
+  // an 8-petal ring, a boundary circle, and a second 8-petal ring.
   function buildBhuvaneshvariStages(){
     return [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages()).concat([
-      innerDownTriangleStage(0.32),
-      lotusStageDef(8, 'Inner eight-petal lotus', 1.00, 1.40, 'lotus8'),
-      innerCircleStageDef('The ring boundary', 1.40, TIP_NOTE),
-      lotusStageDef(8, 'Outer eight-petal lotus', 1.40, 1.89, 'lotus16')
+      innerDownTriangleStage(1/3, 'one third'),
+      lotusStageDef(8, 'Inner eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8),
+      innerCircleStageDef('The ring boundary', SQ2, TIP_NOTE, SQ2_LABEL),
+      lotusStageDef(8, 'Outer eight-petal lotus', SQ2, 2, 'lotus16', undefined, TIP8)
     ]);
   }
-  // Bhairavi: nine nested downward triangles, the largest inscribed in the
-  // circle, 8 petals, a thin circle through the petal tips.
+  // Bhairavi: nine nested downward triangles (circumradii 10/10 down to 2/10),
+  // the largest inscribed in the circle, 8 petals, a circle through the tips.
   function buildBhairaviStages(){
+    var radii = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2];
+    var labels = ['the full radius', '9/10', '8/10', '7/10', '6/10', '5/10 (half)', '4/10', '3/10', '2/10 (one fifth)'];
     return [circleStageDef('The circle'), axisStageDef()]
-      .concat(nestedTriangleStages(evenRadii(1.0, 0.105, 9), true)).concat([
-        lotusStageDef(8, 'Eight-petal lotus', 1.00, 1.40, 'lotus8'),
-        innerCircleStageDef('The petal-tip circle', 1.40, 'Swing a full turn through the petal tips to close the lotus in one circle.')
+      .concat(nestedTriangleStages(radii, labels, true)).concat([
+        lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8),
+        innerCircleStageDef('The petal-tip circle', SQ2, TIP_CIRCLE_NOTE, SQ2_LABEL)
       ]);
   }
-  // Chinnamasta: a downward triangle inscribed in the circle, three concentric
-  // circles inside it (the largest touches the triangle’s top side), and a
-  // smaller downward triangle inscribed in the innermost one.
+  // Chinnamasta: a downward triangle inscribed in the circle; three concentric
+  // circles 1/2, 9/20 and 2/5, the first exactly the triangle's inscribed
+  // circle (it touches the top side); a smaller downward triangle inscribed
+  // in the innermost circle; 8 petals.
   function buildChinnamastaStages(){
     return [
       circleStageDef('The circle'),
       axisStageDef(),
       triangleStageDef(equilateralTriangle('down', 1), true, 'The large downward triangle', 'down'),
-      innerCircleStageDef('The first inner circle', 0.50, 'Swing a full turn — this circle just touches the big triangle’s top side.'),
-      innerCircleStageDef('The second inner circle', 0.46),
-      innerCircleStageDef('The third inner circle', 0.40),
-      triangleStageDef(equilateralTriangle('down', 0.40), true, 'The small downward triangle', 'down', 'the innermost circle'),
-      lotusStageDef(8, 'Eight-petal lotus', 1.00, 1.40, 'lotus8')
+      innerCircleStageDef('The first inner circle', 0.5, 'Swing a full turn: this circle touches the big triangle’s top side exactly (half the radius is the distance from the center to that side).', 'half the radius'),
+      innerCircleStageDef('The second inner circle', 0.45, undefined, '9/20 of the radius'),
+      innerCircleStageDef('The third inner circle', 0.4, undefined, '2/5 of the radius'),
+      triangleStageDef(equilateralTriangle('down', 0.4), true, 'The small downward triangle', 'down', 'the innermost circle'),
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8)
     ];
   }
-  // Dhumavati: hexagram with a small downward triangle at the center, 8 petals.
+  // Dhumavati: hexagram with a small downward triangle (circumradius 2/5), 8 petals.
   function buildDhumavatiStages(){
     return [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages()).concat([
-      innerDownTriangleStage(0.42),
-      lotusStageDef(8, 'Eight-petal lotus', 1.00, 1.40, 'lotus8')
+      innerDownTriangleStage(0.4, '2/5'),
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8)
     ]);
   }
-  // Bagalamukhi: hexagram and small triangle, then three rings of petals
-  // (8, 8, 16), each closed by a circle through its tips.
+  // Bagalamukhi: hexagram and small triangle (circumradius 1/3), then three
+  // petal rings (8, 8, 16), each closed by a circle through its tips.
   function buildBagalamukhiStages(){
     return [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages()).concat([
-      innerDownTriangleStage(0.34),
-      lotusStageDef(8, 'First eight-petal lotus', 1.00, 1.40, 'lotus8'),
-      innerCircleStageDef('The first ring boundary', 1.40, TIP_NOTE),
-      lotusStageDef(8, 'Second eight-petal lotus', 1.40, 1.96, 'lotus16'),
-      innerCircleStageDef('The second ring boundary', 1.96, TIP_NOTE),
-      lotusStageDef(16, 'Sixteen-petal lotus', 1.96, 2.46, 'lotus8')
+      innerDownTriangleStage(1/3, 'one third'),
+      lotusStageDef(8, 'First eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8),
+      innerCircleStageDef('The first ring boundary', SQ2, TIP_NOTE, SQ2_LABEL),
+      lotusStageDef(8, 'Second eight-petal lotus', SQ2, 2, 'lotus16', undefined, TIP8),
+      innerCircleStageDef('The second ring boundary', 2, TIP_NOTE, 'twice the radius'),
+      lotusStageDef(16, 'Sixteen-petal lotus', 2, 2.5, 'lotus8', undefined, TIP16)
     ]);
   }
-  // Matangi: hexagram and small triangle, 8 petals, a boundary circle, 16 petals.
+  // Matangi: hexagram and small triangle (circumradius 1/3), 8 petals, a
+  // boundary circle, 16 petals.
   function buildMatangiStages(){
     return [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages()).concat([
-      innerDownTriangleStage(0.32),
-      lotusStageDef(8, 'Eight-petal lotus', 1.00, 1.42, 'lotus8'),
-      innerCircleStageDef('The ring boundary', 1.42, TIP_NOTE),
-      lotusStageDef(16, 'Sixteen-petal lotus', 1.42, 1.795, 'lotus16')
+      innerDownTriangleStage(1/3, 'one third'),
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8),
+      innerCircleStageDef('The ring boundary', SQ2, TIP_NOTE, SQ2_LABEL),
+      lotusStageDef(16, 'Sixteen-petal lotus', SQ2, SQ2 * 1.25, 'lotus16', undefined, TIP16)
+    ]);
+  }
+  // Mahaganapati (Buhnemann 2003, Illustration 6): a downward triangle in a
+  // hexagram, one 8-petal lotus, a square with four gates. The triangle's tip
+  // sits exactly on the hexagram's lower inner side (circumradius 1/2).
+  function buildGaneshaStages(){
+    return [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages()).concat([
+      innerDownTriangleStage(0.5, 'half',
+        'Mark the tip halfway between the center and the bottom pole. It lands exactly where the vertical axis crosses the upward triangle’s base.'),
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8)
+    ]);
+  }
+  // Durga Saptashati Mahayantra (Buhnemann 2003, Illustration 4, pp. 63-65):
+  // the same core, an 8-petal lotus, a circle through its tips, a 24-petal
+  // lotus resting on that circle, and a square with four gates.
+  function buildDurgaStages(){
+    return [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages()).concat([
+      innerDownTriangleStage(0.5, 'half',
+        'Mark the tip halfway between the center and the bottom pole. It lands exactly where the vertical axis crosses the upward triangle’s base.'),
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8),
+      innerCircleStageDef('The ring boundary', SQ2, TIP_NOTE, SQ2_LABEL),
+      lotusStageDef(24, 'Twenty-four-petal lotus', SQ2, SQ2 * 1.25, 'lotus16', undefined, TIP16)
     ]);
   }
   // Kamala: the plainest hexagram-in-circle, with one 8-petal lotus.
   function buildKamalaStages(){
     return [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages()).concat([
-      lotusStageDef(8, 'Eight-petal lotus', 1.00, 1.40, 'lotus8')
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, SQ2, 'lotus8', undefined, TIP8)
     ]);
   }
 
@@ -2247,23 +2303,56 @@
         sources: 'Arthur Avalon (Sir John Woodroffe), <i>The Serpent Power</i> (1919) — the classical source for the chakra iconography used across these presets.'
       }
     },
+    ganesha: {
+      name: 'Gaṇeśa (Mahāgaṇapati)', hasBhupura: true, yantraExtent: 1.4143, bhupuraLines: 1, build: buildGaneshaStages,
+      math: {
+        title: 'Gaṇeśa — Mahāgaṇapati yantra', subtitle: 'A downward triangle inside a hexagram, in an eight-petal lotus.',
+        meaning:
+          '<p>Gaṇeśa (Gaṇapati) is the remover of obstacles, honored first in most Hindu rites. This is the worship yantra (<i>pūjāyantra</i>) of Mahāgaṇapati. The Gaṇeśapūrvatāpanīya Upaniṣad reads the hexagram in a Gaṇeśa yantra as the six worlds and seasons, and the lines of its central downward triangle as the three worlds and the three Vedas.</p>',
+        geometry:
+          '<p>From the center out: a downward-pointing triangle inside a hexagram, an eight-petal lotus around it, and a square with four gates. The drawing in the book has a circle holding the hexagram; the small triangle’s tip rests on the hexagram’s lower inner side.</p>' +
+          '<p>Where sources disagree, this app follows the book. One web page puts an <i>upward</i> triangle at the center and others give a four-petal lotus; neither is supported by the scholarly source or by the Upaniṣad. Drik Panchang’s Gaṇeśa yantra agrees on the hexagram, eight petals and gated square, and adds the mantra text. The hexagram is inscribed in the circle, and the bhūpura is a single line.</p>' +
+          '<p>Every size is exact. The small triangle is circumscribed by a circle of half the radius, which puts its tip exactly where the vertical axis crosses the upward triangle’s base and its top side a quarter of the radius above the center. The petals end on the circle √2 times the radius. The book’s hand-drawn figure is slightly irregular (its circle is a little larger than the hexagram and its horizontal petals are longer); this app draws the exact version.</p>',
+        sources:
+          'Gudrun Bühnemann, <i>Maṇḍalas and Yantras in the Hindu Traditions</i> (Leiden: Brill, 2003) — Illustration 6 (Mahāgaṇapati pūjāyantra) and the discussion of the Gaṇeśapūrvatāpanīya Upaniṣad, section 3.<br><br>' +
+          'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/gods/lord-ganesha/yantra/vakratunda/puja-vidhi/ganesha-vakratunda-yantra-puja-vidhi.html" target="_blank" rel="noopener">Ganesha Yantra</a>.<br><br>' +
+          '<a href="https://hinduonline.co/Scriptures/Tantra/Ganesha.html" target="_blank" rel="noopener">hinduonline.co</a> — square, eight petals and hexagon agree; its upward central triangle does not.'
+      }
+    },
+    durga: {
+      name: 'Durgā (Saptaśatī Mahāyantra)', hasBhupura: true, yantraExtent: 1.7678, bhupuraLines: 1, build: buildDurgaStages,
+      math: {
+        title: 'Durgā — Saptaśatī Mahāyantra', subtitle: 'The yantra used with the Devīmāhātmya (Durgā Saptaśatī), especially at Navarātri.',
+        meaning:
+          '<p>This is the yantra Smārta priests use when reciting the Durgā Saptaśatī (also called the Devīmāhātmya or Caṇḍī), the roughly 700-verse praise of the goddess from the Mārkaṇḍeya Purāṇa. In the center are the three great forms of the goddess, Mahākālī, Mahālakṣmī and Mahāsarasvatī, with the Śaktis, mother goddesses, Bhairavas and directional guardians around them in the outer rings.</p>',
+        geometry:
+          '<p>From the center out: a downward-pointing triangle inside a hexagram, an eight-petal lotus, a circle through the tips of those petals, a twenty-four-petal lotus whose bases rest on that circle, and a square with four gates. The eight petals hold the eight mother goddesses and the eight Bhairavas; the twenty-four hold twenty-four Śaktis.</p>' +
+          '<p>Drik Panchang’s Durgā yantra agrees on the core (downward triangle, hexagram, eight petals, gated square) but replaces the twenty-four-petal ring with a plain circle, so it reads as the simpler version. Bühnemann notes that a simpler version of this yantra also exists (Coburn 1991). This app draws the full figure from the book. The hexagram is inscribed in the first circle, and the bhūpura is a single line.</p>' +
+          '<p>Every size is exact. The small triangle is circumscribed by a circle of half the radius, so its tip lands exactly on the upward triangle’s base. The eight petals end on the circle √2 times the radius; the twenty-four petals stand on that circle and end 5/4 of its radius out. The book’s drawing is hand-made and slightly irregular; this app draws the exact version.</p>',
+        sources:
+          'Gudrun Bühnemann, <i>Maṇḍalas and Yantras in the Hindu Traditions</i> (Leiden: Brill, 2003) — Illustration 4 and section 5.1 (the saptaśatīmahāyantra).<br><br>' +
+          'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/durga/yantra/diagram/shri-durga-yantra.html" target="_blank" rel="noopener">Durga Yantra</a> — agrees on the core, shows a simpler outer ring.'
+      }
+    },
     kali: {
-      name: 'Kālī', hasBhupura: true, yantraExtent: 1.32, bhupuraLines: 1, build: buildKaliStages,
+      name: 'Kālī', hasBhupura: true, yantraExtent: 1.4143, bhupuraLines: 1, build: buildKaliStages,
       math: {
         title: 'Kālī — Mahāvidyā yantra', subtitle: 'Time, dissolution and the cycle’s end.',
         meaning: '<p>Kālī is traditionally named first among the ten Mahāvidyās. Her name is tied to <i>kāla</i>, time, and to the dissolution in which every form returns to its source. Her yantra is read as that return drawn as a figure: a descending triangle with nothing outside it.</p>',
-        geometry: '<p>From the center out: five nested downward-pointing triangles (the innermost is filled, with the bindu), three concentric circles, an eight-petal lotus whose petals rest on the outermost of those circles, and one more circle through the petal tips. The five triangles are evenly stepped in size, and the largest sits inside the three circles rather than touching them. Unlike the Sri Yantra there are no upward triangles at all.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/kali/yantra/goddess-kali-yantra.html" target="_blank" rel="noopener">Kālī Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>From the center out: five nested downward-pointing triangles (the innermost is filled, with the bindu), three concentric circles, an eight-petal lotus whose petals rest on the outermost of those circles, and one more circle through the petal tips. The five triangles are evenly stepped in size, and the largest sits inside the three circles rather than touching them. Unlike the Sri Yantra there are no upward triangles at all.</p>' +
+          '<p>Every size here is exact. The three circles have radii 1, 11/12 and 5/6. The five triangles are circumscribed by circles of radius 7/9, 6/9, 5/9, 4/9 and 3/9, so each steps in by the same amount. The petals rest on the outer circle and end on the circle √2 times its radius, the diagonal of the square built on that radius, which is also the circle drawn through the tips.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/kali/yantra/goddess-kali-yantra.html" target="_blank" rel="noopener">Kālī Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     },
     tara: {
-      name: 'Tārā', hasBhupura: true, yantraExtent: 1.4, bhupuraLines: 1, build: buildTaraStages,
+      name: 'Tārā', hasBhupura: true, yantraExtent: 1.4143, bhupuraLines: 1, build: buildTaraStages,
       math: {
         title: 'Tārā — Mahāvidyā yantra', subtitle: 'The guiding star, the one who ferries across.',
         meaning: '<p>Tārā (“star”) is the second Mahāvidyā, the goddess who guides and carries the practitioner across difficulty, the same root as <i>tāraṇa</i>, “crossing.” Her yantra is among the plainest of the ten.</p>',
-        geometry: '<p>One downward-pointing triangle inscribed in the circle, with all three corners on it, and one eight-petal lotus around the outside. That is the whole figure. Because the triangle is equilateral and inscribed, its corners are exact, found by marking where the guide line meets the circle.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/tara/yantra/goddess-tara-yantra.html" target="_blank" rel="noopener">Tārā Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>One downward-pointing triangle inscribed in the circle, with all three corners on it, and one eight-petal lotus around the outside. That is the whole figure. Because the triangle is equilateral and inscribed, its corners are exact, found by marking where the guide line meets the circle.</p>' +
+          '<p>The triangle’s corners lie exactly on the circle. The petals rest on the circle and end on the circle √2 times its radius, the diagonal of the square built on the radius.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/tara/yantra/goddess-tara-yantra.html" target="_blank" rel="noopener">Tārā Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     },
@@ -2281,72 +2370,79 @@
       }
     },
     bhuvaneshvari: {
-      name: 'Bhuvaneśvarī', hasBhupura: true, yantraExtent: 1.89, bhupuraLines: 1, build: buildBhuvaneshvariStages,
+      name: 'Bhuvaneśvarī', hasBhupura: true, yantraExtent: 2.0, bhupuraLines: 1, build: buildBhuvaneshvariStages,
       math: {
         title: 'Bhuvaneśvarī — Mahāvidyā yantra', subtitle: 'Sovereign of the worlds, the goddess of space.',
         meaning: '<p>Bhuvaneśvarī means “sovereign of the worlds” (<i>bhuvana</i>, world; <i>īśvarī</i>, ruler). She is the fourth Mahāvidyā and is associated with space, the field in which everything else is arranged.</p>',
-        geometry: '<p>A hexagram (an upward and a downward triangle, both inscribed in the inner circle) with a small downward triangle at its center. Around it, an eight-petal lotus runs from that circle out to a second circle, and a second, larger eight-petal lotus runs from that circle outward. The two rings share the boundary circle exactly: the inner petals’ tips and the outer petals’ bases both sit on it.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/bhuvaneshvari/yantra/goddess-bhuvaneshvari-yantra.html" target="_blank" rel="noopener">Bhuvaneshvari Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>A hexagram (an upward and a downward triangle, both inscribed in the inner circle) with a small downward triangle at its center. Around it, an eight-petal lotus runs from that circle out to a second circle, and a second, larger eight-petal lotus runs from that circle outward. The two rings share the boundary circle exactly: the inner petals’ tips and the outer petals’ bases both sit on it.</p>' +
+          '<p>Every size is exact. The hexagram’s six corners lie on the first circle; the small triangle is circumscribed by a circle one third of the radius. The inner petals end on the circle √2 times the radius, which is the boundary circle; the outer petals stand on it and end on a circle of twice the radius.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/bhuvaneshvari/yantra/goddess-bhuvaneshvari-yantra.html" target="_blank" rel="noopener">Bhuvaneshvari Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     },
     bhairavi: {
-      name: 'Bhairavī', hasBhupura: true, yantraExtent: 1.4, bhupuraLines: 1, build: buildBhairaviStages,
+      name: 'Bhairavī', hasBhupura: true, yantraExtent: 1.4143, bhupuraLines: 1, build: buildBhairaviStages,
       math: {
         title: 'Bhairavī — Mahāvidyā yantra', subtitle: 'The fierce goddess of heat and discipline.',
         meaning: '<p>Bhairavī is the fifth Mahāvidyā, the fierce feminine counterpart of Bhairava. Her form is associated with intensity, heat and ascetic discipline.</p>',
-        geometry: '<p>Nine nested downward-pointing triangles, evenly stepped in size, the largest inscribed in the circle and the smallest a tiny triangle at the center holding the bindu. An eight-petal lotus surrounds the circle, and a thin outer circle passes through the petal tips.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/bhairavi/yantra/goddess-bhairavi-yantra.html" target="_blank" rel="noopener">Bhairavi Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>Nine nested downward-pointing triangles, evenly stepped in size, the largest inscribed in the circle and the smallest a tiny triangle at the center holding the bindu. An eight-petal lotus surrounds the circle, and a thin outer circle passes through the petal tips.</p>' +
+          '<p>Every size is exact. The nine triangles are circumscribed by circles of radius 10/10 down to 2/10, so each steps in by the same tenth of the radius, and the largest has its corners on the circle. The petals end on the circle √2 times the radius, and the thin outer circle passes through those tips.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/bhairavi/yantra/goddess-bhairavi-yantra.html" target="_blank" rel="noopener">Bhairavi Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     },
     chinnamasta: {
-      name: 'Chinnamastā', hasBhupura: true, yantraExtent: 1.4, bhupuraLines: 1, build: buildChinnamastaStages,
+      name: 'Chinnamastā', hasBhupura: true, yantraExtent: 1.4143, bhupuraLines: 1, build: buildChinnamastaStages,
       math: {
         title: 'Chinnamastā — Mahāvidyā yantra', subtitle: 'The self-sacrificing goddess.',
         meaning: '<p>Chinnamastā (“she whose head is severed”) is the sixth Mahāvidyā, shown in her usual iconography holding her own severed head. Traditionally read as a figure of self-sacrifice, and of life energy passed on and renewed.</p>',
-        geometry: '<p>A large downward triangle inscribed in the circle. Inside it, three concentric circles: the largest just touches the triangle’s top side (it is the triangle’s inscribed circle), and the innermost holds a smaller downward triangle with all three corners on that circle. Eight petals surround the main circle; there is no outer circle through the tips.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/chhinnamasta/yantra/goddess-chhinnamasta-yantra.html" target="_blank" rel="noopener">Chhinnamasta Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>A large downward triangle inscribed in the circle. Inside it, three concentric circles: the largest just touches the triangle’s top side (it is the triangle’s inscribed circle), and the innermost holds a smaller downward triangle with all three corners on that circle. Eight petals surround the main circle; there is no outer circle through the tips.</p>' +
+          '<p>Every size is exact. The first inner circle has half the radius, which is exactly the large triangle’s inscribed circle, so it touches the top side and nothing else. The next two circles have radii 9/20 and 2/5, and the small triangle’s corners lie exactly on the innermost one. The petals end on the circle √2 times the radius.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/chhinnamasta/yantra/goddess-chhinnamasta-yantra.html" target="_blank" rel="noopener">Chhinnamasta Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     },
     dhumavati: {
-      name: 'Dhūmāvatī', hasBhupura: true, yantraExtent: 1.4, bhupuraLines: 1, build: buildDhumavatiStages,
+      name: 'Dhūmāvatī', hasBhupura: true, yantraExtent: 1.4143, bhupuraLines: 1, build: buildDhumavatiStages,
       math: {
         title: 'Dhūmāvatī — Mahāvidyā yantra', subtitle: 'The smoky one, the widow goddess.',
         meaning: '<p>Dhūmāvatī (“the smoky one,” from <i>dhūma</i>, smoke) is the seventh Mahāvidyā, usually pictured as an old widow. She is associated with what is left after fire, with renunciation and with the emptiness behind appearances.</p>',
-        geometry: '<p>A hexagram inscribed in the circle (an upward and a downward triangle sharing it), a small downward triangle at the center of the hexagram, and a ring of eight petals around the circle.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/dhumavati/yantra/goddess-dhumavati-yantra.html" target="_blank" rel="noopener">Dhumavati Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>A hexagram inscribed in the circle (an upward and a downward triangle sharing it), a small downward triangle at the center of the hexagram, and a ring of eight petals around the circle.</p>' +
+          '<p>Every size is exact. The hexagram’s corners lie on the circle, and the small central triangle is circumscribed by a circle two fifths of the radius. The petals end on the circle √2 times the radius.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/dhumavati/yantra/goddess-dhumavati-yantra.html" target="_blank" rel="noopener">Dhumavati Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     },
     bagalamukhi: {
-      name: 'Bagalāmukhī', hasBhupura: true, yantraExtent: 2.46, bhupuraLines: 1, build: buildBagalamukhiStages,
+      name: 'Bagalāmukhī', hasBhupura: true, yantraExtent: 2.5, bhupuraLines: 1, build: buildBagalamukhiStages,
       math: {
         title: 'Bagalāmukhī — Mahāvidyā yantra', subtitle: 'The goddess who halts and silences.',
         meaning: '<p>Bagalāmukhī is the eighth Mahāvidyā, associated with <i>stambhana</i>, the power to halt or silence, especially hostile speech. She is traditionally shown in yellow.</p>',
-        geometry: '<p>The innermost figure is a hexagram with a small downward triangle at the center, inside a circle. Around it, three rings of petals: eight petals, then eight more, then sixteen, each ring closed by a circle through its tips, and each ring’s petal bases resting on the previous circle. It is the largest of the ten figures, about two and a half times the radius of its central circle.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/bagalamukhi/yantra/goddess-bagalamukhi-yantra.html" target="_blank" rel="noopener">Bagalamukhi Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>The innermost figure is a hexagram with a small downward triangle at the center, inside a circle. Around it, three rings of petals: eight petals, then eight more, then sixteen, each ring closed by a circle through its tips, and each ring’s petal bases resting on the previous circle. It is the largest of the ten figures, about two and a half times the radius of its central circle.</p>' +
+          '<p>Every size is exact. The hexagram’s corners lie on the first circle, and the small triangle is circumscribed by a circle one third of the radius. Going outward the rings are: eight petals ending on the circle √2 times the radius; eight petals ending on a circle of twice the radius; sixteen petals ending on a circle 5/2 times the radius. Each ring’s bases stand on the previous circle.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/bagalamukhi/yantra/goddess-bagalamukhi-yantra.html" target="_blank" rel="noopener">Bagalamukhi Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     },
     matangi: {
-      name: 'Mātaṅgī', hasBhupura: true, yantraExtent: 1.8, bhupuraLines: 1, build: buildMatangiStages,
+      name: 'Mātaṅgī', hasBhupura: true, yantraExtent: 1.7678, bhupuraLines: 1, build: buildMatangiStages,
       math: {
         title: 'Mātaṅgī — Mahāvidyā yantra', subtitle: 'The goddess of speech, music and learning.',
         meaning: '<p>Mātaṅgī is the ninth Mahāvidyā, often called the tantric Sarasvatī, associated with speech, music and learning, including the kind that arises outside formal convention.</p>',
-        geometry: '<p>A hexagram with a small downward triangle at the center, inscribed in a circle. An eight-petal lotus runs from that circle out to a boundary circle, and a sixteen-petal lotus runs from that boundary outward. The boundary circle is shared exactly, as in the Sri Yantra’s 8 and 16 petal rings.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/matangi/yantra/goddess-matangi-yantra.html" target="_blank" rel="noopener">Matangi Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>A hexagram with a small downward triangle at the center, inscribed in a circle. An eight-petal lotus runs from that circle out to a boundary circle, and a sixteen-petal lotus runs from that boundary outward. The boundary circle is shared exactly, as in the Sri Yantra’s 8 and 16 petal rings.</p>' +
+          '<p>Every size is exact. The hexagram’s corners lie on the first circle, and the small triangle is circumscribed by a circle one third of the radius. The eight petals end on the boundary circle at √2 times the radius, and the sixteen petals stand on it and end 5/4 of that radius out.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/matangi/yantra/goddess-matangi-yantra.html" target="_blank" rel="noopener">Matangi Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     },
     kamala: {
-      name: 'Kamalā', hasBhupura: true, yantraExtent: 1.4, bhupuraLines: 1, build: buildKamalaStages,
+      name: 'Kamalā', hasBhupura: true, yantraExtent: 1.4143, bhupuraLines: 1, build: buildKamalaStages,
       math: {
         title: 'Kamalā — Mahāvidyā yantra', subtitle: 'The lotus goddess of abundance.',
         meaning: '<p>Kamalā (“she of the lotus”) is the tenth Mahāvidyā, the form of Lakṣmī among the ten, associated with abundance and well-being.</p>',
-        geometry: '<p>The plainest of the hexagram yantras: an upward and a downward triangle inscribed in the circle, with their overlap forming a central hexagon, and a single ring of eight petals around the circle.</p>',
-        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/kamala/yantra/goddess-kamala-yantra.html" target="_blank" rel="noopener">Kamala Yantra</a> — the diagram this figure is rebuilt from; ring radii and petal tips were measured from it.<br><br>' +
+        geometry: '<p>The plainest of the hexagram yantras: an upward and a downward triangle inscribed in the circle, with their overlap forming a central hexagon, and a single ring of eight petals around the circle.</p>' +
+          '<p>The hexagram’s corners lie exactly on the circle, and its overlap is a regular hexagon. The petals end on the circle √2 times the radius, the diagonal of the square built on the radius.</p>',
+        sources: 'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/parvati/mahavidya/kamala/yantra/goddess-kamala-yantra.html" target="_blank" rel="noopener">Kamala Yantra</a> — the diagram whose order of parts and tangencies this figure follows. The sizes are exact constructions, described under Geometry.<br><br>' +
           'Other web pages describe some of the Mahāvidyā yantras with different figures. Where they differ, this app follows the Drik Panchang diagram.'
       }
     }
@@ -2356,6 +2452,7 @@
   var PRESET_GROUPS = [
     { label: null, keys: ['sriYantra'] },
     { label: 'Daśa Mahāvidyās', keys: ['kali', 'tara', 'shodashi', 'bhuvaneshvari', 'bhairavi', 'chinnamasta', 'dhumavati', 'bagalamukhi', 'matangi', 'kamala'] },
+    { label: 'Deity yantras', keys: ['ganesha', 'durga'] },
     { label: 'Chakras', keys: ['muladhara', 'swadhisthana', 'manipura', 'anahata', 'vishuddhi', 'ajna'] }
   ];
   var currentPresetKey = null;
