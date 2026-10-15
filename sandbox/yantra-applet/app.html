@@ -1051,13 +1051,13 @@
   var BHUPURA_MIN_APPROACH = { 1: bhupuraMinApproach(1), 3: bhupuraMinApproach(3) };
   var BHUPURA_GAP = 0.15;
 
-  function bhupuraScaleFor(yantraExtent, lineCount){
-    return ((yantraExtent || 1.5) + BHUPURA_GAP) / BHUPURA_MIN_APPROACH[lineCount === 1 ? 1 : 3];
+  function bhupuraScaleFor(yantraExtent, lineCount, gap){
+    return ((yantraExtent || 1.5) + (gap === undefined ? BHUPURA_GAP : gap)) / BHUPURA_MIN_APPROACH[lineCount === 1 ? 1 : 3];
   }
 
-  function drawBhupura(color, width, yantraExtent, lineCount){
+  function drawBhupura(color, width, yantraExtent, lineCount, gap){
     ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = 'miter';
-    var s = geo.R * bhupuraScaleFor(yantraExtent, lineCount);
+    var s = geo.R * bhupuraScaleFor(yantraExtent, lineCount, gap);
     bhupuraLinesFor(lineCount).forEach(function(path){
       ctx.beginPath();
       path.forEach(function(p, idx){
@@ -1648,6 +1648,52 @@
       lotusStageDef(24, 'Twenty-four-petal lotus', SQ2, SQ2 * 1.25, 'lotus16', undefined, TIP16)
     ]);
   }
+  // Rudrapitha Mahayantra (Buhnemann 2003, Illustration 5 and pp. 65-67): a
+  // central circle (the pericarp, with an inscribed band), then five rings of
+  // 8, 16, 24, 32 and 40 petals, then a square of three nested lines with
+  // four gates. In the book's drawing the circles are equally spaced: the
+  // pericarp has radius 4 parts and each ring is exactly 3 parts wide, so the
+  // ring circles sit at 4, 7, 10, 13, 16 and (the last petal tips) 19 parts.
+  function buildRudrapithaStages(){
+    var PART = 0.25; // one part = a quarter of the pericarp radius
+    var r = function(parts){ return parts * PART; };
+    var counts = [8, 16, 24, 32, 40];
+    var names = ['First', 'Second', 'Third', 'Fourth', 'Fifth'];
+    var stages = [
+      circleStageDef('The pericarp circle'),
+      axisStageDef(),
+      innerCircleStageDef('The inner circle of the pericarp', r(3), 'Swing a full turn: with the first circle, it makes the narrow band that holds the inscription.', '3/4 of the radius (three of the four equal parts)')
+    ];
+    counts.forEach(function(n, i){
+      var base = 4 + 3 * i, tip = base + 3;
+      stages.push(lotusStageDef(n, names[i] + ' lotus (' + n + ' petals)', r(base), r(tip), i % 2 ? 'lotus16' : 'lotus8', undefined,
+        'on the circle ' + (tip / 4) + ' times the pericarp radius (three more of the equal parts out)'));
+      if(i < counts.length - 1){
+        stages.push(innerCircleStageDef('The ring circle at ' + tip + '/4', r(tip),
+          'Swing a full turn through the petal tips: the next ring’s petals stand on this circle.', tip + '/4 of the pericarp radius'));
+      }
+    });
+    return stages;
+  }
+  // Sudarshana: a hexagram inscribed in a circle, surrounded by rings of 8, 16,
+  // 32 and 64 lotus petals (Buhnemann 2003, p. 46 and n. 83, after Begley 1973).
+  // No source gives the ring widths. The rings are equal, each 3/4 of the
+  // central radius wide, the same proportion as the Rudrapitha figure.
+  function buildSudarshanaStages(){
+    var counts = [8, 16, 32, 64];
+    var names = ['First', 'Second', 'Third', 'Fourth'];
+    var stages = [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages());
+    counts.forEach(function(n, i){
+      var base = 4 + 3 * i, tip = base + 3;
+      stages.push(lotusStageDef(n, names[i] + ' lotus (' + n + ' petals)', base / 4, tip / 4, i % 2 ? 'lotus16' : 'lotus8', undefined,
+        'on the circle ' + (tip / 4) + ' times the main radius (three more of four equal parts out)'));
+      if(i < counts.length - 1){
+        stages.push(innerCircleStageDef('The ring circle at ' + tip + '/4', tip / 4,
+          'Swing a full turn through the petal tips: the next ring’s petals stand on this circle.', tip + '/4 of the main radius'));
+      }
+    });
+    return stages;
+  }
   // Kamala: the plainest hexagram-in-circle, with one 8-petal lotus.
   function buildKamalaStages(){
     return [circleStageDef('The circle'), axisStageDef()].concat(hexagramStages()).concat([
@@ -1967,7 +2013,7 @@
     }
 
     if(currentPresetHasBhupura && showBhupura){
-      drawBhupura(resolveColor(pal.bhupura), strokeWidth * 0.85, PRESETS[currentPresetKey].yantraExtent, PRESETS[currentPresetKey].bhupuraLines);
+      drawBhupura(resolveColor(pal.bhupura), strokeWidth * 0.85, PRESETS[currentPresetKey].yantraExtent, PRESETS[currentPresetKey].bhupuraLines, PRESETS[currentPresetKey].bhupuraGap);
     }
 
     drawBindu();
@@ -2344,6 +2390,36 @@
           'Drik Panchang, <a href="https://www.drikpanchang.com/vedic-mantra/goddesses/durga/yantra/diagram/shri-durga-yantra.html" target="_blank" rel="noopener">Durga Yantra</a> — agrees on the core, shows a simpler outer ring.'
       }
     },
+    rudrapitha: {
+      name: 'Rudra (Rudrapīṭha Mahāyantra)', hasBhupura: true, yantraExtent: 4.75, bhupuraLines: 3, bhupuraGap: 0.375, build: buildRudrapithaStages,
+      math: {
+        title: 'Rudrapīṭha Mahāyantra', subtitle: 'Five rings of lotus petals around the seat of Rudra.',
+        meaning:
+          '<p>The Rudrapīṭha Mahāyantra (“great yantra of Rudra’s seat”) is used with the recitation of the Rudrādhyāya, Taittirīya Saṃhitā 4.5.1–11 of the Yajur Veda. A ritual manual attributes it to the Skanda Purāṇa and prescribes it for all worship of Rudra. After the deities are invoked into it, a vessel is set on top of it as the seat of Śiva.</p>' +
+          '<p>In the middle, in the pericarp, the five-faced Rudra is worshipped with the mantras of his five aspects: Sadyojāta, Vāmadeva, Aghora, Tatpuruṣa and Īśāna. Around him, ring by ring: eight attendants of Śiva (8 petals); sixteen aspects of Śiva (16); the eight siddhis, eight mother goddesses and eight Bhairavas (24); the eight forms of Śiva, eight great serpents, eight kings and eight mountain ranges (32); and the eight directional guardians with their consorts, weapons, vehicles and elephants (40). In all 141 deities are invoked.</p>',
+        geometry:
+          '<p>This one has no triangles. From the center out: a pericarp circle with a narrow band inside it, then five rings of petals with 8, 16, 24, 32 and 40 petals. Each ring’s petals stand on a circle and end on the next, and a circle is drawn at each of those boundaries. Around it all is a square of three nested lines (white, red and black, named for sattva, rajas and tamas) with four gates. The book notes eight great snakes outside the gates.</p>' +
+          '<p>Every size is exact. In the book’s drawing the circles are equally spaced: the pericarp has a radius of four equal parts, and each ring is exactly three of those parts wide, so the circles sit at 4, 7, 10, 13 and 16 parts and the outermost petal tips at 19. The inner circle of the pericarp band is at 3 parts. Each ring starts with a petal pointing straight up. The bhūpura gap is set to the book’s proportions as well.</p>',
+        sources:
+          'Gudrun Bühnemann, <i>Maṇḍalas and Yantras in the Hindu Traditions</i> (Leiden: Brill, 2003), section 5.2 and Illustration 5 — the figure, the ring counts, the three lines of the square, and the deities. The ring spacing is taken from the book’s drawing of the Rgvedīyabrahmakarmasamuccaya print.'
+      }
+    },
+    sudarshana: {
+      name: 'Sudarśana (Viṣṇu’s wheel)', hasBhupura: false, yantraExtent: 4, build: buildSudarshanaStages,
+      math: {
+        title: 'Sudarśana yantra', subtitle: 'A hexagram in a circle, ringed by lotus petals that double at each turn.',
+        meaning:
+          '<p>Sudarśana is Viṣṇu’s discus, worshipped in its own right in the Pāñcarātra tradition as Sudarśanacakrapuruṣa, the wheel in person. The Ahirbudhnya Saṃhitā prescribes a Sudarśana yantra for kings and for anyone seeking kingship, to be installed in a temple and worshipped daily like an image. Temple bronzes of the sixteen-armed Sudarśana, such as one of about the seventeenth century at Tirumohur, stand against a yantra-like structure, and the back of such an image often shows Narasimha.</p>',
+        geometry:
+          '<p>From the center out: a circle with a hexagram inscribed in it, then four rings of lotus petals with 8, 16, 32 and 64 petals, each ring standing on the circle the last one ended on. The hexagram is a plain pair of equilateral triangles, one up and one down, with all six corners on the circle. The petal counts double each time.</p>' +
+          '<p>One thing no source gives is the width of the rings, so this figure does not try to measure them. The four rings are equal, each 3/4 of the central radius wide, the same proportion used in the Rudrapīṭha figure. The circles sit at 1, 7/4, 5/2, 13/4 and 4 of the central radius. Unlike the Sri Yantra and the deity yantras above, this one has no square frame, because none of the sources describe one.</p>' +
+          '<p>The Ahirbudhnya Saṃhitā also describes a different wearer’s yantra, the dhārakayantra, whose layers are a square, a hexagram, a circle, a ten-spoked wheel and an eight-petal lotus. That is a separate figure, and it is not drawn here.</p>',
+        sources:
+          'Gudrun Bühnemann, <i>Maṇḍalas and Yantras in the Hindu Traditions</i> (Leiden: Brill, 2003), the section on the hexagram: the Sudarśana yantra is a hexagram surrounded by rings of lotus petals; the Tirumohur bronze, after Begley 1973, has rings of 8, 16, 32 and 64 petals on an eight-petalled lotus.<br><br>' +
+          'Marion Rastelli, in the same volume, on the Sudarśana yantra and its worship in the Ahirbudhnya Saṃhitā (chapters 26–27) and the Parameśvara Saṃhitā.<br><br>' +
+          'A <a href="https://ibiblio.org/sripedia/srirangasri/archives/jan04/msg00064.html" target="_blank" rel="noopener">Śrī Vaiṣṇava description</a> and Vedānta Deśika’s <a href="https://www.hindupedia.com/en/Sudarshana_Ashtakam" target="_blank" rel="noopener">Sudarśanāṣṭakam</a> both give the yantra as six corners, two triangles in a circle.'
+      }
+    },
     kali: {
       name: 'Kālī', hasBhupura: true, yantraExtent: 1.4143, bhupuraLines: 1, build: buildKaliStages,
       math: {
@@ -2462,7 +2538,7 @@
   var PRESET_GROUPS = [
     { label: null, keys: ['sriYantra'] },
     { label: 'Daśa Mahāvidyās', keys: ['kali', 'tara', 'shodashi', 'bhuvaneshvari', 'bhairavi', 'chinnamasta', 'dhumavati', 'bagalamukhi', 'matangi', 'kamala'] },
-    { label: 'Deity yantras', keys: ['ganesha', 'durga'] },
+    { label: 'Deity yantras', keys: ['ganesha', 'durga', 'rudrapitha', 'sudarshana'] },
     { label: 'Chakras', keys: ['muladhara', 'swadhisthana', 'manipura', 'anahata', 'vishuddhi', 'ajna'] }
   ];
   var currentPresetKey = null;
