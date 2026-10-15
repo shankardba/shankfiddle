@@ -605,7 +605,7 @@
         <div class="num-field"><label><span>n0</span></label><input type="number" id="n0" min="1" max="600" value="140"></div>
         <div class="num-field"><label><span>n1</span></label><input type="number" id="n1" min="1" max="600" value="128"></div>
       </div>
-      <div class="label" style="margin-top:14px;">Hoop (n2), pen wheel (n3)</div>
+      <div class="label" style="margin-top:14px;" id="hoopPenHeading">Hoop (n2), pen wheel (n3)</div>
       <div class="grid2">
         <div class="num-field"><label><span>n2</span></label><input type="number" id="n2" min="1" max="600" value="54"></div>
         <div class="num-field"><label><span>n3</span></label><input type="number" id="n3" min="1" max="600" value="45"></div>
@@ -615,6 +615,7 @@
         <div class="switch" id="extraToggle"></div>
       </div>
       <div id="extraFields" style="display:none;">
+        <div class="label">Second hoop (n4), pen wheel (n5)</div>
         <div class="grid2">
           <div class="num-field"><label><span>n4</span></label><input type="number" id="n4" min="1" max="600" value="30"></div>
           <div class="num-field"><label><span>n5</span></label><input type="number" id="n5" min="1" max="600" value="18"></div>
@@ -1580,10 +1581,10 @@
     label(0,0, `ring n0=${state.n0}`);
     label(m.gearCx,m.gearCy, `wheel n1=${state.n1}`);
     label(m.hoopCx,m.hoopCy, `hoop n2=${n2}`);
-    label(m.penWheelCx,m.penWheelCy, `pen wheel n3=${n3}`);
+    label(m.penWheelCx,m.penWheelCy, `${derived.extraOn ? 'middle gear' : 'pen wheel'} n3=${n3}`);
     if(derived.extraOn){
       label(m.hoop2Cx,m.hoop2Cy, `hoop2 n4=${state.n4}`);
-      label(m.wheel2Cx,m.wheel2Cy, `wheel2 n5=${state.n5}`);
+      label(m.wheel2Cx,m.wheel2Cy, `pen wheel n5=${state.n5}`);
     }
     label(m.penX,m.penY, 'pen');
     ctx.restore();
@@ -1864,6 +1865,8 @@
     stampInfo = computeStampInfo(derived, state.stampF, state.stampB, curM());
     if(window.gearUIReady) updateBeginBtn();
     document.getElementById('stampMField').style.display = state.extraWheel ? '' : 'none';
+    // with More gears, n3 is the middle gear and the pen wheel moves out to n5
+    document.getElementById('hoopPenHeading').textContent = state.extraWheel ? 'Hoop (n2), middle gear (n3)' : 'Hoop (n2), pen wheel (n3)';
     updateStampReadout();
     updateAdvisor();
     fitScale();
@@ -1933,16 +1936,15 @@
     const h = derived.h, p = derived.p, phi = state.phi, holeMm = state.holeMm;
     const extraOn = derived.extraOn;
     const n4=state.n4, n5=state.n5, h2=derived.h2;
-    const lastLabel = extraOn ? 'n5' : 'n3';
     const lastRadius = extraOn ? n5 : n3;
     const rp = lastRadius*p;
 
-    let mech = `A pen-wheel with ${lastLabel} = ${lastRadius} teeth rolls inside a hoop with n2 = ${n2} teeth, `+
+    let mech = `A ${extraOn ? 'middle gear' : 'pen-wheel'} with n3 = ${n3} teeth rolls inside a hoop with n2 = ${n2} teeth, `+
       `itself mounted off-center on a wheel with n1 = ${n1} teeth, which rolls inside a fixed outer ring `+
       `with n0 = ${n0} teeth. `;
     if(extraOn){
-      mech += `A second hoop-and-wheel pair (n4 = ${n4}, n5 = ${n5}) nests one level deeper still, with the `+
-        `pen now riding on n5 — the same trick, applied twice. `;
+      mech += `A second hoop (n4 = ${n4}) is carried on that middle gear, and a pen wheel with n5 = ${n5} teeth `+
+        `rolls inside it, with the pen now riding on n5 — the same trick, applied twice. `;
     }
     mech += `The pen itself rides near the last wheel's rim, so every turn of that whole chain traces one point of the curve below.`;
     document.getElementById('mechProse').textContent = mech;
@@ -2019,10 +2021,10 @@ y(t) &= \textcolor{#F2A65A}{${n0-n1}}\sin t + \textcolor{#F2A65A}{${fmt(n1*h,2)}
 
     let narrative = `This exact gear combination has period T = ${derived.T} — the wheel has to turn ${derived.T} full `+
       `revolutions before the pen comes back to exactly where it started. Along the way, the wheel `+
-      `effectively completes T1 = ${derived.T1} turns relative to the ring, and the hoop-and-pen-wheel `+
+      `effectively completes T1 = ${derived.T1} turns relative to the ring, and the hoop-and-${extraOn ? 'middle-gear' : 'pen-wheel'} `+
       `assembly completes T3 = ${derived.T3} turns`;
     if(extraOn){
-      narrative += `, and the second hoop-and-pen-wheel assembly completes T5 = ${derived.T5} turns`;
+      narrative += `, and the second hoop-and-pen-wheel assembly (n4, n5) completes T5 = ${derived.T5} turns`;
     }
     narrative += `. The overall rotational symmetry is the greatest common factor of ${extraOn ? 'T1, T3 and T5' : 'T1 and T3'} `+
       `(${extraOn ? `${derived.T1}, ${derived.T3}, ${derived.T5}` : `${derived.T1}, ${derived.T3}`}). ${symmSentence}`;
