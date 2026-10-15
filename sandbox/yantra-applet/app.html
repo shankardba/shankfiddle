@@ -992,7 +992,7 @@
     var ext = (currentPresetKey && PRESETS[currentPresetKey].yantraExtent) || 1.5;
     var fit = currentPresetHasBhupura && showBhupura
       ? 0.15 * Math.min(1, 1.87 / ext)
-      : Math.min(0.34, ext > 1.5 ? 0.48 / ext : 0.34);
+      : Math.min(0.34, 0.47 / ext); // keep the outermost ring inside the canvas
     var R = Math.min(w, h) * fit;
     geo = { cx: cx, cy: cy, R: R, scale: R * 2 };
     draw();
@@ -1208,7 +1208,7 @@
     var left = [px(-m.W), py(m.B)];
     var centroid = [(apex[0] + right[0] + left[0]) / 3, (apex[1] + right[1] + left[1]) / 3];
     var sides = [[apex, right], [apex, left], [right, left]];
-    var tickLen = geo.scale * 0.045 * ease(t);
+    var tickLen = geo.scale * 0.05 * ease(t); // one tenth of the radius
     if(tickLen <= 0) return;
     ctx.strokeStyle = color; ctx.lineWidth = strokeWidth * 0.85;
     sides.forEach(function(side){
@@ -1346,13 +1346,13 @@
   function crescentStageDef(name, radiusFrac, offsetFrac){
     return {
       kind: 'crescent', name: name || 'The crescent moon',
-      radiusFrac: radiusFrac === undefined ? 0.55 : radiusFrac,
-      offsetFrac: offsetFrac === undefined ? 0.8 : offsetFrac,
+      radiusFrac: radiusFrac === undefined ? 0.5 : radiusFrac,
+      offsetFrac: offsetFrac === undefined ? 1 : offsetFrac,
       subphases: [
         { phase: 'first-circle', end: 0.35, duration: 600,
-          instruction: 'Set the compass to a smaller radius and draw a circle — this will become the crescent’s outer edge.' },
+          instruction: 'Set the compass to half the radius of the main circle and draw a circle from the center — this will become the crescent’s outer edge.' },
         { phase: 'second-circle', end: 0.65, duration: 600,
-          instruction: 'Keeping the same compass width, move the center straight up by about four-fifths of that radius, and draw a second circle of the same size — it will cross the first at two points.' },
+          instruction: 'Keeping the same compass width, put the point on the first circle, straight above the center, and draw a second circle of the same size. Each circle now passes through the other’s center, and they cross at two points, 60° either side of the vertical.' },
         { phase: 'trace', end: 1.0, duration: 700,
           instruction: 'Trace the crescent: the lower circle’s far (bottom) arc between the two crossing points, joined to the upper circle’s near (bottom) arc between the same two points. Erase both full guide circles, keeping only this outline.' }
       ]
@@ -1374,7 +1374,7 @@
   // (not eyeballed) radius: it's tangent to both the inner ring's petal
   // tips and the outer ring's petal bases because they're now the same
   // circle by construction.
-  var LOTUS_BOUNDARY_FRAC = 1.155;
+  var LOTUS_BOUNDARY_FRAC = 2 / Math.sqrt(3); // exact: the circle through the corners of the regular hexagon around the main circle
 
   function buildSriYantraStages(){
     var BUILD_ORDER = [8, 2, 1, 9, 4, 6, 5]; // remaining 7 triangles, largest-to-smallest by half-width
@@ -1388,10 +1388,11 @@
       sriTri(7, true),
       sriTri(3, true)
     ].concat(BUILD_ORDER.map(function(i){ return sriTri(i, false); })).concat([
-      lotusStageDef(8, 'Eight-petal lotus', 1.00, LOTUS_BOUNDARY_FRAC, 'lotus8'),
+      lotusStageDef(8, 'Eight-petal lotus', 1.00, LOTUS_BOUNDARY_FRAC, 'lotus8', undefined, 'on the circle 2/√3 times the base radius (the circle through the corners of the regular hexagon built around the main circle)'),
       innerCircleStageDef('The ring boundary', LOTUS_BOUNDARY_FRAC,
-        'Swing a full turn at this same radius — it touches both the inner lotus’s petal tips and the outer lotus’s petal bases, since they now share this one circle.'),
-      lotusStageDef(16, 'Sixteen-petal lotus', LOTUS_BOUNDARY_FRAC, 1.32, 'lotus16'),
+        'Swing a full turn at this same radius — it touches both the inner lotus’s petal tips and the outer lotus’s petal bases, since they now share this one circle.',
+        '2/√3 times the radius (the distance from the center to a corner of the regular hexagon built around the circle)'),
+      lotusStageDef(16, 'Sixteen-petal lotus', LOTUS_BOUNDARY_FRAC, 4 / 3, 'lotus16', undefined, 'on the circle 4/3 of the main radius'),
       tripleCircleStageDef()
     ]);
   }
@@ -1402,6 +1403,8 @@
   // circle (unlike Sri Yantra, there's no concurrency system to solve: two
   // ordinary equilateral triangles sharing the same circumcircle already
   // form a valid hexagram).
+  var TIP76 = 'on the circle 7/6 of the base radius (one sixth of a radius beyond it)';
+  var TIP54C = 'on the circle 5/4 of the base radius (a quarter-radius beyond it, found by bisecting twice)';
   function buildAnahataStages(){
     var up = equilateralTriangle('up', 1);
     var down = equilateralTriangle('down', 1);
@@ -1410,7 +1413,7 @@
       axisStageDef(),
       triangleStageDef(up, true, 'Upward triangle (Shiva)', 'up'),
       triangleStageDef(down, true, 'Downward triangle (Shakti)', 'down'),
-      lotusStageDef(12, 'Twelve-petal lotus', 1.00, 1.16)
+      lotusStageDef(12, 'Twelve-petal lotus', 1.00, 7 / 6, undefined, undefined, TIP76)
     ];
   }
 
@@ -1424,7 +1427,7 @@
       axisStageDef(),
       triangleStageDef(tri, true, 'The fire triangle', 'down'),
       triangleGatesStageDef(tri, 'The three fire-gates'),
-      lotusStageDef(10, 'Ten-petal lotus', 1.00, 1.16)
+      lotusStageDef(10, 'Ten-petal lotus', 1.00, 7 / 6, undefined, undefined, TIP76)
     ];
   }
 
@@ -1432,14 +1435,14 @@
   // Sixteen-petal lotus around a smaller inner circle (the full moon /
   // ether), itself enclosing a downward triangle sized to that inner circle.
   function buildVishuddhiStages(){
-    var innerRFrac = 0.55;
+    var innerRFrac = 0.5;
     var tri = equilateralTriangle('down', innerRFrac);
     return [
       circleStageDef('The outer circle'),
       axisStageDef(),
-      lotusStageDef(16, 'Sixteen-petal lotus', 1.00, 1.16),
+      lotusStageDef(16, 'Sixteen-petal lotus', 1.00, 7 / 6, undefined, undefined, TIP76),
       innerCircleStageDef('The inner circle (ether)', innerRFrac,
-        'Swing a full turn to draw the smaller inner circle — the moon disc of the ether element.'),
+        'Swing a full turn to draw the smaller inner circle — the moon disc of the ether element.', 'half the radius'),
       triangleStageDef(tri, true, 'The inner triangle', 'down', 'the inner circle')
     ];
   }
@@ -1453,7 +1456,7 @@
     return [
       circleStageDef('The circle'),
       axisStageDef(),
-      lotusStageDef(4, 'Four-petal lotus', 1.00, 1.26),
+      lotusStageDef(4, 'Four-petal lotus', 1.00, 1.25, undefined, undefined, TIP54C),
       squareStageDef('The square (earth)'),
       triangleStageDef(tri, true, 'The inner triangle', 'down', 'the square')
     ];
@@ -1465,8 +1468,8 @@
     return [
       circleStageDef('The circle'),
       axisStageDef(),
-      lotusStageDef(6, 'Six-petal lotus', 1.00, 1.26),
-      crescentStageDef('The crescent moon (water)', 0.55, 0.8)
+      lotusStageDef(6, 'Six-petal lotus', 1.00, 1.25, undefined, undefined, TIP54C),
+      crescentStageDef('The crescent moon (water)', 0.5, 1)
     ];
   }
 
@@ -1478,7 +1481,7 @@
     return [
       circleStageDef('The circle'),
       axisStageDef(),
-      lotusStageDef(2, 'Two-petal lotus', 1.00, 1.87, undefined, 0),
+      lotusStageDef(2, 'Two-petal lotus', 1.00, 1 + Math.sqrt(3) / 2, undefined, 0, 'on the circle 1 + √3/2 times the base radius (the radius plus the height of an equilateral triangle on it)'),
       triangleStageDef(tri, true, 'The inner triangle', 'down')
     ];
   }
@@ -2143,7 +2146,8 @@
           'different lines are supposed to cross. The construction animation shows one ' +
           'honest way to physically draw each triangle with compass and straightedge once ' +
           'those positions are known: an arc struck from the true apex, at the true leg ' +
-          'length, necessarily meets the base line at the true corner.</p>',
+          'length, necessarily meets the base line at the true corner.</p>' +
+          '<p>The lotus and circle radii are exact too. The 8-petal ring ends on the circle 2/√3 times the main radius (the circle through the corners of the regular hexagon built around the main circle), which is also the boundary circle the 16 petals stand on. The 16 petals end on a circle 4/3 of the main radius, and the three outer circles sit at 7/5, 29/20 and 3/2.</p>',
         extraTitle: 'Precision, and why the numbers don’t simplify',
         extraProse:
           '<p>A 1984 survey of surviving Śrī Yantra diagrams (Kulaichev, below) sorted them ' +
@@ -2170,7 +2174,7 @@
       }
     },
     anahata: {
-      name: 'Anahata', hasBhupura: true, yantraExtent: 1.16, build: buildAnahataStages,
+      name: 'Anahata', hasBhupura: true, yantraExtent: 7 / 6, build: buildAnahataStages,
       math: {
         title: 'Anahata — Heart Chakra', subtitle: 'The fourth chakra: air, the heart, and the union of Shiva and Shakti.',
         meaning:
@@ -2190,12 +2194,13 @@
           'this is not a constraint-satisfaction problem — any two equilateral triangles ' +
           'inscribed in the same circle, one apex at each pole, already form a valid ' +
           'hexagram, so each is constructed independently by the same circle-intersection ' +
-          'method used for Sri Yantra’s outermost pair.</p>',
+          'method used for Sri Yantra’s outermost pair.</p>' +
+          '<p>Every size is exact. Both triangles are inscribed in the circle, so their six corners lie exactly on it and their overlap is a regular hexagon. The twelve petals stand on the circle and end on a circle 7/6 of its radius.</p>',
         sources: 'Arthur Avalon (Sir John Woodroffe), <i>The Serpent Power</i> (1919) — the classical source for the chakra iconography used across these presets.'
       }
     },
     manipura: {
-      name: 'Manipura', hasBhupura: true, yantraExtent: 1.16, build: buildManipuraStages,
+      name: 'Manipura', hasBhupura: true, yantraExtent: 7 / 6, build: buildManipuraStages,
       math: {
         title: 'Manipura — Solar Plexus Chakra', subtitle: 'The third chakra: fire, willpower, and the triangle with three gates.',
         meaning:
@@ -2210,12 +2215,13 @@
           'meet consciousness. On each of its three sides sits a small gate (svastika) — ' +
           'traditionally read as the sun’s rotation, and as what disciplines the triangle’s ' +
           'otherwise-unruly fire. This app marks each gate as a short outward tick at the ' +
-          'midpoint of a side, a simplified stand-in for the full svastika glyph.</p>',
+          'midpoint of a side, a simplified stand-in for the full svastika glyph.</p>' +
+          '<p>Every size is exact. The triangle is inscribed in the circle, with its corners on it. The three gates are each one tenth of the radius long, set at the midpoint of a side and pointing straight out. The ten petals stand on the circle and end on a circle 7/6 of its radius.</p>',
         sources: 'Arthur Avalon (Sir John Woodroffe), <i>The Serpent Power</i> (1919) — the classical source for the chakra iconography used across these presets.'
       }
     },
     vishuddhi: {
-      name: 'Vishuddhi', hasBhupura: true, yantraExtent: 1.16, build: buildVishuddhiStages,
+      name: 'Vishuddhi', hasBhupura: true, yantraExtent: 7 / 6, build: buildVishuddhiStages,
       math: {
         title: 'Vishuddhi — Throat Chakra', subtitle: 'The fifth chakra: ether, purification, and the moon disc.',
         meaning:
@@ -2230,12 +2236,13 @@
           'purified mind — and inside that, a downward-pointing triangle sized to match. ' +
           'This app builds that inner triangle with the exact same equilateral-inscribed-' +
           'in-a-circle construction as the outer figures, just scaled to the smaller ' +
-          'circle’s radius, so it lands on that circle exactly rather than approximately.</p>',
+          'circle’s radius, so it lands on that circle exactly rather than approximately.</p>' +
+          '<p>Every size is exact. The inner circle has half the radius, and the triangle is inscribed in it, so its corners lie exactly on that circle. The sixteen petals stand on the outer circle and end on a circle 7/6 of its radius.</p>',
         sources: 'Arthur Avalon (Sir John Woodroffe), <i>The Serpent Power</i> (1919) — the classical source for the chakra iconography used across these presets.'
       }
     },
     muladhara: {
-      name: 'Muladhara', hasBhupura: true, yantraExtent: 1.26, build: buildMuladharaStages,
+      name: 'Muladhara', hasBhupura: true, yantraExtent: 1.25, build: buildMuladharaStages,
       math: {
         title: 'Muladhara — Root Chakra', subtitle: 'The first chakra: earth, stability, and the square that grounds everything above it.',
         meaning:
@@ -2254,12 +2261,13 @@
           'circle: its base runs along the square’s top edge and its apex sits on the ' +
           'square’s bottom edge, so the same "guide line meets a known boundary" construction ' +
           'used everywhere else in this app applies here too, just against a straight edge ' +
-          'instead of an arc.</p>',
+          'instead of an arc.</p>' +
+          '<p>Every size is exact. The square’s four corners lie on the circle, at 45° from the axes. The triangle’s base is the square’s top side and its tip is the midpoint of the bottom side, so it touches the square at exactly those three points. The four petals stand on the circle and end on a circle 5/4 of its radius.</p>',
         sources: 'Arthur Avalon (Sir John Woodroffe), <i>The Serpent Power</i> (1919) — the classical source for the chakra iconography used across these presets.'
       }
     },
     swadhisthana: {
-      name: 'Swadhisthana', hasBhupura: true, yantraExtent: 1.26, build: buildSwadhisthanaStages,
+      name: 'Swadhisthana', hasBhupura: true, yantraExtent: 1.25, build: buildSwadhisthanaStages,
       math: {
         title: 'Swadhisthana — Sacral Chakra', subtitle: 'The second chakra: water, feeling, and the crescent moon.',
         meaning:
@@ -2277,12 +2285,13 @@
           'constructed with compass and straightedge: draw one circle, then a second ' +
           'identical circle with its center shifted so the two overlap; the crescent is one ' +
           'circle’s far arc joined to the other’s near arc through their two crossing ' +
-          'points, with both full guide circles erased once that outline is traced.</p>',
+          'points, with both full guide circles erased once that outline is traced.</p>' +
+          '<p>Every size is exact. The crescent’s two circles each have half the radius, and the second is centered on the first circle, straight above the center, so each passes through the other’s center. They cross at two points exactly 60° either side of the vertical. The six petals stand on the circle and end on a circle 5/4 of its radius.</p>',
         sources: 'Arthur Avalon (Sir John Woodroffe), <i>The Serpent Power</i> (1919) — the classical source for the chakra iconography used across these presets.'
       }
     },
     ajna: {
-      name: 'Ajna', hasBhupura: true, yantraExtent: 1.87, build: buildAjnaStages,
+      name: 'Ajna', hasBhupura: true, yantraExtent: 1 + Math.sqrt(3) / 2, build: buildAjnaStages,
       math: {
         title: 'Ajna — Third Eye Chakra', subtitle: 'The sixth chakra: insight, the two channels, and the triangle of light.',
         meaning:
@@ -2299,7 +2308,8 @@
           'the main circle, with just two petals rather than a full lotus ring. Traditional ' +
           'depictions often add a small Oṃ glyph and/or a bindu at the triangle’s center; ' +
           'this app draws the geometric frame those symbols sit inside, not the script ' +
-          'itself.</p>',
+          'itself.</p>' +
+          '<p>Every size is exact. The triangle is inscribed in the circle with its corners on it. The two petals point left and right, standing on the circle and ending on a circle of 1 + √3/2 times its radius: the radius plus the height of an equilateral triangle built on it.</p>',
         sources: 'Arthur Avalon (Sir John Woodroffe), <i>The Serpent Power</i> (1919) — the classical source for the chakra iconography used across these presets.'
       }
     },
@@ -2480,7 +2490,7 @@
     STEPS = flattenStages(STAGE_DEFS);
     totalSteps = STEPS.length;
     progress = 0;
-    setPlaying(false);
+    setPlaying(true); // every yantra draws itself on load; the user can pause
     constructionCompleteFired = false;
     setBhupuraAvailable(PRESETS[key].hasBhupura);
     applyPresetMath(key);
