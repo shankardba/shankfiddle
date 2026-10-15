@@ -433,6 +433,10 @@
         <div class="label">Show line intersections</div>
         <div class="switch" id="xsectToggle"></div>
       </div>
+      <div class="toggle-row">
+        <div class="label">Fill with color</div>
+        <div class="switch" id="fillToggle"></div>
+      </div>
     </div>
 
     <div class="section">
@@ -723,6 +727,14 @@
   xsectBtn.addEventListener('click', function(){ setXsect(!showXsect); });
   xsectToggle.addEventListener('click', function(){ setXsect(!showXsect); });
 
+  var fillToggle = document.getElementById('fillToggle');
+  function setFill(v){
+    showFill = v;
+    fillToggle.classList.toggle('on', v);
+    draw();
+  }
+  fillToggle.addEventListener('click', function(){ setFill(!showFill); });
+
   // Sri Yantra's own triangle mesh is the tightest fit of any preset: its
   // triangle 1 has a leg passing just 0.0193 of the diameter from the exact
   // center (verified directly from SRI_YANTRA_TRIANGLES — apex/base/half-
@@ -963,8 +975,50 @@
     duo:    { name: 'Shiva / Shakti', down: 'var(--warm)', up: 'var(--cool)', lotus8: 'var(--text)', lotus16: 'var(--text)', triple: 'var(--text)', bhupura: 'var(--text)' },
     full:   { name: 'Full', down: 'var(--warm)', up: 'var(--cool)', lotus8: '#D67AB1', lotus16: '#8E7CC3', triple: 'var(--text-muted)', bhupura: 'var(--text-muted)' }
   };
+  // Fill colors (used when "Fill with color" is on). ink is the outline color
+  // while filled; discs cycle from the outermost circle inward; petalA/petalB
+  // are the two alternating lotus colors (the lotus8 / lotus16 slots); up/down
+  // fill the triangles; alt is the second tone for nested triangle sets.
+  PALETTES.mono.fill = { ink: '#10141c', ground: '#2a303c', band: '#8a94a6', discs: ['#3a4150', '#262c38'], petalA: '#aab3c2', petalB: '#7e889a', up: '#e1e6ee', down: '#6c7686', alt: '#aab3c2' };
+  PALETTES.duo.fill = { ink: '#10141c', ground: '#1c2a33', band: '#c98a45', discs: ['#2a3d46', '#16222a'], petalA: '#e0b27d', petalB: '#79d6c6', up: '#57D9C4', down: '#F2A65A', alt: '#e0b27d' };
+  PALETTES.full.fill = { ink: '#10141c', ground: '#2a1f33', band: '#8E7CC3', discs: ['#3b2c4a', '#241a2e'], petalA: '#D67AB1', petalB: '#8E7CC3', up: '#57D9C4', down: '#F2A65A', alt: '#f0c08a' };
+  // New palettes carry their own line colors (for dark backgrounds; they are
+  // darkened automatically in light mode) plus a fill set.
+  PALETTES.temple = { custom: true, name: 'Temple red & gold', down: '#F2C879', up: '#E9A15A', lotus8: '#D9A441', lotus16: '#9CC26A', triple: '#D9A441', bhupura: '#D9A441',
+    fill: { ink: '#2b0d08', ground: '#7b1e12', band: '#d9a441', discs: ['#a82b1a', '#6d1a10', '#c8452a'], petalA: '#6f9d3f', petalB: '#e6b34a', up: '#f4d27a', down: '#2f5d8a', alt: '#e6b34a' } };
+  PALETTES.lotus = { custom: true, name: 'Lotus pink & jade', down: '#F3A6C4', up: '#8FD1B0', lotus8: '#F3A6C4', lotus16: '#8FD1B0', triple: '#E7B6CB', bhupura: '#E7B6CB',
+    fill: { ink: '#2a1020', ground: '#f3d9e3', band: '#c0749a', discs: ['#f8e8ef', '#e7b6cb', '#cf8fb0'], petalA: '#e58aab', petalB: '#7bb89a', up: '#7bb89a', down: '#c0467a', alt: '#e7b6cb' } };
+  PALETTES.indigo = { custom: true, name: 'Midnight indigo', down: '#F2C879', up: '#A9B8F5', lotus8: '#A9B8F5', lotus16: '#C3CDF5', triple: '#8DA2E6', bhupura: '#8DA2E6',
+    fill: { ink: '#0b1020', ground: '#1d2a5a', band: '#8da2e6', discs: ['#2c3d86', '#16204a', '#3f55a8'], petalA: '#6c7fd1', petalB: '#c3cdf5', up: '#e8ecff', down: '#f2c879', alt: '#9fb0ee' } };
+  PALETTES.forest = { custom: true, name: 'Forest & ochre', down: '#E3B65A', up: '#B7D27C', lotus8: '#B7D27C', lotus16: '#E3B65A', triple: '#C9A14A', bhupura: '#C9A14A',
+    fill: { ink: '#1a1f0f', ground: '#2f4a2a', band: '#c9a14a', discs: ['#3d6b3a', '#233a20', '#5a8a46'], petalA: '#a6c36a', petalB: '#d8b04a', up: '#e9d98a', down: '#7a3f24', alt: '#a6c36a' } };
+  PALETTES.sunrise = { custom: true, name: 'Sunrise', down: '#FFC27A', up: '#FF8FA3', lotus8: '#FFC27A', lotus16: '#FF8FA3', triple: '#F59E42', bhupura: '#F59E42',
+    fill: { ink: '#2a0e18', ground: '#5b1a4a', band: '#f59e42', discs: ['#8a2a5c', '#c24a5a', '#f0875a'], petalA: '#f6b26b', petalB: '#ffe08a', up: '#ffe08a', down: '#8a2a5c', alt: '#f6b26b' } };
+  PALETTES.ocean = { custom: true, name: 'Ocean & coral', down: '#F08A5D', up: '#7FDCD2', lotus8: '#7FDCD2', lotus16: '#F08A5D', triple: '#5FC9C0', bhupura: '#5FC9C0',
+    fill: { ink: '#06202b', ground: '#0f4c5c', band: '#e36414', discs: ['#1b6f82', '#0b3643', '#2f9aa8'], petalA: '#5fc9c0', petalB: '#f08a5d', up: '#bfeee6', down: '#e36414', alt: '#5fc9c0' } };
   var currentPalette = 'duo';
   var strokeWidth = 2;
+  var showFill = false;
+
+  function isLightTheme(){ return root.getAttribute('data-theme') === 'light'; }
+  function hexToRgb(h){ return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function rgbToHex(c){ return '#' + c.map(function(v){ return ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2); }).join(''); }
+  function mixHex(a, b, t){ var A = hexToRgb(a), B = hexToRgb(b); return rgbToHex([lerp(A[0], B[0], t), lerp(A[1], B[1], t), lerp(A[2], B[2], t)]); }
+  // The palette the line work is drawn with: while filling, every line becomes
+  // the palette's dark ink; otherwise custom palettes are darkened on light.
+  function activePalette(){
+    var p = PALETTES[currentPalette];
+    if(showFill){
+      var ink = p.fill.ink;
+      return { name: p.name, down: ink, up: ink, lotus8: ink, lotus16: ink, triple: ink, bhupura: ink };
+    }
+    if(p.custom && isLightTheme()){
+      var q = { name: p.name };
+      ['down', 'up', 'lotus8', 'lotus16', 'triple', 'bhupura'].forEach(function(k){ q[k] = mixHex(p[k], '#000000', 0.45); });
+      return q;
+    }
+    return p;
+  }
 
   function resolveColor(v){
     if(v.indexOf('var(') === 0){
@@ -1066,6 +1120,118 @@
       });
       ctx.closePath();
       ctx.stroke();
+    });
+  }
+
+  // ---------- color fills ----------
+  // Painted underneath all line work, back to front: the bhupura ground and
+  // band, then circles (discs) and lotus petals from the outside in, then
+  // squares and crescents, then triangles. Each region fades in with its own
+  // stage's progress, so a yantra fills itself in as it is drawn.
+  function fillPetals(count, innerR, tipR, startAng, t, color){
+    var visibleCount = Math.max(0, Math.floor(count * ease(t) + 0.0001));
+    var step = (Math.PI * 2) / count, hw = step / 2, wide = hw > SAFE_HW;
+    ctx.fillStyle = color;
+    for(var k = 0; k < visibleCount; k++){
+      var ang = startAng + k * step;
+      var base1 = polar(geo.cx, geo.cy, innerR, ang - hw);
+      var base2 = polar(geo.cx, geo.cy, innerR, ang + hw);
+      var tip = polar(geo.cx, geo.cy, tipR, ang);
+      var left = wide ? petalSCurveWide(ang, hw, -1, innerR, tipR) : petalSCurve(base1, tip, PETAL_AMP_FRAC, PETAL_REACH_FRAC);
+      var right = wide ? petalSCurveWide(ang, hw, 1, innerR, tipR) : petalSCurve(base2, tip, PETAL_AMP_FRAC, PETAL_REACH_FRAC);
+      ctx.beginPath();
+      ctx.moveTo(base1[0], base1[1]);
+      ctx.bezierCurveTo(left.convex[0], left.convex[1], left.concave[0], left.concave[1], tip[0], tip[1]);
+      ctx.bezierCurveTo(right.concave[0], right.concave[1], right.convex[0], right.convex[1], base2[0], base2[1]);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  function fillDisc(r, color, alpha){
+    var g = ctx.createRadialGradient(geo.cx - r * 0.25, geo.cy - r * 0.3, r * 0.05, geo.cx, geo.cy, r);
+    g.addColorStop(0, mixHex(color, '#ffffff', 0.14));
+    g.addColorStop(1, color);
+    ctx.globalAlpha = alpha; ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(geo.cx, geo.cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  function drawFills(effs){
+    if(!showFill || !geo) return;
+    var fp = PALETTES[currentPalette].fill, R = geo.R;
+    var preset = PRESETS[currentPresetKey];
+
+    if(currentPresetHasBhupura && showBhupura){
+      var lines = bhupuraLinesFor(preset.bhupuraLines);
+      var sc = R * bhupuraScaleFor(preset.yantraExtent, preset.bhupuraLines, preset.bhupuraGap);
+      var polyFill = function(path, fill){
+        ctx.beginPath();
+        path.forEach(function(q, i){ var X = geo.cx + q[0] * sc, Y = geo.cy + q[1] * sc; if(i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y); });
+        ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+      };
+      polyFill(lines[0], fp.band);
+      var inner = lines[lines.length - 1];
+      var gg = ctx.createLinearGradient(geo.cx - sc, geo.cy - sc, geo.cx + sc, geo.cy + sc);
+      gg.addColorStop(0, mixHex(fp.ground, '#ffffff', 0.10));
+      gg.addColorStop(1, mixHex(fp.ground, '#000000', 0.18));
+      polyFill(inner, gg);
+      if(lines.length === 1){
+        // a single-outline frame has no gap between lines to hold the band
+        // color, so give the outline itself a broad band
+        ctx.beginPath();
+        inner.forEach(function(q, i){ var X = geo.cx + q[0] * sc, Y = geo.cy + q[1] * sc; if(i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y); });
+        ctx.closePath();
+        ctx.strokeStyle = fp.band; ctx.lineWidth = sc * 0.05; ctx.lineJoin = 'miter'; ctx.stroke();
+      }
+    }
+    if(progress <= 0) return;
+
+    var layers = [], triCount = 0;
+    STAGE_DEFS.forEach(function(stage, i){
+      var t = effs[i];
+      if(t === null || t === undefined || t <= 0) return;
+      if(stage.kind === 'circle') layers.push({ z: stage.radiusFrac, o: 0, kind: 'disc', t: clamp((t - 0.3) / 0.7, 0, 1) });
+      else if(stage.kind === 'lotus') layers.push({ z: stage.tipRFrac, o: 1, kind: 'lotus', stage: stage, t: t });
+      else if(stage.kind === 'triple') layers.push({ z: 1.5, o: 0, kind: 'ring', t: t });
+      else if(stage.kind === 'square') layers.push({ z: 0.99, o: 2, kind: 'square', stage: stage, t: clamp((t - 0.4) / 0.6, 0, 1) });
+      else if(stage.kind === 'crescent') layers.push({ z: 0.5, o: 2, kind: 'crescent', stage: stage, t: clamp((t - 0.65) / 0.35, 0, 1) });
+      else if(stage.kind === 'triangle'){ triCount++; layers.push({ z: -1, o: i, kind: 'tri', stage: stage, t: clamp((t - 0.55) / 0.45, 0, 1), idx: triCount - 1 }); }
+    });
+    layers.sort(function(a, b){ return (b.z - a.z) || (a.o - b.o); });
+    var discIdx = 0, nested = triCount > 3 && STAGE_DEFS.filter(function(st){ return st.kind === 'triangle'; }).every(function(st){ return st.colorKey === 'down'; });
+
+    layers.forEach(function(L){
+      if(L.kind === 'disc'){
+        fillDisc(geo.R * L.z, fp.discs[discIdx % fp.discs.length], ease(L.t));
+        discIdx++;
+      } else if(L.kind === 'ring'){
+        fillDisc(R * 1.5, fp.band, ease(L.t));
+        fillDisc(R * 1.4, fp.discs[0], ease(L.t));
+      } else if(L.kind === 'lotus'){
+        var st = L.stage;
+        fillPetals(st.count, R * st.innerRFrac, R * st.tipRFrac, st.startAngle, L.t, st.colorKey === 'lotus16' ? fp.petalB : fp.petalA);
+      } else if(L.kind === 'square'){
+        var q = L.stage.halfSideFrac;
+        ctx.globalAlpha = ease(L.t); ctx.fillStyle = fp.petalB;
+        ctx.fillRect(px(-q), py(0.5 - q), px(q) - px(-q), py(0.5 + q) - py(0.5 - q));
+        ctx.globalAlpha = 1;
+      } else if(L.kind === 'crescent'){
+        var r = R * L.stage.radiusFrac, d = r * L.stage.offsetFrac, oy = geo.cy - d;
+        var theta = Math.acos(clamp(d / (2 * r), -1, 1));
+        var aStart = -Math.PI / 2 + theta, bStart = Math.PI / 2 + theta;
+        ctx.globalAlpha = ease(L.t); ctx.fillStyle = fp.up;
+        ctx.beginPath();
+        ctx.arc(geo.cx, geo.cy, r, aStart, aStart + 2 * Math.PI - 2 * theta, false);
+        ctx.arc(geo.cx, oy, r, bStart, bStart - 2 * theta, true);
+        ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+      } else if(L.kind === 'tri'){
+        var tri = L.stage.tri;
+        var col = nested ? (L.idx % 2 ? fp.alt : fp.down) : (L.stage.colorKey === 'up' ? fp.up : fp.down);
+        ctx.globalAlpha = ease(L.t) * (triCount > 3 && !nested ? 0.5 : 0.82);
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(px(0), py(tri.A)); ctx.lineTo(px(-tri.W), py(tri.B)); ctx.lineTo(px(tri.W), py(tri.B));
+        ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+      }
     });
   }
 
@@ -1768,7 +1934,7 @@
     }
     var sweepT = clamp((t - 0.3) / 0.7, 0, 1);
     if(sweepT > 0){
-      ctx.strokeStyle = resolveColor(PALETTES[currentPalette].lotus8);
+      ctx.strokeStyle = resolveColor(activePalette().lotus8);
       ctx.globalAlpha = 1;
       ctx.lineWidth = strokeWidth * 0.9;
       ctx.beginPath();
@@ -1852,7 +2018,7 @@
       var local = clamp(n - k, 0, 1);
       if(local <= 0) continue;
       strokeGuide(1, strokeWidth * 0.75);
-      ctx.strokeStyle = resolveColor(PALETTES[currentPalette].triple);
+      ctx.strokeStyle = resolveColor(activePalette().triple);
       ctx.globalAlpha = 1;
       ctx.beginPath();
       sampleArcPath(geo.cx, geo.cy, radii[k], -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ease(local));
@@ -1874,7 +2040,7 @@
     var drawT = clamp((t - 0.4) / 0.6, 0, 1);
     if(drawT > 0){
       var segT = drawT * 4;
-      ctx.strokeStyle = resolveColor(PALETTES[currentPalette].lotus8);
+      ctx.strokeStyle = resolveColor(activePalette().lotus8);
       ctx.lineWidth = strokeWidth;
       for(var i = 0; i < 4; i++){
         var lt = clamp(segT - i, 0, 1);
@@ -1921,7 +2087,7 @@
     var traceT = clamp((t - 0.65) / 0.35, 0, 1);
     if(traceT <= 0) return;
     var theta = Math.acos(clamp(d / (2 * r), -1, 1));
-    var color = resolveColor(PALETTES[currentPalette].lotus8);
+    var color = resolveColor(activePalette().lotus8);
     ctx.strokeStyle = color; ctx.lineWidth = strokeWidth;
 
     // circleA's major (far/bottom) arc: right intersection -> around the
@@ -1955,7 +2121,7 @@
     ctx.fillStyle = style.getPropertyValue('--bg').trim();
     ctx.fillRect(0, 0, w, h);
 
-    var pal = PALETTES[currentPalette];
+    var pal = activePalette();
     var R = geo.R;
     var stageLabel = document.getElementById('stageLabel');
     var instrStepLabel = document.getElementById('instrStepLabel');
@@ -1980,17 +2146,19 @@
     // frame with a single effective t — never once per sub-step — so guide
     // marks drawn with partial alpha don't double up while a multi-substep
     // stage (e.g. a triangle's apex/guide/corners/stroke) is mid-progress.
+    var stageEff = function(stage){
+      if(progress <= 0 || idxFloor < stage.firstFlat) return null; // not reached yet
+      if(idxFloor > stage.lastFlat) return 1;
+      var sub = STEPS[idxFloor];
+      var doneHere = (idxFloor === stage.lastFlat && localT >= 0.999);
+      return doneHere ? 1 : lerp(sub.tStart, sub.tEnd, localT);
+    };
+    if(showFill) drawFills(STAGE_DEFS.map(stageEff));
+
     if(progress > 0){
       STAGE_DEFS.forEach(function(stage){
-        if(idxFloor < stage.firstFlat) return; // not reached yet
-        var effT;
-        if(idxFloor > stage.lastFlat){
-          effT = 1;
-        } else {
-          var sub = STEPS[idxFloor];
-          var doneHere = (idxFloor === stage.lastFlat && localT >= 0.999);
-          effT = doneHere ? 1 : lerp(sub.tStart, sub.tEnd, localT);
-        }
+        var effT = stageEff(stage);
+        if(effT === null) return;
         if(stage.kind === 'circle'){
           drawCirclePhase(effT, stage.radiusFrac);
         } else if(stage.kind === 'axis'){
@@ -2120,7 +2288,13 @@
   var swatchGradients = {
     mono: 'linear-gradient(135deg,#888,#ccc)',
     duo: 'linear-gradient(135deg,#F2A65A,#57D9C4)',
-    full: 'linear-gradient(135deg,#F2A65A 0%,#57D9C4 40%,#D67AB1 70%,#8E7CC3 100%)'
+    full: 'linear-gradient(135deg,#F2A65A 0%,#57D9C4 40%,#D67AB1 70%,#8E7CC3 100%)',
+    temple: 'linear-gradient(135deg,#7b1e12 0%,#d9a441 50%,#6f9d3f 100%)',
+    lotus: 'linear-gradient(135deg,#f3d9e3 0%,#e58aab 50%,#7bb89a 100%)',
+    indigo: 'linear-gradient(135deg,#16204a 0%,#6c7fd1 55%,#f2c879 100%)',
+    forest: 'linear-gradient(135deg,#233a20 0%,#a6c36a 55%,#d8b04a 100%)',
+    sunrise: 'linear-gradient(135deg,#5b1a4a 0%,#f0875a 55%,#ffe08a 100%)',
+    ocean: 'linear-gradient(135deg,#0b3643 0%,#5fc9c0 55%,#e36414 100%)'
   };
   Object.keys(PALETTES).forEach(function(key){
     var el = document.createElement('div');
