@@ -1278,23 +1278,43 @@
   // band, then circles (discs) and lotus petals from the outside in, then
   // squares and crescents, then triangles. Each region fades in with its own
   // stage's progress, so a yantra fills itself in as it is drawn.
-  function fillPetals(count, innerR, tipR, startAng, t, color, widthScale){
+  // One petal's outline as a path (the same curves drawLotusStep strokes).
+  function petalPath(ang, hw, innerR, tipR){
+    var wide = hw > SAFE_HW;
+    var base1 = polar(geo.cx, geo.cy, innerR, ang - hw);
+    var base2 = polar(geo.cx, geo.cy, innerR, ang + hw);
+    var tip = polar(geo.cx, geo.cy, tipR, ang);
+    var left = wide ? petalSCurveWide(ang, hw, -1, innerR, tipR) : petalSCurve(base1, tip, PETAL_AMP_FRAC, PETAL_REACH_FRAC);
+    var right = wide ? petalSCurveWide(ang, hw, 1, innerR, tipR) : petalSCurve(base2, tip, PETAL_AMP_FRAC, PETAL_REACH_FRAC);
+    ctx.beginPath();
+    ctx.moveTo(base1[0], base1[1]);
+    ctx.bezierCurveTo(left.convex[0], left.convex[1], left.concave[0], left.concave[1], tip[0], tip[1]);
+    ctx.bezierCurveTo(right.concave[0], right.concave[1], right.convex[0], right.convex[1], base2[0], base2[1]);
+    ctx.closePath();
+  }
+  function fillPetals(count, innerR, tipR, startAng, t, color){
     var visibleCount = Math.max(0, Math.floor(count * ease(t) + 0.0001));
-    var step = (Math.PI * 2) / count, hw = (step / 2) * (widthScale || 1), wide = hw > SAFE_HW;
+    var step = (Math.PI * 2) / count;
+    ctx.fillStyle = color;
+    for(var k = 0; k < visibleCount; k++){
+      petalPath(startAng + k * step, step / 2, innerR, tipR);
+      ctx.fill();
+    }
+  }
+  // A lighter inner lobe in each petal, clipped to that petal's own outline so
+  // it can never spill past the line, even on the very wide petals (Ajna's two).
+  function fillPetalLobes(count, innerR, tipR, startAng, t, color){
+    var visibleCount = Math.max(0, Math.floor(count * ease(t) + 0.0001));
+    var step = (Math.PI * 2) / count, hw = step / 2, span = tipR - innerR;
     ctx.fillStyle = color;
     for(var k = 0; k < visibleCount; k++){
       var ang = startAng + k * step;
-      var base1 = polar(geo.cx, geo.cy, innerR, ang - hw);
-      var base2 = polar(geo.cx, geo.cy, innerR, ang + hw);
-      var tip = polar(geo.cx, geo.cy, tipR, ang);
-      var left = wide ? petalSCurveWide(ang, hw, -1, innerR, tipR) : petalSCurve(base1, tip, PETAL_AMP_FRAC, PETAL_REACH_FRAC);
-      var right = wide ? petalSCurveWide(ang, hw, 1, innerR, tipR) : petalSCurve(base2, tip, PETAL_AMP_FRAC, PETAL_REACH_FRAC);
-      ctx.beginPath();
-      ctx.moveTo(base1[0], base1[1]);
-      ctx.bezierCurveTo(left.convex[0], left.convex[1], left.concave[0], left.concave[1], tip[0], tip[1]);
-      ctx.bezierCurveTo(right.concave[0], right.concave[1], right.convex[0], right.convex[1], base2[0], base2[1]);
-      ctx.closePath();
+      ctx.save();
+      petalPath(ang, hw, innerR, tipR);
+      ctx.clip();
+      petalPath(ang, hw * 0.58, innerR + span * 0.16, tipR - span * 0.12);
       ctx.fill();
+      ctx.restore();
     }
   }
   function fillDisc(r, color, alpha){
@@ -1392,8 +1412,7 @@
         var petalCol = st.colorKey === 'lotus16' ? fp.petalB : fp.petalA;
         fillPetals(st.count, R * st.innerRFrac, R * st.tipRFrac, st.startAngle, L.t, petalCol);
         // a lighter inner lobe gives each petal depth, as in painted lotuses
-        var span = R * (st.tipRFrac - st.innerRFrac);
-        if(st.count <= 40) fillPetals(st.count, R * st.innerRFrac + span * 0.16, R * st.tipRFrac - span * 0.12, st.startAngle, L.t, mixHex(petalCol, '#ffffff', 0.2), 0.58);
+        if(st.count <= 40) fillPetalLobes(st.count, R * st.innerRFrac, R * st.tipRFrac, st.startAngle, L.t, mixHex(petalCol, '#ffffff', 0.2));
       } else if(L.kind === 'square'){
         var q = L.stage.halfSideFrac;
         ctx.globalAlpha = ease(L.t); ctx.fillStyle = fp.petalB;
